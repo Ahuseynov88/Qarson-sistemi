@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Qarson İdarəetmə Sistemi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* KIOSK MODE - Prevent exit */
+        .kiosk-active {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 999999;
+            overflow: hidden;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .login-box {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .login-box h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .login-box p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .role-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .role-btn.active, .role-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .pin-input {
+            width: 100%;
+            padding: 20px;
+            font-size: 32px;
+            text-align: center;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            letter-spacing: 10px;
+            font-weight: bold;
+        }
+        .pin-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .login-btn:hover { transform: scale(1.02); }
+        .login-btn:active { transform: scale(0.98); }
+        .error-msg {
+            color: #e74c3c;
+            margin-top: 15px;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* Admin Panel */
+        .admin-panel {
+            display: none;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .admin-header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .admin-header h2 {
+            color: #667eea;
+            font-size: 24px;
+        }
+        .logout-btn {
+            padding: 10px 25px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .stat-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .waiters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .waiter-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .waiter-card:hover { transform: translateY(-5px); }
+        .waiter-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 5px;
+        }
+        .waiter-card.active::before { background: #2ecc71; }
+        .waiter-card.inactive::before { background: #95a5a6; }
+        .waiter-card.busy::before { background: #f39c12; }
+        .waiter-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .waiter-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #eee;
+        }
+        .waiter-info h3 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .waiter-info .pin {
+            color: #999;
+            font-size: 14px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-badge.active { background: #d5f4e6; color: #27ae60; }
+        .status-badge.inactive { background: #e8e8e8; color: #7f8c8d; }
+        .status-badge.busy { background: #fdebd0; color: #f39c12; }
+        .waiter-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .btn-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        .add-waiter-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 36px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            transition: transform 0.3s;
+            z-index: 100;
+        }
+        .add-waiter-btn:hover { transform: scale(1.1); }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .avatar-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 10px auto;
+            display: block;
+            border: 3px solid #ddd;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        .modal-actions button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-cancel {
+            background: #e8e8e8;
+            color: #666;
+        }
+
+        /* Waiter Panel (Kiosk) */
+        .waiter-panel {
+            display: none;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+        }
+        .waiter-panel.kiosk-active {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 999999;
+        }
+        .waiter-header-bar {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .waiter-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .waiter-profile img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #667eea;
+        }
+        .waiter-profile h2 {
+            color: #333;
+            font-size: 20px;
+        }
+        .waiter-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .status-indicator.online {
+            background: #2ecc71;
+            box-shadow: 0 0 10px #2ecc71;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .waiter-content {
+            padding: 30px 20px;
+            text-align: center;
+            color: white;
+        }
+        .waiter-content h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .waiter-content p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .orders-container {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .order-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            color: #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .order-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 22px;
+        }
+        .order-card p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .order-time {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+        .accept-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .accept-btn:hover { transform: scale(1.02); }
+        .no-orders {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 30px;
+        }
+        .no-orders-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        /* Alarm Overlay */
+        .alarm-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(231, 76, 60, 0.95);
+            z-index: 1000000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: alarmPulse 0.5s infinite alternate;
+        }
+        .alarm-overlay.active { display: flex; }
+        @keyframes alarmPulse {
+            from { background: rgba(231, 76, 60, 0.95); }
+            to { background: rgba(192, 57, 43, 0.98); }
+        }
+        .alarm-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: bellRing 0.5s infinite;
+        }
+        @keyframes bellRing {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
+        }
+        .alarm-text {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .alarm-subtext {
+            color: rgba(255,255,255,0.9);
+            font-size: 20px;
+            margin-bottom: 30px;
+        }
+        .alarm-accept-btn {
+            padding: 20px 60px;
+            background: white;
+            color: #e74c3c;
+            border: none;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .alarm-accept-btn:hover { transform: scale(1.05); }
+
+        /* Kitchen Panel */
+        .kitchen-panel {
+            display: none;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: #f5f6fa;
+        }
+        .kitchen-header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .kitchen-header h1 {
+            color: #e67e22;
+            font-size: 28px;
+        }
+        .kitchen-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .kitchen-waiter-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .kitchen-waiter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        .kitchen-waiter-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 6px;
+        }
+        .kitchen-waiter-card.status-active::before { background: #2ecc71; }
+        .kitchen-waiter-card.status-busy::before { background: #f39c12; }
+        .kitchen-waiter-card.status-inactive::before { background: #95a5a6; }
+        .kitchen-waiter-card.status-alert::before { background: #e74c3c; animation: alertBlink 1s infinite; }
+        @keyframes alertBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .kitchen-waiter-card img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #eee;
+            margin-bottom: 15px;
+        }
+        .kitchen-waiter-card h3 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .kitchen-status {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .kitchen-status.ready {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        .kitchen-status.coming {
+            background: #fdebd0;
+            color: #f39c12;
+        }
+        .kitchen-status.offline {
+            background: #e8e8e8;
+            color: #7f8c8d;
+        }
+        .kitchen-status.waiting {
+            background: #fadbd8;
+            color: #e74c3c;
+            animation: statusPulse 1s infinite;
+        }
+        @keyframes statusPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .send-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .send-btn:hover { transform: scale(1.02); }
+        .send-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .order-history {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            text-align: left;
+        }
+        .order-history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .order-history-item .time {
+            font-size: 12px;
+            color: #999;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge.new { background: #fadbd8; color: #e74c3c; }
+        .badge.done { background: #d5f4e6; color: #27ae60; }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: none;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000001;
+            animation: toastSlide 0.5s ease-out;
+            max-width: 400px;
+        }
+        .toast.active { display: flex; }
+        @keyframes toastSlide {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-icon {
+            font-size: 30px;
+        }
+        .toast-content h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .toast-content p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .login-box { padding: 30px 20px; }
+            .waiter-grid { grid-template-columns: 1fr; }
+            .kitchen-grid { grid-template-columns: repeat(2, 1fr); }
+            .alarm-text { font-size: 24px; }
+            .alarm-accept-btn { padding: 15px 40px; font-size: 20px; }
+        }
+        @media (max-width: 480px) {
+            .kitchen-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Kiosk exit protection */
+        .kiosk-exit-hint {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 999999;
+        }
+    </style>
+</head>
+<body>
+    <!-- LOGIN SCREEN -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <h1>🍽️ Qarson Sistemi</h1>
+            <p>Rolunuzu seçin və PIN kodu daxil edin</p>
+            <div class="role-selector">
+                <button class="role-btn active" data-role="admin" onclick="selectRole('admin')">👨‍💼 Admin</button>
+                <button class="role-btn" data-role="waiter" onclick="selectRole('waiter')">🤵 Qarson</button>
+                <button class="role-btn" data-role="kitchen" onclick="selectRole('kitchen')">👨‍🍳 Mətbəx</button>
+            </div>
+            <input type="password" class="pin-input" id="pinInput" placeholder="••••" maxlength="4" inputmode="numeric">
+            <button class="login-btn" onclick="login()">Daxil Ol</button>
+            <div class="error-msg" id="loginError">PIN kod səhvdir!</div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-header">
+            <h2>👨‍💼 Admin Paneli</h2>
+            <button class="logout-btn" onclick="logout()">Çıxış</button>
+        </div>
+        <div class="stats-bar">
+            <div class="stat-card">
+                <h3>Ümumi Qarson</h3>
+                <div class="number" id="totalWaiters">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Aktiv Qarson</h3>
+                <div class="number" id="activeWaiters">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Sifariş Gözləyən</h3>
+                <div class="number" id="pendingOrders">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Bugünkü Sifariş</h3>
+                <div class="number" id="todayOrders">0</div>
+            </div>
+        </div>
+        <div class="waiters-grid" id="waitersGrid"></div>
+        <button class="add-waiter-btn" onclick="openAddModal()">+</button>
+    </div>
+
+    <!-- WAITER PANEL (Kiosk Mode) -->
+    <div class="waiter-panel" id="waiterPanel">
+        <div class="waiter-header-bar">
+            <div class="waiter-profile">
+                <img id="waiterAvatar" src="" alt="Avatar">
+                <div>
+                    <h2 id="waiterName">Qarson</h2>
+                    <small style="color:#667eea">PIN: <span id="waiterPinDisplay"></span></small>
+                </div>
+            </div>
+            <div class="waiter-status">
+                <div class="status-indicator online" id="statusIndicator"></div>
+                <span style="color:#27ae60; font-weight:bold">Aktiv</span>
+                <button class="logout-btn" onclick="logout()" style="margin-left:15px">Çıxış</button>
+            </div>
+        </div>
+        <div class="waiter-content">
+            <h1>🎯 Sifarişləriniz</h1>
+            <p>Mətbəxdən gələn bildirişlər burada görünəcək</p>
+            <div class="orders-container" id="ordersContainer">
+                <div class="no-orders">
+                    <div class="no-orders-icon">📭</div>
+                    <h3>Hazırda sifariş yoxdur</h3>
+                    <p>Mətbəx bildiriş göndərəndə burada görünəcək</p>
+                </div>
+            </div>
+        </div>
+        <div class="kiosk-exit-hint">Admin çıxış düyməsinə basın</div>
+    </div>
+
+    <!-- KITCHEN PANEL -->
+    <div class="kitchen-panel" id="kitchenPanel">
+        <div class="kitchen-header">
+            <h1>👨‍🍳 Mətbəx Paneli</h1>
+            <button class="logout-btn" onclick="logout()">Çıxış</button>
+        </div>
+        <div class="kitchen-grid" id="kitchenGrid"></div>
+    </div>
+
+    <!-- ALARM OVERLAY -->
+    <div class="alarm-overlay" id="alarmOverlay">
+        <div class="alarm-icon">🔔</div>
+        <div class="alarm-text">Sifariş Hazırdır!</div>
+        <div class="alarm-subtext" id="alarmDetails">Masa 5 - Sifariş hazırdır</div>
+        <button class="alarm-accept-btn" onclick="acceptOrder()">✅ Qəbul Etdim</button>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+        <div class="toast-icon" id="toastIcon">✅</div>
+        <div class="toast-content">
+            <h4 id="toastTitle">Uğurlu!</h4>
+            <p id="toastMessage">Əməliyyat tamamlandı</p>
+        </div>
+    </div>
+
+    <!-- ADD WAITER MODAL -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <h2>➕ Yeni Qarson Əlavə Et</h2>
+            <div class="form-group">
+                <label>Ad Soyad</label>
+                <input type="text" id="newWaiterName" placeholder="Məsələn: Əli Məmmədov">
+            </div>
+            <div class="form-group">
+                <label>PIN Kod (4 rəqəm)</label>
+                <input type="text" id="newWaiterPin" placeholder="1234" maxlength="4" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Şəkil URL (opsional)</label>
+                <input type="text" id="newWaiterAvatar" placeholder="https://...">
+                <img class="avatar-preview" id="avatarPreview" src="https://ui-avatars.com/api/?name=Waiter&background=667eea&color=fff&size=200" alt="Preview">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeAddModal()">Ləğv Et</button>
+                <button class="btn-save" onclick="saveWaiter()">Yadda Saxla</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== DATA & STATE ====================
+        let currentUser = null;
+        let currentRole = 'admin';
+        let alarmInterval = null;
+        let currentAlarmOrder = null;
+
+        // Default admin
+        const ADMIN_PIN = '0000';
+        const KITCHEN_PIN = '9999';
+
+        // Demo data
+        let waiters = [
+            {
+                id: 1,
+                name: 'Əli Məmmədov',
+                pin: '1111',
+                avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200',
+                active: true,
+                status: 'ready', // ready, busy, offline
+                orders: [],
+                todayOrders: 0
+            },
+            {
+                id: 2,
+                name: 'Leyla Həsənli',
+                pin: '2222',
+                avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200',
+                active: true,
+                status: 'ready',
+                orders: [],
+                todayOrders: 0
+            },
+            {
+                id: 3,
+                name: 'Orxan Əliyev',
+                pin: '3333',
+                avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200',
+                active: false,
+                status: 'offline',
+                orders: [],
+                todayOrders: 0
+            }
+        ];
+
+        let orders = [];
+        let nextOrderId = 1;
+
+        // ==================== AUDIO ====================
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playAlarmSound() {
+            // Create oscillator for alarm sound
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'square';
+
+            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+
+            // Repeat for continuous alarm
+            return setInterval(() => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.frequency.value = 800;
+                osc.type = 'square';
+                gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.5);
+            }, 600);
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'az-AZ';
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function stopAlarm() {
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
+            window.speechSynthesis.cancel();
+        }
+
+        // ==================== LOGIN ====================
+        function selectRole(role) {
+            currentRole = role;
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.role === role);
+            });
+        }
+
+        function login() {
+            const pin = document.getElementById('pinInput').value;
+
+            if (currentRole === 'admin' && pin === ADMIN_PIN) {
+                currentUser = { role: 'admin', name: 'Admin' };
+                showPanel('admin');
+                showToast('✅', 'Xoş gəldiniz!', 'Admin panelinə daxil oldunuz');
+            } else if (currentRole === 'kitchen' && pin === KITCHEN_PIN) {
+                currentUser = { role: 'kitchen', name: 'Mətbəx' };
+                showPanel('kitchen');
+                showToast('✅', 'Xoş gəldiniz!', 'Mətbəx panelinə daxil oldunuz');
+            } else if (currentRole === 'waiter') {
+                const waiter = waiters.find(w => w.pin === pin && w.active);
+                if (waiter) {
+                    currentUser = { role: 'waiter', ...waiter };
+                    waiter.status = 'ready';
+                    showPanel('waiter');
+                    showToast('✅', 'Xoş gəldiniz!', `${waiter.name}, siz aktiv oldunuz`);
+                } else {
+                    showError('PIN kod səhvdir və ya qarson deaktivdir!');
+                }
+            } else {
+                showError('PIN kod səhvdir!');
+            }
+
+            document.getElementById('pinInput').value = '';
+        }
+
+        function showError(msg) {
+            const error = document.getElementById('loginError');
+            error.textContent = msg;
+            error.style.display = 'block';
+            setTimeout(() => error.style.display = 'none', 3000);
+        }
+
+        // ==================== PANELS ====================
+        function showPanel(panel) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('waiterPanel').style.display = 'none';
+            document.getElementById('kitchenPanel').style.display = 'none';
+
+            if (panel === 'admin') {
+                document.getElementById('adminPanel').style.display = 'block';
+                renderAdminPanel();
+            } else if (panel === 'waiter') {
+                document.getElementById('waiterPanel').style.display = 'block';
+                // Enable kiosk mode
+                document.getElementById('waiterPanel').classList.add('kiosk-active');
+                document.body.style.overflow = 'hidden';
+                renderWaiterPanel();
+            } else if (panel === 'kitchen') {
+                document.getElementById('kitchenPanel').style.display = 'block';
+                renderKitchenPanel();
+            }
+        }
+
+        function logout() {
+            if (currentUser && currentUser.role === 'waiter') {
+                const waiter = waiters.find(w => w.id === currentUser.id);
+                if (waiter) waiter.status = 'offline';
+            }
+
+            stopAlarm();
+            document.getElementById('waiterPanel').classList.remove('kiosk-active');
+            document.body.style.overflow = 'auto';
+
+            currentUser = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('waiterPanel').style.display = 'none';
+            document.getElementById('kitchenPanel').style.display = 'none';
+            document.getElementById('pinInput').value = '';
+        }
+
+        // ==================== ADMIN PANEL ====================
+        function renderAdminPanel() {
+            document.getElementById('totalWaiters').textContent = waiters.length;
+            document.getElementById('activeWaiters').textContent = waiters.filter(w => w.active).length;
+            document.getElementById('pendingOrders').textContent = orders.filter(o => o.status === 'pending').length;
+            document.getElementById('todayOrders').textContent = orders.length;
+
+            const grid = document.getElementById('waitersGrid');
+            grid.innerHTML = waiters.map(waiter => `
+                <div class="waiter-card ${waiter.active ? 'active' : 'inactive'} ${waiter.status === 'busy' ? 'busy' : ''}">
+                    <div class="waiter-header">
+                        <img src="${waiter.avatar}" alt="${waiter.name}" class="waiter-avatar">
+                        <div class="waiter-info">
+                            <h3>${waiter.name}</h3>
+                            <span class="pin">PIN: ${waiter.pin}</span>
+                        </div>
+                    </div>
+                    <span class="status-badge ${waiter.status}">
+                        ${waiter.status === 'ready' ? '🟢 Aktiv' : waiter.status === 'busy' ? '🟡 Sifarişdə' : '⚪ Deaktiv'}
+                    </span>
+                    <div class="waiter-actions">
+                        <button class="action-btn btn-toggle" onclick="toggleWaiter(${waiter.id})">
+                            ${waiter.active ? 'Deaktiv Et' : 'Aktiv Et'}
+                        </button>
+                        <button class="action-btn btn-delete" onclick="deleteWaiter(${waiter.id})">Sil</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleWaiter(id) {
+            const waiter = waiters.find(w => w.id === id);
+            if (waiter) {
+                waiter.active = !waiter.active;
+                waiter.status = waiter.active ? 'ready' : 'offline';
+                renderAdminPanel();
+                renderKitchenPanel();
+                showToast('✅', 'Uğurlu!', `${waiter.name} ${waiter.active ? 'aktiv' : 'deaktiv'} edildi`);
+            }
+        }
+
+        function deleteWaiter(id) {
+            if (confirm('Bu qarsonu silmək istədiyinizə əminsiniz?')) {
+                waiters = waiters.filter(w => w.id !== id);
+                renderAdminPanel();
+                renderKitchenPanel();
+                showToast('🗑️', 'Silindi!', 'Qarson sistemdən silindi');
+            }
+        }
+
+        // ==================== ADD WAITER MODAL ====================
+        function openAddModal() {
+            document.getElementById('addModal').classList.add('active');
+            document.getElementById('newWaiterName').value = '';
+            document.getElementById('newWaiterPin').value = '';
+            document.getElementById('newWaiterAvatar').value = '';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('active');
+        }
+
+        function saveWaiter() {
+            const name = document.getElementById('newWaiterName').value.trim();
+            const pin = document.getElementById('newWaiterPin').value.trim();
+            const avatarUrl = document.getElementById('newWaiterAvatar').value.trim();
+
+            if (!name || !pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+                showToast('❌', 'Xəta!', 'Ad və 4 rəqəmli PIN kod daxil edin');
+                return;
+            }
+
+            if (waiters.some(w => w.pin === pin)) {
+                showToast('❌', 'Xəta!', 'Bu PIN kod artıq istifadə olunur');
+                return;
+            }
+
+            const avatar = avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=667eea&color=fff&size=200`;
+
+            const newWaiter = {
+                id: Date.now(),
+                name,
+                pin,
+                avatar,
+                active: true,
+                status: 'ready',
+                orders: [],
+                todayOrders: 0
+            };
+
+            waiters.push(newWaiter);
+            closeAddModal();
+            renderAdminPanel();
+            renderKitchenPanel();
+            showToast('✅', 'Uğurlu!', `${name} sistemə əlavə edildi`);
+        }
+
+        // Avatar preview
+        document.getElementById('newWaiterAvatar').addEventListener('input', function() {
+            const url = this.value.trim();
+            document.getElementById('avatarPreview').src = url || 'https://ui-avatars.com/api/?name=Waiter&background=667eea&color=fff&size=200';
+        });
+
+        // ==================== WAITER PANEL ====================
+        function renderWaiterPanel() {
+            if (!currentUser || currentUser.role !== 'waiter') return;
+
+            const waiter = waiters.find(w => w.id === currentUser.id);
+            if (!waiter) return;
+
+            document.getElementById('waiterName').textContent = waiter.name;
+            document.getElementById('waiterAvatar').src = waiter.avatar;
+            document.getElementById('waiterPinDisplay').textContent = waiter.pin;
+
+            const container = document.getElementById('ordersContainer');
+            const pendingOrders = orders.filter(o => o.waiterId === waiter.id && o.status === 'pending');
+
+            if (pendingOrders.length === 0) {
+                container.innerHTML = `
+                    <div class="no-orders">
+                        <div class="no-orders-icon">📭</div>
+                        <h3>Hazırda sifariş yoxdur</h3>
+                        <p>Mətbəx bildiriş göndərəndə burada görünəcək</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = pendingOrders.map(order => `
+                    <div class="order-card" id="order-${order.id}">
+                        <h3>🍽️ Sifariş #${order.id}</h3>
+                        <p>Masa: <strong>${order.table}</strong></p>
+                        <div class="order-time">Göndərilmə vaxtı: ${order.time}</div>
+                        <button class="accept-btn" onclick="acceptOrderFromCard(${order.id})">✅ Qəbul Etdim</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function acceptOrder() {
+            if (!currentAlarmOrder) return;
+
+            stopAlarm();
+            document.getElementById('alarmOverlay').classList.remove('active');
+
+            const order = orders.find(o => o.id === currentAlarmOrder);
+            if (order) {
+                order.status = 'accepted';
+                order.acceptedAt = new Date().toLocaleTimeString('az-AZ');
+
+                const waiter = waiters.find(w => w.id === order.waiterId);
+                if (waiter) {
+                    waiter.status = 'busy';
+                    showToast('✅', 'Qəbul edildi!', `${waiter.name}, sifarişi qəbul etdiniz`);
+                }
+            }
+
+            currentAlarmOrder = null;
+            renderWaiterPanel();
+            renderKitchenPanel();
+            renderAdminPanel();
+        }
+
+        function acceptOrderFromCard(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                order.status = 'accepted';
+                order.acceptedAt = new Date().toLocaleTimeString('az-AZ');
+
+                const waiter = waiters.find(w => w.id === order.waiterId);
+                if (waiter) waiter.status = 'busy';
+
+                showToast('✅', 'Qəbul edildi!', 'Sifarişi qəbul etdiniz');
+                renderWaiterPanel();
+                renderKitchenPanel();
+                renderAdminPanel();
+            }
+        }
+
+        // ==================== KITCHEN PANEL ====================
+        function renderKitchenPanel() {
+            const grid = document.getElementById('kitchenGrid');
+
+            grid.innerHTML = waiters.map(waiter => {
+                const pendingCount = orders.filter(o => o.waiterId === waiter.id && o.status === 'pending').length;
+                const acceptedCount = orders.filter(o => o.waiterId === waiter.id && o.status === 'accepted').length;
+
+                let statusClass = 'status-inactive';
+                let statusText = 'offline';
+                let statusLabel = '⚪ Deaktiv';
+                let btnDisabled = true;
+                let btnText = 'Deaktiv';
+
+                if (waiter.active) {
+                    if (waiter.status === 'busy') {
+                        statusClass = 'status-busy';
+                        statusText = 'coming';
+                        statusLabel = '🟡 Gəlir';
+                        btnDisabled = false;
+                        btnText = 'Yeni Sifariş';
+                    } else if (pendingCount > 0) {
+                        statusClass = 'status-alert';
+                        statusText = 'waiting';
+                        statusLabel = '🔴 Gözləyir';
+                        btnDisabled = false;
+                        btnText = 'Sifariş Hazır';
+                    } else {
+                        statusClass = 'status-active';
+                        statusText = 'ready';
+                        statusLabel = '🟢 Hazır';
+                        btnDisabled = false;
+                        btnText = 'Sifariş Hazır';
+                    }
+                }
+
+                const recentOrders = orders
+                    .filter(o => o.waiterId === waiter.id)
+                    .slice(-3)
+                    .reverse();
+
+                return `
+                    <div class="kitchen-waiter-card ${statusClass}" onclick="${btnDisabled ? '' : `sendOrderToWaiter(${waiter.id})`}">
+                        <img src="${waiter.avatar}" alt="${waiter.name}">
+                        <h3>${waiter.name}</h3>
+                        <span class="kitchen-status ${statusText}">${statusLabel}</span>
+                        <button class="send-btn" ${btnDisabled ? 'disabled' : ''} onclick="event.stopPropagation(); sendOrderToWaiter(${waiter.id})">
+                            ${btnText}
+                        </button>
+                        ${recentOrders.length > 0 ? `
+                            <div class="order-history">
+                                ${recentOrders.map(o => `
+                                    <div class="order-history-item">
+                                        <span>Sifariş #${o.id} - Masa ${o.table}</span>
+                                        <span class="badge ${o.status === 'accepted' ? 'done' : 'new'}">${o.status === 'accepted' ? '✅' : '⏳'}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function sendOrderToWaiter(waiterId) {
+            const waiter = waiters.find(w => w.id === waiterId);
+            if (!waiter || !waiter.active) {
+                showToast('❌', 'Xəta!', 'Qarson deaktivdir');
+                return;
+            }
+
+            // Generate random table number for demo
+            const tableNum = Math.floor(Math.random() * 20) + 1;
+
+            const order = {
+                id: nextOrderId++,
+                waiterId: waiter.id,
+                waiterName: waiter.name,
+                table: `Masa ${tableNum}`,
+                status: 'pending',
+                time: new Date().toLocaleTimeString('az-AZ'),
+                acceptedAt: null
+            };
+
+            orders.push(order);
+            waiter.orders.push(order);
+            waiter.todayOrders++;
+            waiter.status = 'ready';
+
+            showToast('🔔', 'Sifariş göndərildi!', `${waiter.name} - ${order.table}`);
+
+            // If this is the current waiter, show alarm
+            if (currentUser && currentUser.role === 'waiter' && currentUser.id === waiterId) {
+                showAlarm(order);
+            }
+
+            renderKitchenPanel();
+            renderAdminPanel();
+
+            // If waiter is logged in on another device, they will see it when they refresh
+            // In real app, this would be WebSocket push
+        }
+
+        // ==================== ALARM SYSTEM ====================
+        function showAlarm(order) {
+            currentAlarmOrder = order.id;
+            document.getElementById('alarmDetails').textContent = `${order.table} - Sifariş hazırdır!`;
+            document.getElementById('alarmOverlay').classList.add('active');
+
+            // Start alarm sound
+            alarmInterval = playAlarmSound();
+
+            // Speak in Azerbaijani
+            speakText('Sifariş hazırdır!');
+
+            // Vibrate if supported
+            if ('vibrate' in navigator) {
+                navigator.vibrate([500, 200, 500, 200, 500]);
+            }
+
+            // Keep speaking until accepted
+            const speakInterval = setInterval(() => {
+                if (!currentAlarmOrder) {
+                    clearInterval(speakInterval);
+                    return;
+                }
+                speakText('Sifariş hazırdır! Zəhmət olmasa qəbul edin!');
+            }, 3000);
+        }
+
+        // ==================== TOAST ====================
+        function showToast(icon, title, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        // ==================== KIOSK MODE PROTECTION ====================
+        // Prevent back button, context menu, etc.
+        document.addEventListener('keydown', function(e) {
+            if (currentUser && currentUser.role === 'waiter') {
+                // Prevent F12, Ctrl+Shift+I, Ctrl+R, Alt+F4, etc.
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                    (e.ctrlKey && e.key === 'r') ||
+                    (e.altKey && e.key === 'F4') ||
+                    e.key === 'Escape') {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+
+        document.addEventListener('contextmenu', function(e) {
+            if (currentUser && currentUser.role === 'waiter') {
+                e.preventDefault();
+            }
+        });
+
+        // Prevent page refresh in kiosk mode
+        window.addEventListener('beforeunload', function(e) {
+            if (currentUser && currentUser.role === 'waiter') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // ==================== DEMO / TEST ====================
+        // Auto-refresh kitchen panel every 2 seconds to simulate real-time
+        setInterval(() => {
+            if (currentUser && currentUser.role === 'kitchen') {
+                renderKitchenPanel();
+            }
+        }, 2000);
+
+        // Check for new orders for waiter every 2 seconds
+        setInterval(() => {
+            if (currentUser && currentUser.role === 'waiter') {
+                const waiter = waiters.find(w => w.id === currentUser.id);
+                if (waiter) {
+                    const pendingOrders = orders.filter(o => o.waiterId === waiter.id && o.status === 'pending');
+                    const hasAlarm = document.getElementById('alarmOverlay').classList.contains('active');
+
+                    if (pendingOrders.length > 0 && !hasAlarm) {
+                        // Show alarm for the first pending order
+                        showAlarm(pendingOrders[0]);
+                    }
+
+                    renderWaiterPanel();
+                }
+            }
+        }, 2000);
+
+        // Enter key on PIN input
+        document.getElementById('pinInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') login();
+        });
+
+        // Only allow numbers in PIN input
+        document.getElementById('pinInput').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        document.getElementById('newWaiterPin').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
