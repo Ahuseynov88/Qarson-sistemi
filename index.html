@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Qarson İdarəetmə Sistemi</title>
+    <title>Qarson İdarəetmə Sistemi - Realtime</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -11,14 +13,6 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             overflow-x: hidden;
-        }
-
-        /* KIOSK MODE - Prevent exit */
-        .kiosk-active {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 999999;
-            overflow: hidden;
         }
 
         /* Login Screen */
@@ -213,8 +207,8 @@
             font-weight: bold;
             text-transform: uppercase;
         }
-        .status-badge.active { background: #d5f4e6; color: #27ae60; }
-        .status-badge.inactive { background: #e8e8e8; color: #7f8c8d; }
+        .status-badge.online { background: #d5f4e6; color: #27ae60; }
+        .status-badge.offline { background: #e8e8e8; color: #7f8c8d; }
         .status-badge.busy { background: #fdebd0; color: #f39c12; }
         .waiter-actions {
             display: flex;
@@ -692,6 +686,65 @@
             font-size: 14px;
         }
 
+        /* Exit PIN Modal */
+        .exit-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000002;
+            align-items: center;
+            justify-content: center;
+        }
+        .exit-modal-overlay.active { display: flex; }
+        .exit-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .exit-modal h2 {
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        .exit-modal p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .exit-pin-input {
+            width: 100%;
+            padding: 20px;
+            font-size: 32px;
+            text-align: center;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            letter-spacing: 10px;
+        }
+        .exit-modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .exit-modal-actions button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .btn-exit-confirm {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-exit-cancel {
+            background: #e8e8e8;
+            color: #666;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .login-box { padding: 30px 20px; }
@@ -777,7 +830,7 @@
             <div class="waiter-status">
                 <div class="status-indicator online" id="statusIndicator"></div>
                 <span style="color:#27ae60; font-weight:bold">Aktiv</span>
-                <button class="logout-btn" onclick="logout()" style="margin-left:15px">Çıxış</button>
+                <button class="logout-btn" onclick="showExitModal()" style="margin-left:15px">Çıxış</button>
             </div>
         </div>
         <div class="waiter-content">
@@ -791,7 +844,7 @@
                 </div>
             </div>
         </div>
-        <div class="kiosk-exit-hint">Admin çıxış düyməsinə basın</div>
+        <div class="kiosk-exit-hint">Çıxış üçün düyməyə basın</div>
     </div>
 
     <!-- KITCHEN PANEL -->
@@ -809,6 +862,20 @@
         <div class="alarm-text">Sifariş Hazırdır!</div>
         <div class="alarm-subtext" id="alarmDetails">Masa 5 - Sifariş hazırdır</div>
         <button class="alarm-accept-btn" onclick="acceptOrder()">✅ Qəbul Etdim</button>
+    </div>
+
+    <!-- EXIT PIN MODAL -->
+    <div class="exit-modal-overlay" id="exitModal">
+        <div class="exit-modal">
+            <h2>🔒 Çıxış Təsdiqi</h2>
+            <p>Çıxış üçün admin PIN kodunu daxil edin</p>
+            <input type="password" class="exit-pin-input" id="exitPinInput" placeholder="••••" maxlength="4" inputmode="numeric">
+            <div class="exit-modal-actions">
+                <button class="btn-exit-cancel" onclick="hideExitModal()">Ləğv Et</button>
+                <button class="btn-exit-confirm" onclick="confirmExit()">Çıxış Et</button>
+            </div>
+            <div class="error-msg" id="exitError" style="margin-top:15px">PIN kod səhvdir!</div>
+        </div>
     </div>
 
     <!-- TOAST -->
@@ -845,58 +912,32 @@
     </div>
 
     <script>
+        // ==================== FIREBASE CONFIG ====================
+        const firebaseConfig = {
+            databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         // ==================== DATA & STATE ====================
         let currentUser = null;
         let currentRole = 'admin';
         let alarmInterval = null;
         let currentAlarmOrder = null;
+        let waitersRef = db.ref('waiters');
+        let ordersRef = db.ref('orders');
+        let waiters = [];
+        let orders = [];
 
         // Default admin
         const ADMIN_PIN = '0000';
         const KITCHEN_PIN = '9999';
 
-        // Demo data
-        let waiters = [
-            {
-                id: 1,
-                name: 'Əli Məmmədov',
-                pin: '1111',
-                avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200',
-                active: true,
-                status: 'ready', // ready, busy, offline
-                orders: [],
-                todayOrders: 0
-            },
-            {
-                id: 2,
-                name: 'Leyla Həsənli',
-                pin: '2222',
-                avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200',
-                active: true,
-                status: 'ready',
-                orders: [],
-                todayOrders: 0
-            },
-            {
-                id: 3,
-                name: 'Orxan Əliyev',
-                pin: '3333',
-                avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200',
-                active: false,
-                status: 'offline',
-                orders: [],
-                todayOrders: 0
-            }
-        ];
-
-        let orders = [];
-        let nextOrderId = 1;
-
         // ==================== AUDIO ====================
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
         function playAlarmSound() {
-            // Create oscillator for alarm sound
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
 
@@ -912,7 +953,6 @@
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.5);
 
-            // Repeat for continuous alarm
             return setInterval(() => {
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
@@ -946,6 +986,47 @@
             window.speechSynthesis.cancel();
         }
 
+        // ==================== FIREBASE LISTENERS ====================
+        function initFirebaseListeners() {
+            // Listen for waiters changes
+            waitersRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    waiters = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                } else {
+                    waiters = [];
+                }
+
+                if (currentUser && currentUser.role === 'admin') {
+                    renderAdminPanel();
+                }
+                if (currentUser && currentUser.role === 'kitchen') {
+                    renderKitchenPanel();
+                }
+            });
+
+            // Listen for orders changes
+            ordersRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    orders = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                } else {
+                    orders = [];
+                }
+
+                if (currentUser && currentUser.role === 'admin') {
+                    renderAdminPanel();
+                }
+                if (currentUser && currentUser.role === 'kitchen') {
+                    renderKitchenPanel();
+                }
+                if (currentUser && currentUser.role === 'waiter') {
+                    checkWaiterOrders();
+                    renderWaiterPanel();
+                }
+            });
+        }
+
         // ==================== LOGIN ====================
         function selectRole(role) {
             currentRole = role;
@@ -959,17 +1040,21 @@
 
             if (currentRole === 'admin' && pin === ADMIN_PIN) {
                 currentUser = { role: 'admin', name: 'Admin' };
+                initFirebaseListeners();
                 showPanel('admin');
                 showToast('✅', 'Xoş gəldiniz!', 'Admin panelinə daxil oldunuz');
             } else if (currentRole === 'kitchen' && pin === KITCHEN_PIN) {
                 currentUser = { role: 'kitchen', name: 'Mətbəx' };
+                initFirebaseListeners();
                 showPanel('kitchen');
                 showToast('✅', 'Xoş gəldiniz!', 'Mətbəx panelinə daxil oldunuz');
             } else if (currentRole === 'waiter') {
                 const waiter = waiters.find(w => w.pin === pin && w.active);
                 if (waiter) {
                     currentUser = { role: 'waiter', ...waiter };
-                    waiter.status = 'ready';
+                    // Update waiter status to online
+                    waitersRef.child(waiter.id).update({ status: 'ready', lastActive: Date.now() });
+                    initFirebaseListeners();
                     showPanel('waiter');
                     showToast('✅', 'Xoş gəldiniz!', `${waiter.name}, siz aktiv oldunuz`);
                 } else {
@@ -1001,7 +1086,6 @@
                 renderAdminPanel();
             } else if (panel === 'waiter') {
                 document.getElementById('waiterPanel').style.display = 'block';
-                // Enable kiosk mode
                 document.getElementById('waiterPanel').classList.add('kiosk-active');
                 document.body.style.overflow = 'hidden';
                 renderWaiterPanel();
@@ -1013,13 +1097,16 @@
 
         function logout() {
             if (currentUser && currentUser.role === 'waiter') {
-                const waiter = waiters.find(w => w.id === currentUser.id);
-                if (waiter) waiter.status = 'offline';
+                waitersRef.child(currentUser.id).update({ status: 'offline', lastActive: Date.now() });
             }
 
             stopAlarm();
             document.getElementById('waiterPanel').classList.remove('kiosk-active');
             document.body.style.overflow = 'auto';
+
+            // Remove Firebase listeners
+            waitersRef.off();
+            ordersRef.off();
 
             currentUser = null;
             document.getElementById('loginScreen').style.display = 'flex';
@@ -1027,6 +1114,30 @@
             document.getElementById('waiterPanel').style.display = 'none';
             document.getElementById('kitchenPanel').style.display = 'none';
             document.getElementById('pinInput').value = '';
+        }
+
+        // ==================== EXIT MODAL (Kiosk) ====================
+        function showExitModal() {
+            document.getElementById('exitModal').classList.add('active');
+            document.getElementById('exitPinInput').value = '';
+            document.getElementById('exitError').style.display = 'none';
+        }
+
+        function hideExitModal() {
+            document.getElementById('exitModal').classList.remove('active');
+        }
+
+        function confirmExit() {
+            const pin = document.getElementById('exitPinInput').value;
+            if (pin === ADMIN_PIN || pin === KITCHEN_PIN) {
+                hideExitModal();
+                logout();
+            } else {
+                const error = document.getElementById('exitError');
+                error.textContent = 'PIN kod səhvdir! Yalnız admin çıxış edə bilər.';
+                error.style.display = 'block';
+                setTimeout(() => error.style.display = 'none', 3000);
+            }
         }
 
         // ==================== ADMIN PANEL ====================
@@ -1046,14 +1157,14 @@
                             <span class="pin">PIN: ${waiter.pin}</span>
                         </div>
                     </div>
-                    <span class="status-badge ${waiter.status}">
+                    <span class="status-badge ${waiter.status === 'ready' ? 'online' : waiter.status === 'busy' ? 'busy' : 'offline'}">
                         ${waiter.status === 'ready' ? '🟢 Aktiv' : waiter.status === 'busy' ? '🟡 Sifarişdə' : '⚪ Deaktiv'}
                     </span>
                     <div class="waiter-actions">
-                        <button class="action-btn btn-toggle" onclick="toggleWaiter(${waiter.id})">
+                        <button class="action-btn btn-toggle" onclick="toggleWaiter('${waiter.id}')">
                             ${waiter.active ? 'Deaktiv Et' : 'Aktiv Et'}
                         </button>
-                        <button class="action-btn btn-delete" onclick="deleteWaiter(${waiter.id})">Sil</button>
+                        <button class="action-btn btn-delete" onclick="deleteWaiter('${waiter.id}')">Sil</button>
                     </div>
                 </div>
             `).join('');
@@ -1062,19 +1173,19 @@
         function toggleWaiter(id) {
             const waiter = waiters.find(w => w.id === id);
             if (waiter) {
-                waiter.active = !waiter.active;
-                waiter.status = waiter.active ? 'ready' : 'offline';
-                renderAdminPanel();
-                renderKitchenPanel();
-                showToast('✅', 'Uğurlu!', `${waiter.name} ${waiter.active ? 'aktiv' : 'deaktiv'} edildi`);
+                const newActive = !waiter.active;
+                waitersRef.child(id).update({ 
+                    active: newActive, 
+                    status: newActive ? 'ready' : 'offline',
+                    lastActive: Date.now()
+                });
+                showToast('✅', 'Uğurlu!', `${waiter.name} ${newActive ? 'aktiv' : 'deaktiv'} edildi`);
             }
         }
 
         function deleteWaiter(id) {
             if (confirm('Bu qarsonu silmək istədiyinizə əminsiniz?')) {
-                waiters = waiters.filter(w => w.id !== id);
-                renderAdminPanel();
-                renderKitchenPanel();
+                waitersRef.child(id).remove();
                 showToast('🗑️', 'Silindi!', 'Qarson sistemdən silindi');
             }
         }
@@ -1108,25 +1219,22 @@
 
             const avatar = avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=667eea&color=fff&size=200`;
 
-            const newWaiter = {
-                id: Date.now(),
+            const newWaiterRef = waitersRef.push();
+            newWaiterRef.set({
                 name,
                 pin,
                 avatar,
                 active: true,
                 status: 'ready',
                 orders: [],
-                todayOrders: 0
-            };
+                todayOrders: 0,
+                createdAt: Date.now()
+            });
 
-            waiters.push(newWaiter);
             closeAddModal();
-            renderAdminPanel();
-            renderKitchenPanel();
             showToast('✅', 'Uğurlu!', `${name} sistemə əlavə edildi`);
         }
 
-        // Avatar preview
         document.getElementById('newWaiterAvatar').addEventListener('input', function() {
             const url = this.value.trim();
             document.getElementById('avatarPreview').src = url || 'https://ui-avatars.com/api/?name=Waiter&background=667eea&color=fff&size=200';
@@ -1157,12 +1265,23 @@
             } else {
                 container.innerHTML = pendingOrders.map(order => `
                     <div class="order-card" id="order-${order.id}">
-                        <h3>🍽️ Sifariş #${order.id}</h3>
+                        <h3>🍽️ Sifariş #${order.id.slice(-4)}</h3>
                         <p>Masa: <strong>${order.table}</strong></p>
                         <div class="order-time">Göndərilmə vaxtı: ${order.time}</div>
-                        <button class="accept-btn" onclick="acceptOrderFromCard(${order.id})">✅ Qəbul Etdim</button>
+                        <button class="accept-btn" onclick="acceptOrderFromCard('${order.id}')">✅ Qəbul Etdim</button>
                     </div>
                 `).join('');
+            }
+        }
+
+        function checkWaiterOrders() {
+            if (!currentUser || currentUser.role !== 'waiter') return;
+
+            const pendingOrders = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
+            const hasAlarm = document.getElementById('alarmOverlay').classList.contains('active');
+
+            if (pendingOrders.length > 0 && !hasAlarm) {
+                showAlarm(pendingOrders[0]);
             }
         }
 
@@ -1174,35 +1293,38 @@
 
             const order = orders.find(o => o.id === currentAlarmOrder);
             if (order) {
-                order.status = 'accepted';
-                order.acceptedAt = new Date().toLocaleTimeString('az-AZ');
+                ordersRef.child(order.id).update({
+                    status: 'accepted',
+                    acceptedAt: Date.now()
+                });
 
-                const waiter = waiters.find(w => w.id === order.waiterId);
-                if (waiter) {
-                    waiter.status = 'busy';
-                    showToast('✅', 'Qəbul edildi!', `${waiter.name}, sifarişi qəbul etdiniz`);
-                }
+                waitersRef.child(order.waiterId).update({
+                    status: 'busy',
+                    lastActive: Date.now()
+                });
+
+                showToast('✅', 'Qəbul edildi!', 'Sifarişi qəbul etdiniz');
             }
 
             currentAlarmOrder = null;
             renderWaiterPanel();
-            renderKitchenPanel();
-            renderAdminPanel();
         }
 
         function acceptOrderFromCard(orderId) {
             const order = orders.find(o => o.id === orderId);
             if (order) {
-                order.status = 'accepted';
-                order.acceptedAt = new Date().toLocaleTimeString('az-AZ');
+                ordersRef.child(orderId).update({
+                    status: 'accepted',
+                    acceptedAt: Date.now()
+                });
 
-                const waiter = waiters.find(w => w.id === order.waiterId);
-                if (waiter) waiter.status = 'busy';
+                waitersRef.child(order.waiterId).update({
+                    status: 'busy',
+                    lastActive: Date.now()
+                });
 
                 showToast('✅', 'Qəbul edildi!', 'Sifarişi qəbul etdiniz');
                 renderWaiterPanel();
-                renderKitchenPanel();
-                renderAdminPanel();
             }
         }
 
@@ -1248,18 +1370,18 @@
                     .reverse();
 
                 return `
-                    <div class="kitchen-waiter-card ${statusClass}" onclick="${btnDisabled ? '' : `sendOrderToWaiter(${waiter.id})`}">
+                    <div class="kitchen-waiter-card ${statusClass}" onclick="${btnDisabled ? '' : `sendOrderToWaiter('${waiter.id}')`}">
                         <img src="${waiter.avatar}" alt="${waiter.name}">
                         <h3>${waiter.name}</h3>
                         <span class="kitchen-status ${statusText}">${statusLabel}</span>
-                        <button class="send-btn" ${btnDisabled ? 'disabled' : ''} onclick="event.stopPropagation(); sendOrderToWaiter(${waiter.id})">
+                        <button class="send-btn" ${btnDisabled ? 'disabled' : ''} onclick="event.stopPropagation(); sendOrderToWaiter('${waiter.id}')">
                             ${btnText}
                         </button>
                         ${recentOrders.length > 0 ? `
                             <div class="order-history">
                                 ${recentOrders.map(o => `
                                     <div class="order-history-item">
-                                        <span>Sifariş #${o.id} - Masa ${o.table}</span>
+                                        <span>Sifariş #${o.id.slice(-4)} - ${o.table}</span>
                                         <span class="badge ${o.status === 'accepted' ? 'done' : 'new'}">${o.status === 'accepted' ? '✅' : '⏳'}</span>
                                     </div>
                                 `).join('')}
@@ -1277,36 +1399,25 @@
                 return;
             }
 
-            // Generate random table number for demo
             const tableNum = Math.floor(Math.random() * 20) + 1;
 
-            const order = {
-                id: nextOrderId++,
+            const newOrderRef = ordersRef.push();
+            newOrderRef.set({
                 waiterId: waiter.id,
                 waiterName: waiter.name,
                 table: `Masa ${tableNum}`,
                 status: 'pending',
                 time: new Date().toLocaleTimeString('az-AZ'),
-                acceptedAt: null
-            };
+                createdAt: Date.now()
+            });
 
-            orders.push(order);
-            waiter.orders.push(order);
-            waiter.todayOrders++;
-            waiter.status = 'ready';
+            waitersRef.child(waiter.id).update({
+                status: 'ready',
+                lastActive: Date.now()
+            });
 
-            showToast('🔔', 'Sifariş göndərildi!', `${waiter.name} - ${order.table}`);
-
-            // If this is the current waiter, show alarm
-            if (currentUser && currentUser.role === 'waiter' && currentUser.id === waiterId) {
-                showAlarm(order);
-            }
-
+            showToast('🔔', 'Sifariş göndərildi!', `${waiter.name} - Masa ${tableNum}`);
             renderKitchenPanel();
-            renderAdminPanel();
-
-            // If waiter is logged in on another device, they will see it when they refresh
-            // In real app, this would be WebSocket push
         }
 
         // ==================== ALARM SYSTEM ====================
@@ -1315,18 +1426,14 @@
             document.getElementById('alarmDetails').textContent = `${order.table} - Sifariş hazırdır!`;
             document.getElementById('alarmOverlay').classList.add('active');
 
-            // Start alarm sound
             alarmInterval = playAlarmSound();
 
-            // Speak in Azerbaijani
             speakText('Sifariş hazırdır!');
 
-            // Vibrate if supported
             if ('vibrate' in navigator) {
                 navigator.vibrate([500, 200, 500, 200, 500]);
             }
 
-            // Keep speaking until accepted
             const speakInterval = setInterval(() => {
                 if (!currentAlarmOrder) {
                     clearInterval(speakInterval);
@@ -1348,10 +1455,8 @@
         }
 
         // ==================== KIOSK MODE PROTECTION ====================
-        // Prevent back button, context menu, etc.
         document.addEventListener('keydown', function(e) {
             if (currentUser && currentUser.role === 'waiter') {
-                // Prevent F12, Ctrl+Shift+I, Ctrl+R, Alt+F4, etc.
                 if (e.key === 'F12' || 
                     (e.ctrlKey && e.shiftKey && e.key === 'I') ||
                     (e.ctrlKey && e.key === 'r') ||
@@ -1369,7 +1474,6 @@
             }
         });
 
-        // Prevent page refresh in kiosk mode
         window.addEventListener('beforeunload', function(e) {
             if (currentUser && currentUser.role === 'waiter') {
                 e.preventDefault();
@@ -1377,44 +1481,43 @@
             }
         });
 
-        // ==================== DEMO / TEST ====================
-        // Auto-refresh kitchen panel every 2 seconds to simulate real-time
-        setInterval(() => {
-            if (currentUser && currentUser.role === 'kitchen') {
-                renderKitchenPanel();
-            }
-        }, 2000);
-
-        // Check for new orders for waiter every 2 seconds
-        setInterval(() => {
-            if (currentUser && currentUser.role === 'waiter') {
-                const waiter = waiters.find(w => w.id === currentUser.id);
-                if (waiter) {
-                    const pendingOrders = orders.filter(o => o.waiterId === waiter.id && o.status === 'pending');
-                    const hasAlarm = document.getElementById('alarmOverlay').classList.contains('active');
-
-                    if (pendingOrders.length > 0 && !hasAlarm) {
-                        // Show alarm for the first pending order
-                        showAlarm(pendingOrders[0]);
-                    }
-
-                    renderWaiterPanel();
-                }
-            }
-        }, 2000);
-
-        // Enter key on PIN input
+        // ==================== INPUT HANDLERS ====================
         document.getElementById('pinInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') login();
         });
 
-        // Only allow numbers in PIN input
         document.getElementById('pinInput').addEventListener('input', function(e) {
             this.value = this.value.replace(/[^0-9]/g, '');
         });
 
         document.getElementById('newWaiterPin').addEventListener('input', function(e) {
             this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        document.getElementById('exitPinInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') confirmExit();
+        });
+
+        document.getElementById('exitPinInput').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // ==================== INIT ====================
+        // Load initial data
+        waitersRef.once('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) {
+                // Add demo waiters if none exist
+                const demoWaiters = [
+                    { name: 'Əli Məmmədov', pin: '1111', avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200', active: true, status: 'ready', orders: [], todayOrders: 0, createdAt: Date.now() },
+                    { name: 'Leyla Həsənli', pin: '2222', avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200', active: true, status: 'ready', orders: [], todayOrders: 0, createdAt: Date.now() },
+                    { name: 'Orxan Əliyev', pin: '3333', avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200', active: false, status: 'offline', orders: [], todayOrders: 0, createdAt: Date.now() }
+                ];
+
+                demoWaiters.forEach(waiter => {
+                    waitersRef.push().set(waiter);
+                });
+            }
         });
     </script>
 </body>
