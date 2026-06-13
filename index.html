@@ -326,6 +326,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
+  <!-- Masa bağlamaq təsdiq modalı -->
+<div class="modal-bg" id="confirmCloseTableModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+    <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Qeydlər silinəcək.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
+    </div>
+  </div>
+</div>
 <!-- Exit confirm -->
 <div class="modal-bg" id="exitModal">
   <div class="modal" style="max-width:320px;text-align:center;">
@@ -923,11 +935,26 @@ function deactivateTable() {
   if (!state.noteTableId) return;
   const t = state.tables.find(x=>x.id===state.noteTableId);
   if (!t) return;
-  if (!confirm(`"${t.name}" masasını bağlamaq istəyirsiniz?`)) return;
-  R.tables.child(state.noteTableId).update({ occupant: null, notes: '' });
-  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId:state.noteTableId });
   closeNotesModal();
+  state.pendingCloseTableId = state.noteTableId;
+  document.getElementById('confirmCloseTableName').textContent = t.name;
+  document.getElementById('confirmCloseTableModal').classList.add('open');
+}
+
+function confirmDeactivateTable() {
+  const tableId = state.pendingCloseTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  R.tables.child(tableId).update({ occupant: null, notes: '' });
+  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId });
   showToast(`✅ ${t.name} bağlandı`);
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
+}
+
+function closeConfirmCloseModal() {
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
 }
 
 /* ═══════════════════ ALARM / ORDERS ═══════════════════ */
