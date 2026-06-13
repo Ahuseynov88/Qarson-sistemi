@@ -130,7 +130,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
 
 /* ── WAITER ── */
-#waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
+#waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;}
 .waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
 .waiter-info{display:flex;align-items:center;gap:12px;}
 .waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
@@ -413,6 +413,8 @@ let state = {
   alarmInterval: null,
   editTarget: null,  // { type:'waiter'|'table', id }
   noteTableId: null,
+  pendingTableId: null,
+  pendingCloseTableId: null,
   pinBuffer: ''
 };
 
