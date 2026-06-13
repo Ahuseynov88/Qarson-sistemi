@@ -794,16 +794,34 @@
             this.value = this.value.replace(/[^0-9]/g, '');
         });
         
-        // Demo data
-        waitersRef.once('value', (snapshot) => {
-            if (!snapshot.val()) {
-                [
-                    { name: 'Əli Məmmədov', pin: '1111', avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200', status: 'ready', createdAt: Date.now() },
-                    { name: 'Leyla Həsənli', pin: '2222', avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200', status: 'ready', createdAt: Date.now() },
-                    { name: 'Orxan Əliyev', pin: '3333', avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200', status: 'offline', createdAt: Date.now() }
-                ].forEach(w => waitersRef.push().set(w));
-            }
-        });
+               // DEMO DATA - HƏR ZAMAN YOXLANIR
+        function checkDemoData() {
+            waitersRef.once('value', (snapshot) => {
+                const data = snapshot.val();
+                // Əgər data yoxdursa və ya boşdursa
+                if (!data || Object.keys(data).length === 0) {
+                    console.log('Demo data yaradılır...');
+                    [
+                        { name: 'Əli Məmmədov', pin: '1111', avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200', status: 'ready', createdAt: Date.now() },
+                        { name: 'Leyla Həsənli', pin: '2222', avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200', status: 'ready', createdAt: Date.now() },
+                        { name: 'Orxan Əliyev', pin: '3333', avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200', status: 'offline', createdAt: Date.now() }
+                    ].forEach(w => waitersRef.push().set(w));
+                    
+                    // LOGS node-u da yoxla
+                    logsRef.once('value', (logSnap) => {
+                        if (!logSnap.val()) {
+                            addLog('activate', 'Sistem başladı', { system: 'start' });
+                        }
+                    });
+                }
+            });
+        }
+
+        // SƏHİFƏ AÇILANDA YOXLA
+        checkDemoData();
+        
+        // HƏR 30 SANİYƏDƏ BİR YOXLA (əgər silinibsə)
+        setInterval(checkDemoData, 30000);
     </script>
 </body>
 </html>
