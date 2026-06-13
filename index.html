@@ -390,36 +390,30 @@
         }
         
         function login() {
-            const pin = document.getElementById('pinInput').value;
-            
-            if (currentRole === 'admin' && pin === ADMIN_PIN) {
-                currentUser = { role: 'admin', name: 'Admin' };
-                initFirebaseListeners();
-                showPanel('admin');
-                showToast('✅', 'Xoş gəldiniz!', 'Admin panelinə daxil oldunuz');
-            } else if (currentRole === 'kitchen' && pin === KITCHEN_PIN) {
-                currentUser = { role: 'kitchen', name: 'Mətbəx' };
-                initFirebaseListeners();
-                showPanel('kitchen');
-                showToast('✅', 'Xoş gəldiniz!', 'Mətbəx panelinə daxil oldunuz');
-            } else if (currentRole === 'waiter') {
-                // YALNIZ status !== 'offline' olanlar girə bilər
-                const waiter = waiters.find(w => w.pin === pin && w.status === 'ready');
-                if (waiter) {
-                    currentUser = { role: 'waiter', ...waiter };
-                    waitersRef.child(waiter.id).update({ status: 'ready', lastActive: Date.now() });
-                    initFirebaseListeners();
-                    showPanel('waiter');
-                    showToast('✅', 'Xoş gəldiniz!', `${waiter.name}, siz aktiv oldunuz`);
-                    addLog('login', `${waiter.name} sisteme daxil oldu`, { waiterId: waiter.id, waiterName: waiter.name });
-                } else {
-                    showError('PIN kod səhvdir və ya qarson deaktivdir!');
-                }
-            } else {
-                showError('PIN kod səhvdir!');
-            }
-            document.getElementById('pinInput').value = '';
+    const pin = document.getElementById('pinInput').value;
+    
+    // Əvvəlcə waiters data-nın yükləndiyinə əmin ol
+    waitersRef.once('value', (snapshot) => {
+        const data = snapshot.val();
+        waiters = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        
+        // İndi login et
+        doLogin(pin);
+    });
+}
+
+function doLogin(pin) {
+    if (currentRole === 'admin' && pin === ADMIN_PIN) {
+        // ...
+    } else if (currentRole === 'waiter') {
+        const waiter = waiters.find(w => w.pin === pin && w.status === 'ready');
+        if (waiter) {
+            // ...
+        } else {
+            showError('PIN kod səhvdir və ya qarson deaktivdir!');
         }
+    }
+}
         
         function showError(msg) {
             const el = document.getElementById('loginError');
@@ -817,11 +811,15 @@
             });
         }
 
-        // SƏHİFƏ AÇILANDA YOXLA
-        checkDemoData();
-        
-        // HƏR 30 SANİYƏDƏ BİR YOXLA (əgər silinibsə)
-        setInterval(checkDemoData, 30000);
+        // SƏHİFƏ AÇILANDA DATA YÜKLƏ
+waitersRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    waiters = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+    console.log('Waiters yükləndi:', waiters.length);
+});
+
+// Demo data yoxla
+checkDemoData();
     </script>
 </body>
 </html>
