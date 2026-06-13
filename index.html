@@ -1,841 +1,1001 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#667eea">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Qarson Sistemi</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; overflow-x: hidden; }
-        .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-        .login-box { background: white; border-radius: 20px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; }
-        .login-box h1 { color: #667eea; margin-bottom: 10px; font-size: 28px; }
-        .login-box p { color: #666; margin-bottom: 30px; }
-        .role-selector { display: flex; gap: 10px; margin-bottom: 30px; }
-        .role-btn { flex: 1; padding: 15px; border: 2px solid #667eea; background: white; color: #667eea; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s; }
-        .role-btn.active { background: #667eea; color: white; }
-        .pin-input { width: 100%; padding: 20px; font-size: 32px; text-align: center; border: 3px solid #ddd; border-radius: 15px; margin-bottom: 20px; letter-spacing: 10px; font-weight: bold; }
-        .login-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .error-msg { color: #e74c3c; margin-top: 15px; font-weight: bold; display: none; }
-        .admin-panel { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
-        .admin-header { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .logout-btn { padding: 10px 25px; background: #e74c3c; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: white; border-radius: 15px; padding: 20px; text-align: center; }
-        .stat-card h3 { color: #666; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; }
-        .stat-card .number { font-size: 36px; font-weight: bold; color: #667eea; }
-        .waiters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .waiter-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
-        .waiter-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: #2ecc71; }
-        .waiter-card.offline::before { background: #95a5a6; }
-        .waiter-card.busy::before { background: #f39c12; }
-        .waiter-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-        .waiter-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; }
-        .waiter-info h3 { font-size: 20px; color: #333; margin-bottom: 5px; }
-        .waiter-info .pin { color: #999; font-size: 14px; }
-        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .status-badge.online { background: #d5f4e6; color: #27ae60; }
-        .status-badge.offline { background: #e8e8e8; color: #7f8c8d; }
-        .status-badge.busy { background: #fdebd0; color: #f39c12; }
-        .waiter-actions { display: flex; gap: 10px; margin-top: 15px; }
-        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 14px; }
-        .btn-toggle { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .btn-delete { background: #e74c3c; color: white; }
-        .add-waiter-btn { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-size: 36px; cursor: pointer; }
-        .logs-section { background: white; border-radius: 20px; padding: 25px; margin-bottom: 30px; }
-        .logs-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .logs-tab { padding: 10px 20px; border: none; background: #eee; color: #666; font-weight: bold; cursor: pointer; border-radius: 10px; }
-        .logs-tab.active { background: #667eea; color: white; }
-        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .log-type { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-right: 10px; }
-        .log-type.login { background: #d5f4e6; color: #27ae60; }
-        .log-type.logout { background: #e8e8e8; color: #7f8c8d; }
-        .log-type.order { background: #fdebd0; color: #f39c12; }
-        .log-type.accept { background: #d5f4e6; color: #27ae60; }
-        .log-type.deactivate { background: #fadbd8; color: #e74c3c; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-overlay.active { display: flex; }
-        .modal { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 500px; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
-        .form-group input { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; }
-        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
-        .btn-save { flex: 1; padding: 15px; border: none; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold; cursor: pointer; }
-        .btn-cancel { flex: 1; padding: 15px; border: none; border-radius: 10px; background: #eee; color: #666; font-weight: bold; cursor: pointer; }
-        .waiter-panel { display: none; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .waiter-header-bar { background: rgba(255,255,255,0.95); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .waiter-profile { display: flex; align-items: center; gap: 15px; }
-        .waiter-profile img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea; }
-        .waiter-content { padding: 20px; text-align: center; color: white; height: calc(100vh - 80px); overflow-y: auto; }
-        .order-card { background: white; border-radius: 20px; padding: 20px; color: #333; margin-bottom: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .order-card h3 { color: #667eea; margin-bottom: 10px; }
-        .accept-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
-        .accept-all-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .no-orders { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; margin-top: 30px; }
-        .deactivated-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 1000004; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
-        .deactivated-overlay.active { display: flex; }
-        .alarm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231,76,60,0.95); z-index: 1000000; flex-direction: column; align-items: center; justify-content: center; }
-        .alarm-overlay.active { display: flex; }
-        .alarm-icon { font-size: 80px; margin-bottom: 20px; animation: bellRing 0.5s infinite; }
-        @keyframes bellRing { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
-        .kitchen-panel { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; min-height: 100vh; background: #f5f6fa; }
-        .kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .kitchen-waiter-card { background: white; border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.1); cursor: pointer; position: relative; overflow: hidden; }
-        .kitchen-waiter-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: #2ecc71; }
-        .kitchen-waiter-card.busy::before { background: #f39c12; }
-        .kitchen-waiter-card.waiting::before { background: #e74c3c; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .kitchen-waiter-card img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #eee; margin-bottom: 15px; margin-top: 10px; }
-        .send-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .toast { display: none; position: fixed; top: 20px; right: 20px; background: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000001; }
-        .toast.active { display: block; }
-        .exit-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000002; align-items: center; justify-content: center; }
-        .exit-modal-overlay.active { display: flex; }
-        .exit-modal { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 400px; text-align: center; }
-        .exit-pin-input { width: 100%; padding: 20px; font-size: 32px; text-align: center; border: 3px solid #ddd; border-radius: 15px; margin-bottom: 20px; }
-    </style>
-<base target="_blank">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+<title>Restoran Sistemi</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --green:#2ecc71;--green-dark:#27ae60;--red:#e74c3c;--red-dark:#c0392b;
+  --blue:#3498db;--orange:#f39c12;--purple:#8e44ad;
+  --bg:#0f0f1a;--card:#1a1a2e;--card2:#16213e;--border:#2d2d4e;
+  --text:#eee;--text2:#aaa;--text3:#666;
+}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ── SCREEN SYSTEM ── */
+.screen{display:none;min-height:100vh;}
+.screen.active{display:flex;flex-direction:column;}
+
+/* ── LOGIN ── */
+#loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0f1a,#1a1a2e);}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
+.login-logo{font-size:48px;margin-bottom:10px;}
+.login-box h1{font-size:24px;margin-bottom:6px;}
+.login-box p{color:var(--text2);margin-bottom:28px;font-size:14px;}
+.role-tabs{display:flex;gap:8px;margin-bottom:24px;background:var(--bg);border-radius:12px;padding:4px;}
+.role-tab{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--text2);border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;}
+.role-tab.active{background:var(--card2);color:var(--text);}
+.pin-display{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:.2s;}
+.pin-dot.filled{background:var(--green);border-color:var(--green);}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.num-btn{padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:22px;font-weight:600;cursor:pointer;transition:.15s;}
+.num-btn:active{transform:scale(0.93);background:var(--border);}
+.login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:10px;}
+.login-btn:active{background:var(--green-dark);}
+.err-msg{color:var(--red);font-size:13px;min-height:20px;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.topbar h2{font-size:18px;font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;}
+.btn:active{transform:scale(0.96);}
+.btn-red{background:var(--red);color:white;}
+.btn-green{background:var(--green);color:white;}
+.btn-blue{background:var(--blue);color:white;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
+
+/* ── ADMIN ── */
+#adminScreen{background:var(--bg);}
+.admin-body{flex:1;overflow-y:auto;padding:20px;}
+.admin-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
+.admin-tab{padding:9px 20px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text2);cursor:pointer;font-weight:600;font-size:14px;transition:.2s;}
+.admin-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
+.admin-section{display:none;}
+.admin-section.active{display:block;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;}
+.stat-num{font-size:32px;font-weight:700;color:var(--green);}
+.stat-label{font-size:12px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.05em;}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.item-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;}
+.item-card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
+.avatar-sm{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
+.item-info h3{font-size:16px;margin-bottom:3px;}
+.item-info small{color:var(--text2);font-size:13px;}
+.status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
+.badge-green{background:rgba(46,204,113,.15);color:var(--green);}
+.badge-red{background:rgba(231,76,60,.15);color:var(--red);}
+.badge-orange{background:rgba(243,156,18,.15);color:var(--orange);}
+.item-actions{display:flex;gap:8px;margin-top:14px;}
+.item-actions .btn{flex:1;padding:10px;}
+
+/* Masa kartı (admin) */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.table-card h3{font-size:16px;margin-bottom:6px;}
+.table-card .meta{font-size:13px;color:var(--text2);margin-bottom:14px;}
+.table-occupants{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:24px;}
+.occupant-chip{display:flex;align-items:center;gap:5px;background:rgba(52,152,219,.15);border:1px solid rgba(52,152,219,.3);border-radius:20px;padding:3px 10px;font-size:12px;}
+
+/* ── LOG ── */
+.log-list{display:flex;flex-direction:column;gap:6px;}
+.log-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.log-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+.log-text{font-size:13px;color:var(--text2);flex:1;}
+.log-time{font-size:11px;color:var(--text3);white-space:nowrap;}
+.log-filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.log-filter{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
+.log-filter.active{background:var(--blue);color:white;border-color:var(--blue);}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:420px;}
+.modal h2{font-size:20px;margin-bottom:20px;}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
+.form-group input:focus,.form-group select:focus{border-color:var(--blue);}
+.modal-actions{display:flex;gap:10px;margin-top:20px;}
+.modal-actions .btn{flex:1;padding:14px;}
+.add-fab{position:fixed;bottom:28px;right:28px;width:60px;height:60px;border-radius:50%;background:var(--green);color:white;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(46,204,113,.4);z-index:100;}
+
+/* ── KITCHEN ── */
+#kitchenScreen{background:var(--bg);}
+.kitchen-body{flex:1;padding:20px;overflow-y:auto;}
+.kitchen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;}
+.k-card{border-radius:18px;padding:20px;text-align:center;cursor:pointer;transition:.2s;position:relative;border:3px solid transparent;}
+.k-card.ready{background:rgba(46,204,113,.1);border-color:var(--green);}
+.k-card.called{background:rgba(231,76,60,.15);border-color:var(--red);animation:pulse-border 1s infinite;}
+.k-card.offline{background:var(--card);border-color:var(--border);opacity:.5;cursor:default;}
+@keyframes pulse-border{0%,100%{border-color:var(--red);}50%{border-color:transparent;}}
+.k-card img{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid currentColor;}
+.k-card.ready img{border-color:var(--green);}
+.k-card.called img{border-color:var(--red);}
+.k-card h3{font-size:17px;margin-bottom:6px;}
+.k-status{font-size:13px;font-weight:600;}
+.k-card.ready .k-status{color:var(--green);}
+.k-card.called .k-status{color:var(--red);}
+.k-tables-under{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:8px;min-height:20px;}
+.k-table-chip{background:rgba(52,152,219,.2);border:1px solid rgba(52,152,219,.4);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--blue);}
+.k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
+
+/* ── WAITER ── */
+#waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
+.waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.waiter-info{display:flex;align-items:center;gap:12px;}
+.waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
+.waiter-body{flex:1;padding:16px;overflow-y:auto;}
+.waiter-body h3{font-size:15px;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;}
+.tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.w-table-card{border-radius:14px;padding:16px;border:2px solid var(--border);background:var(--card);cursor:pointer;transition:.2s;text-align:center;}
+.w-table-card.mine{background:rgba(46,204,113,.1);border-color:var(--green);}
+.w-table-card.other{background:rgba(52,152,219,.05);border-color:rgba(52,152,219,.3);cursor:default;opacity:.7;}
+.w-table-card.free{background:var(--card);border-color:var(--border);}
+.w-table-name{font-size:16px;font-weight:700;margin-bottom:4px;}
+.w-table-status{font-size:12px;color:var(--text2);}
+.w-table-card.mine .w-table-status{color:var(--green);}
+.w-table-card.other .w-table-status{color:var(--blue);}
+.notes-area{width:100%;margin-top:10px;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
+
+/* ── ALARM ── */
+#alarmOverlay{display:none;position:fixed;inset:0;background:rgba(231,76,60,.97);z-index:9000;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+#alarmOverlay.show{display:flex;}
+.alarm-icon{font-size:80px;animation:ring .4s infinite;}
+@keyframes ring{0%,100%{transform:rotate(0);}25%{transform:rotate(12deg);}75%{transform:rotate(-12deg);}}
+.alarm-title{font-size:28px;font-weight:700;color:white;margin:16px 0 8px;}
+.alarm-sub{font-size:18px;color:rgba(255,255,255,.85);margin-bottom:30px;}
+.alarm-btn{padding:18px 50px;background:white;color:var(--red);border:none;border-radius:50px;font-size:20px;font-weight:700;cursor:pointer;}
+
+/* ── DEACTIVATED ── */
+#deactivatedOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+#deactivatedOverlay.show{display:flex;}
+
+/* ── EXIT CONFIRM ── */
+#exitModal .modal{max-width:340px;text-align:center;}
+#exitModal h2{color:var(--red);}
+
+/* ── TOAST ── */
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
+#toast.show{display:block;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
 </head>
 <body>
-    <div class="deactivated-overlay" id="deactivatedOverlay">
-        <div style="font-size:80px; margin-bottom:20px;">🚫</div>
-        <h1 style="font-size:36px; color:#e74c3c; margin-bottom:20px;">Deaktiv Edildiniz!</h1>
-        <p style="font-size:18px;">Admin sizi sistemdən çıxardı.</p>
+
+<!-- ═══════════════════════════════════════════
+     LOGIN
+════════════════════════════════════════════ -->
+<div class="screen active" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">🍽️</div>
+    <h1>Restoran Sistemi</h1>
+    <p>Rol seçin və PIN daxil edin</p>
+    <div class="role-tabs">
+      <button class="role-tab active" onclick="setRole('admin',this)">👨‍💼 Admin</button>
+      <button class="role-tab" onclick="setRole('waiter',this)">🤵 Qarson</button>
+      <button class="role-tab" onclick="setRole('kitchen',this)">👨‍🍳 Mətbəx</button>
+    </div>
+    <div class="pin-display" id="pinDots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" onclick="numPress('1')">1</button>
+      <button class="num-btn" onclick="numPress('2')">2</button>
+      <button class="num-btn" onclick="numPress('3')">3</button>
+      <button class="num-btn" onclick="numPress('4')">4</button>
+      <button class="num-btn" onclick="numPress('5')">5</button>
+      <button class="num-btn" onclick="numPress('6')">6</button>
+      <button class="num-btn" onclick="numPress('7')">7</button>
+      <button class="num-btn" onclick="numPress('8')">8</button>
+      <button class="num-btn" onclick="numPress('9')">9</button>
+      <button class="num-btn" onclick="numPress('clear')" style="font-size:14px;color:var(--text2);">SİL</button>
+      <button class="num-btn" onclick="numPress('0')">0</button>
+      <button class="num-btn" onclick="numPress('back')" style="font-size:20px;">⌫</button>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Daxil Ol</button>
+    <div class="err-msg" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     ADMIN
+════════════════════════════════════════════ -->
+<div class="screen" id="adminScreen">
+  <div class="topbar">
+    <h2>👨‍💼 Admin Paneli</h2>
+    <div class="topbar-right">
+      <button class="btn btn-red" onclick="logout()">Çıxış</button>
+    </div>
+  </div>
+  <div class="admin-body">
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="adminTab('dashboard',this)">📊 İcmal</button>
+      <button class="admin-tab" onclick="adminTab('waiters',this)">🤵 Qarsonlar</button>
+      <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
+      <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
     </div>
 
-    <div class="login-screen" id="loginScreen">
-        <div class="login-box">
-            <h1>🍽️ Qarson Sistemi</h1>
-            <p>Rolunuzu seçin və PIN kodu daxil edin</p>
-            <div class="role-selector">
-                <button class="role-btn active" onclick="selectRole('admin')">👨‍💼 Admin</button>
-                <button class="role-btn" onclick="selectRole('waiter')">🤵 Qarson</button>
-                <button class="role-btn" onclick="selectRole('kitchen')">👨‍🍳 Mətbəx</button>
-            </div>
-            <input type="password" class="pin-input" id="pinInput" placeholder="••••" maxlength="4">
-            <button class="login-btn" onclick="login()">Daxil Ol</button>
-            <div class="error-msg" id="loginError">PIN kod səhvdir!</div>
-        </div>
+    <!-- Dashboard -->
+    <div class="admin-section active" id="sec-dashboard">
+      <div class="stats-row" id="statsRow"></div>
+      <h3 style="color:var(--text2);margin-bottom:14px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">Aktiv Masalar</h3>
+      <div class="grid-2" id="activeTables"></div>
     </div>
 
-    <div class="admin-panel" id="adminPanel">
-        <div class="admin-header">
-            <h2>👨‍💼 Admin Paneli</h2>
-            <button class="logout-btn" onclick="logout()">Çıxış</button>
-        </div>
-        <div class="stats-bar">
-            <div class="stat-card"><h3>Ümumi Qarson</h3><div class="number" id="totalWaiters">0</div></div>
-            <div class="stat-card"><h3>Aktiv Qarson</h3><div class="number" id="activeWaiters">0</div></div>
-            <div class="stat-card"><h3>Sifariş Gözləyən</h3><div class="number" id="pendingOrders">0</div></div>
-            <div class="stat-card"><h3>Bugünkü Sifariş</h3><div class="number" id="todayOrders">0</div></div>
-        </div>
-        <div class="waiters-grid" id="waitersGrid"></div>
-        
-        <div class="logs-section">
-            <h2 style="color:#667eea; margin-bottom:20px;">📋 Sistem Tarixçəsi</h2>
-            <div class="logs-tabs">
-                <button class="logs-tab active" onclick="showLogs('all')">Hamısı</button>
-                <button class="logs-tab" onclick="showLogs('login')">Giriş/Çıxış</button>
-                <button class="logs-tab" onclick="showLogs('order')">Sifarişlər</button>
-                <button class="logs-tab" onclick="showLogs('status')">Status</button>
-            </div>
-            <div id="logsContent"></div>
-        </div>
-        
-        <button class="add-waiter-btn" onclick="openAddModal()">+</button>
+    <!-- Qarsonlar -->
+    <div class="admin-section" id="sec-waiters">
+      <div class="grid-2" id="waitersGrid"></div>
     </div>
 
-    <div class="waiter-panel" id="waiterPanel">
-        <div class="waiter-header-bar">
-            <div class="waiter-profile">
-                <img id="waiterAvatar" src="" alt="Avatar">
-                <div>
-                    <h2 id="waiterName">Qarson</h2>
-                    <small style="color:#667eea;">PIN: <span id="waiterPinDisplay"></span></small>
-                </div>
-            </div>
-            <div>
-                <span style="color:#27ae60; font-weight:bold; margin-right:15px;">Aktiv</span>
-                <button class="logout-btn" onclick="showExitModal()">Çıxış</button>
-            </div>
-        </div>
-        <div class="waiter-content">
-            <h1>🎯 Sifarişləriniz</h1>
-            <div id="ordersContainer">
-                <div class="no-orders">
-                    <div style="font-size:60px; margin-bottom:15px;">📭</div>
-                    <h3>Hazırda sifariş yoxdur</h3>
-                </div>
-            </div>
-        </div>
+    <!-- Masalar -->
+    <div class="admin-section" id="sec-tables">
+      <div class="grid-2" id="tablesGrid"></div>
     </div>
 
-    <div class="kitchen-panel" id="kitchenPanel">
-        <div class="admin-header">
-            <h1>👨‍🍳 Mətbəx Paneli</h1>
-            <button class="logout-btn" onclick="logout()">Çıxış</button>
-        </div>
-        <div class="kitchen-grid" id="kitchenGrid"></div>
+    <!-- Logs -->
+    <div class="admin-section" id="sec-logs">
+      <div class="log-filter-bar">
+        <button class="log-filter active" onclick="setLogFilter('all',this)">Hamısı</button>
+        <button class="log-filter" onclick="setLogFilter('login',this)">Giriş/Çıxış</button>
+        <button class="log-filter" onclick="setLogFilter('order',this)">Sifariş</button>
+        <button class="log-filter" onclick="setLogFilter('table',this)">Masa</button>
+        <button class="log-filter" onclick="setLogFilter('admin',this)">Admin</button>
+      </div>
+      <div class="log-list" id="logList"></div>
     </div>
+  </div>
+  <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
+</div>
 
-    <div class="alarm-overlay" id="alarmOverlay">
-        <div class="alarm-icon">🔔</div>
-        <div style="color:white; font-size:28px; font-weight:bold; margin-bottom:10px;">Sifariş Hazırdır!</div>
-        <div id="alarmDetails" style="color:white; font-size:18px; margin-bottom:20px;">Masa 5</div>
-        <button onclick="acceptOrder()" style="padding:15px 40px; background:white; color:#e74c3c; border:none; border-radius:50px; font-size:20px; font-weight:bold; cursor:pointer; margin-bottom:10px;">✅ Qəbul Etdim</button>
-        <button onclick="acceptAllOrders()" style="padding:15px 40px; background:#3498db; color:white; border:none; border-radius:50px; font-size:18px; font-weight:bold; cursor:pointer;">✅ Hamısını Qəbul Et</button>
+<!-- ═══════════════════════════════════════════
+     KITCHEN
+════════════════════════════════════════════ -->
+<div class="screen" id="kitchenScreen">
+  <div class="topbar">
+    <h2>👨‍🍳 Mətbəx Paneli</h2>
+    <button class="btn btn-red" onclick="logout()">Çıxış</button>
+  </div>
+  <div class="kitchen-body">
+    <div class="kitchen-grid" id="kitchenGrid"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     WAITER
+════════════════════════════════════════════ -->
+<div class="screen" id="waiterScreen">
+  <div class="waiter-header">
+    <div class="waiter-info">
+      <img id="wAvatar" src="" alt="">
+      <div>
+        <div style="font-weight:700;" id="wName">Qarson</div>
+        <div style="font-size:12px;color:var(--green);">● Aktiv</div>
+      </div>
     </div>
+    <button class="btn btn-ghost" onclick="showExitModal()">🔒 Çıxış</button>
+  </div>
+  <div class="waiter-body">
+    <h3>Masalar</h3>
+    <div class="tables-grid" id="waiterTables"></div>
+  </div>
+</div>
 
-    <div class="exit-modal-overlay" id="exitModal">
-        <div class="exit-modal">
-            <h2 style="color:#e74c3c; margin-bottom:20px;">🔒 Çıxış Təsdiqi</h2>
-            <p style="color:#666; margin-bottom:20px;">Admin PIN kodunu daxil edin</p>
-            <input type="password" class="exit-pin-input" id="exitPinInput" placeholder="••••" maxlength="4">
-            <div style="display:flex; gap:10px;">
-                <button onclick="hideExitModal()" style="flex:1; padding:15px; border:none; border-radius:10px; background:#eee; color:#666; font-weight:bold; cursor:pointer;">Ləğv</button>
-                <button onclick="confirmExit()" style="flex:1; padding:15px; border:none; border-radius:10px; background:#e74c3c; color:white; font-weight:bold; cursor:pointer;">Çıxış</button>
-            </div>
-        </div>
+<!-- ═══════════════════════════════════════════
+     OVERLAYS
+════════════════════════════════════════════ -->
+<!-- Alarm -->
+<div id="alarmOverlay">
+  <div class="alarm-icon">🔔</div>
+  <div class="alarm-title">Sifariş Hazırdır!</div>
+  <div class="alarm-sub" id="alarmSub">—</div>
+  <button class="alarm-btn" onclick="acceptAlarm()">✅ Qəbul Etdim</button>
+</div>
+
+<!-- Deactivated -->
+<div id="deactivatedOverlay">
+  <div style="font-size:70px;margin-bottom:16px;">🚫</div>
+  <h1 style="color:var(--red);margin-bottom:10px;">Deaktiv Edildiniz</h1>
+  <p style="color:var(--text2);">Admin sizi sistemdən çıxardı.</p>
+</div>
+
+<!-- Exit confirm -->
+<div class="modal-bg" id="exitModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <h2>🔒 Çıxış Təsdiqi</h2>
+    <p style="color:var(--text2);margin-bottom:20px;font-size:14px;">Admin PIN kodunu daxil edin</p>
+    <div class="form-group"><input type="password" id="exitPin" placeholder="••••" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeExitModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmExit()">Çıxış</button>
     </div>
+  </div>
+</div>
 
-    <div class="toast" id="toast">
-        <span id="toastIcon" style="font-size:30px;">✅</span>
-        <span id="toastTitle" style="font-weight:bold; margin-left:10px;">Uğurlu!</span>
-        <span id="toastMessage" style="margin-left:10px;">Əməliyyat tamamlandı</span>
+<!-- Notes modal (waiter) -->
+<div class="modal-bg" id="notesModal">
+  <div class="modal">
+    <h2 id="noteTitle">Qeydlər</h2>
+    <div class="form-group">
+      <label>Qeyd yazın</label>
+      <textarea id="noteText" class="notes-area" rows="4" placeholder="Xüsusi sifarişlər, qeydlər..."></textarea>
     </div>
-
-    <div class="modal-overlay" id="addModal">
-        <div class="modal">
-            <h2 style="color:#667eea; margin-bottom:25px; text-align:center;">➕ Yeni Qarson</h2>
-            <div class="form-group">
-                <label>Ad Soyad</label>
-                <input type="text" id="newWaiterName" placeholder="Əli Məmmədov">
-            </div>
-            <div class="form-group">
-                <label>PIN (4 rəqəm)</label>
-                <input type="text" id="newWaiterPin" placeholder="1234" maxlength="4">
-            </div>
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeAddModal()">Ləğv</button>
-                <button class="btn-save" onclick="saveWaiter()">Yadda Saxla</button>
-            </div>
-        </div>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeNotesModal()">Bağla</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveNote()">Yadda Saxla</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="deactivateTable()">Masanı Bağla</button>
     </div>
+  </div>
+</div>
 
-    <script>
-        const firebaseConfig = {
-            databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        
-        let currentUser = null;
-        let currentRole = 'admin';
-        let alarmInterval = null;
-        let currentAlarmOrder = null;
-        let waitersRef = db.ref('waiters');
-        let ordersRef = db.ref('orders');
-        let logsRef = db.ref('logs');
-        let waiters = [];
-        let orders = [];
-        let logs = [];
-        let currentLogFilter = 'all';
-        
-        const ADMIN_PIN = '0000';
-        const KITCHEN_PIN = '9999';
-        
-        function playAlarmSound() {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.value = 800;
-            osc.type = 'square';
-            gain.gain.setValueAtTime(0.5, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.5);
-            return setInterval(() => {
-                const o = ctx.createOscillator();
-                const g = ctx.createGain();
-                o.connect(g);
-                g.connect(ctx.destination);
-                o.frequency.value = 800;
-                o.type = 'square';
-                g.gain.setValueAtTime(0.5, ctx.currentTime);
-                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-                o.start(ctx.currentTime);
-                o.stop(ctx.currentTime + 0.5);
-            }, 600);
-        }
-        
-        function speakText(text) {
-            if ('speechSynthesis' in window) {
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'az-AZ';
-                window.speechSynthesis.speak(u);
-            }
-        }
-        
-        function stopAlarm() {
-            if (alarmInterval) {
-                clearInterval(alarmInterval);
-                alarmInterval = null;
-            }
-            window.speechSynthesis.cancel();
-        }
-        
-        function addLog(type, message, details) {
-            logsRef.push().set({
-                type: type,
-                message: message,
-                details: details || {},
-                timestamp: Date.now(),
-                time: new Date().toLocaleTimeString('az-AZ'),
-                date: new Date().toLocaleDateString('az-AZ')
-            });
-        }
-        
-        function renderLogs() {
-            const container = document.getElementById('logsContent');
-            let filtered = logs;
-            if (currentLogFilter !== 'all') {
-                filtered = logs.filter(l => l.type === currentLogFilter);
-            }
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="log-item">Heç bir log yoxdur</div>';
-                return;
-            }
-            const colors = {
-                login: 'background:#d5f4e6;color:#27ae60;',
-                logout: 'background:#e8e8e8;color:#7f8c8d;',
-                order: 'background:#fdebd0;color:#f39c12;',
-                accept: 'background:#d5f4e6;color:#27ae60;',
-                deactivate: 'background:#fadbd8;color:#e74c3c;',
-                activate: 'background:#d5f4e6;color:#27ae60;'
-            };
-            const labels = { login: 'GİRİŞ', logout: 'ÇIXIŞ', order: 'SİFARİŞ', accept: 'QƏBUL', deactivate: 'DEAKTİV', activate: 'AKTİV' };
-            container.innerHTML = filtered.slice(0, 50).map(log => `
-                <div class="log-item">
-                    <div>
-                        <span class="log-type" style="${colors[log.type] || colors.login}">${labels[log.type] || 'LOG'}</span>
-                        <span>${log.message}</span>
-                    </div>
-                    <span style="color:#999;font-size:12px;">${log.time}</span>
-                </div>
-            `).join('');
-        }
-        
-        function showLogs(filter) {
-            currentLogFilter = filter;
-            document.querySelectorAll('.logs-tab').forEach(tab => {
-                tab.classList.remove('active');
-                tab.style.background = '#eee';
-                tab.style.color = '#666';
-            });
-            event.target.classList.add('active');
-            event.target.style.background = '#667eea';
-            event.target.style.color = 'white';
-            renderLogs();
-        }
-        
-        function initFirebaseListeners() {
-            waitersRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                waiters = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-                if (currentUser?.role === 'admin') renderAdminPanel();
-                if (currentUser?.role === 'kitchen') renderKitchenPanel();
-                
-                // DEACTIVATION CHECK - Admin deaktiv edende avtomatik cixis
-                if (currentUser?.role === 'waiter') {
-                    const me = waiters.find(w => w.id === currentUser.id);
-                    if (me && me.status === 'offline') {
-                        document.getElementById('deactivatedOverlay').classList.add('active');
-                        stopAlarm();
-                        setTimeout(() => {
-                            logout();
-                            document.getElementById('deactivatedOverlay').classList.remove('active');
-                        }, 3000);
-                    }
-                }
-            });
-            
-            ordersRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                orders = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-                if (currentUser?.role === 'admin') renderAdminPanel();
-                if (currentUser?.role === 'kitchen') renderKitchenPanel();
-                if (currentUser?.role === 'waiter') {
-                    checkWaiterOrders();
-                    renderWaiterPanel();
-                }
-            });
-            
-            logsRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                logs = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse() : [];
-                if (currentUser?.role === 'admin') renderLogs();
-            });
-        }
-        
-        function selectRole(role) {
-            currentRole = role;
-            document.querySelectorAll('.role-btn').forEach(btn => {
-                const isActive = btn.textContent.includes(role === 'admin' ? 'Admin' : role === 'waiter' ? 'Qarson' : 'Mətbəx');
-                btn.classList.toggle('active', isActive);
-            });
-        }
-        
-        function login() {
-    const pin = document.getElementById('pinInput').value;
-    
-    // Əvvəlcə waiters data-nın yükləndiyinə əmin ol
-    waitersRef.once('value', (snapshot) => {
-        const data = snapshot.val();
-        waiters = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-        
-        // İndi login et
-        doLogin(pin);
+<!-- Add/Edit modal (admin) -->
+<div class="modal-bg" id="addModal">
+  <div class="modal" id="addModalInner">
+    <h2 id="addModalTitle">Yeni</h2>
+    <div id="addModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveItem()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════ FIREBASE ═══════════════════ */
+const firebaseConfig = {
+  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const R = {
+  waiters: db.ref('waiters'),
+  tables:  db.ref('tables'),
+  orders:  db.ref('orders'),
+  logs:    db.ref('logs')
+};
+
+/* ═══════════════════ STATE ═══════════════════ */
+const ADMIN_PIN   = '0000';
+const KITCHEN_PIN = '9999';
+
+let state = {
+  role: 'admin',
+  user: null,        // { id, name, pin, avatar, role }
+  waiters: [],
+  tables:  [],
+  orders:  [],
+  logs:    [],
+  logFilter: 'all',
+  adminSection: 'dashboard',
+  alarm: null,       // current alarm order id
+  alarmInterval: null,
+  editTarget: null,  // { type:'waiter'|'table', id }
+  noteTableId: null,
+  pinBuffer: ''
+};
+
+/* ═══════════════════ LOGIN / PIN ═══════════════════ */
+function setRole(r, el) {
+  state.role = r;
+  document.querySelectorAll('.role-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  clearPin();
+}
+
+function numPress(v) {
+  if (v === 'clear') { clearPin(); return; }
+  if (v === 'back')  { state.pinBuffer = state.pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if (state.pinBuffer.length >= 4) return;
+  state.pinBuffer += v;
+  updatePinDots();
+  if (state.pinBuffer.length === 4) setTimeout(doLogin, 200);
+}
+
+function updatePinDots() {
+  for (let i=0;i<4;i++) {
+    document.getElementById('d'+i).classList.toggle('filled', i < state.pinBuffer.length);
+  }
+}
+
+function clearPin() {
+  state.pinBuffer = '';
+  updatePinDots();
+  document.getElementById('loginErr').textContent = '';
+}
+
+function doLogin() {
+  const pin = state.pinBuffer;
+  clearPin();
+
+  if (state.role === 'admin' && pin === ADMIN_PIN) {
+    state.user = { role:'admin', name:'Admin' };
+    addLog('login','Admin sistemə daxil oldu',{type:'admin'});
+    initListeners();
+    showScreen('adminScreen');
+    return;
+  }
+
+  if (state.role === 'kitchen' && pin === KITCHEN_PIN) {
+    state.user = { role:'kitchen', name:'Mətbəx' };
+    addLog('login','Mətbəx sistemə daxil oldu',{type:'kitchen'});
+    initListeners();
+    showScreen('kitchenScreen');
+    return;
+  }
+
+  if (state.role === 'waiter') {
+    R.waiters.once('value', snap => {
+      const data = snap.val() || {};
+      const list = Object.keys(data).map(k=>({id:k,...data[k]}));
+      const w = list.find(x => x.pin === pin);
+      if (!w) { showErr('PIN kod tapılmadı!'); return; }
+      if (w.status === 'offline') { showErr('Hesabınız deaktivdir. Adminə müraciət edin.'); return; }
+      state.user = { ...w, role:'waiter' };
+      R.waiters.child(w.id).update({ status:'online', lastLogin: Date.now() });
+      addLog('login', `${w.name} sistemə daxil oldu`, { waiterId: w.id });
+      initListeners();
+      showScreen('waiterScreen');
+      document.getElementById('wName').textContent = w.name;
+      document.getElementById('wAvatar').src = w.avatar;
+      lockScreen();
     });
+    return;
+  }
+
+  showErr('PIN kod səhvdir!');
 }
 
-function doLogin(pin) {
-    if (currentRole === 'admin' && pin === ADMIN_PIN) {
-        currentUser = { role: 'admin', name: 'Admin' };
-        addLog('login', 'Admin daxil oldu', { role: 'admin' });
-        showPanel('admin');
-    } else if (currentRole === 'waiter') {
-        const waiter = waiters.find(w => w.pin === pin && w.status === 'ready');
-        if (waiter) {
-            currentUser = { role: 'waiter', id: waiter.id, name: waiter.name, pin: waiter.pin };
-            waitersRef.child(waiter.id).update({ status: 'ready', lastActive: Date.now() });
-            addLog('login', waiter.name + ' daxil oldu', { waiterId: waiter.id });
-            showPanel('waiter');
-        } else {
-            showError('PIN kod səhvdir və ya qarson deaktivdir!');
-        }
-    } else if (currentRole === 'kitchen' && pin === KITCHEN_PIN) {
-        currentUser = { role: 'kitchen', name: 'Mətbəx' };
-        addLog('login', 'Mətbəx daxil oldu', { role: 'kitchen' });
-        showPanel('kitchen');
-    } else {
-        showError('PIN kod səhvdir!');
-    }
+function showErr(msg) {
+  document.getElementById('loginErr').textContent = msg;
+  setTimeout(()=>document.getElementById('loginErr').textContent='',3000);
 }
-        
-        function showError(msg) {
-            const el = document.getElementById('loginError');
-            el.textContent = msg;
-            el.style.display = 'block';
-            setTimeout(() => el.style.display = 'none', 3000);
-        }
-        
-        function showPanel(panel) {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('adminPanel').style.display = 'none';
-            document.getElementById('waiterPanel').style.display = 'none';
-            document.getElementById('kitchenPanel').style.display = 'none';
-            
-            if (panel === 'admin') {
-                document.getElementById('adminPanel').style.display = 'block';
-                renderAdminPanel();
-                renderLogs();
-            } else if (panel === 'waiter') {
-                document.getElementById('waiterPanel').style.display = 'block';
-                renderWaiterPanel();
-            } else if (panel === 'kitchen') {
-                document.getElementById('kitchenPanel').style.display = 'block';
-                renderKitchenPanel();
-            }
-        }
-        
-        function logout() {
-            if (currentUser?.role === 'waiter') {
-                // Yalniz status deyisir, active yoxdur artiq
-                waitersRef.child(currentUser.id).update({ status: 'offline', lastActive: Date.now() });
-                addLog('logout', `${currentUser.name} sistemden cixdi`, { waiterId: currentUser.id, waiterName: currentUser.name });
-            }
-            stopAlarm();
-            currentUser = null;
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('adminPanel').style.display = 'none';
-            document.getElementById('waiterPanel').style.display = 'none';
-            document.getElementById('kitchenPanel').style.display = 'none';
-            document.getElementById('pinInput').value = '';
-        }
-        
-        function showExitModal() {
-            document.getElementById('exitModal').classList.add('active');
-            document.getElementById('exitPinInput').value = '';
-        }
-        
-        function hideExitModal() {
-            document.getElementById('exitModal').classList.remove('active');
-        }
-        
-        function confirmExit() {
-            const pin = document.getElementById('exitPinInput').value;
-            if (pin === ADMIN_PIN || pin === KITCHEN_PIN) {
-                hideExitModal();
-                logout();
-            } else {
-                alert('PIN kod səhvdir! Yalniz admin cixis ede biler.');
-            }
-        }
-        
-        function renderAdminPanel() {
-            document.getElementById('totalWaiters').textContent = waiters.length;
-           document.getElementById('activeWaiters').textContent = waiters.filter(w => w.status === 'ready' || w.status === 'busy').length;
-            document.getElementById('pendingOrders').textContent = orders.filter(o => o.status === 'pending').length;
-            document.getElementById('todayOrders').textContent = orders.length;
-            
-            const grid = document.getElementById('waitersGrid');
-            grid.innerHTML = waiters.map(w => `
-                <div class="waiter-card ${w.status === 'offline' ? 'offline' : w.status === 'busy' ? 'busy' : ''}">
-                    <div class="waiter-header">
-                        <img src="${w.avatar}" class="waiter-avatar">
-                        <div class="waiter-info">
-                            <h3>${w.name}</h3>
-                            <span class="pin">PIN: ${w.pin}</span>
-                        </div>
-                    </div>
-                    <span class="status-badge ${w.status === 'ready' ? 'online' : w.status === 'busy' ? 'busy' : 'offline'}">
-                        ${w.status === 'ready' ? '🟢 Aktiv' : w.status === 'busy' ? '🟡 Sifarişdə' : '⚪ Deaktiv'}
-                    </span>
-                    <div class="waiter-actions">
-                        <button class="action-btn btn-toggle" onclick="toggleWaiter('${w.id}')">
-                            ${w.status === 'offline' ? 'Aktiv Et' : 'Deaktiv Et'}
-                        </button>
-                        <button class="action-btn btn-delete" onclick="deleteWaiter('${w.id}')">Sil</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        function toggleWaiter(id) {
-            const w = waiters.find(x => x.id === id);
-            if (w) {
-                const newStatus = (w.status === 'ready' || w.status === 'busy') ? 'offline' : 'ready';
-                waitersRef.child(id).update({ status: newStatus, lastActive: Date.now() });
-                addLog(newStatus === 'ready' ? 'activate' : 'deactivate', 
-                       `${w.name} ${newStatus === 'ready' ? 'aktiv' : 'deaktiv'} edildi`, 
-                       { waiterId: w.id, waiterName: w.name });
-                showToast('✅', 'Uğurlu!', `${w.name} ${newStatus === 'ready' ? 'aktiv' : 'deaktiv'} edildi`);
-            }
-        }
-        
-        function deleteWaiter(id) {
-            if (confirm('Silmek istediyinize eminsiniz?')) {
-                const w = waiters.find(x => x.id === id);
-                waitersRef.child(id).remove();
-                if (w) addLog('deactivate', `${w.name} silindi`, { waiterId: id });
-                showToast('🗑️', 'Silindi!', 'Qarson sistemden silindi');
-            }
-        }
-        
-        function openAddModal() {
-            document.getElementById('addModal').classList.add('active');
-        }
-        
-        function closeAddModal() {
-            document.getElementById('addModal').classList.remove('active');
-        }
-        
-        function saveWaiter() {
-            const name = document.getElementById('newWaiterName').value.trim();
-            const pin = document.getElementById('newWaiterPin').value.trim();
-            
-            if (!name || !pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-                showToast('❌', 'Xəta!', 'Ad ve 4 reqemli PIN daxil edin');
-                return;
-            }
-            
-            if (waiters.some(w => w.pin === pin)) {
-                showToast('❌', 'Xəta!', 'Bu PIN artiq istifade olunur');
-                return;
-            }
-            
-            const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=667eea&color=fff&size=200`;
-            
-            waitersRef.push().set({
-                name, pin, avatar, status: 'ready', createdAt: Date.now()
-            });
-            
-            addLog('activate', `${name} elave edildi`, { waiterName: name, pin });
-            closeAddModal();
-            showToast('✅', 'Uğurlu!', `${name} elave edildi`);
-        }
-        
-        function renderWaiterPanel() {
-            if (!currentUser || currentUser.role !== 'waiter') return;
-            
-            const w = waiters.find(x => x.id === currentUser.id);
-            if (!w) return;
-            
-            document.getElementById('waiterName').textContent = w.name;
-            document.getElementById('waiterAvatar').src = w.avatar;
-            document.getElementById('waiterPinDisplay').textContent = w.pin;
-            
-            const container = document.getElementById('ordersContainer');
-            const pending = orders.filter(o => o.waiterId === w.id && o.status === 'pending');
-            
-            if (pending.length === 0) {
-                container.innerHTML = `
-                    <div class="no-orders">
-                        <div style="font-size:60px; margin-bottom:15px;">📭</div>
-                        <h3>Hazırda sifariş yoxdur</h3>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = pending.map(o => `
-                    <div class="order-card">
-                        <h3>🍽️ Sifariş #${o.id.slice(-4)}</h3>
-                        <p>Masa: <strong>${o.table}</strong></p>
-                        <div style="color:#999; font-size:14px; margin-bottom:15px;">${o.time}</div>
-                        <button class="accept-btn" onclick="acceptOrderFromCard('${o.id}')">✅ Qəbul Etdim</button>
-                    </div>
-                `).join('') + (pending.length > 1 ? `
-                    <button class="accept-all-btn" onclick="acceptAllOrdersFromCard()">✅ Hamısını Qəbul Et (${pending.length})</button>
-                ` : '');
-            }
-        }
-        
-        function checkWaiterOrders() {
-            if (!currentUser || currentUser.role !== 'waiter') return;
-            const pending = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
-            if (pending.length > 0 && !document.getElementById('alarmOverlay').classList.contains('active')) {
-                showAlarm(pending[0]);
-            }
-        }
-        
-        function acceptOrder() {
-            if (!currentAlarmOrder) return;
-            stopAlarm();
-            document.getElementById('alarmOverlay').classList.remove('active');
-            
-            const o = orders.find(x => x.id === currentAlarmOrder);
-            if (o) {
-                ordersRef.child(o.id).update({ status: 'accepted', acceptedAt: Date.now() });
-                waitersRef.child(o.waiterId).update({ status: 'busy', lastActive: Date.now() });
-                addLog('accept', `${o.waiterName} qebul etdi - ${o.table}`, { orderId: o.id, waiterId: o.waiterId, table: o.table });
-                showToast('✅', 'Qəbul edildi!', 'Sifarişi qebul etdiniz');
-            }
-            currentAlarmOrder = null;
-            
-            const remaining = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
-            if (remaining.length > 0) {
-                setTimeout(() => showAlarm(remaining[0]), 500);
-            }
-            renderWaiterPanel();
-        }
-        
-        function acceptAllOrders() {
-            stopAlarm();
-            document.getElementById('alarmOverlay').classList.remove('active');
-            const pending = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
-            
-            pending.forEach(o => {
-                ordersRef.child(o.id).update({ status: 'accepted', acceptedAt: Date.now() });
-            });
-            
-            waitersRef.child(currentUser.id).update({ status: 'busy', lastActive: Date.now() });
-            addLog('accept', `${currentUser.name} ${pending.length} sifariş qebul etdi`, { count: pending.length, waiterId: currentUser.id });
-            showToast('✅', 'Hamısı qebul edildi!', `${pending.length} sifariş`);
-            currentAlarmOrder = null;
-            renderWaiterPanel();
-        }
-        
-        function acceptOrderFromCard(id) {
-            const o = orders.find(x => x.id === id);
-            if (o) {
-                ordersRef.child(id).update({ status: 'accepted', acceptedAt: Date.now() });
-                waitersRef.child(o.waiterId).update({ status: 'busy', lastActive: Date.now() });
-                addLog('accept', `${o.waiterName} qebul etdi - ${o.table}`, { orderId: o.id, table: o.table });
-                showToast('✅', 'Qəbul edildi!', '');
-                renderWaiterPanel();
-            }
-        }
-        
-        function acceptAllOrdersFromCard() {
-            const pending = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
-            pending.forEach(o => {
-                ordersRef.child(o.id).update({ status: 'accepted', acceptedAt: Date.now() });
-            });
-            waitersRef.child(currentUser.id).update({ status: 'busy', lastActive: Date.now() });
-            addLog('accept', `${currentUser.name} ${pending.length} sifariş qebul etdi`, { count: pending.length });
-            showToast('✅', 'Hamısı qebul edildi!', `${pending.length} sifariş`);
-            renderWaiterPanel();
-        }
-        
-        function renderKitchenPanel() {
-            const grid = document.getElementById('kitchenGrid');
-           const active = waiters.filter(w => w.status === 'ready' || w.status === 'busy');
-            
-            if (active.length === 0) {
-                grid.innerHTML = '<div style="text-align:center; padding:40px; color:#666; font-size:18px;">⚪ Aktiv qarson yoxdur</div>';
-                return;
-            }
-            
-            grid.innerHTML = active.map(w => {
-                const pending = orders.filter(o => o.waiterId === w.id && o.status === 'pending').length;
-                const isBusy = w.status === 'busy';
-                const isWaiting = pending > 0;
-                
-                let statusColor = '#2ecc71';
-                let statusText = '🟢 Hazır';
-                let btnText = 'Sifariş Hazır';
-                let cardClass = '';
-                
-                if (isBusy) {
-                    statusColor = '#f39c12';
-                    statusText = '🟡 Gəlir';
-                    btnText = 'Yeni Sifariş';
-                    cardClass = 'busy';
-                } else if (isWaiting) {
-                    statusColor = '#e74c3c';
-                    statusText = '🔴 Gözləyir';
-                    btnText = 'Sifariş Hazır';
-                    cardClass = 'waiting';
-                }
-                
-                return `
-                    <div class="kitchen-waiter-card ${cardClass}" onclick="sendOrderToWaiter('${w.id}')">
-                        <div style="position:absolute; top:0; left:0; right:0; height:6px; background:${statusColor};"></div>
-                        <img src="${w.avatar}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:4px solid #eee; margin-bottom:15px; margin-top:10px;">
-                        <h3>${w.name}</h3>
-                        <span style="display:inline-block; padding:8px 20px; border-radius:25px; font-size:14px; font-weight:bold; margin-bottom:15px; background:${statusColor}20; color:${statusColor};">${statusText}</span>
-                        <button onclick="event.stopPropagation(); sendOrderToWaiter('${w.id}')" class="send-btn">${btnText}</button>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        function sendOrderToWaiter(waiterId) {
-            const w = waiters.find(x => x.id === waiterId);
-            if (!w || w.status === 'offline') {
-                showToast('❌', 'Xəta!', 'Qarson deaktivdir');
-                return;
-            }
-            
-            const tableNum = Math.floor(Math.random() * 20) + 1;
-            const newRef = ordersRef.push();
-            
-            newRef.set({
-                waiterId: w.id,
-                waiterName: w.name,
-                table: `Masa ${tableNum}`,
-                status: 'pending',
-                time: new Date().toLocaleTimeString('az-AZ'),
-                createdAt: Date.now()
-            });
-            
-            waitersRef.child(w.id).update({ status: 'ready', lastActive: Date.now() });
-            addLog('order', `Mətbəx ${w.name}-ə göndərdi - Masa ${tableNum}`, { orderId: newRef.key, waiterId: w.id, table: `Masa ${tableNum}` });
-            showToast('🔔', 'Sifariş göndərildi!', `${w.name} - Masa ${tableNum}`);
-            renderKitchenPanel();
-        }
-        
-        function showAlarm(order) {
-            currentAlarmOrder = order.id;
-            document.getElementById('alarmDetails').textContent = `${order.table} - Sifariş hazırdır!`;
-            document.getElementById('alarmOverlay').classList.add('active');
-            alarmInterval = playAlarmSound();
-            speakText('Sifariş hazırdır!');
-            if ('vibrate' in navigator) {
-                navigator.vibrate([500, 200, 500, 200, 500]);
-            }
-        }
-        
-        function showToast(icon, title, message) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastIcon').textContent = icon;
-            document.getElementById('toastTitle').textContent = title;
-            document.getElementById('toastMessage').textContent = message;
-            toast.classList.add('active');
-            setTimeout(() => toast.classList.remove('active'), 3000);
-        }
-        
-        // KIOSK PROTECTION - Geri duymesi bloklanmasin
-        document.addEventListener('keydown', function(e) {
-            if (currentUser?.role === 'waiter') {
-                if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-                    (e.ctrlKey && e.key === 'r') || (e.altKey && e.key === 'F4') || e.key === 'Escape') {
-                    e.preventDefault();
-                    return false;
-                }
-            }
-        });
-        
-        document.addEventListener('contextmenu', function(e) {
-            if (currentUser?.role === 'waiter') e.preventDefault();
-        });
-        
-        window.addEventListener('beforeunload', function(e) {
-            if (currentUser?.role === 'waiter') {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-        
-        // Geri duymesi bloklama
-        history.pushState(null, null, location.href);
-        window.onpopstate = function() {
-            if (currentUser?.role === 'waiter') {
-                history.pushState(null, null, location.href);
-            }
-        };
-        
-        // Input validation
-        document.getElementById('pinInput').addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-        document.getElementById('newWaiterPin').addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-        document.getElementById('exitPinInput').addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-        
-               // DEMO DATA - HƏR ZAMAN YOXLANIR
-        function checkDemoData() {
-            waitersRef.once('value', (snapshot) => {
-                const data = snapshot.val();
-                // Əgər data yoxdursa və ya boşdursa
-                if (!data || Object.keys(data).length === 0) {
-                    console.log('Demo data yaradılır...');
-                    [
-                        { name: 'Əli Məmmədov', pin: '1111', avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200', status: 'ready', createdAt: Date.now() },
-                        { name: 'Leyla Həsənli', pin: '2222', avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200', status: 'ready', createdAt: Date.now() },
-                        { name: 'Orxan Əliyev', pin: '3333', avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200', status: 'offline', createdAt: Date.now() }
-                    ].forEach(w => waitersRef.push().set(w));
-                    
-                    // LOGS node-u da yoxla
-                    logsRef.once('value', (logSnap) => {
-                        if (!logSnap.val()) {
-                            addLog('activate', 'Sistem başladı', { system: 'start' });
-                        }
-                    });
-                }
-            });
-        }
 
-        // SƏHİFƏ AÇILANDA DATA YÜKLƏ
-waitersRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    waiters = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-    console.log('Waiters yükləndi:', waiters.length);
+/* ═══════════════════ SCREEN CONTROL ═══════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function logout() {
+  if (state.user?.role === 'waiter') {
+    R.waiters.child(state.user.id).update({ status:'ready', lastActive: Date.now() });
+    addLog('logout', `${state.user.name} sistemdən çıxdı`, { waiterId: state.user.id });
+    unlockScreen();
+  } else if (state.user?.role === 'admin') {
+    addLog('logout','Admin sistemdən çıxdı',{type:'admin'});
+  } else if (state.user?.role === 'kitchen') {
+    addLog('logout','Mətbəx sistemdən çıxdı',{type:'kitchen'});
+  }
+  stopAlarm();
+  removeListeners();
+  state.user = null;
+  state.waiters = [];
+  state.tables  = [];
+  state.orders  = [];
+  state.logs    = [];
+  showScreen('loginScreen');
+}
+
+/* ═══════════════════ KIOSK LOCK ═══════════════════ */
+function lockScreen() {
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  history.pushState(null,'',location.href);
+}
+
+function unlockScreen() {
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+}
+
+window.onpopstate = ()=>{
+  if (state.user?.role==='waiter') history.pushState(null,'',location.href);
+};
+
+document.addEventListener('keydown', e=>{
+  if (state.user?.role!=='waiter') return;
+  if (['F5','F12','Escape'].includes(e.key)||(e.ctrlKey&&['r','w','t'].includes(e.key))||(e.altKey&&e.key==='F4')) {
+    e.preventDefault(); return false;
+  }
 });
 
-// Firebase listener-ləri işə sal
-        initFirebaseListeners();
-        
-        // Demo data yoxla
-        checkDemoData();
-    </script>
+document.addEventListener('contextmenu', e=>{
+  if (state.user?.role==='waiter') e.preventDefault();
+});
+
+window.addEventListener('beforeunload', e=>{
+  if (state.user?.role==='waiter') { e.preventDefault(); e.returnValue=''; }
+});
+
+function showExitModal() { document.getElementById('exitModal').classList.add('open'); }
+function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value=''; }
+
+function confirmExit() {
+  const pin = document.getElementById('exitPin').value;
+  if (pin === ADMIN_PIN || pin === KITCHEN_PIN) {
+    closeExitModal();
+    logout();
+  } else {
+    showToast('❌ PIN səhvdir!');
+  }
+}
+
+/* ═══════════════════ FIREBASE LISTENERS ═══════════════════ */
+let _listeners = {};
+
+function initListeners() {
+  _listeners.waiters = R.waiters.on('value', snap=>{
+    state.waiters = toArr(snap.val());
+    onDataChange();
+    // Deactivation check
+    if (state.user?.role==='waiter') {
+      const me = state.waiters.find(w=>w.id===state.user.id);
+      if (me && me.status==='offline') {
+        document.getElementById('deactivatedOverlay').classList.add('show');
+        stopAlarm(); unlockScreen();
+        setTimeout(()=>{ document.getElementById('deactivatedOverlay').classList.remove('show'); logout(); },3000);
+      }
+    }
+  });
+
+  _listeners.tables = R.tables.on('value', snap=>{
+    state.tables = toArr(snap.val());
+    onDataChange();
+  });
+
+  _listeners.orders = R.orders.on('value', snap=>{
+    state.orders = toArr(snap.val());
+    onDataChange();
+    if (state.user?.role==='waiter') checkIncomingOrders();
+  });
+
+  _listeners.logs = R.logs.limitToLast(200).on('value', snap=>{
+    state.logs = toArr(snap.val()).reverse();
+    if (state.user?.role==='admin') renderLogs();
+  });
+}
+
+function removeListeners() {
+  R.waiters.off(); R.tables.off(); R.orders.off(); R.logs.off();
+}
+
+function toArr(obj) {
+  if (!obj) return [];
+  return Object.keys(obj).map(k=>({id:k,...obj[k]}));
+}
+
+function onDataChange() {
+  const r = state.user?.role;
+  if (r==='admin')   { renderAdmin(); }
+  if (r==='kitchen') { renderKitchen(); }
+  if (r==='waiter')  { renderWaiterTables(); }
+}
+
+/* ═══════════════════ LOG ═══════════════════ */
+function addLog(type, message, details={}) {
+  R.logs.push({
+    type, message, details,
+    timestamp: Date.now(),
+    time: new Date().toLocaleTimeString('az-AZ'),
+    date: new Date().toLocaleDateString('az-AZ')
+  });
+}
+
+/* ═══════════════════ ADMIN RENDER ═══════════════════ */
+function renderAdmin() {
+  if (state.adminSection==='dashboard') renderDashboard();
+  if (state.adminSection==='waiters')   renderWaiters();
+  if (state.adminSection==='tables')    renderTables();
+}
+
+function adminTab(sec, el) {
+  state.adminSection = sec;
+  document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+sec).classList.add('active');
+  renderAdmin();
+  // FAB show/hide
+  document.getElementById('adminFab').style.display = (sec==='waiters'||sec==='tables') ? 'flex':'none';
+}
+
+function renderDashboard() {
+  const activeW = state.waiters.filter(w=>w.status!=='offline').length;
+  const activeTbl = state.tables.filter(t=>t.occupant).length;
+  const pendingO  = state.orders.filter(o=>o.status==='pending').length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${state.waiters.length}</div><div class="stat-label">Cəmi Qarson</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--green)">${activeW}</div><div class="stat-label">Aktiv Qarson</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${state.tables.length}</div><div class="stat-label">Cəmi Masa</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--red)">${pendingO}</div><div class="stat-label">Gözləyən Sifariş</div></div>
+  `;
+  const actTbls = state.tables.filter(t=>t.occupant);
+  const el = document.getElementById('activeTables');
+  if (!actTbls.length) { el.innerHTML='<p style="color:var(--text3);font-size:14px;">Hal-hazırda aktiv masa yoxdur.</p>'; return; }
+  el.innerHTML = actTbls.map(t=>{
+    const w = state.waiters.find(x=>x.id===t.occupant)||{name:'?'};
+    return `<div class="table-card">
+      <h3>🪑 ${esc(t.name)}</h3>
+      <div class="meta">Qarson: <strong>${esc(w.name)}</strong></div>
+      ${t.notes?`<div style="font-size:13px;color:var(--text2);background:rgba(255,255,255,.04);border-radius:8px;padding:8px;">${esc(t.notes)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderWaiters() {
+  const el = document.getElementById('waitersGrid');
+  if (!state.waiters.length) { el.innerHTML='<p style="color:var(--text3);">Hələ qarson əlavə edilməyib.</p>'; return; }
+  el.innerHTML = state.waiters.map(w=>{
+    const st = w.status==='offline'?'Deaktiv':w.status==='online'?'Onlayn':'Hazır';
+    const bc = w.status==='offline'?'badge-red':w.status==='online'?'badge-green':'badge-green';
+    return `<div class="item-card">
+      <div class="item-card-header">
+        <img class="avatar" src="${w.avatar}" alt="">
+        <div class="item-info">
+          <h3>${esc(w.name)}</h3>
+          <small>PIN: ${w.pin}</small>
+        </div>
+      </div>
+      <span class="status-badge ${bc}">${st}</span>
+      <div class="item-actions">
+        <button class="btn ${w.status==='offline'?'btn-green':'btn-red'}" onclick="toggleWaiter('${w.id}')">
+          ${w.status==='offline'?'Aktiv Et':'Deaktiv Et'}
+        </button>
+        <button class="btn btn-ghost" onclick="editWaiter('${w.id}')">✏️</button>
+        <button class="btn btn-red" onclick="deleteWaiter('${w.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTables() {
+  const el = document.getElementById('tablesGrid');
+  if (!state.tables.length) { el.innerHTML='<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>'; return; }
+  el.innerHTML = state.tables.map(t=>{
+    const occ = t.occupant ? (state.waiters.find(w=>w.id===t.occupant)||{name:'?'}).name : null;
+    return `<div class="table-card">
+      <h3>🪑 ${esc(t.name)}</h3>
+      <div class="meta">${occ?`Qarson: <strong>${esc(occ)}</strong>`:'Boş'}</div>
+      <div class="item-actions">
+        <button class="btn btn-ghost" onclick="editTable('${t.id}')">✏️ Düzəliş</button>
+        <button class="btn btn-red" onclick="deleteTable('${t.id}')">🗑️ Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLogs() {
+  const el = document.getElementById('logList');
+  let list = state.logs;
+  if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
+  if (!list.length) { el.innerHTML='<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
+  const colors = {
+    login:'#2ecc71',logout:'#95a5a6',order:'#f39c12',table:'#3498db',admin:'#8e44ad'
+  };
+  const labels = {login:'GİRİŞ',logout:'ÇIXIŞ',order:'SİFARİŞ',table:'MASA',admin:'ADMİN'};
+  el.innerHTML = list.slice(0,100).map(l=>`
+    <div class="log-item">
+      <span class="log-badge" style="background:${colors[l.type]||'#666'}22;color:${colors[l.type]||'#aaa'}">${labels[l.type]||'LOG'}</span>
+      <span class="log-text">${esc(l.message)}</span>
+      <span class="log-time">${l.time} ${l.date}</span>
+    </div>
+  `).join('');
+}
+
+function setLogFilter(f, el) {
+  state.logFilter = f;
+  document.querySelectorAll('.log-filter').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderLogs();
+}
+
+/* ── Waiter CRUD ── */
+function toggleWaiter(id) {
+  const w = state.waiters.find(x=>x.id===id);
+  if (!w) return;
+  const newStatus = (w.status==='offline') ? 'ready' : 'offline';
+  R.waiters.child(id).update({ status: newStatus });
+  addLog('admin',`${w.name} ${newStatus==='ready'?'aktiv':'deaktiv'} edildi`,{ waiterId:id });
+  showToast(newStatus==='ready'?`✅ ${w.name} aktiv edildi`:`🚫 ${w.name} deaktiv edildi`);
+}
+
+function editWaiter(id) {
+  const w = state.waiters.find(x=>x.id===id);
+  if (!w) return;
+  state.editTarget = { type:'waiter', id };
+  document.getElementById('addModalTitle').textContent = '✏️ Qarson Düzəliş';
+  document.getElementById('addModalBody').innerHTML = waiterForm(w.name, w.pin);
+  document.getElementById('addModal').classList.add('open');
+}
+
+function deleteWaiter(id) {
+  const w = state.waiters.find(x=>x.id===id);
+  if (!confirm(`"${w?.name}" adlı qarson silinsin?`)) return;
+  R.waiters.child(id).remove();
+  addLog('admin',`${w?.name} silindi`,{ waiterId:id });
+  showToast('🗑️ Qarson silindi');
+}
+
+/* ── Table CRUD ── */
+function editTable(id) {
+  const t = state.tables.find(x=>x.id===id);
+  if (!t) return;
+  state.editTarget = { type:'table', id };
+  document.getElementById('addModalTitle').textContent = '✏️ Masa Düzəliş';
+  document.getElementById('addModalBody').innerHTML = tableForm(t.name, t.capacity||4);
+  document.getElementById('addModal').classList.add('open');
+}
+
+function deleteTable(id) {
+  const t = state.tables.find(x=>x.id===id);
+  if (!confirm(`"${t?.name}" masası silinsin?`)) return;
+  R.tables.child(id).remove();
+  addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
+  showToast('🗑️ Masa silindi');
+}
+
+/* ── Add modal ── */
+function waiterForm(name='', pin='') {
+  return `<div class="form-group"><label>Ad Soyad</label><input type="text" id="fw_name" value="${esc(name)}" placeholder="Əli Məmmədov"></div>
+          <div class="form-group"><label>PIN (4 rəqəm)</label><input type="text" id="fw_pin" value="${pin}" maxlength="4" placeholder="1234"></div>`;
+}
+function tableForm(name='', capacity=4) {
+  return `<div class="form-group"><label>Masa Adı</label><input type="text" id="ft_name" value="${esc(name)}" placeholder="VIP Otaq / Terras 1"></div>
+          <div class="form-group"><label>Nəfər Sayı</label><input type="number" id="ft_cap" value="${capacity}" min="1" max="20"></div>`;
+}
+
+function openAddModal() {
+  state.editTarget = null;
+  if (state.adminSection==='waiters') {
+    document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
+    document.getElementById('addModalBody').innerHTML = waiterForm();
+  } else {
+    document.getElementById('addModalTitle').textContent = '➕ Yeni Masa';
+    document.getElementById('addModalBody').innerHTML = tableForm();
+  }
+  document.getElementById('addModal').classList.add('open');
+}
+
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); state.editTarget=null; }
+
+function saveItem() {
+  const sec = state.editTarget ? state.editTarget.type : (state.adminSection==='waiters'?'waiter':'table');
+  if (sec==='waiter') {
+    const name = document.getElementById('fw_name').value.trim();
+    const pin  = document.getElementById('fw_pin').value.trim();
+    if (!name||pin.length!==4||!/^\d{4}$/.test(pin)) { showToast('❌ Ad və 4 rəqəmli PIN lazımdır'); return; }
+    const conflict = state.waiters.find(w=>w.pin===pin&&(!state.editTarget||w.id!==state.editTarget.id));
+    if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
+    if (state.editTarget) {
+      R.waiters.child(state.editTarget.id).update({ name, pin, avatar });
+      addLog('admin',`Qarson düzəlişi: ${name}`,{});
+      showToast('✅ Düzəliş saxlanıldı');
+    } else {
+      R.waiters.push({ name, pin, avatar, status:'ready', createdAt:Date.now() });
+      addLog('admin',`Yeni qarson əlavə edildi: ${name}`,{});
+      showToast('✅ Qarson əlavə edildi');
+    }
+  } else {
+    const name = document.getElementById('ft_name').value.trim();
+    const capacity = parseInt(document.getElementById('ft_cap').value)||4;
+    if (!name) { showToast('❌ Masa adı lazımdır'); return; }
+    if (state.editTarget) {
+      R.tables.child(state.editTarget.id).update({ name, capacity });
+      addLog('admin',`Masa düzəlişi: ${name}`,{});
+      showToast('✅ Masa yeniləndi');
+    } else {
+      R.tables.push({ name, capacity, occupant:null, notes:'', createdAt:Date.now() });
+      addLog('admin',`Yeni masa əlavə edildi: ${name}`,{});
+      showToast('✅ Masa əlavə edildi');
+    }
+  }
+  closeAddModal();
+}
+
+/* ═══════════════════ KITCHEN RENDER ═══════════════════ */
+function renderKitchen() {
+  const el = document.getElementById('kitchenGrid');
+  const active = state.waiters.filter(w=>w.status!=='offline');
+  if (!active.length) { el.innerHTML='<p style="color:var(--text2);text-align:center;padding:40px;">Aktiv qarson yoxdur.</p>'; return; }
+  el.innerHTML = active.map(w=>{
+    const hasPending = state.orders.some(o=>o.waiterId===w.id&&o.status==='pending');
+    const myTables = state.tables.filter(t=>t.occupant===w.id);
+    const st = hasPending?'called':w.status==='online'?'ready':'ready';
+    const stLabel = hasPending?'🔴 Gözləyir':w.status==='online'?'🟢 Aktiv':'🟢 Hazır';
+    const clickable = !hasPending;
+    return `<div class="k-card ${st}" ${clickable?`onclick="callWaiter('${w.id}')"`:''}
+         title="${hasPending?'Sifariş qəbul edənə qədər gözlənilir':'Tıklayın - sifariş hazırdır bildirişi göndərin'}">
+      ${hasPending?'<div class="k-no-click-overlay"></div>':''}
+      <img src="${w.avatar}" alt="${esc(w.name)}">
+      <h3>${esc(w.name)}</h3>
+      <div class="k-status">${stLabel}</div>
+      <div class="k-tables-under">
+        ${myTables.map(t=>`<span class="k-table-chip">${esc(t.name)}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function callWaiter(waiterId) {
+  const w = state.waiters.find(x=>x.id===waiterId);
+  if (!w) return;
+  // Create pending order
+  const ref = R.orders.push();
+  ref.set({
+    waiterId: w.id,
+    waiterName: w.name,
+    status: 'pending',
+    time: new Date().toLocaleTimeString('az-AZ'),
+    createdAt: Date.now()
+  });
+  addLog('order',`Mətbəx ${w.name}-ə sifariş bildirişi göndərdi`,{ waiterId:w.id });
+  showToast(`🔔 ${w.name}-ə bildiriş göndərildi`);
+}
+
+/* ═══════════════════ WAITER PANEL ═══════════════════ */
+function renderWaiterTables() {
+  if (!state.user || state.user.role!=='waiter') return;
+  const el = document.getElementById('waiterTables');
+  if (!state.tables.length) { el.innerHTML='<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>'; return; }
+  el.innerHTML = state.tables.map(t=>{
+    const isMine = t.occupant === state.user.id;
+    const isOther = t.occupant && !isMine;
+    const otherW = isOther ? (state.waiters.find(w=>w.id===t.occupant)||{name:'?'}) : null;
+    let cls = 'free', statusText = 'Boş', clickAttr='';
+    if (isMine)  { cls='mine'; statusText='Aktiv (mənim)'; clickAttr=`onclick="openNotesModal('${t.id}')"` ; }
+    else if (isOther) { cls='other'; statusText=`${esc(otherW.name)} xidmət edir`; }
+    else { clickAttr=`onclick="activateTable('${t.id}')"` ; }
+    return `<div class="w-table-card ${cls}" ${clickAttr}>
+      <div class="w-table-name">${esc(t.name)}</div>
+      <div class="w-table-status">${statusText}</div>
+      ${isMine&&t.notes?`<div style="font-size:11px;color:var(--text3);margin-top:6px;">${esc(t.notes.substring(0,40))}${t.notes.length>40?'…':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function activateTable(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t||t.occupant) { showToast('❌ Bu masa artıq aktivdir'); return; }
+  R.tables.child(tableId).update({ occupant: state.user.id });
+  addLog('table',`${state.user.name} "${t.name}" masasını aktiv etdi`,{ waiterId:state.user.id, tableId });
+  showToast(`✅ ${t.name} aktiv edildi`);
+}
+
+function openNotesModal(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t) return;
+  state.noteTableId = tableId;
+  document.getElementById('noteTitle').textContent = `📝 ${t.name} — Qeydlər`;
+  document.getElementById('noteText').value = t.notes||'';
+  document.getElementById('notesModal').classList.add('open');
+}
+
+function closeNotesModal() { document.getElementById('notesModal').classList.remove('open'); state.noteTableId=null; }
+
+function saveNote() {
+  if (!state.noteTableId) return;
+  const notes = document.getElementById('noteText').value;
+  R.tables.child(state.noteTableId).update({ notes });
+  closeNotesModal();
+  showToast('✅ Qeyd saxlanıldı');
+}
+
+function deactivateTable() {
+  if (!state.noteTableId) return;
+  const t = state.tables.find(x=>x.id===state.noteTableId);
+  if (!t) return;
+  if (!confirm(`"${t.name}" masasını bağlamaq istəyirsiniz?`)) return;
+  R.tables.child(state.noteTableId).update({ occupant: null, notes: '' });
+  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId:state.noteTableId });
+  closeNotesModal();
+  showToast(`✅ ${t.name} bağlandı`);
+}
+
+/* ═══════════════════ ALARM / ORDERS ═══════════════════ */
+function checkIncomingOrders() {
+  const pending = state.orders.filter(o=>o.waiterId===state.user?.id&&o.status==='pending');
+  if (pending.length && !state.alarm) {
+    triggerAlarm(pending[0]);
+  }
+}
+
+function triggerAlarm(order) {
+  state.alarm = order.id;
+  document.getElementById('alarmSub').textContent = 'Sifarişiniz hazırdır!';
+  document.getElementById('alarmOverlay').classList.add('show');
+  playBeep();
+  state.alarmInterval = setInterval(playBeep, 700);
+  if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance('Sifariş hazırdır');
+    u.lang='az-AZ'; window.speechSynthesis.speak(u);
+  }
+}
+
+function acceptAlarm() {
+  if (!state.alarm) return;
+  R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
+  addLog('order',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
+  stopAlarm();
+  showToast('✅ Sifariş qəbul edildi!');
+  // Check for more
+  setTimeout(()=>{
+    const next = state.orders.filter(o=>o.waiterId===state.user.id&&o.status==='pending');
+    if (next.length) triggerAlarm(next[0]);
+  },500);
+}
+
+function stopAlarm() {
+  state.alarm = null;
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
+  window.speechSynthesis?.cancel();
+  document.getElementById('alarmOverlay').classList.remove('show');
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; osc.type='square';
+    gain.gain.setValueAtTime(.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.4);
+    osc.start(); osc.stop(ctx.currentTime+.4);
+  } catch(e){}
+}
+
+/* ═══════════════════ UTILS ═══════════════════ */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+/* ═══════════════════ DEMO DATA ═══════════════════ */
+R.waiters.once('value', snap=>{
+  if (snap.val()) return;
+  [
+    {name:'Əli Məmmədov',   pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200',   status:'ready',  createdAt:Date.now()},
+    {name:'Leyla Həsənli',  pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200',  status:'ready',  createdAt:Date.now()},
+    {name:'Orxan Əliyev',  pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200',   status:'offline', createdAt:Date.now()}
+  ].forEach(w=>R.waiters.push(w));
+});
+
+R.tables.once('value', snap=>{
+  if (snap.val()) return;
+  ['Masa 1','Masa 2','Masa 3','VIP Otaq','Terras','Bar'].forEach((name,i)=>{
+    R.tables.push({name, capacity:4, occupant:null, notes:'', createdAt:Date.now()});
+  });
+});
+
+// Init fab visibility
+document.getElementById('adminFab').style.display='none';
+</script>
 </body>
 </html>
