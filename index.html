@@ -1203,7 +1203,10 @@ R.tables.once('value', snap=>{
     R.tables.push({name, capacity:4, occupant:null, notes:'', createdAt:Date.now()});
   });
 });
-
+function closeConfirmCloseModal() {
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
+}
 // Init fab visibility
 document.getElementById('adminFab').style.display='none';
 </script>
