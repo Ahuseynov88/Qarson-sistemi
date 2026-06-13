@@ -163,7 +163,17 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── EXIT CONFIRM ── */
 #exitModal .modal{max-width:340px;text-align:center;}
 #exitModal h2{color:var(--red);}
-
+<div class="modal-bg" id="confirmCloseTableModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+    <h2 id="confirmCloseTableName" style="margin-bottom:8px;">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Qeydlər silinəcək.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
+    </div>
+  </div>
+</div>
 /* ── TOAST ── */
 #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
 #toast.show{display:block;}
@@ -921,10 +931,9 @@ function closeAdminNoteModal() {
 function adminCloseTable(tableId) {
   const t = state.tables.find(x=>x.id===tableId);
   if (!t) return;
-  if (!confirm('"' + t.name + '" masasını bağlamaq istəyirsiniz?')) return;
-  R.tables.child(tableId).update({ occupant: null, notes: '' });
-  addLog('admin', 'Admin "' + t.name + '" masasını bağladı', { tableId });
-  showToast('✅ ' + t.name + ' bağlandı');
+  state.pendingCloseTableId = tableId;
+  document.getElementById('confirmCloseTableName').textContent = t.name;
+  document.getElementById('confirmCloseTableModal').classList.add('open');
 }
 
 /* ═══════════════════ MƏTBƏx PIN ═══════════════════ */
@@ -1061,10 +1070,25 @@ function deactivateTable() {
   if (!state.noteTableId) return;
   const t = state.tables.find(x=>x.id===state.noteTableId);
   if (!t) return;
-  closeNotesModal();
   state.pendingCloseTableId = state.noteTableId;
+  closeNotesModal();
   document.getElementById('confirmCloseTableName').textContent = t.name;
   document.getElementById('confirmCloseTableModal').classList.add('open');
+}
+
+function confirmDeactivateTable() {
+  const tableId = state.pendingCloseTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  R.tables.child(tableId).update({ occupant: null, notes: '' });
+  if (t) addLog('table', `${state.user.name} "${t.name}" masasını bağladı`, { waiterId: state.user.id, tableId });
+  showToast(`✅ ${t ? t.name : 'Masa'} bağlandı`);
+  closeConfirmCloseModal();
+}
+
+function closeConfirmCloseModal() {
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
 }
 
 function confirmDeactivateTable() {
