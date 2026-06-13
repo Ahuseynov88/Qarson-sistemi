@@ -7,21 +7,23 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
 <title>Restoran Sistemi</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
-  --green:#2ecc71;--green-dark:#27ae60;--red:#e74c3c;
-  --blue:#3498db;--orange:#f39c12;
+  --green:#2ecc71;--green-dark:#27ae60;--red:#e74c3c;--red-dark:#c0392b;
+  --blue:#3498db;--orange:#f39c12;--purple:#8e44ad;
   --bg:#0f0f1a;--card:#1a1a2e;--card2:#16213e;--border:#2d2d4e;
   --text:#eee;--text2:#aaa;--text3:#666;
 }
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 
-/* SCREEN */
+/* ── SCREEN SYSTEM ── */
 .screen{display:none;min-height:100vh;}
 .screen.active{display:flex;flex-direction:column;}
 
-/* LOGIN */
+/* ── LOGIN ── */
 #loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0f1a,#1a1a2e);}
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
 .login-logo{font-size:48px;margin-bottom:10px;}
@@ -36,19 +38,22 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
 .num-btn{padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:22px;font-weight:600;cursor:pointer;transition:.15s;}
 .num-btn:active{transform:scale(0.93);background:var(--border);}
-.login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;margin-bottom:10px;}
+.login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:10px;}
+.login-btn:active{background:var(--green-dark);}
 .err-msg{color:var(--red);font-size:13px;min-height:20px;}
 
-/* TOPBAR */
+/* ── TOPBAR ── */
 .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
 .topbar h2{font-size:18px;font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
 .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;}
 .btn:active{transform:scale(0.96);}
 .btn-red{background:var(--red);color:white;}
 .btn-green{background:var(--green);color:white;}
+.btn-blue{background:var(--blue);color:white;}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
 
-/* ADMIN */
+/* ── ADMIN ── */
 #adminScreen{background:var(--bg);}
 .admin-body{flex:1;overflow-y:auto;padding:20px;}
 .admin-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
@@ -61,21 +66,27 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .stat-num{font-size:32px;font-weight:700;color:var(--green);}
 .stat-label{font-size:12px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.05em;}
 .grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
-.item-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.item-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;}
 .item-card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
+.avatar-sm{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
 .item-info h3{font-size:16px;margin-bottom:3px;}
 .item-info small{color:var(--text2);font-size:13px;}
 .status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
 .badge-green{background:rgba(46,204,113,.15);color:var(--green);}
 .badge-red{background:rgba(231,76,60,.15);color:var(--red);}
+.badge-orange{background:rgba(243,156,18,.15);color:var(--orange);}
 .item-actions{display:flex;gap:8px;margin-top:14px;}
 .item-actions .btn{flex:1;padding:10px;}
+
+/* Masa kartı (admin) */
 .table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
 .table-card h3{font-size:16px;margin-bottom:6px;}
 .table-card .meta{font-size:13px;color:var(--text2);margin-bottom:14px;}
+.table-occupants{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:24px;}
+.occupant-chip{display:flex;align-items:center;gap:5px;background:rgba(52,152,219,.15);border:1px solid rgba(52,152,219,.3);border-radius:20px;padding:3px 10px;font-size:12px;}
 
-/* LOG */
+/* ── LOG ── */
 .log-list{display:flex;flex-direction:column;gap:6px;}
 .log-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
 .log-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
@@ -85,38 +96,42 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .log-filter{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
 .log-filter.active{background:var(--blue);color:white;border-color:var(--blue);}
 
-/* MODAL */
+/* ── MODAL ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.open{display:flex;}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:420px;}
 .modal h2{font-size:20px;margin-bottom:20px;}
 .form-group{margin-bottom:16px;}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;}
-.form-group input,.form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
-.form-group input:focus{border-color:var(--blue);}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
+.form-group input:focus,.form-group select:focus{border-color:var(--blue);}
 .modal-actions{display:flex;gap:10px;margin-top:20px;}
 .modal-actions .btn{flex:1;padding:14px;}
-.add-fab{position:fixed;bottom:28px;right:28px;width:60px;height:60px;border-radius:50%;background:var(--green);color:white;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(46,204,113,.4);z-index:100;display:none;align-items:center;justify-content:center;}
+.add-fab{position:fixed;bottom:28px;right:28px;width:60px;height:60px;border-radius:50%;background:var(--green);color:white;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(46,204,113,.4);z-index:100;}
 
-/* KITCHEN */
+/* ── KITCHEN ── */
 #kitchenScreen{background:var(--bg);}
 .kitchen-body{flex:1;padding:20px;overflow-y:auto;}
 .kitchen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;}
-.k-card{border-radius:18px;padding:20px;text-align:center;cursor:pointer;transition:.2s;position:relative;border:3px solid var(--green);background:rgba(46,204,113,.1);}
+.k-card{border-radius:18px;padding:20px;text-align:center;cursor:pointer;transition:.2s;position:relative;border:3px solid transparent;}
+.k-card.ready{background:rgba(46,204,113,.1);border-color:var(--green);}
 .k-card.called{background:rgba(231,76,60,.15);border-color:var(--red);animation:pulse-border 1s infinite;}
+.k-card.offline{background:var(--card);border-color:var(--border);opacity:.5;cursor:default;}
 @keyframes pulse-border{0%,100%{border-color:var(--red);}50%{border-color:transparent;}}
-.k-card img{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:12px;margin-top:10px;border:3px solid var(--green);}
+.k-card img{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid currentColor;}
+.k-card.ready img{border-color:var(--green);}
 .k-card.called img{border-color:var(--red);}
 .k-card h3{font-size:17px;margin-bottom:6px;}
-.k-status{font-size:13px;font-weight:600;color:var(--green);}
+.k-status{font-size:13px;font-weight:600;}
+.k-card.ready .k-status{color:var(--green);}
 .k-card.called .k-status{color:var(--red);}
 .k-tables-under{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:8px;min-height:20px;}
 .k-table-chip{background:rgba(52,152,219,.2);border:1px solid rgba(52,152,219,.4);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--blue);}
 .k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
 
-/* WAITER */
-#waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;}
-.waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+/* ── WAITER ── */
+#waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
+.waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
 .waiter-info{display:flex;align-items:center;gap:12px;}
 .waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
 .waiter-body{flex:1;padding:16px;overflow-y:auto;}
@@ -125,14 +140,15 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .w-table-card{border-radius:14px;padding:16px;border:2px solid var(--border);background:var(--card);cursor:pointer;transition:.2s;text-align:center;}
 .w-table-card.mine{background:rgba(46,204,113,.1);border-color:var(--green);}
 .w-table-card.other{background:rgba(52,152,219,.05);border-color:rgba(52,152,219,.3);cursor:default;opacity:.7;}
+.w-table-card.free{background:var(--card);border-color:var(--border);}
 .w-table-name{font-size:16px;font-weight:700;margin-bottom:4px;}
 .w-table-status{font-size:12px;color:var(--text2);}
 .w-table-card.mine .w-table-status{color:var(--green);}
 .w-table-card.other .w-table-status{color:var(--blue);}
-.notes-area{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:none;min-height:80px;margin-top:4px;}
+.notes-area{width:100%;margin-top:10px;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
 
-/* ALARM */
-#alarmOverlay{display:none;position:fixed;inset:0;background:rgba(231,76,60,.97);z-index:9000;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+/* ── ALARM ── */
+#alarmOverlay{display:none;position:fixed;inset:0;background:rgba(231,76,60,.97);z-index:9000;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
 #alarmOverlay.show{display:flex;}
 .alarm-icon{font-size:80px;animation:ring .4s infinite;}
 @keyframes ring{0%,100%{transform:rotate(0);}25%{transform:rotate(12deg);}75%{transform:rotate(-12deg);}}
@@ -140,14 +156,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .alarm-sub{font-size:18px;color:rgba(255,255,255,.85);margin-bottom:30px;}
 .alarm-btn{padding:18px 50px;background:white;color:var(--red);border:none;border-radius:50px;font-size:20px;font-weight:700;cursor:pointer;}
 
-/* DEACTIVATED */
+/* ── DEACTIVATED ── */
 #deactivatedOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
 #deactivatedOverlay.show{display:flex;}
 
-/* TOAST */
+/* ── EXIT CONFIRM ── */
+#exitModal .modal{max-width:340px;text-align:center;}
+#exitModal h2{color:var(--red);}
+
+/* ── TOAST ── */
 #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
 #toast.show{display:block;}
 
+/* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
@@ -155,7 +176,9 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ═══════════════════════════════════════════
+     LOGIN
+════════════════════════════════════════════ -->
 <div class="screen active" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">🍽️</div>
@@ -166,7 +189,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="role-tab" onclick="setRole('waiter',this)">🤵 Qarson</button>
       <button class="role-tab" onclick="setRole('kitchen',this)">👨‍🍳 Mətbəx</button>
     </div>
-    <div class="pin-display">
+    <div class="pin-display" id="pinDots">
       <div class="pin-dot" id="d0"></div>
       <div class="pin-dot" id="d1"></div>
       <div class="pin-dot" id="d2"></div>
@@ -191,11 +214,15 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
 </div>
 
-<!-- ADMIN -->
+<!-- ═══════════════════════════════════════════
+     ADMIN
+════════════════════════════════════════════ -->
 <div class="screen" id="adminScreen">
   <div class="topbar">
     <h2>👨‍💼 Admin Paneli</h2>
-    <button class="btn btn-red" onclick="logout()">Çıxış</button>
+    <div class="topbar-right">
+      <button class="btn btn-red" onclick="logout()">Çıxış</button>
+    </div>
   </div>
   <div class="admin-body">
     <div class="admin-tabs">
@@ -204,17 +231,25 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
       <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
     </div>
+
+    <!-- Dashboard -->
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
       <h3 style="color:var(--text2);margin-bottom:14px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">Aktiv Masalar</h3>
       <div class="grid-2" id="activeTables"></div>
     </div>
+
+    <!-- Qarsonlar -->
     <div class="admin-section" id="sec-waiters">
       <div class="grid-2" id="waitersGrid"></div>
     </div>
+
+    <!-- Masalar -->
     <div class="admin-section" id="sec-tables">
       <div class="grid-2" id="tablesGrid"></div>
     </div>
+
+    <!-- Logs -->
     <div class="admin-section" id="sec-logs">
       <div class="log-filter-bar">
         <button class="log-filter active" onclick="setLogFilter('all',this)">Hamısı</button>
@@ -226,10 +261,12 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <div class="log-list" id="logList"></div>
     </div>
   </div>
-  <button class="add-fab" id="adminFab" onclick="openAddModal()">+</button>
+  <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
 </div>
 
-<!-- KITCHEN -->
+<!-- ═══════════════════════════════════════════
+     KITCHEN
+════════════════════════════════════════════ -->
 <div class="screen" id="kitchenScreen">
   <div class="topbar">
     <h2>👨‍🍳 Mətbəx Paneli</h2>
@@ -240,7 +277,9 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
 </div>
 
-<!-- WAITER -->
+<!-- ═══════════════════════════════════════════
+     WAITER
+════════════════════════════════════════════ -->
 <div class="screen" id="waiterScreen">
   <div class="waiter-header">
     <div class="waiter-info">
@@ -258,55 +297,41 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
 </div>
 
-<!-- ALARM -->
+<!-- ═══════════════════════════════════════════
+     OVERLAYS
+════════════════════════════════════════════ -->
+<!-- Alarm -->
 <div id="alarmOverlay">
   <div class="alarm-icon">🔔</div>
   <div class="alarm-title">Sifariş Hazırdır!</div>
-  <div class="alarm-sub" id="alarmSub">Sifarişiniz hazırdır!</div>
+  <div class="alarm-sub" id="alarmSub">—</div>
   <button class="alarm-btn" onclick="acceptAlarm()">✅ Qəbul Etdim</button>
 </div>
 
-<!-- DEAKTİV -->
+<!-- Deactivated -->
 <div id="deactivatedOverlay">
   <div style="font-size:70px;margin-bottom:16px;">🚫</div>
   <h1 style="color:var(--red);margin-bottom:10px;">Deaktiv Edildiniz</h1>
   <p style="color:var(--text2);">Admin sizi sistemdən çıxardı.</p>
 </div>
-
-<!-- MASA AÇ TƏSDİQ -->
+<!-- Masa təsdiq modalı -->
 <div class="modal-bg" id="confirmTableModal">
   <div class="modal" style="max-width:320px;text-align:center;">
     <div style="font-size:48px;margin-bottom:12px;">🪑</div>
-    <h2 id="confirmTableName" style="margin-bottom:8px;">Masa</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı açmaq istəyirsiniz?</p>
+    <h2 style="margin-bottom:8px;" id="confirmTableName">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı rezerv edirsiniz?</p>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmTableModal()">Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="confirmActivateTable()">✅ Masanı Aç</button>
     </div>
   </div>
 </div>
-
-<!-- MASA BAĞLA TƏSDİQ -->
-<div class="modal-bg" id="confirmCloseTableModal">
-  <div class="modal" style="max-width:320px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-    <h2 id="confirmCloseTableName" style="margin-bottom:8px;">Masa</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Qeydlər silinəcək.</p>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
-      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
-    </div>
-  </div>
-</div>
-
-<!-- ÇIXIŞ TƏSDİQ -->
+<!-- Exit confirm -->
 <div class="modal-bg" id="exitModal">
   <div class="modal" style="max-width:320px;text-align:center;">
-    <h2 style="color:var(--red);">🔒 Çıxış Təsdiqi</h2>
+    <h2>🔒 Çıxış Təsdiqi</h2>
     <p style="color:var(--text2);margin-bottom:20px;font-size:14px;">Admin PIN kodunu daxil edin</p>
-    <div class="form-group">
-      <input type="password" id="exitPin" placeholder="••••" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;">
-    </div>
+    <div class="form-group"><input type="password" id="exitPin" placeholder="••••" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeExitModal()">Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmExit()">Çıxış</button>
@@ -314,7 +339,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
 </div>
 
-<!-- QEYDLƏR -->
+<!-- Notes modal (waiter) -->
 <div class="modal-bg" id="notesModal">
   <div class="modal">
     <h2 id="noteTitle">Qeydlər</h2>
@@ -322,17 +347,17 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <label>Qeyd yazın</label>
       <textarea id="noteText" class="notes-area" rows="4" placeholder="Xüsusi sifarişlər, qeydlər..."></textarea>
     </div>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button class="btn btn-ghost" style="flex:1;padding:12px;" onclick="closeNotesModal()">Bağla</button>
-      <button class="btn btn-green" style="flex:1;padding:12px;" onclick="saveNote()">💾 Saxla</button>
-      <button class="btn btn-red" style="flex:1;padding:12px;" onclick="deactivateTable()">🔒 Masanı Bağla</button>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeNotesModal()">Bağla</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveNote()">Yadda Saxla</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="deactivateTable()">Masanı Bağla</button>
     </div>
   </div>
 </div>
 
-<!-- ADMİN ƏLAVƏ/DÜZƏLİŞ -->
+<!-- Add/Edit modal (admin) -->
 <div class="modal-bg" id="addModal">
-  <div class="modal">
+  <div class="modal" id="addModalInner">
     <h2 id="addModalTitle">Yeni</h2>
     <div id="addModalBody"></div>
     <div class="modal-actions">
@@ -342,12 +367,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
 </div>
 
+<!-- Toast -->
 <div id="toast"></div>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
-/* ═══════ FIREBASE ═══════ */
+/* ═══════════════════ FIREBASE ═══════════════════ */
 const firebaseConfig = {
   databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
 };
@@ -360,59 +384,31 @@ const R = {
   logs:    db.ref('logs')
 };
 
-/* ═══════ STATE ═══════ */
+/* ═══════════════════ STATE ═══════════════════ */
 const ADMIN_PIN   = '0000';
 const KITCHEN_PIN = '9999';
 
 let state = {
   role: 'admin',
-  user: null,
+  user: null,        // { id, name, pin, avatar, role }
   waiters: [],
   tables:  [],
   orders:  [],
   logs:    [],
   logFilter: 'all',
   adminSection: 'dashboard',
-  alarm: null,
+  alarm: null,       // current alarm order id
   alarmInterval: null,
-  editTarget: null,
+  editTarget: null,  // { type:'waiter'|'table', id }
   noteTableId: null,
   pendingTableId: null,
-  pendingCloseTableId: null,
   pinBuffer: ''
 };
 
-/* ═══════ AUDIO ═══════ */
-let _audioCtx = null;
-
-function getAudioCtx() {
-  if (!_audioCtx || _audioCtx.state === 'closed') {
-    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (_audioCtx.state === 'suspended') _audioCtx.resume();
-  return _audioCtx;
-}
-
-function playBeep() {
-  try {
-    var ctx = getAudioCtx();
-    var osc = ctx.createOscillator();
-    var gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    osc.type = 'square';
-    gain.gain.setValueAtTime(0.4, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-  } catch(e) {}
-}
-
-/* ═══════ PIN / LOGIN ═══════ */
+/* ═══════════════════ LOGIN / PIN ═══════════════════ */
 function setRole(r, el) {
   state.role = r;
-  document.querySelectorAll('.role-tab').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.role-tab').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   clearPin();
 }
@@ -427,7 +423,7 @@ function numPress(v) {
 }
 
 function updatePinDots() {
-  for (var i = 0; i < 4; i++) {
+  for (let i=0;i<4;i++) {
     document.getElementById('d'+i).classList.toggle('filled', i < state.pinBuffer.length);
   }
 }
@@ -439,12 +435,12 @@ function clearPin() {
 }
 
 function doLogin() {
-  var pin = state.pinBuffer;
+  const pin = state.pinBuffer;
   clearPin();
 
   if (state.role === 'admin' && pin === ADMIN_PIN) {
     state.user = { role:'admin', name:'Admin' };
-    addLog('login', 'Admin sistemə daxil oldu', {});
+    addLog('login','Admin sistemə daxil oldu',{type:'admin'});
     initListeners();
     showScreen('adminScreen');
     return;
@@ -452,22 +448,22 @@ function doLogin() {
 
   if (state.role === 'kitchen' && pin === KITCHEN_PIN) {
     state.user = { role:'kitchen', name:'Mətbəx' };
-    addLog('login', 'Mətbəx sistemə daxil oldu', {});
+    addLog('login','Mətbəx sistemə daxil oldu',{type:'kitchen'});
     initListeners();
     showScreen('kitchenScreen');
     return;
   }
 
   if (state.role === 'waiter') {
-    R.waiters.once('value', function(snap) {
-      var data = snap.val() || {};
-      var list = Object.keys(data).map(function(k){ return Object.assign({id:k}, data[k]); });
-      var w = list.find(function(x){ return x.pin === pin; });
+    R.waiters.once('value', snap => {
+      const data = snap.val() || {};
+      const list = Object.keys(data).map(k=>({id:k,...data[k]}));
+      const w = list.find(x => x.pin === pin);
       if (!w) { showErr('PIN kod tapılmadı!'); return; }
       if (w.status === 'offline') { showErr('Hesabınız deaktivdir. Adminə müraciət edin.'); return; }
-      state.user = Object.assign({}, w, { role:'waiter' });
+      state.user = { ...w, role:'waiter' };
       R.waiters.child(w.id).update({ status:'online', lastLogin: Date.now() });
-      addLog('login', w.name + ' sistemə daxil oldu', { waiterId: w.id });
+      addLog('login', `${w.name} sistemə daxil oldu`, { waiterId: w.id });
       initListeners();
       showScreen('waiterScreen');
       document.getElementById('wName').textContent = w.name;
@@ -482,71 +478,69 @@ function doLogin() {
 
 function showErr(msg) {
   document.getElementById('loginErr').textContent = msg;
-  setTimeout(function(){ document.getElementById('loginErr').textContent = ''; }, 3000);
+  setTimeout(()=>document.getElementById('loginErr').textContent='',3000);
 }
 
-/* ═══════ SCREEN ═══════ */
+/* ═══════════════════ SCREEN CONTROL ═══════════════════ */
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
 function logout() {
-  if (state.user && state.user.role === 'waiter') {
+  if (state.user?.role === 'waiter') {
     R.waiters.child(state.user.id).update({ status:'ready', lastActive: Date.now() });
-    addLog('logout', state.user.name + ' sistemdən çıxdı', { waiterId: state.user.id });
+    addLog('logout', `${state.user.name} sistemdən çıxdı`, { waiterId: state.user.id });
     unlockScreen();
-  } else if (state.user && state.user.role === 'admin') {
-    addLog('logout', 'Admin sistemdən çıxdı', {});
-  } else if (state.user && state.user.role === 'kitchen') {
-    addLog('logout', 'Mətbəx sistemdən çıxdı', {});
+  } else if (state.user?.role === 'admin') {
+    addLog('logout','Admin sistemdən çıxdı',{type:'admin'});
+  } else if (state.user?.role === 'kitchen') {
+    addLog('logout','Mətbəx sistemdən çıxdı',{type:'kitchen'});
   }
   stopAlarm();
   removeListeners();
-  state.user    = null;
+  state.user = null;
   state.waiters = [];
   state.tables  = [];
   state.orders  = [];
   state.logs    = [];
-  state.alarm   = null;
   showScreen('loginScreen');
 }
 
-/* ═══════ KIOSK ═══════ */
+/* ═══════════════════ KIOSK LOCK ═══════════════════ */
 function lockScreen() {
-  try { document.documentElement.requestFullscreen(); } catch(e) {}
-  history.pushState(null, '', location.href);
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  history.pushState(null,'',location.href);
 }
+
 function unlockScreen() {
-  try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
 }
-window.onpopstate = function() {
-  if (state.user && state.user.role === 'waiter') history.pushState(null, '', location.href);
+
+window.onpopstate = ()=>{
+  if (state.user?.role==='waiter') history.pushState(null,'',location.href);
 };
-document.addEventListener('keydown', function(e) {
-  if (!state.user || state.user.role !== 'waiter') return;
-  if (['F5','F12','Escape'].includes(e.key) ||
-      (e.ctrlKey && ['r','w','t','u'].includes(e.key)) ||
-      (e.altKey && e.key === 'F4')) {
+
+document.addEventListener('keydown', e=>{
+  if (state.user?.role!=='waiter') return;
+  if (['F5','F12','Escape'].includes(e.key)||(e.ctrlKey&&['r','w','t'].includes(e.key))||(e.altKey&&e.key==='F4')) {
     e.preventDefault(); return false;
   }
 });
-document.addEventListener('contextmenu', function(e) {
-  if (state.user && state.user.role === 'waiter') e.preventDefault();
-});
-window.addEventListener('beforeunload', function(e) {
-  if (state.user && state.user.role === 'waiter') { e.preventDefault(); e.returnValue = ''; }
+
+document.addEventListener('contextmenu', e=>{
+  if (state.user?.role==='waiter') e.preventDefault();
 });
 
-function showExitModal() {
-  document.getElementById('exitPin').value = '';
-  document.getElementById('exitModal').classList.add('open');
-}
-function closeExitModal() {
-  document.getElementById('exitModal').classList.remove('open');
-}
+window.addEventListener('beforeunload', e=>{
+  if (state.user?.role==='waiter') { e.preventDefault(); e.returnValue=''; }
+});
+
+function showExitModal() { document.getElementById('exitModal').classList.add('open'); }
+function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value=''; }
+
 function confirmExit() {
-  var pin = document.getElementById('exitPin').value;
+  const pin = document.getElementById('exitPin').value;
   if (pin === ADMIN_PIN || pin === KITCHEN_PIN) {
     closeExitModal();
     logout();
@@ -555,35 +549,38 @@ function confirmExit() {
   }
 }
 
-/* ═══════ LISTENERS ═══════ */
+/* ═══════════════════ FIREBASE LISTENERS ═══════════════════ */
+let _listeners = {};
+
 function initListeners() {
-  R.waiters.on('value', function(snap) {
+  _listeners.waiters = R.waiters.on('value', snap=>{
     state.waiters = toArr(snap.val());
     onDataChange();
-    if (state.user && state.user.role === 'waiter') {
-      var me = state.waiters.find(function(w){ return w.id === state.user.id; });
-      if (me && me.status === 'offline') {
+    // Deactivation check
+    if (state.user?.role==='waiter') {
+      const me = state.waiters.find(w=>w.id===state.user.id);
+      if (me && me.status==='offline') {
         document.getElementById('deactivatedOverlay').classList.add('show');
         stopAlarm(); unlockScreen();
-        setTimeout(function(){
-          document.getElementById('deactivatedOverlay').classList.remove('show');
-          logout();
-        }, 3000);
+        setTimeout(()=>{ document.getElementById('deactivatedOverlay').classList.remove('show'); logout(); },3000);
       }
     }
   });
-  R.tables.on('value', function(snap) {
+
+  _listeners.tables = R.tables.on('value', snap=>{
     state.tables = toArr(snap.val());
     onDataChange();
   });
-  R.orders.on('value', function(snap) {
+
+  _listeners.orders = R.orders.on('value', snap=>{
     state.orders = toArr(snap.val());
     onDataChange();
-    if (state.user && state.user.role === 'waiter') checkIncomingOrders();
+    if (state.user?.role==='waiter') checkIncomingOrders();
   });
-  R.logs.limitToLast(200).on('value', function(snap) {
+
+  _listeners.logs = R.logs.limitToLast(200).on('value', snap=>{
     state.logs = toArr(snap.val()).reverse();
-    if (state.user && state.user.role === 'admin') renderLogs();
+    if (state.user?.role==='admin') renderLogs();
   });
 }
 
@@ -593,187 +590,193 @@ function removeListeners() {
 
 function toArr(obj) {
   if (!obj) return [];
-  return Object.keys(obj).map(function(k){ return Object.assign({id:k}, obj[k]); });
+  return Object.keys(obj).map(k=>({id:k,...obj[k]}));
 }
 
 function onDataChange() {
-  if (!state.user) return;
-  if (state.user.role === 'admin')   renderAdmin();
-  if (state.user.role === 'kitchen') renderKitchen();
-  if (state.user.role === 'waiter')  renderWaiterTables();
+  const r = state.user?.role;
+  if (r==='admin')   { renderAdmin(); }
+  if (r==='kitchen') { renderKitchen(); }
+  if (r==='waiter')  { renderWaiterTables(); }
 }
 
-/* ═══════ LOG ═══════ */
-function addLog(type, message, details) {
+/* ═══════════════════ LOG ═══════════════════ */
+function addLog(type, message, details={}) {
   R.logs.push({
-    type: type, message: message, details: details || {},
+    type, message, details,
     timestamp: Date.now(),
     time: new Date().toLocaleTimeString('az-AZ'),
     date: new Date().toLocaleDateString('az-AZ')
   });
 }
 
-/* ═══════ ADMIN RENDER ═══════ */
+/* ═══════════════════ ADMIN RENDER ═══════════════════ */
 function renderAdmin() {
-  if (state.adminSection === 'dashboard') renderDashboard();
-  if (state.adminSection === 'waiters')   renderWaiters();
-  if (state.adminSection === 'tables')    renderTables();
+  if (state.adminSection==='dashboard') renderDashboard();
+  if (state.adminSection==='waiters')   renderWaiters();
+  if (state.adminSection==='tables')    renderTables();
 }
 
 function adminTab(sec, el) {
   state.adminSection = sec;
-  document.querySelectorAll('.admin-tab').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
-  document.querySelectorAll('.admin-section').forEach(function(s){ s.classList.remove('active'); });
-  document.getElementById('sec-' + sec).classList.add('active');
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+sec).classList.add('active');
   renderAdmin();
-  var fab = document.getElementById('adminFab');
-  fab.style.display = (sec === 'waiters' || sec === 'tables') ? 'flex' : 'none';
+  // FAB show/hide
+  document.getElementById('adminFab').style.display = (sec==='waiters'||sec==='tables') ? 'flex':'none';
 }
 
 function renderDashboard() {
-  var activeW   = state.waiters.filter(function(w){ return w.status !== 'offline'; }).length;
-  var activeTbl = state.tables.filter(function(t){ return t.occupant; }).length;
-  var pendingO  = state.orders.filter(function(o){ return o.status === 'pending'; }).length;
-  document.getElementById('statsRow').innerHTML =
-    '<div class="stat-card"><div class="stat-num">' + state.waiters.length + '</div><div class="stat-label">Cəmi Qarson</div></div>' +
-    '<div class="stat-card"><div class="stat-num" style="color:var(--green)">' + activeW + '</div><div class="stat-label">Aktiv Qarson</div></div>' +
-    '<div class="stat-card"><div class="stat-num" style="color:var(--blue)">' + state.tables.length + '</div><div class="stat-label">Cəmi Masa</div></div>' +
-    '<div class="stat-card"><div class="stat-num" style="color:var(--orange)">' + activeTbl + '</div><div class="stat-label">Dolu Masa</div></div>' +
-    '<div class="stat-card"><div class="stat-num" style="color:var(--red)">' + pendingO + '</div><div class="stat-label">Gözləyən Sifariş</div></div>';
-
-  var actTbls = state.tables.filter(function(t){ return t.occupant; });
-  var el = document.getElementById('activeTables');
-  if (!actTbls.length) { el.innerHTML = '<p style="color:var(--text3);font-size:14px;">Hal-hazırda aktiv masa yoxdur.</p>'; return; }
-  el.innerHTML = actTbls.map(function(t) {
-    var w = state.waiters.find(function(x){ return x.id === t.occupant; }) || {name:'?'};
-    return '<div class="table-card"><h3>🪑 ' + esc(t.name) + '</h3>' +
-      '<div class="meta">Qarson: <strong>' + esc(w.name) + '</strong></div>' +
-      (t.notes ? '<div style="font-size:13px;color:var(--text2);background:rgba(255,255,255,.04);border-radius:8px;padding:8px;">' + esc(t.notes) + '</div>' : '') +
-      '</div>';
+  const activeW = state.waiters.filter(w=>w.status!=='offline').length;
+  const activeTbl = state.tables.filter(t=>t.occupant).length;
+  const pendingO  = state.orders.filter(o=>o.status==='pending').length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${state.waiters.length}</div><div class="stat-label">Cəmi Qarson</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--green)">${activeW}</div><div class="stat-label">Aktiv Qarson</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${state.tables.length}</div><div class="stat-label">Cəmi Masa</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--red)">${pendingO}</div><div class="stat-label">Gözləyən Sifariş</div></div>
+  `;
+  const actTbls = state.tables.filter(t=>t.occupant);
+  const el = document.getElementById('activeTables');
+  if (!actTbls.length) { el.innerHTML='<p style="color:var(--text3);font-size:14px;">Hal-hazırda aktiv masa yoxdur.</p>'; return; }
+  el.innerHTML = actTbls.map(t=>{
+    const w = state.waiters.find(x=>x.id===t.occupant)||{name:'?'};
+    return `<div class="table-card">
+      <h3>🪑 ${esc(t.name)}</h3>
+      <div class="meta">Qarson: <strong>${esc(w.name)}</strong></div>
+      ${t.notes?`<div style="font-size:13px;color:var(--text2);background:rgba(255,255,255,.04);border-radius:8px;padding:8px;">${esc(t.notes)}</div>`:''}
+    </div>`;
   }).join('');
 }
 
 function renderWaiters() {
-  var el = document.getElementById('waitersGrid');
-  if (!state.waiters.length) { el.innerHTML = '<p style="color:var(--text3);">Hələ qarson əlavə edilməyib.</p>'; return; }
-  el.innerHTML = state.waiters.map(function(w) {
-    var st = w.status === 'offline' ? 'Deaktiv' : w.status === 'online' ? 'Onlayn' : 'Hazır';
-    var bc = w.status === 'offline' ? 'badge-red' : 'badge-green';
-    var btnCls = w.status === 'offline' ? 'btn-green' : 'btn-red';
-    var btnTxt = w.status === 'offline' ? 'Aktiv Et' : 'Deaktiv Et';
-    return '<div class="item-card">' +
-      '<div class="item-card-header">' +
-        '<img class="avatar" src="' + w.avatar + '" alt="">' +
-        '<div class="item-info"><h3>' + esc(w.name) + '</h3><small>PIN: ' + w.pin + '</small></div>' +
-      '</div>' +
-      '<span class="status-badge ' + bc + '">' + st + '</span>' +
-      '<div class="item-actions">' +
-        '<button class="btn ' + btnCls + '" onclick="toggleWaiter(\'' + w.id + '\')">' + btnTxt + '</button>' +
-        '<button class="btn btn-ghost" onclick="editWaiter(\'' + w.id + '\')">✏️</button>' +
-        '<button class="btn btn-red" onclick="deleteWaiter(\'' + w.id + '\')">🗑️</button>' +
-      '</div></div>';
+  const el = document.getElementById('waitersGrid');
+  if (!state.waiters.length) { el.innerHTML='<p style="color:var(--text3);">Hələ qarson əlavə edilməyib.</p>'; return; }
+  el.innerHTML = state.waiters.map(w=>{
+    const st = w.status==='offline'?'Deaktiv':w.status==='online'?'Onlayn':'Hazır';
+    const bc = w.status==='offline'?'badge-red':w.status==='online'?'badge-green':'badge-green';
+    return `<div class="item-card">
+      <div class="item-card-header">
+        <img class="avatar" src="${w.avatar}" alt="">
+        <div class="item-info">
+          <h3>${esc(w.name)}</h3>
+          <small>PIN: ${w.pin}</small>
+        </div>
+      </div>
+      <span class="status-badge ${bc}">${st}</span>
+      <div class="item-actions">
+        <button class="btn ${w.status==='offline'?'btn-green':'btn-red'}" onclick="toggleWaiter('${w.id}')">
+          ${w.status==='offline'?'Aktiv Et':'Deaktiv Et'}
+        </button>
+        <button class="btn btn-ghost" onclick="editWaiter('${w.id}')">✏️</button>
+        <button class="btn btn-red" onclick="deleteWaiter('${w.id}')">🗑️</button>
+      </div>
+    </div>`;
   }).join('');
 }
 
 function renderTables() {
-  var el = document.getElementById('tablesGrid');
-  if (!state.tables.length) { el.innerHTML = '<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>'; return; }
-  el.innerHTML = state.tables.map(function(t) {
-    var occ = t.occupant ? (state.waiters.find(function(w){ return w.id === t.occupant; }) || {name:'?'}).name : null;
-    return '<div class="table-card"><h3>🪑 ' + esc(t.name) + '</h3>' +
-      '<div class="meta">' + (occ ? 'Qarson: <strong>' + esc(occ) + '</strong>' : 'Boş') + '</div>' +
-      '<div class="item-actions">' +
-        '<button class="btn btn-ghost" onclick="editTable(\'' + t.id + '\')">✏️ Düzəliş</button>' +
-        '<button class="btn btn-red" onclick="deleteTable(\'' + t.id + '\')">🗑️ Sil</button>' +
-      '</div></div>';
+  const el = document.getElementById('tablesGrid');
+  if (!state.tables.length) { el.innerHTML='<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>'; return; }
+  el.innerHTML = state.tables.map(t=>{
+    const occ = t.occupant ? (state.waiters.find(w=>w.id===t.occupant)||{name:'?'}).name : null;
+    return `<div class="table-card">
+      <h3>🪑 ${esc(t.name)}</h3>
+      <div class="meta">${occ?`Qarson: <strong>${esc(occ)}</strong>`:'Boş'}</div>
+      <div class="item-actions">
+        <button class="btn btn-ghost" onclick="editTable('${t.id}')">✏️ Düzəliş</button>
+        <button class="btn btn-red" onclick="deleteTable('${t.id}')">🗑️ Sil</button>
+      </div>
+    </div>`;
   }).join('');
 }
 
 function renderLogs() {
-  var el = document.getElementById('logList');
-  var list = state.logs;
-  if (state.logFilter !== 'all') list = list.filter(function(l){ return l.type === state.logFilter; });
-  if (!list.length) { el.innerHTML = '<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
-  var colors = { login:'#2ecc71', logout:'#95a5a6', order:'#f39c12', table:'#3498db', admin:'#8e44ad' };
-  var labels = { login:'GİRİŞ', logout:'ÇIXIŞ', order:'SİFARİŞ', table:'MASA', admin:'ADMİN' };
-  el.innerHTML = list.slice(0, 100).map(function(l) {
-    var c = colors[l.type] || '#666';
-    return '<div class="log-item">' +
-      '<span class="log-badge" style="background:' + c + '22;color:' + c + '">' + (labels[l.type] || 'LOG') + '</span>' +
-      '<span class="log-text">' + esc(l.message) + '</span>' +
-      '<span class="log-time">' + l.time + ' ' + l.date + '</span>' +
-      '</div>';
-  }).join('');
+  const el = document.getElementById('logList');
+  let list = state.logs;
+  if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
+  if (!list.length) { el.innerHTML='<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
+  const colors = {
+    login:'#2ecc71',logout:'#95a5a6',order:'#f39c12',table:'#3498db',admin:'#8e44ad'
+  };
+  const labels = {login:'GİRİŞ',logout:'ÇIXIŞ',order:'SİFARİŞ',table:'MASA',admin:'ADMİN'};
+  el.innerHTML = list.slice(0,100).map(l=>`
+    <div class="log-item">
+      <span class="log-badge" style="background:${colors[l.type]||'#666'}22;color:${colors[l.type]||'#aaa'}">${labels[l.type]||'LOG'}</span>
+      <span class="log-text">${esc(l.message)}</span>
+      <span class="log-time">${l.time} ${l.date}</span>
+    </div>
+  `).join('');
 }
 
 function setLogFilter(f, el) {
   state.logFilter = f;
-  document.querySelectorAll('.log-filter').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.log-filter').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   renderLogs();
 }
 
 /* ── Waiter CRUD ── */
 function toggleWaiter(id) {
-  var w = state.waiters.find(function(x){ return x.id === id; });
+  const w = state.waiters.find(x=>x.id===id);
   if (!w) return;
-  var newStatus = (w.status === 'offline') ? 'ready' : 'offline';
+  const newStatus = (w.status==='offline') ? 'ready' : 'offline';
   R.waiters.child(id).update({ status: newStatus });
-  addLog('admin', w.name + ' ' + (newStatus === 'ready' ? 'aktiv' : 'deaktiv') + ' edildi', { waiterId: id });
-  showToast(newStatus === 'ready' ? '✅ ' + w.name + ' aktiv edildi' : '🚫 ' + w.name + ' deaktiv edildi');
+  addLog('admin',`${w.name} ${newStatus==='ready'?'aktiv':'deaktiv'} edildi`,{ waiterId:id });
+  showToast(newStatus==='ready'?`✅ ${w.name} aktiv edildi`:`🚫 ${w.name} deaktiv edildi`);
 }
 
 function editWaiter(id) {
-  var w = state.waiters.find(function(x){ return x.id === id; });
+  const w = state.waiters.find(x=>x.id===id);
   if (!w) return;
-  state.editTarget = { type:'waiter', id: id };
+  state.editTarget = { type:'waiter', id };
   document.getElementById('addModalTitle').textContent = '✏️ Qarson Düzəliş';
   document.getElementById('addModalBody').innerHTML = waiterForm(w.name, w.pin);
   document.getElementById('addModal').classList.add('open');
 }
 
 function deleteWaiter(id) {
-  var w = state.waiters.find(function(x){ return x.id === id; });
-  if (!confirm('"' + (w ? w.name : '') + '" adlı qarson silinsin?')) return;
+  const w = state.waiters.find(x=>x.id===id);
+  if (!confirm(`"${w?.name}" adlı qarson silinsin?`)) return;
   R.waiters.child(id).remove();
-  addLog('admin', (w ? w.name : '') + ' silindi', { waiterId: id });
+  addLog('admin',`${w?.name} silindi`,{ waiterId:id });
   showToast('🗑️ Qarson silindi');
 }
 
 /* ── Table CRUD ── */
 function editTable(id) {
-  var t = state.tables.find(function(x){ return x.id === id; });
+  const t = state.tables.find(x=>x.id===id);
   if (!t) return;
-  state.editTarget = { type:'table', id: id };
+  state.editTarget = { type:'table', id };
   document.getElementById('addModalTitle').textContent = '✏️ Masa Düzəliş';
-  document.getElementById('addModalBody').innerHTML = tableForm(t.name, t.capacity || 4);
+  document.getElementById('addModalBody').innerHTML = tableForm(t.name, t.capacity||4);
   document.getElementById('addModal').classList.add('open');
 }
 
 function deleteTable(id) {
-  var t = state.tables.find(function(x){ return x.id === id; });
-  if (!confirm('"' + (t ? t.name : '') + '" masası silinsin?')) return;
+  const t = state.tables.find(x=>x.id===id);
+  if (!confirm(`"${t?.name}" masası silinsin?`)) return;
   R.tables.child(id).remove();
-  addLog('admin', 'Masa silindi: ' + (t ? t.name : ''), { tableId: id });
+  addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
   showToast('🗑️ Masa silindi');
 }
 
-/* ── Add/Edit modal ── */
-function waiterForm(name, pin) {
-  name = name || ''; pin = pin || '';
-  return '<div class="form-group"><label>Ad Soyad</label><input type="text" id="fw_name" value="' + esc(name) + '" placeholder="Əli Məmmədov"></div>' +
-         '<div class="form-group"><label>PIN (4 rəqəm)</label><input type="text" id="fw_pin" value="' + pin + '" maxlength="4" placeholder="1234"></div>';
+/* ── Add modal ── */
+function waiterForm(name='', pin='') {
+  return `<div class="form-group"><label>Ad Soyad</label><input type="text" id="fw_name" value="${esc(name)}" placeholder="Əli Məmmədov"></div>
+          <div class="form-group"><label>PIN (4 rəqəm)</label><input type="text" id="fw_pin" value="${pin}" maxlength="4" placeholder="1234"></div>`;
 }
-function tableForm(name, capacity) {
-  name = name || ''; capacity = capacity || 4;
-  return '<div class="form-group"><label>Masa Adı</label><input type="text" id="ft_name" value="' + esc(name) + '" placeholder="VIP Otaq / Terras 1"></div>' +
-         '<div class="form-group"><label>Nəfər Sayı</label><input type="number" id="ft_cap" value="' + capacity + '" min="1" max="20"></div>';
+function tableForm(name='', capacity=4) {
+  return `<div class="form-group"><label>Masa Adı</label><input type="text" id="ft_name" value="${esc(name)}" placeholder="VIP Otaq / Terras 1"></div>
+          <div class="form-group"><label>Nəfər Sayı</label><input type="number" id="ft_cap" value="${capacity}" min="1" max="20"></div>`;
 }
 
 function openAddModal() {
   state.editTarget = null;
-  if (state.adminSection === 'waiters') {
+  if (state.adminSection==='waiters') {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
     document.getElementById('addModalBody').innerHTML = waiterForm();
   } else {
@@ -783,132 +786,122 @@ function openAddModal() {
   document.getElementById('addModal').classList.add('open');
 }
 
-function closeAddModal() {
-  document.getElementById('addModal').classList.remove('open');
-  state.editTarget = null;
-}
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); state.editTarget=null; }
 
 function saveItem() {
-  var sec = state.editTarget ? state.editTarget.type : (state.adminSection === 'waiters' ? 'waiter' : 'table');
-  if (sec === 'waiter') {
-    var name = document.getElementById('fw_name').value.trim();
-    var pin  = document.getElementById('fw_pin').value.trim();
-    if (!name || pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('❌ Ad və 4 rəqəmli PIN lazımdır'); return; }
-    var conflict = state.waiters.find(function(w){ return w.pin === pin && (!state.editTarget || w.id !== state.editTarget.id); });
+  const sec = state.editTarget ? state.editTarget.type : (state.adminSection==='waiters'?'waiter':'table');
+  if (sec==='waiter') {
+    const name = document.getElementById('fw_name').value.trim();
+    const pin  = document.getElementById('fw_pin').value.trim();
+    if (!name||pin.length!==4||!/^\d{4}$/.test(pin)) { showToast('❌ Ad və 4 rəqəmli PIN lazımdır'); return; }
+    const conflict = state.waiters.find(w=>w.pin===pin&&(!state.editTarget||w.id!==state.editTarget.id));
     if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
-    var avatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name) + '&background=2ecc71&color=fff&size=200';
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
     if (state.editTarget) {
-      R.waiters.child(state.editTarget.id).update({ name: name, pin: pin, avatar: avatar });
-      addLog('admin', 'Qarson düzəlişi: ' + name, {});
+      R.waiters.child(state.editTarget.id).update({ name, pin, avatar });
+      addLog('admin',`Qarson düzəlişi: ${name}`,{});
       showToast('✅ Düzəliş saxlanıldı');
     } else {
-      R.waiters.push({ name: name, pin: pin, avatar: avatar, status:'ready', createdAt: Date.now() });
-      addLog('admin', 'Yeni qarson əlavə edildi: ' + name, {});
+      R.waiters.push({ name, pin, avatar, status:'ready', createdAt:Date.now() });
+      addLog('admin',`Yeni qarson əlavə edildi: ${name}`,{});
       showToast('✅ Qarson əlavə edildi');
     }
   } else {
-    var tname    = document.getElementById('ft_name').value.trim();
-    var capacity = parseInt(document.getElementById('ft_cap').value) || 4;
-    if (!tname) { showToast('❌ Masa adı lazımdır'); return; }
+    const name = document.getElementById('ft_name').value.trim();
+    const capacity = parseInt(document.getElementById('ft_cap').value)||4;
+    if (!name) { showToast('❌ Masa adı lazımdır'); return; }
     if (state.editTarget) {
-      R.tables.child(state.editTarget.id).update({ name: tname, capacity: capacity });
-      addLog('admin', 'Masa düzəlişi: ' + tname, {});
+      R.tables.child(state.editTarget.id).update({ name, capacity });
+      addLog('admin',`Masa düzəlişi: ${name}`,{});
       showToast('✅ Masa yeniləndi');
     } else {
-      R.tables.push({ name: tname, capacity: capacity, occupant: null, notes: '', createdAt: Date.now() });
-      addLog('admin', 'Yeni masa əlavə edildi: ' + tname, {});
+      R.tables.push({ name, capacity, occupant:null, notes:'', createdAt:Date.now() });
+      addLog('admin',`Yeni masa əlavə edildi: ${name}`,{});
       showToast('✅ Masa əlavə edildi');
     }
   }
   closeAddModal();
 }
 
-/* ═══════ KITCHEN ═══════ */
+/* ═══════════════════ KITCHEN RENDER ═══════════════════ */
 function renderKitchen() {
-  var el = document.getElementById('kitchenGrid');
-  var active = state.waiters.filter(function(w){ return w.status !== 'offline'; });
-  if (!active.length) {
-    el.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;font-size:16px;">Aktiv qarson yoxdur.</p>';
-    return;
-  }
-  el.innerHTML = active.map(function(w) {
-    var hasPending = state.orders.some(function(o){ return o.waiterId === w.id && o.status === 'pending'; });
-    var myTables   = state.tables.filter(function(t){ return t.occupant === w.id; });
-    var cardClass  = hasPending ? 'called' : '';
-    var statusLabel = hasPending ? '🔴 Gözləyir' : '🟢 Hazır';
-    var clickAttr  = hasPending ? '' : 'onclick="callWaiter(\'' + w.id + '\')"';
-    return '<div class="k-card ' + cardClass + '" ' + clickAttr + '>' +
-      (hasPending ? '<div class="k-no-click-overlay"></div>' : '') +
-      '<img src="' + w.avatar + '" alt="' + esc(w.name) + '">' +
-      '<h3>' + esc(w.name) + '</h3>' +
-      '<div class="k-status">' + statusLabel + '</div>' +
-      '<div class="k-tables-under">' +
-        myTables.map(function(t){ return '<span class="k-table-chip">' + esc(t.name) + '</span>'; }).join('') +
-      '</div></div>';
+  const el = document.getElementById('kitchenGrid');
+  const active = state.waiters.filter(w=>w.status!=='offline');
+  if (!active.length) { el.innerHTML='<p style="color:var(--text2);text-align:center;padding:40px;">Aktiv qarson yoxdur.</p>'; return; }
+  el.innerHTML = active.map(w=>{
+    const hasPending = state.orders.some(o=>o.waiterId===w.id&&o.status==='pending');
+    const myTables = state.tables.filter(t=>t.occupant===w.id);
+    const st = hasPending?'called':w.status==='online'?'ready':'ready';
+    const stLabel = hasPending?'🔴 Gözləyir':w.status==='online'?'🟢 Aktiv':'🟢 Hazır';
+    const clickable = !hasPending;
+    return `<div class="k-card ${st}" ${clickable?`onclick="callWaiter('${w.id}')"`:''}
+         title="${hasPending?'Sifariş qəbul edənə qədər gözlənilir':'Tıklayın - sifariş hazırdır bildirişi göndərin'}">
+      ${hasPending?'<div class="k-no-click-overlay"></div>':''}
+      <img src="${w.avatar}" alt="${esc(w.name)}">
+      <h3>${esc(w.name)}</h3>
+      <div class="k-status">${stLabel}</div>
+      <div class="k-tables-under">
+        ${myTables.map(t=>`<span class="k-table-chip">${esc(t.name)}</span>`).join('')}
+      </div>
+    </div>`;
   }).join('');
 }
 
 function callWaiter(waiterId) {
-  var w = state.waiters.find(function(x){ return x.id === waiterId; });
+  const w = state.waiters.find(x=>x.id===waiterId);
   if (!w) return;
-  R.orders.push({
-    waiterId: w.id, waiterName: w.name,
+  // Create pending order
+  const ref = R.orders.push();
+  ref.set({
+    waiterId: w.id,
+    waiterName: w.name,
     status: 'pending',
     time: new Date().toLocaleTimeString('az-AZ'),
     createdAt: Date.now()
   });
-  addLog('order', 'Mətbəx ' + w.name + '-ə sifariş bildirişi göndərdi', { waiterId: w.id });
-  showToast('🔔 ' + w.name + '-ə bildiriş göndərildi');
+  addLog('order',`Mətbəx ${w.name}-ə sifariş bildirişi göndərdi`,{ waiterId:w.id });
+  showToast(`🔔 ${w.name}-ə bildiriş göndərildi`);
 }
 
-/* ═══════ WAITER TABLES ═══════ */
+/* ═══════════════════ WAITER PANEL ═══════════════════ */
 function renderWaiterTables() {
-  if (!state.user || state.user.role !== 'waiter') return;
-  var el = document.getElementById('waiterTables');
-  if (!state.tables.length) {
-    el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
-    return;
-  }
-  el.innerHTML = state.tables.map(function(t) {
-    var isMine  = t.occupant === state.user.id;
-    var isOther = t.occupant && !isMine;
-    var otherW  = isOther ? (state.waiters.find(function(w){ return w.id === t.occupant; }) || {name:'?'}) : null;
-    var cls = 'free', statusText = 'Boş', clickAttr = '';
-    if (isMine) {
-      cls = 'mine'; statusText = 'Aktiv (mənim)';
-      clickAttr = 'onclick="openNotesModal(\'' + t.id + '\')"';
-    } else if (isOther) {
-      cls = 'other'; statusText = esc(otherW.name) + ' xidmət edir';
-    } else {
-      clickAttr = 'onclick="activateTable(\'' + t.id + '\')"';
-    }
-    var noteSnippet = (isMine && t.notes)
-      ? '<div style="font-size:11px;color:var(--text3);margin-top:6px;">' + esc(t.notes.substring(0,40)) + (t.notes.length > 40 ? '…' : '') + '</div>'
-      : '';
-    return '<div class="w-table-card ' + cls + '" ' + clickAttr + '>' +
-      '<div class="w-table-name">' + esc(t.name) + '</div>' +
-      '<div class="w-table-status">' + statusText + '</div>' +
-      noteSnippet + '</div>';
+  if (!state.user || state.user.role!=='waiter') return;
+  const el = document.getElementById('waiterTables');
+  if (!state.tables.length) { el.innerHTML='<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>'; return; }
+  el.innerHTML = state.tables.map(t=>{
+    const isMine = t.occupant === state.user.id;
+    const isOther = t.occupant && !isMine;
+    const otherW = isOther ? (state.waiters.find(w=>w.id===t.occupant)||{name:'?'}) : null;
+    let cls = 'free', statusText = 'Boş', clickAttr='';
+    if (isMine)  { cls='mine'; statusText='Aktiv (mənim)'; clickAttr=`onclick="openNotesModal('${t.id}')"` ; }
+    else if (isOther) { cls='other'; statusText=`${esc(otherW.name)} xidmət edir`; }
+    else { clickAttr=`onclick="activateTable('${t.id}')"` ; }
+    return `<div class="w-table-card ${cls}" ${clickAttr}>
+      <div class="w-table-name">${esc(t.name)}</div>
+      <div class="w-table-status">${statusText}</div>
+      ${isMine&&t.notes?`<div style="font-size:11px;color:var(--text3);margin-top:6px;">${esc(t.notes.substring(0,40))}${t.notes.length>40?'…':''}</div>`:''}
+    </div>`;
   }).join('');
 }
 
-/* ── Masa açmaq ── */
 function activateTable(tableId) {
-  var t = state.tables.find(function(x){ return x.id === tableId; });
-  if (!t || t.occupant) { showToast('❌ Bu masa artıq aktivdir'); return; }
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t||t.occupant) { showToast('❌ Bu masa artıq aktivdir'); return; }
+
+  // Təsdiq modalı göstər
   state.pendingTableId = tableId;
   document.getElementById('confirmTableName').textContent = t.name;
   document.getElementById('confirmTableModal').classList.add('open');
 }
 
 function confirmActivateTable() {
-  var tableId = state.pendingTableId;
+  const tableId = state.pendingTableId;
   if (!tableId) return;
-  var t = state.tables.find(function(x){ return x.id === tableId; });
+  const t = state.tables.find(x=>x.id===tableId);
   if (!t) return;
   R.tables.child(tableId).update({ occupant: state.user.id });
-  addLog('table', state.user.name + ' "' + t.name + '" masasını aktiv etdi', { waiterId: state.user.id, tableId: tableId });
-  showToast('✅ ' + t.name + ' aktiv edildi');
+  addLog('table',`${state.user.name} "${t.name}" masasını aktiv etdi`,{ waiterId:state.user.id, tableId });
+  showToast(`✅ ${t.name} aktiv edildi`);
   closeConfirmTableModal();
 }
 
@@ -916,125 +909,145 @@ function closeConfirmTableModal() {
   document.getElementById('confirmTableModal').classList.remove('open');
   state.pendingTableId = null;
 }
-
-/* ── Qeydlər ── */
 function openNotesModal(tableId) {
-  var t = state.tables.find(function(x){ return x.id === tableId; });
+  const t = state.tables.find(x=>x.id===tableId);
   if (!t) return;
   state.noteTableId = tableId;
   document.getElementById('noteTitle').textContent = '📝 ' + t.name + ' — Qeydlər';
   document.getElementById('noteText').value = t.notes || '';
   document.getElementById('notesModal').classList.add('open');
 }
-
-function closeNotesModal() {
-  document.getElementById('notesModal').classList.remove('open');
-  state.noteTableId = null;
-}
+function closeNotesModal() { document.getElementById('notesModal').classList.remove('open'); state.noteTableId=null; }
 
 function saveNote() {
   if (!state.noteTableId) return;
-  var notes = document.getElementById('noteText').value;
-  R.tables.child(state.noteTableId).update({ notes: notes });
+  const notes = document.getElementById('noteText').value;
+  R.tables.child(state.noteTableId).update({ notes });
   closeNotesModal();
   showToast('✅ Qeyd saxlanıldı');
 }
 
-/* ── Masa bağlamaq ── */
 function deactivateTable() {
   if (!state.noteTableId) return;
-  var t = state.tables.find(function(x){ return x.id === state.noteTableId; });
+  const t = state.tables.find(x=>x.id===state.noteTableId);
   if (!t) return;
-  state.pendingCloseTableId = state.noteTableId;
+  if (!confirm(`"${t.name}" masasını bağlamaq istəyirsiniz?`)) return;
+  R.tables.child(state.noteTableId).update({ occupant: null, notes: '' });
+  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId:state.noteTableId });
   closeNotesModal();
-  document.getElementById('confirmCloseTableName').textContent = t.name;
-  document.getElementById('confirmCloseTableModal').classList.add('open');
+  showToast(`✅ ${t.name} bağlandı`);
 }
 
-function confirmDeactivateTable() {
-  var tableId = state.pendingCloseTableId;
-  if (!tableId) return;
-  var t = state.tables.find(function(x){ return x.id === tableId; });
-  R.tables.child(tableId).update({ occupant: null, notes: '' });
-  if (t) addLog('table', state.user.name + ' "' + t.name + '" masasını bağladı', { waiterId: state.user.id, tableId: tableId });
-  showToast('✅ ' + (t ? t.name : 'Masa') + ' bağlandı');
-  closeConfirmCloseModal();
-}
-
-function closeConfirmCloseModal() {
-  document.getElementById('confirmCloseTableModal').classList.remove('open');
-  state.pendingCloseTableId = null;
-}
-
-/* ═══════ ALARM ═══════ */
+/* ═══════════════════ ALARM / ORDERS ═══════════════════ */
 function checkIncomingOrders() {
-  var pending = state.orders.filter(function(o){ return o.waiterId === state.user.id && o.status === 'pending'; });
-  if (pending.length && !state.alarm) triggerAlarm(pending[0]);
+  const pending = state.orders.filter(o=>o.waiterId===state.user?.id&&o.status==='pending');
+  if (pending.length && !state.alarm) {
+    triggerAlarm(pending[0]);
+  }
 }
 
 function triggerAlarm(order) {
   state.alarm = order.id;
+  document.getElementById('alarmSub').textContent = 'Sifarişiniz hazırdır!';
   document.getElementById('alarmOverlay').classList.add('show');
   playBeep();
   state.alarmInterval = setInterval(playBeep, 700);
   if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance('Sifariş hazırdır');
-    u.lang = 'az-AZ';
-    window.speechSynthesis.speak(u);
+    const u = new SpeechSynthesisUtterance('Sifariş hazırdır');
+    u.lang='az-AZ'; window.speechSynthesis.speak(u);
   }
 }
 
 function acceptAlarm() {
   if (!state.alarm) return;
-  var orderId = state.alarm;
+  R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
+  addLog('order',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
   stopAlarm();
-  R.orders.child(orderId).update({ status:'accepted', acceptedAt: Date.now() });
-  addLog('order', state.user.name + ' sifarişi qəbul etdi', { orderId: orderId, waiterId: state.user.id });
   showToast('✅ Sifariş qəbul edildi!');
-  setTimeout(function() {
-    var next = state.orders.filter(function(o){ return o.waiterId === state.user.id && o.status === 'pending'; });
+  // Check for more
+  setTimeout(()=>{
+    const next = state.orders.filter(o=>o.waiterId===state.user.id&&o.status==='pending');
     if (next.length) triggerAlarm(next[0]);
-  }, 600);
+  },500);
 }
 
 function stopAlarm() {
   state.alarm = null;
-  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
+  window.speechSynthesis?.cancel();
   document.getElementById('alarmOverlay').classList.remove('show');
 }
 
-/* ═══════ UTILS ═══════ */
+let _audioCtx = null;
+
+function getAudioCtx() {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playBeep() {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'square';
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+/* ═══════════════════ UTILS ═══════════════════ */
 function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function showToast(msg) {
-  var el = document.getElementById('toast');
+  const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(el._t);
-  el._t = setTimeout(function(){ el.classList.remove('show'); }, 3000);
+  el._t = setTimeout(()=>el.classList.remove('show'),3000);
 }
 
-/* ═══════ DEMO DATA ═══════ */
-R.waiters.once('value', function(snap) {
+/* ═══════════════════ DEMO DATA ═══════════════════ */
+R.waiters.once('value', snap=>{
   if (snap.val()) return;
   [
-    { name:'Əli Məmmədov',  pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200',  status:'ready',   createdAt: Date.now() },
-    { name:'Leyla Həsənli', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'ready',   createdAt: Date.now() },
-    { name:'Orxan Əliyev',  pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200',  status:'offline', createdAt: Date.now() }
-  ].forEach(function(w){ R.waiters.push(w); });
+    {name:'Əli Məmmədov',   pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200',   status:'ready',  createdAt:Date.now()},
+    {name:'Leyla Həsənli',  pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200',  status:'ready',  createdAt:Date.now()},
+    {name:'Orxan Əliyev',  pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200',   status:'offline', createdAt:Date.now()}
+  ].forEach(w=>R.waiters.push(w));
 });
 
-R.tables.once('value', function(snap) {
+R.tables.once('value', snap=>{
   if (snap.val()) return;
-  ['Masa 1','Masa 2','Masa 3','VIP Otaq','Terras','Bar'].forEach(function(name) {
-    R.tables.push({ name: name, capacity: 4, occupant: null, notes: '', createdAt: Date.now() });
+  ['Masa 1','Masa 2','Masa 3','VIP Otaq','Terras','Bar'].forEach((name,i)=>{
+    R.tables.push({name, capacity:4, occupant:null, notes:'', createdAt:Date.now()});
   });
 });
+
+// Init fab visibility
+document.getElementById('adminFab').style.display='none';
 </script>
+<div class="modal-bg" id="confirmCloseTableModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+    <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz?</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
