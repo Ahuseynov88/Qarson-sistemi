@@ -14,15 +14,98 @@
         .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
         .login-box { background: white; border-radius: 20px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; }
         .login-box h1 { color: #667eea; margin-bottom: 10px; font-size: 28px; }
+        .login-box p { color: #666; margin-bottom: 30px; }
         .role-selector { display: flex; gap: 10px; margin-bottom: 30px; }
-        .role-btn { flex: 1; padding: 15px; border: 2px solid #667eea; background: white; color: #667eea; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .role-btn { flex: 1; padding: 15px; border: 2px solid #667eea; background: white; color: #667eea; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s; }
         .role-btn.active { background: #667eea; color: white; }
-        .pin-input { width: 100%; padding: 20px; font-size: 32px; text-align: center; border: 3px solid #ddd; border-radius: 15px; margin-bottom: 20px; letter-spacing: 10px; }
+        .pin-input { width: 100%; padding: 20px; font-size: 32px; text-align: center; border: 3px solid #ddd; border-radius: 15px; margin-bottom: 20px; letter-spacing: 10px; font-weight: bold; }
         .login-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .error-msg { color: #e74c3c; margin-top: 15px; font-weight: bold; display: none; }
+        .admin-panel { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .admin-header { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logout-btn { padding: 10px 25px; background: #e74c3c; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 15px; padding: 20px; text-align: center; }
+        .stat-card h3 { color: #666; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; }
+        .stat-card .number { font-size: 36px; font-weight: bold; color: #667eea; }
+        .waiters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .waiter-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        .waiter-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: #2ecc71; }
+        .waiter-card.offline::before { background: #95a5a6; }
+        .waiter-card.busy::before { background: #f39c12; }
+        .waiter-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .waiter-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; }
+        .waiter-info h3 { font-size: 20px; color: #333; margin-bottom: 5px; }
+        .waiter-info .pin { color: #999; font-size: 14px; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .status-badge.online { background: #d5f4e6; color: #27ae60; }
+        .status-badge.offline { background: #e8e8e8; color: #7f8c8d; }
+        .status-badge.busy { background: #fdebd0; color: #f39c12; }
+        .waiter-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-toggle { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .add-waiter-btn { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-size: 36px; cursor: pointer; }
+        .logs-section { background: white; border-radius: 20px; padding: 25px; margin-bottom: 30px; }
+        .logs-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .logs-tab { padding: 10px 20px; border: none; background: #eee; color: #666; font-weight: bold; cursor: pointer; border-radius: 10px; }
+        .logs-tab.active { background: #667eea; color: white; }
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .log-type { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-right: 10px; }
+        .log-type.login { background: #d5f4e6; color: #27ae60; }
+        .log-type.logout { background: #e8e8e8; color: #7f8c8d; }
+        .log-type.order { background: #fdebd0; color: #f39c12; }
+        .log-type.accept { background: #d5f4e6; color: #27ae60; }
+        .log-type.deactivate { background: #fadbd8; color: #e74c3c; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 500px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
+        .form-group input { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+        .btn-save { flex: 1; padding: 15px; border: none; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold; cursor: pointer; }
+        .btn-cancel { flex: 1; padding: 15px; border: none; border-radius: 10px; background: #eee; color: #666; font-weight: bold; cursor: pointer; }
+        .waiter-panel { display: none; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .waiter-header-bar { background: rgba(255,255,255,0.95); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .waiter-profile { display: flex; align-items: center; gap: 15px; }
+        .waiter-profile img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea; }
+        .waiter-content { padding: 20px; text-align: center; color: white; height: calc(100vh - 80px); overflow-y: auto; }
+        .order-card { background: white; border-radius: 20px; padding: 20px; color: #333; margin-bottom: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .order-card h3 { color: #667eea; margin-bottom: 10px; }
+        .accept-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .accept-all-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .no-orders { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; margin-top: 30px; }
+        .deactivated-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 1000004; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
+        .deactivated-overlay.active { display: flex; }
+        .alarm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231,76,60,0.95); z-index: 1000000; flex-direction: column; align-items: center; justify-content: center; }
+        .alarm-overlay.active { display: flex; }
+        .alarm-icon { font-size: 80px; margin-bottom: 20px; animation: bellRing 0.5s infinite; }
+        @keyframes bellRing { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
+        .kitchen-panel { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; min-height: 100vh; background: #f5f6fa; }
+        .kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .kitchen-waiter-card { background: white; border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.1); cursor: pointer; position: relative; overflow: hidden; }
+        .kitchen-waiter-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: #2ecc71; }
+        .kitchen-waiter-card.busy::before { background: #f39c12; }
+        .kitchen-waiter-card.waiting::before { background: #e74c3c; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .kitchen-waiter-card img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #eee; margin-bottom: 15px; margin-top: 10px; }
+        .send-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .toast { display: none; position: fixed; top: 20px; right: 20px; background: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000001; }
+        .toast.active { display: block; }
+        .exit-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000002; align-items: center; justify-content: center; }
+        .exit-modal-overlay.active { display: flex; }
+        .exit-modal { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 400px; text-align: center; }
+        .exit-pin-input { width: 100%; padding: 20px; font-size: 32px; text-align: center; border: 3px solid #ddd; border-radius: 15px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
+    <div class="deactivated-overlay" id="deactivatedOverlay">
+        <div style="font-size:80px; margin-bottom:20px;">🚫</div>
+        <h1 style="font-size:36px; color:#e74c3c; margin-bottom:20px;">Deaktiv Edildiniz!</h1>
+        <p style="font-size:18px;">Admin sizi sistemdən çıxardı.</p>
+    </div>
+
     <div class="login-screen" id="loginScreen">
         <div class="login-box">
             <h1>🍽️ Qarson Sistemi</h1>
@@ -37,71 +120,52 @@
             <div class="error-msg" id="loginError">PIN kod səhvdir!</div>
         </div>
     </div>
-<!-- ADMIN PANEL -->
-    <div class="admin-panel" id="adminPanel" style="display:none; padding:20px; max-width:1400px; margin:0 auto;">
-        <div style="background:white; border-radius:15px; padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="color:#667eea;">👨‍💼 Admin Paneli</h2>
-            <button onclick="logout()" style="padding:10px 25px; background:#e74c3c; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">Çıxış</button>
+
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-header">
+            <h2>👨‍💼 Admin Paneli</h2>
+            <button class="logout-btn" onclick="logout()">Çıxış</button>
         </div>
-        
-        <!-- STATS -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px;">
-            <div style="background:white; border-radius:15px; padding:20px; text-align:center;">
-                <h3 style="color:#666; font-size:14px; margin-bottom:10px;">Ümumi Qarson</h3>
-                <div style="font-size:36px; font-weight:bold; color:#667eea;" id="totalWaiters">0</div>
-            </div>
-            <div style="background:white; border-radius:15px; padding:20px; text-align:center;">
-                <h3 style="color:#666; font-size:14px; margin-bottom:10px;">Aktiv Qarson</h3>
-                <div style="font-size:36px; font-weight:bold; color:#667eea;" id="activeWaiters">0</div>
-            </div>
-            <div style="background:white; border-radius:15px; padding:20px; text-align:center;">
-                <h3 style="color:#666; font-size:14px; margin-bottom:10px;">Sifariş Gözləyən</h3>
-                <div style="font-size:36px; font-weight:bold; color:#667eea;" id="pendingOrders">0</div>
-            </div>
-            <div style="background:white; border-radius:15px; padding:20px; text-align:center;">
-                <h3 style="color:#666; font-size:14px; margin-bottom:10px;">Bugünkü Sifariş</h3>
-                <div style="font-size:36px; font-weight:bold; color:#667eea;" id="todayOrders">0</div>
-            </div>
+        <div class="stats-bar">
+            <div class="stat-card"><h3>Ümumi Qarson</h3><div class="number" id="totalWaiters">0</div></div>
+            <div class="stat-card"><h3>Aktiv Qarson</h3><div class="number" id="activeWaiters">0</div></div>
+            <div class="stat-card"><h3>Sifariş Gözləyən</h3><div class="number" id="pendingOrders">0</div></div>
+            <div class="stat-card"><h3>Bugünkü Sifariş</h3><div class="number" id="todayOrders">0</div></div>
         </div>
+        <div class="waiters-grid" id="waitersGrid"></div>
         
-        <!-- WAITERS GRID -->
-        <div id="waitersGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:20px; margin-bottom:30px;"></div>
-        
-        <!-- LOGS SECTION -->
-        <div style="background:white; border-radius:20px; padding:25px; margin-bottom:30px;">
+        <div class="logs-section">
             <h2 style="color:#667eea; margin-bottom:20px;">📋 Sistem Tarixçəsi</h2>
-            <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;">
-                <button onclick="showLogs('all')" style="padding:10px 20px; border:none; background:#667eea; color:white; border-radius:10px; font-weight:bold;">Hamısı</button>
-                <button onclick="showLogs('login')" style="padding:10px 20px; border:none; background:#eee; color:#666; border-radius:10px; font-weight:bold;">Giriş/Çıxış</button>
-                <button onclick="showLogs('order')" style="padding:10px 20px; border:none; background:#eee; color:#666; border-radius:10px; font-weight:bold;">Sifarişlər</button>
+            <div class="logs-tabs">
+                <button class="logs-tab active" onclick="showLogs('all')">Hamısı</button>
+                <button class="logs-tab" onclick="showLogs('login')">Giriş/Çıxış</button>
+                <button class="logs-tab" onclick="showLogs('order')">Sifarişlər</button>
+                <button class="logs-tab" onclick="showLogs('status')">Status</button>
             </div>
-            <div id="logsContent" style="max-height:400px; overflow-y:auto;">
-                <div style="padding:12px; border-bottom:1px solid #eee;">Logs yüklənir...</div>
-            </div>
+            <div id="logsContent"></div>
         </div>
         
-        <button onclick="openAddModal()" style="position:fixed; bottom:30px; right:30px; width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; font-size:36px; cursor:pointer;">+</button>
+        <button class="add-waiter-btn" onclick="openAddModal()">+</button>
     </div>
- <!-- WAITER PANEL -->
-    <div class="waiter-panel" id="waiterPanel" style="display:none; height:100vh; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div style="background:rgba(255,255,255,0.95); padding:15px 20px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <img id="waiterAvatar" src="" style="width:50px; height:50px; border-radius:50%; border:3px solid #667eea;">
+
+    <div class="waiter-panel" id="waiterPanel">
+        <div class="waiter-header-bar">
+            <div class="waiter-profile">
+                <img id="waiterAvatar" src="" alt="Avatar">
                 <div>
-                    <h2 id="waiterName" style="color:#333; font-size:20px;">Qarson</h2>
+                    <h2 id="waiterName">Qarson</h2>
                     <small style="color:#667eea;">PIN: <span id="waiterPinDisplay"></span></small>
                 </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:15px; height:15px; border-radius:50%; background:#2ecc71; box-shadow:0 0 10px #2ecc71;"></div>
-                <span style="color:#27ae60; font-weight:bold;">Aktiv</span>
-                <button onclick="showExitModal()" style="padding:10px 25px; background:#e74c3c; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">Çıxış</button>
+            <div>
+                <span style="color:#27ae60; font-weight:bold; margin-right:15px;">Aktiv</span>
+                <button class="logout-btn" onclick="showExitModal()">Çıxış</button>
             </div>
         </div>
-        <div style="padding:20px; text-align:center; color:white; height:calc(100vh - 80px); overflow-y:auto;">
-            <h1 style="font-size:24px; margin-bottom:10px;">🎯 Sifarişləriniz</h1>
-            <div id="ordersContainer" style="margin-top:20px; max-width:500px; margin-left:auto; margin-right:auto;">
-                <div style="background:rgba(255,255,255,0.1); border-radius:20px; padding:40px;">
+        <div class="waiter-content">
+            <h1>🎯 Sifarişləriniz</h1>
+            <div id="ordersContainer">
+                <div class="no-orders">
                     <div style="font-size:60px; margin-bottom:15px;">📭</div>
                     <h3>Hazırda sifariş yoxdur</h3>
                 </div>
@@ -109,93 +173,58 @@
         </div>
     </div>
 
-    <!-- DEACTIVATED OVERLAY -->
-    <div id="deactivatedOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:1000004; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center;">
-        <div style="font-size:80px; margin-bottom:20px;">🚫</div>
-        <h1 style="font-size:36px; color:#e74c3c; margin-bottom:20px;">Deaktiv Edildiniz!</h1>
-        <p style="font-size:18px;">Admin sizi sistemdən çıxardı.</p>
-    </div>
-
-    <!-- KITCHEN PANEL -->
-    <div class="kitchen-panel" id="kitchenPanel" style="display:none; padding:20px; max-width:1400px; margin:0 auto; min-height:100vh; background:#f5f6fa;">
-        <div style="background:white; border-radius:15px; padding:20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-            <h1 style="color:#e67e22; font-size:28px;">👨‍🍳 Mətbəx Paneli</h1>
-            <button onclick="logout()" style="padding:10px 25px; background:#e74c3c; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">Çıxış</button>
+    <div class="kitchen-panel" id="kitchenPanel">
+        <div class="admin-header">
+            <h1>👨‍🍳 Mətbəx Paneli</h1>
+            <button class="logout-btn" onclick="logout()">Çıxış</button>
         </div>
-        <div id="kitchenGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:20px;"></div>
+        <div class="kitchen-grid" id="kitchenGrid"></div>
     </div>
 
-    <!-- ALARM OVERLAY -->
-    <div id="alarmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(231,76,60,0.95); z-index:1000000; flex-direction:column; align-items:center; justify-content:center;">
-        <div style="font-size:80px; margin-bottom:20px;">🔔</div>
+    <div class="alarm-overlay" id="alarmOverlay">
+        <div class="alarm-icon">🔔</div>
         <div style="color:white; font-size:28px; font-weight:bold; margin-bottom:10px;">Sifariş Hazırdır!</div>
         <div id="alarmDetails" style="color:white; font-size:18px; margin-bottom:20px;">Masa 5</div>
-        <button onclick="acceptOrder()" style="padding:15px 40px; background:white; color:#e74c3c; border:none; border-radius:50px; font-size:20px; font-weight:bold; cursor:pointer;">✅ Qəbul Etdim</button>
-        <button onclick="acceptAllOrders()" style="padding:15px 40px; background:#3498db; color:white; border:none; border-radius:50px; font-size:18px; font-weight:bold; cursor-pointer; margin-top:10px;">✅ Hamısını Qəbul Et</button>
+        <button onclick="acceptOrder()" style="padding:15px 40px; background:white; color:#e74c3c; border:none; border-radius:50px; font-size:20px; font-weight:bold; cursor:pointer; margin-bottom:10px;">✅ Qəbul Etdim</button>
+        <button onclick="acceptAllOrders()" style="padding:15px 40px; background:#3498db; color:white; border:none; border-radius:50px; font-size:18px; font-weight:bold; cursor:pointer;">✅ Hamısını Qəbul Et</button>
     </div>
 
-    <!-- EXIT MODAL -->
-    <div id="exitModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1000002; align-items:center; justify-content:center;">
-        <div style="background:white; border-radius:20px; padding:40px; width:90%; max-width:400px; text-align:center;">
+    <div class="exit-modal-overlay" id="exitModal">
+        <div class="exit-modal">
             <h2 style="color:#e74c3c; margin-bottom:20px;">🔒 Çıxış Təsdiqi</h2>
             <p style="color:#666; margin-bottom:20px;">Admin PIN kodunu daxil edin</p>
-            <input type="password" id="exitPinInput" placeholder="••••" maxlength="4" style="width:100%; padding:20px; font-size:32px; text-align:center; border:3px solid #ddd; border-radius:15px; margin-bottom:20px;">
+            <input type="password" class="exit-pin-input" id="exitPinInput" placeholder="••••" maxlength="4">
             <div style="display:flex; gap:10px;">
-                <button onclick="hideExitModal()" style="flex:1; padding:15px; border:none; border-radius:10px; background:#eee; color:#666; font-weight:bold; cursor:pointer;">Ləğv Et</button>
+                <button onclick="hideExitModal()" style="flex:1; padding:15px; border:none; border-radius:10px; background:#eee; color:#666; font-weight:bold; cursor:pointer;">Ləğv</button>
                 <button onclick="confirmExit()" style="flex:1; padding:15px; border:none; border-radius:10px; background:#e74c3c; color:white; font-weight:bold; cursor:pointer;">Çıxış</button>
             </div>
         </div>
     </div>
 
-    <!-- TOAST -->
-    <div id="toast" style="display:none; position:fixed; top:20px; right:20px; background:white; border-radius:15px; padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.2); z-index:1000001;">
-        <div id="toastIcon" style="font-size:30px; display:inline-block; margin-right:10px;">✅</div>
-        <div style="display:inline-block;">
-            <h4 id="toastTitle" style="color:#333; margin-bottom:5px;">Uğurlu!</h4>
-            <p id="toastMessage" style="color:#666; font-size:14px;">Əməliyyat tamamlandı</p>
-        </div>
+    <div class="toast" id="toast">
+        <span id="toastIcon" style="font-size:30px;">✅</span>
+        <span id="toastTitle" style="font-weight:bold; margin-left:10px;">Uğurlu!</span>
+        <span id="toastMessage" style="margin-left:10px;">Əməliyyat tamamlandı</span>
     </div>
 
-    <!-- ADD WAITER MODAL -->
-    <div id="addModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-        <div style="background:white; border-radius:20px; padding:40px; width:90%; max-width:500px;">
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
             <h2 style="color:#667eea; margin-bottom:25px; text-align:center;">➕ Yeni Qarson</h2>
-            <div style="margin-bottom:20px;">
-                <label style="display:block; margin-bottom:8px; color:#555; font-weight:bold;">Ad Soyad</label>
-                <input type="text" id="newWaiterName" placeholder="Əli Məmmədov" style="width:100%; padding:15px; border:2px solid #ddd; border-radius:10px;">
+            <div class="form-group">
+                <label>Ad Soyad</label>
+                <input type="text" id="newWaiterName" placeholder="Əli Məmmədov">
             </div>
-            <div style="margin-bottom:20px;">
-                <label style="display:block; margin-bottom:8px; color:#555; font-weight:bold;">PIN (4 rəqəm)</label>
-                <input type="text" id="newWaiterPin" placeholder="1234" maxlength="4" style="width:100%; padding:15px; border:2px solid #ddd; border-radius:10px;">
+            <div class="form-group">
+                <label>PIN (4 rəqəm)</label>
+                <input type="text" id="newWaiterPin" placeholder="1234" maxlength="4">
             </div>
-            <div style="display:flex; gap:10px; margin-top:25px;">
-                <button onclick="closeAddModal()" style="flex:1; padding:15px; border:none; border-radius:10px; background:#eee; color:#666; font-weight:bold; cursor:pointer;">Ləğv</button>
-                <button onclick="saveWaiter()" style="flex:1; padding:15px; border:none; border-radius:10px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; font-weight:bold; cursor:pointer;">Yadda Saxla</button>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeAddModal()">Ləğv</button>
+                <button class="btn-save" onclick="saveWaiter()">Yadda Saxla</button>
             </div>
         </div>
     </div>
 
-              </div>
-        </div>
-    </div>
-
-    <!-- TOAST -->
-    <div id="toast" style="display:none; position:fixed; top:20px; right:20px; background:white; border-radius:15px; padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.2); z-index:1000001;">
-        <div id="toastIcon" style="font-size:30px; display:inline-block; margin-right:10px;">✅</div>
-        <div style="display:inline-block;">
-            <h4 id="toastTitle" style="color:#333; margin-bottom:5px;">Uğurlu!</h4>
-            <p id="toastMessage" style="color:#666; font-size:14px;">Əməliyyat tamamlandı</p>
-        </div>
-    </div>
-
-    <!-- DEACTIVATED OVERLAY -->
-    <div id="deactivatedOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:1000004; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center;">
-        <div style="font-size:80px; margin-bottom:20px;">🚫</div>
-        <h1 style="font-size:36px; color:#e74c3c; margin-bottom:20px;">Deaktiv Edildiniz!</h1>
-        <p style="font-size:18px;">Admin sizi sistemdən çıxardı.</p>
-    </div>
-
-    <!-- JAVASCRIPT -->
     <script>
         const firebaseConfig = {
             databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
@@ -229,7 +258,6 @@
             gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.5);
-            
             return setInterval(() => {
                 const o = ctx.createOscillator();
                 const g = ctx.createGain();
@@ -277,12 +305,10 @@
             if (currentLogFilter !== 'all') {
                 filtered = logs.filter(l => l.type === currentLogFilter);
             }
-            
             if (filtered.length === 0) {
-                container.innerHTML = '<div style="padding:12px;">Heç bir log yoxdur</div>';
+                container.innerHTML = '<div class="log-item">Heç bir log yoxdur</div>';
                 return;
             }
-            
             const colors = {
                 login: 'background:#d5f4e6;color:#27ae60;',
                 logout: 'background:#e8e8e8;color:#7f8c8d;',
@@ -291,13 +317,11 @@
                 deactivate: 'background:#fadbd8;color:#e74c3c;',
                 activate: 'background:#d5f4e6;color:#27ae60;'
             };
-            
             const labels = { login: 'GİRİŞ', logout: 'ÇIXIŞ', order: 'SİFARİŞ', accept: 'QƏBUL', deactivate: 'DEAKTİV', activate: 'AKTİV' };
-            
             container.innerHTML = filtered.slice(0, 50).map(log => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eee;">
+                <div class="log-item">
                     <div>
-                        <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:bold;margin-right:10px;${colors[log.type] || colors.login}">${labels[log.type] || 'LOG'}</span>
+                        <span class="log-type" style="${colors[log.type] || colors.login}">${labels[log.type] || 'LOG'}</span>
                         <span>${log.message}</span>
                     </div>
                     <span style="color:#999;font-size:12px;">${log.time}</span>
@@ -308,9 +332,11 @@
         function showLogs(filter) {
             currentLogFilter = filter;
             document.querySelectorAll('.logs-tab').forEach(tab => {
+                tab.classList.remove('active');
                 tab.style.background = '#eee';
                 tab.style.color = '#666';
             });
+            event.target.classList.add('active');
             event.target.style.background = '#667eea';
             event.target.style.color = 'white';
             renderLogs();
@@ -320,18 +346,18 @@
             waitersRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 waiters = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-                
                 if (currentUser?.role === 'admin') renderAdminPanel();
                 if (currentUser?.role === 'kitchen') renderKitchenPanel();
                 
+                // DEACTIVATION CHECK - Admin deaktiv edende avtomatik cixis
                 if (currentUser?.role === 'waiter') {
                     const me = waiters.find(w => w.id === currentUser.id);
-                    if (me && !me.active) {
-                        document.getElementById('deactivatedOverlay').style.display = 'flex';
+                    if (me && me.status === 'offline') {
+                        document.getElementById('deactivatedOverlay').classList.add('active');
                         stopAlarm();
                         setTimeout(() => {
                             logout();
-                            document.getElementById('deactivatedOverlay').style.display = 'none';
+                            document.getElementById('deactivatedOverlay').classList.remove('active');
                         }, 3000);
                     }
                 }
@@ -340,7 +366,6 @@
             ordersRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 orders = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-                
                 if (currentUser?.role === 'admin') renderAdminPanel();
                 if (currentUser?.role === 'kitchen') renderKitchenPanel();
                 if (currentUser?.role === 'waiter') {
@@ -360,8 +385,7 @@
             currentRole = role;
             document.querySelectorAll('.role-btn').forEach(btn => {
                 const isActive = btn.textContent.includes(role === 'admin' ? 'Admin' : role === 'waiter' ? 'Qarson' : 'Mətbəx');
-                btn.style.background = isActive ? '#667eea' : 'white';
-                btn.style.color = isActive ? 'white' : '#667eea';
+                btn.classList.toggle('active', isActive);
             });
         }
         
@@ -379,7 +403,8 @@
                 showPanel('kitchen');
                 showToast('✅', 'Xoş gəldiniz!', 'Mətbəx panelinə daxil oldunuz');
             } else if (currentRole === 'waiter') {
-                const waiter = waiters.find(w => w.pin === pin && w.active);
+                // YALNIZ status !== 'offline' olanlar girə bilər
+                const waiter = waiters.find(w => w.pin === pin && w.status !== 'offline');
                 if (waiter) {
                     currentUser = { role: 'waiter', ...waiter };
                     waitersRef.child(waiter.id).update({ status: 'ready', lastActive: Date.now() });
@@ -424,8 +449,9 @@
         
         function logout() {
             if (currentUser?.role === 'waiter') {
+                // Yalniz status deyisir, active yoxdur artiq
                 waitersRef.child(currentUser.id).update({ status: 'offline', lastActive: Date.now() });
-                addLog('logout', `${currentUser.name} sistemdən çıxdı`, { waiterId: currentUser.id, waiterName: currentUser.name });
+                addLog('logout', `${currentUser.name} sistemden cixdi`, { waiterId: currentUser.id, waiterName: currentUser.name });
             }
             stopAlarm();
             currentUser = null;
@@ -437,12 +463,12 @@
         }
         
         function showExitModal() {
-            document.getElementById('exitModal').style.display = 'flex';
+            document.getElementById('exitModal').classList.add('active');
             document.getElementById('exitPinInput').value = '';
         }
         
         function hideExitModal() {
-            document.getElementById('exitModal').style.display = 'none';
+            document.getElementById('exitModal').classList.remove('active');
         }
         
         function confirmExit() {
@@ -451,37 +477,34 @@
                 hideExitModal();
                 logout();
             } else {
-                alert('PIN kod səhvdir!');
+                alert('PIN kod səhvdir! Yalniz admin cixis ede biler.');
             }
         }
         
         function renderAdminPanel() {
             document.getElementById('totalWaiters').textContent = waiters.length;
-            document.getElementById('activeWaiters').textContent = waiters.filter(w => w.active).length;
+            document.getElementById('activeWaiters').textContent = waiters.filter(w => w.status !== 'offline').length;
             document.getElementById('pendingOrders').textContent = orders.filter(o => o.status === 'pending').length;
             document.getElementById('todayOrders').textContent = orders.length;
             
             const grid = document.getElementById('waitersGrid');
             grid.innerHTML = waiters.map(w => `
-                <div style="background:white; border-radius:20px; padding:25px; box-shadow:0 5px 20px rgba(0,0,0,0.1); position:relative; overflow:hidden;">
-                    <div style="position:absolute; top:0; left:0; right:0; height:5px; background:${w.active ? '#2ecc71' : '#95a5a6'};"></div>
-                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
-                        <img src="${w.avatar}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:3px solid #eee;">
-                        <div>
-                            <h3 style="font-size:20px; color:#333;">${w.name}</h3>
-                            <span style="color:#999; font-size:14px;">PIN: ${w.pin}</span>
+                <div class="waiter-card ${w.status === 'offline' ? 'offline' : w.status === 'busy' ? 'busy' : ''}">
+                    <div class="waiter-header">
+                        <img src="${w.avatar}" class="waiter-avatar">
+                        <div class="waiter-info">
+                            <h3>${w.name}</h3>
+                            <span class="pin">PIN: ${w.pin}</span>
                         </div>
                     </div>
-                    <span style="display:inline-block; padding:5px 15px; border-radius:20px; font-size:12px; font-weight:bold; ${w.status === 'ready' ? 'background:#d5f4e6; color:#27ae60;' : w.status === 'busy' ? 'background:#fdebd0; color:#f39c12;' : 'background:#e8e8e8; color:#7f8c8d;'}">
+                    <span class="status-badge ${w.status === 'ready' ? 'online' : w.status === 'busy' ? 'busy' : 'offline'}">
                         ${w.status === 'ready' ? '🟢 Aktiv' : w.status === 'busy' ? '🟡 Sifarişdə' : '⚪ Deaktiv'}
                     </span>
-                    <div style="display:flex; gap:10px; margin-top:15px;">
-                        <button onclick="toggleWaiter('${w.id}')" style="flex:1; padding:12px; border:none; border-radius:10px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; font-weight:bold; cursor:pointer;">
-                            ${w.active ? 'Deaktiv Et' : 'Aktiv Et'}
+                    <div class="waiter-actions">
+                        <button class="action-btn btn-toggle" onclick="toggleWaiter('${w.id}')">
+                            ${w.status === 'offline' ? 'Aktiv Et' : 'Deaktiv Et'}
                         </button>
-                        <button onclick="deleteWaiter('${w.id}')" style="flex:1; padding:12px; border:none; border-radius:10px; background:#e74c3c; color:white; font-weight:bold; cursor:pointer;">
-                            Sil
-                        </button>
+                        <button class="action-btn btn-delete" onclick="deleteWaiter('${w.id}')">Sil</button>
                     </div>
                 </div>
             `).join('');
@@ -490,28 +513,30 @@
         function toggleWaiter(id) {
             const w = waiters.find(x => x.id === id);
             if (w) {
-                const newActive = !w.active;
-                waitersRef.child(id).update({ active: newActive, status: newActive ? 'ready' : 'offline', lastActive: Date.now() });
-                addLog(newActive ? 'activate' : 'deactivate', `${w.name} ${newActive ? 'aktiv' : 'deaktiv'} edildi`, { waiterId: w.id, waiterName: w.name });
-                showToast('✅', 'Uğurlu!', `${w.name} ${newActive ? 'aktiv' : 'deaktiv'} edildi`);
+                const newStatus = w.status === 'offline' ? 'ready' : 'offline';
+                waitersRef.child(id).update({ status: newStatus, lastActive: Date.now() });
+                addLog(newStatus === 'ready' ? 'activate' : 'deactivate', 
+                       `${w.name} ${newStatus === 'ready' ? 'aktiv' : 'deaktiv'} edildi`, 
+                       { waiterId: w.id, waiterName: w.name });
+                showToast('✅', 'Uğurlu!', `${w.name} ${newStatus === 'ready' ? 'aktiv' : 'deaktiv'} edildi`);
             }
         }
         
         function deleteWaiter(id) {
-            if (confirm('Silmək istədiyinizə əminsiniz?')) {
+            if (confirm('Silmek istediyinize eminsiniz?')) {
                 const w = waiters.find(x => x.id === id);
                 waitersRef.child(id).remove();
                 if (w) addLog('deactivate', `${w.name} silindi`, { waiterId: id });
-                showToast('🗑️', 'Silindi!', 'Qarson sistemdən silindi');
+                showToast('🗑️', 'Silindi!', 'Qarson sistemden silindi');
             }
         }
         
         function openAddModal() {
-            document.getElementById('addModal').style.display = 'flex';
+            document.getElementById('addModal').classList.add('active');
         }
         
         function closeAddModal() {
-            document.getElementById('addModal').style.display = 'none';
+            document.getElementById('addModal').classList.remove('active');
         }
         
         function saveWaiter() {
@@ -519,24 +544,24 @@
             const pin = document.getElementById('newWaiterPin').value.trim();
             
             if (!name || !pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-                showToast('❌', 'Xəta!', 'Ad və 4 rəqəmli PIN daxil edin');
+                showToast('❌', 'Xəta!', 'Ad ve 4 reqemli PIN daxil edin');
                 return;
             }
             
             if (waiters.some(w => w.pin === pin)) {
-                showToast('❌', 'Xəta!', 'Bu PIN artıq istifadə olunur');
+                showToast('❌', 'Xəta!', 'Bu PIN artiq istifade olunur');
                 return;
             }
             
             const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=667eea&color=fff&size=200`;
             
             waitersRef.push().set({
-                name, pin, avatar, active: true, status: 'ready', createdAt: Date.now()
+                name, pin, avatar, status: 'ready', createdAt: Date.now()
             });
             
-            addLog('activate', `${name} əlavə edildi`, { waiterName: name, pin });
+            addLog('activate', `${name} elave edildi`, { waiterName: name, pin });
             closeAddModal();
-            showToast('✅', 'Uğurlu!', `${name} əlavə edildi`);
+            showToast('✅', 'Uğurlu!', `${name} elave edildi`);
         }
         
         function renderWaiterPanel() {
@@ -554,21 +579,21 @@
             
             if (pending.length === 0) {
                 container.innerHTML = `
-                    <div style="background:rgba(255,255,255,0.1); border-radius:20px; padding:40px;">
+                    <div class="no-orders">
                         <div style="font-size:60px; margin-bottom:15px;">📭</div>
                         <h3>Hazırda sifariş yoxdur</h3>
                     </div>
                 `;
             } else {
                 container.innerHTML = pending.map(o => `
-                    <div style="background:white; border-radius:20px; padding:20px; color:#333; margin-bottom:15px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-                        <h3 style="color:#667eea; margin-bottom:10px;">🍽️ Sifariş #${o.id.slice(-4)}</h3>
+                    <div class="order-card">
+                        <h3>🍽️ Sifariş #${o.id.slice(-4)}</h3>
                         <p>Masa: <strong>${o.table}</strong></p>
                         <div style="color:#999; font-size:14px; margin-bottom:15px;">${o.time}</div>
-                        <button onclick="acceptOrderFromCard('${o.id}')" style="width:100%; padding:15px; background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color:white; border:none; border-radius:15px; font-size:16px; font-weight:bold; cursor:pointer;">✅ Qəbul Etdim</button>
+                        <button class="accept-btn" onclick="acceptOrderFromCard('${o.id}')">✅ Qəbul Etdim</button>
                     </div>
                 `).join('') + (pending.length > 1 ? `
-                    <button onclick="acceptAllOrdersFromCard()" style="width:100%; padding:15px; background:linear-gradient(135deg, #3498db 0%, #2980b9 100%); color:white; border:none; border-radius:15px; font-size:16px; font-weight:bold; cursor:pointer;">✅ Hamısını Qəbul Et (${pending.length})</button>
+                    <button class="accept-all-btn" onclick="acceptAllOrdersFromCard()">✅ Hamısını Qəbul Et (${pending.length})</button>
                 ` : '');
             }
         }
@@ -576,7 +601,7 @@
         function checkWaiterOrders() {
             if (!currentUser || currentUser.role !== 'waiter') return;
             const pending = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
-            if (pending.length > 0 && document.getElementById('alarmOverlay').style.display !== 'flex') {
+            if (pending.length > 0 && !document.getElementById('alarmOverlay').classList.contains('active')) {
                 showAlarm(pending[0]);
             }
         }
@@ -584,14 +609,14 @@
         function acceptOrder() {
             if (!currentAlarmOrder) return;
             stopAlarm();
-            document.getElementById('alarmOverlay').style.display = 'none';
+            document.getElementById('alarmOverlay').classList.remove('active');
             
             const o = orders.find(x => x.id === currentAlarmOrder);
             if (o) {
                 ordersRef.child(o.id).update({ status: 'accepted', acceptedAt: Date.now() });
                 waitersRef.child(o.waiterId).update({ status: 'busy', lastActive: Date.now() });
-                addLog('accept', `${o.waiterName} qəbul etdi - ${o.table}`, { orderId: o.id, waiterId: o.waiterId, table: o.table });
-                showToast('✅', 'Qəbul edildi!', 'Sifarişi qəbul etdiniz');
+                addLog('accept', `${o.waiterName} qebul etdi - ${o.table}`, { orderId: o.id, waiterId: o.waiterId, table: o.table });
+                showToast('✅', 'Qəbul edildi!', 'Sifarişi qebul etdiniz');
             }
             currentAlarmOrder = null;
             
@@ -604,7 +629,7 @@
         
         function acceptAllOrders() {
             stopAlarm();
-            document.getElementById('alarmOverlay').style.display = 'none';
+            document.getElementById('alarmOverlay').classList.remove('active');
             const pending = orders.filter(o => o.waiterId === currentUser.id && o.status === 'pending');
             
             pending.forEach(o => {
@@ -612,8 +637,8 @@
             });
             
             waitersRef.child(currentUser.id).update({ status: 'busy', lastActive: Date.now() });
-            addLog('accept', `${currentUser.name} ${pending.length} sifariş qəbul etdi`, { count: pending.length, waiterId: currentUser.id });
-            showToast('✅', 'Hamısı qəbul edildi!', `${pending.length} sifariş`);
+            addLog('accept', `${currentUser.name} ${pending.length} sifariş qebul etdi`, { count: pending.length, waiterId: currentUser.id });
+            showToast('✅', 'Hamısı qebul edildi!', `${pending.length} sifariş`);
             currentAlarmOrder = null;
             renderWaiterPanel();
         }
@@ -623,7 +648,7 @@
             if (o) {
                 ordersRef.child(id).update({ status: 'accepted', acceptedAt: Date.now() });
                 waitersRef.child(o.waiterId).update({ status: 'busy', lastActive: Date.now() });
-                addLog('accept', `${o.waiterName} qəbul etdi - ${o.table}`, { orderId: o.id, table: o.table });
+                addLog('accept', `${o.waiterName} qebul etdi - ${o.table}`, { orderId: o.id, table: o.table });
                 showToast('✅', 'Qəbul edildi!', '');
                 renderWaiterPanel();
             }
@@ -635,14 +660,14 @@
                 ordersRef.child(o.id).update({ status: 'accepted', acceptedAt: Date.now() });
             });
             waitersRef.child(currentUser.id).update({ status: 'busy', lastActive: Date.now() });
-            addLog('accept', `${currentUser.name} ${pending.length} sifariş qəbul etdi`, { count: pending.length });
-            showToast('✅', 'Hamısı qəbul edildi!', `${pending.length} sifariş`);
+            addLog('accept', `${currentUser.name} ${pending.length} sifariş qebul etdi`, { count: pending.length });
+            showToast('✅', 'Hamısı qebul edildi!', `${pending.length} sifariş`);
             renderWaiterPanel();
         }
         
         function renderKitchenPanel() {
             const grid = document.getElementById('kitchenGrid');
-            const active = waiters.filter(w => w.active);
+            const active = waiters.filter(w => w.status !== 'offline');
             
             if (active.length === 0) {
                 grid.innerHTML = '<div style="text-align:center; padding:40px; color:#666; font-size:18px;">⚪ Aktiv qarson yoxdur</div>';
@@ -657,24 +682,27 @@
                 let statusColor = '#2ecc71';
                 let statusText = '🟢 Hazır';
                 let btnText = 'Sifariş Hazır';
+                let cardClass = '';
                 
                 if (isBusy) {
                     statusColor = '#f39c12';
                     statusText = '🟡 Gəlir';
                     btnText = 'Yeni Sifariş';
+                    cardClass = 'busy';
                 } else if (isWaiting) {
                     statusColor = '#e74c3c';
                     statusText = '🔴 Gözləyir';
                     btnText = 'Sifariş Hazır';
+                    cardClass = 'waiting';
                 }
                 
                 return `
-                    <div style="background:white; border-radius:20px; padding:25px; text-align:center; box-shadow:0 5px 20px rgba(0,0,0,0.1); cursor:pointer; position:relative; overflow:hidden;" onclick="sendOrderToWaiter('${w.id}')">
+                    <div class="kitchen-waiter-card ${cardClass}" onclick="sendOrderToWaiter('${w.id}')">
                         <div style="position:absolute; top:0; left:0; right:0; height:6px; background:${statusColor};"></div>
                         <img src="${w.avatar}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:4px solid #eee; margin-bottom:15px; margin-top:10px;">
-                        <h3 style="font-size:22px; color:#333; margin-bottom:10px;">${w.name}</h3>
+                        <h3>${w.name}</h3>
                         <span style="display:inline-block; padding:8px 20px; border-radius:25px; font-size:14px; font-weight:bold; margin-bottom:15px; background:${statusColor}20; color:${statusColor};">${statusText}</span>
-                        <button onclick="event.stopPropagation(); sendOrderToWaiter('${w.id}')" style="width:100%; padding:15px; background:linear-gradient(135deg, #e67e22 0%, #d35400 100%); color:white; border:none; border-radius:12px; font-size:16px; font-weight:bold; cursor:pointer;">${btnText}</button>
+                        <button onclick="event.stopPropagation(); sendOrderToWaiter('${w.id}')" class="send-btn">${btnText}</button>
                     </div>
                 `;
             }).join('');
@@ -682,7 +710,7 @@
         
         function sendOrderToWaiter(waiterId) {
             const w = waiters.find(x => x.id === waiterId);
-            if (!w || !w.active) {
+            if (!w || w.status === 'offline') {
                 showToast('❌', 'Xəta!', 'Qarson deaktivdir');
                 return;
             }
@@ -708,11 +736,9 @@
         function showAlarm(order) {
             currentAlarmOrder = order.id;
             document.getElementById('alarmDetails').textContent = `${order.table} - Sifariş hazırdır!`;
-            document.getElementById('alarmOverlay').style.display = 'flex';
-            
+            document.getElementById('alarmOverlay').classList.add('active');
             alarmInterval = playAlarmSound();
             speakText('Sifariş hazırdır!');
-            
             if ('vibrate' in navigator) {
                 navigator.vibrate([500, 200, 500, 200, 500]);
             }
@@ -723,16 +749,58 @@
             document.getElementById('toastIcon').textContent = icon;
             document.getElementById('toastTitle').textContent = title;
             document.getElementById('toastMessage').textContent = message;
-            toast.style.display = 'flex';
-            setTimeout(() => toast.style.display = 'none', 3000);
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 3000);
         }
         
+        // KIOSK PROTECTION - Geri duymesi bloklanmasin
+        document.addEventListener('keydown', function(e) {
+            if (currentUser?.role === 'waiter') {
+                if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+                    (e.ctrlKey && e.key === 'r') || (e.altKey && e.key === 'F4') || e.key === 'Escape') {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+        
+        document.addEventListener('contextmenu', function(e) {
+            if (currentUser?.role === 'waiter') e.preventDefault();
+        });
+        
+        window.addEventListener('beforeunload', function(e) {
+            if (currentUser?.role === 'waiter') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+        
+        // Geri duymesi bloklama
+        history.pushState(null, null, location.href);
+        window.onpopstate = function() {
+            if (currentUser?.role === 'waiter') {
+                history.pushState(null, null, location.href);
+            }
+        };
+        
+        // Input validation
+        document.getElementById('pinInput').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        document.getElementById('newWaiterPin').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        document.getElementById('exitPinInput').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        
+        // Demo data
         waitersRef.once('value', (snapshot) => {
             if (!snapshot.val()) {
                 [
-                    { name: 'Əli Məmmədov', pin: '1111', avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200', active: true, status: 'ready', createdAt: Date.now() },
-                    { name: 'Leyla Həsənli', pin: '2222', avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200', active: true, status: 'ready', createdAt: Date.now() },
-                    { name: 'Orxan Əliyev', pin: '3333', avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200', active: false, status: 'offline', createdAt: Date.now() }
+                    { name: 'Əli Məmmədov', pin: '1111', avatar: 'https://ui-avatars.com/api/?name=Ali+Mammadov&background=667eea&color=fff&size=200', status: 'ready', createdAt: Date.now() },
+                    { name: 'Leyla Həsənli', pin: '2222', avatar: 'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=e74c3c&color=fff&size=200', status: 'ready', createdAt: Date.now() },
+                    { name: 'Orxan Əliyev', pin: '3333', avatar: 'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=2ecc71&color=fff&size=200', status: 'offline', createdAt: Date.now() }
                 ].forEach(w => waitersRef.push().set(w));
             }
         });
