@@ -230,6 +230,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="admin-tab" onclick="adminTab('waiters',this)">🤵 Qarsonlar</button>
       <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
       <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
+      <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
     </div>
 
     <!-- Dashboard -->
@@ -260,13 +261,27 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       </div>
       <div class="log-list" id="logList"></div>
     </div>
+
+    <!-- Ayarlar -->
+    <div class="admin-section" id="sec-settings">
+      <div style="max-width:500px;">
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;">🔑 Mətbəx PIN Kodu</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Cari PIN: <strong id="currentKitchenPin" style="color:var(--orange);">****</strong></p>
+          <button class="btn btn-blue" onclick="openKitchenPinModal()" style="width:100%;padding:13px;">🔑 PIN-i Dəyiş</button>
+        </div>
+        <div class="table-card">
+          <h3 style="margin-bottom:8px;">ℹ️ Sistem Məlumatları</h3>
+          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Admin PIN: <strong style="color:var(--green);">0000</strong></p>
+          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
+        </div>
+      </div>
+    </div>
   </div>
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     KITCHEN
-════════════════════════════════════════════ -->
+<!-- KITCHEN -->
 <div class="screen" id="kitchenScreen">
   <div class="topbar">
     <h2>👨‍🍳 Mətbəx Paneli</h2>
@@ -326,6 +341,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
+  <!-- Masa bağlamaq təsdiq modalı -->
+<div class="modal-bg" id="confirmCloseTableModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+    <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Qeydlər silinəcək.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
+    </div>
+  </div>
+</div>
 <!-- Exit confirm -->
 <div class="modal-bg" id="exitModal">
   <div class="modal" style="max-width:320px;text-align:center;">
@@ -367,6 +394,36 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
 </div>
 
+<!-- Admin masa qeyd modalı -->
+<div class="modal-bg" id="adminNoteModal">
+  <div class="modal">
+    <h2 id="adminNoteTitle">📝 Qeyd</h2>
+    <div class="form-group">
+      <label>Qeyd</label>
+      <textarea id="adminNoteText" class="notes-area" rows="4" placeholder="Qeyd yazın..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeAdminNoteModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveAdminNote()">💾 Saxla</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mətbəx PIN dəyişmə modalı -->
+<div class="modal-bg" id="kitchenPinModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <h2>🔑 Mətbəx PIN</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 4 rəqəmli PIN daxil edin</p>
+    <div class="form-group">
+      <input type="text" id="newKitchenPin" maxlength="4" placeholder="1234" style="text-align:center;font-size:24px;letter-spacing:10px;">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeKitchenPinModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveKitchenPin()">✅ Saxla</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -402,6 +459,8 @@ let state = {
   editTarget: null,  // { type:'waiter'|'table', id }
   noteTableId: null,
   pendingTableId: null,
+  pendingCloseTableId: null,
+  kitchenPin: '9999',
   pinBuffer: ''
 };
 
@@ -446,7 +505,7 @@ function doLogin() {
     return;
   }
 
-  if (state.role === 'kitchen' && pin === KITCHEN_PIN) {
+  if (state.role === 'kitchen' && pin === state.kitchenPin) {
     state.user = { role:'kitchen', name:'Mətbəx' };
     addLog('login','Mətbəx sistemə daxil oldu',{type:'kitchen'});
     initListeners();
@@ -553,6 +612,11 @@ function confirmExit() {
 let _listeners = {};
 
 function initListeners() {
+  // Mətbəx PIN-ini Firebase-dən yüklə
+  db.ref('settings/kitchenPin').on('value', snap => {
+    if (snap.val()) state.kitchenPin = snap.val();
+  });
+
   _listeners.waiters = R.waiters.on('value', snap=>{
     state.waiters = toArr(snap.val());
     onDataChange();
@@ -626,6 +690,9 @@ function adminTab(sec, el) {
   renderAdmin();
   // FAB show/hide
   document.getElementById('adminFab').style.display = (sec==='waiters'||sec==='tables') ? 'flex':'none';
+  if (sec==='settings') {
+    document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
+  }
 }
 
 function renderDashboard() {
@@ -647,7 +714,11 @@ function renderDashboard() {
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
       <div class="meta">Qarson: <strong>${esc(w.name)}</strong></div>
-      ${t.notes?`<div style="font-size:13px;color:var(--text2);background:rgba(255,255,255,.04);border-radius:8px;padding:8px;">${esc(t.notes)}</div>`:''}
+      ${t.notes?`<div style="font-size:13px;color:var(--text2);background:rgba(255,255,255,.04);border-radius:8px;padding:8px;margin-bottom:10px;">${esc(t.notes)}</div>`:''}
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;padding:10px;font-size:13px;" onclick="adminEditTableNote('${t.id}')">📝 Qeyd</button>
+        <button class="btn btn-red" style="flex:1;padding:10px;font-size:13px;" onclick="adminCloseTable('${t.id}')">🔒 Bağla</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -823,7 +894,73 @@ function saveItem() {
   closeAddModal();
 }
 
-/* ═══════════════════ KITCHEN RENDER ═══════════════════ */
+/* ═══════════════════ ADMIN MASA İDARƏSİ ═══════════════════ */
+function adminEditTableNote(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t) return;
+  state.noteTableId = tableId;
+  document.getElementById('adminNoteTitle').textContent = '📝 ' + t.name + ' — Qeyd';
+  document.getElementById('adminNoteText').value = t.notes || '';
+  document.getElementById('adminNoteModal').classList.add('open');
+}
+
+function saveAdminNote() {
+  if (!state.noteTableId) return;
+  const notes = document.getElementById('adminNoteText').value;
+  R.tables.child(state.noteTableId).update({ notes });
+  addLog('admin', 'Admin "' + (state.tables.find(x=>x.id===state.noteTableId)||{name:'?'}).name + '" masasına qeyd əlavə etdi', {});
+  closeAdminNoteModal();
+  showToast('✅ Qeyd saxlanıldı');
+}
+
+function closeAdminNoteModal() {
+  document.getElementById('adminNoteModal').classList.remove('open');
+  state.noteTableId = null;
+}
+
+function adminCloseTable(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t) return;
+  if (!confirm('"' + t.name + '" masasını bağlamaq istəyirsiniz?')) return;
+  R.tables.child(tableId).update({ occupant: null, notes: '' });
+  addLog('admin', 'Admin "' + t.name + '" masasını bağladı', { tableId });
+  showToast('✅ ' + t.name + ' bağlandı');
+}
+
+/* ═══════════════════ MƏTBƏx PIN ═══════════════════ */
+function openKitchenPinModal() {
+  document.getElementById('newKitchenPin').value = '';
+  document.getElementById('kitchenPinModal').classList.add('open');
+}
+
+function closeKitchenPinModal() {
+  document.getElementById('kitchenPinModal').classList.remove('open');
+}
+
+function saveKitchenPin() {
+  const pin = document.getElementById('newKitchenPin').value.trim();
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    showToast('❌ 4 rəqəmli PIN daxil edin'); return;
+  }
+  if (pin === ADMIN_PIN) {
+    showToast('❌ Admin PIN ilə eyni ola bilməz'); return;
+  }
+  db.ref('settings/kitchenPin').set(pin);
+  state.kitchenPin = pin;
+  addLog('admin', 'Mətbəx PIN dəyişdirildi', {});
+  closeKitchenPinModal();
+  showToast('✅ Mətbəx PIN dəyişdirildi');
+}
+
+/* ═══════════════════ WAITER openNotesModal ═══════════════════ */
+function openNotesModal(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t) return;
+  state.noteTableId = tableId;
+  document.getElementById('noteTitle').textContent = '📝 ' + t.name + ' — Qeydlər';
+  document.getElementById('noteText').value = t.notes || '';
+  document.getElementById('notesModal').classList.add('open');
+}
 function renderKitchen() {
   const el = document.getElementById('kitchenGrid');
   const active = state.waiters.filter(w=>w.status!=='offline');
@@ -909,14 +1046,7 @@ function closeConfirmTableModal() {
   document.getElementById('confirmTableModal').classList.remove('open');
   state.pendingTableId = null;
 }
-function openNotesModal(tableId) {
-  const t = state.tables.find(x=>x.id===tableId);
-  if (!t) return;
-  state.noteTableId = tableId;
-  document.getElementById('noteTitle').textContent = '📝 ' + t.name + ' — Qeydlər';
-  document.getElementById('noteText').value = t.notes || '';
-  document.getElementById('notesModal').classList.add('open');
-}
+
 function closeNotesModal() { document.getElementById('notesModal').classList.remove('open'); state.noteTableId=null; }
 
 function saveNote() {
@@ -931,11 +1061,26 @@ function deactivateTable() {
   if (!state.noteTableId) return;
   const t = state.tables.find(x=>x.id===state.noteTableId);
   if (!t) return;
-  if (!confirm(`"${t.name}" masasını bağlamaq istəyirsiniz?`)) return;
-  R.tables.child(state.noteTableId).update({ occupant: null, notes: '' });
-  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId:state.noteTableId });
   closeNotesModal();
+  state.pendingCloseTableId = state.noteTableId;
+  document.getElementById('confirmCloseTableName').textContent = t.name;
+  document.getElementById('confirmCloseTableModal').classList.add('open');
+}
+
+function confirmDeactivateTable() {
+  const tableId = state.pendingCloseTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  R.tables.child(tableId).update({ occupant: null, notes: '' });
+  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId });
   showToast(`✅ ${t.name} bağlandı`);
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
+}
+
+function closeConfirmCloseModal() {
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
 }
 
 /* ═══════════════════ ALARM / ORDERS ═══════════════════ */
@@ -1038,16 +1183,5 @@ R.tables.once('value', snap=>{
 // Init fab visibility
 document.getElementById('adminFab').style.display='none';
 </script>
-<div class="modal-bg" id="confirmCloseTableModal">
-  <div class="modal" style="max-width:320px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-    <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz?</p>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
-      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
