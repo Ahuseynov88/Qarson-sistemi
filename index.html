@@ -933,6 +933,8 @@ function adminCloseTable(tableId) {
   if (!t) return;
   state.pendingCloseTableId = tableId;
   document.getElementById('confirmCloseTableName').textContent = t.name;
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  void document.getElementById('confirmCloseTableModal').offsetWidth;
   document.getElementById('confirmCloseTableModal').classList.add('open');
 }
 
