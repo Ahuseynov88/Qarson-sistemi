@@ -98,6 +98,7 @@
         .exit-modal { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 400px; text-align: center; }
         .exit-pin-input { width: 100%; padding: 20px; font-size: 32px; text-align: center; border: 3px solid #ddd; border-radius: 15px; margin-bottom: 20px; }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="deactivated-overlay" id="deactivatedOverlay">
@@ -233,6 +234,7 @@
         const db = firebase.database();
         
         let currentUser = null;
+        let currentRole = 'admin';
         let alarmInterval = null;
         let currentAlarmOrder = null;
         let waitersRef = db.ref('waiters');
@@ -404,14 +406,25 @@
 
 function doLogin(pin) {
     if (currentRole === 'admin' && pin === ADMIN_PIN) {
-        // ...
+        currentUser = { role: 'admin', name: 'Admin' };
+        addLog('login', 'Admin daxil oldu', { role: 'admin' });
+        showPanel('admin');
     } else if (currentRole === 'waiter') {
         const waiter = waiters.find(w => w.pin === pin && w.status === 'ready');
         if (waiter) {
-            // ...
+            currentUser = { role: 'waiter', id: waiter.id, name: waiter.name, pin: waiter.pin };
+            waitersRef.child(waiter.id).update({ status: 'ready', lastActive: Date.now() });
+            addLog('login', waiter.name + ' daxil oldu', { waiterId: waiter.id });
+            showPanel('waiter');
         } else {
             showError('PIN kod səhvdir və ya qarson deaktivdir!');
         }
+    } else if (currentRole === 'kitchen' && pin === KITCHEN_PIN) {
+        currentUser = { role: 'kitchen', name: 'Mətbəx' };
+        addLog('login', 'Mətbəx daxil oldu', { role: 'kitchen' });
+        showPanel('kitchen');
+    } else {
+        showError('PIN kod səhvdir!');
     }
 }
         
@@ -818,8 +831,11 @@ waitersRef.on('value', (snapshot) => {
     console.log('Waiters yükləndi:', waiters.length);
 });
 
-// Demo data yoxla
-checkDemoData();
+// Firebase listener-ləri işə sal
+        initFirebaseListeners();
+        
+        // Demo data yoxla
+        checkDemoData();
     </script>
 </body>
 </html>
