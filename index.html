@@ -404,7 +404,7 @@
                 showToast('✅', 'Xoş gəldiniz!', 'Mətbəx panelinə daxil oldunuz');
             } else if (currentRole === 'waiter') {
                 // YALNIZ status !== 'offline' olanlar girə bilər
-                const waiter = waiters.find(w => w.pin === pin && w.status !== 'offline');
+                const waiter = waiters.find(w => w.pin === pin && w.status === 'ready');
                 if (waiter) {
                     currentUser = { role: 'waiter', ...waiter };
                     waitersRef.child(waiter.id).update({ status: 'ready', lastActive: Date.now() });
@@ -483,7 +483,7 @@
         
         function renderAdminPanel() {
             document.getElementById('totalWaiters').textContent = waiters.length;
-            document.getElementById('activeWaiters').textContent = waiters.filter(w => w.status !== 'offline').length;
+           document.getElementById('activeWaiters').textContent = waiters.filter(w => w.status === 'ready' || w.status === 'busy').length;
             document.getElementById('pendingOrders').textContent = orders.filter(o => o.status === 'pending').length;
             document.getElementById('todayOrders').textContent = orders.length;
             
@@ -513,7 +513,7 @@
         function toggleWaiter(id) {
             const w = waiters.find(x => x.id === id);
             if (w) {
-                const newStatus = w.status === 'offline' ? 'ready' : 'offline';
+                const newStatus = (w.status === 'ready' || w.status === 'busy') ? 'offline' : 'ready';
                 waitersRef.child(id).update({ status: newStatus, lastActive: Date.now() });
                 addLog(newStatus === 'ready' ? 'activate' : 'deactivate', 
                        `${w.name} ${newStatus === 'ready' ? 'aktiv' : 'deaktiv'} edildi`, 
@@ -667,7 +667,7 @@
         
         function renderKitchenPanel() {
             const grid = document.getElementById('kitchenGrid');
-            const active = waiters.filter(w => w.status !== 'offline');
+           const active = waiters.filter(w => w.status === 'ready' || w.status === 'busy');
             
             if (active.length === 0) {
                 grid.innerHTML = '<div style="text-align:center; padding:40px; color:#666; font-size:18px;">⚪ Aktiv qarson yoxdur</div>';
