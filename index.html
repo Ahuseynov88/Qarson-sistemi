@@ -164,17 +164,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── EXIT CONFIRM ── */
 #exitModal .modal{max-width:340px;text-align:center;}
 #exitModal h2{color:var(--red);}
-<div class="modal-bg" id="confirmCloseTableModal">
-  <div class="modal" style="max-width:320px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-    <h2 id="confirmCloseTableName" style="margin-bottom:8px;">Masa</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Qeydlər silinəcək.</p>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
-      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
-    </div>
-  </div>
-</div>
 /* ── TOAST ── */
 #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
 #toast.show{display:block;}
@@ -282,17 +271,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
           <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Cari PIN: <strong id="currentKitchenPin" style="color:var(--orange);">****</strong></p>
           <button class="btn btn-blue" onclick="openKitchenPinModal()" style="width:100%;padding:13px;">🔑 PIN-i Dəyiş</button>
         </div>
-<div class="admin-section" id="sec-feedback">
-  <h3 style="color:var(--text2);margin-bottom:16px;font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
-  <div id="feedbackList" class="log-list"></div>
-</div>
-</div>
         <div class="table-card">
           <h3 style="margin-bottom:8px;">ℹ️ Sistem Məlumatları</h3>
           <p style="font-size:13px;color:var(--text2);margin-top:8px;">Admin PIN: <strong style="color:var(--green);">0000</strong></p>
           <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
         </div>
       </div>
+    </div>
+
+    <!-- Şikayətlər -->
+    <div class="admin-section" id="sec-feedback">
+      <h3 style="color:var(--text2);margin-bottom:16px;font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
+      <div id="feedbackList" class="log-list"></div>
     </div>
   </div>
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
@@ -1153,22 +1143,6 @@ function closeConfirmCloseModal() {
   state.pendingCloseTableId = null;
 }
 
-function confirmDeactivateTable() {
-  const tableId = state.pendingCloseTableId;
-  if (!tableId) return;
-  const t = state.tables.find(x=>x.id===tableId);
-  R.tables.child(tableId).update({ occupant: null, notes: '' });
-  addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId });
-  showToast(`✅ ${t.name} bağlandı`);
-  document.getElementById('confirmCloseTableModal').classList.remove('open');
-  state.pendingCloseTableId = null;
-}
-
-function closeConfirmCloseModal() {
-  document.getElementById('confirmCloseTableModal').classList.remove('open');
-  state.pendingCloseTableId = null;
-}
-
 /* ═══════════════════ ALARM / ORDERS ═══════════════════ */
 function checkIncomingOrders() {
   const pending = state.orders.filter(o=>o.waiterId===state.user?.id&&o.status==='pending');
@@ -1194,6 +1168,11 @@ function acceptAlarm() {
   if (!state.alarm) return;
   R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
   addLog('order',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
+  // Müştəri tələbi varsa onu da bağla
+  if (window._currentRequestId) {
+    db.ref('customerRequests').child(window._currentRequestId).update({ status:'accepted' });
+    window._currentRequestId = null;
+  }
   stopAlarm();
   showToast('✅ Sifariş qəbul edildi!');
   // Check for more
@@ -1202,10 +1181,6 @@ function acceptAlarm() {
     if (next.length) triggerAlarm(next[0]);
   },500);
 }
-if (window._currentRequestId) {
-    db.ref('customerRequests').child(window._currentRequestId).update({ status:'accepted' });
-    window._currentRequestId = null;
-  }
 function stopAlarm() {
   state.alarm = null;
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
@@ -1268,10 +1243,6 @@ R.tables.once('value', snap=>{
     R.tables.push({name, capacity:4, occupant:null, notes:'', createdAt:Date.now()});
   });
 });
-function closeConfirmCloseModal() {
-  document.getElementById('confirmCloseTableModal').classList.remove('open');
-  state.pendingCloseTableId = null;
-}
 /* ═══════ QR KOD ═══════ */
 function showQR(tableId, tableName) {
   const baseUrl = location.origin + location.pathname;
