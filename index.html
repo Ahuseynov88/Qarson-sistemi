@@ -1693,45 +1693,67 @@ function checkCustomerMode() {
   const tableId = params.get('table');
   if (!tableId) return;
 
-  R.tables.child(tableId).once('value', snap => {
+  // Masanı real-time izlə
+  R.tables.child(tableId).on('value', snap => {
     const t = snap.val();
-    if (!t) { showCustomerToast('❌ Masa tapılmadı'); return; }
 
-    // [d] KRİTİK: Masa aktiv deyilsə müştəri paneli işləmir
-    if (!t.occupant) {
-      showScreen('customerScreen');
-      document.getElementById('customerTableName').textContent = t.name || 'Masa';
-      document.getElementById('customerInactiveOverlay').classList.add('show');
-      // Masanın aktiv olmasını gözlə
-      R.tables.child(tableId).on('value', newSnap => {
-        const newT = newSnap.val();
-        if (newT && newT.occupant) {
-          document.getElementById('customerInactiveOverlay').classList.remove('show');
-          openCustomerPanel(tableId, newT);
-          R.tables.child(tableId).off(); // bir dəfəlik
-        }
-      });
+    // Masa tapılmadı
+    if (!t) {
+      showCustomerClosedScreen('❌ Masa tapılmadı');
       return;
     }
 
-    openCustomerPanel(tableId, t);
+    // Masa aktivdir — paneli göstər
+    if (t.occupant) {
+      // Yalnız ilk dəfə açılırsa ekrana keç
+      if (!window._customerTableId) {
+        window._customerTableId   = tableId;
+        window._customerTableData = t;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('customerScreen').classList.add('active');
+        document.getElementById('customerTableName').textContent = t.name || 'Masa';
+      }
+      return;
+    }
+
+    // Masa bağlandı (occupant yox oldu)
+    if (window._customerTableId) {
+      // 3) Mesaj qutusunu sıfırla
+      const msgBox   = document.getElementById('customerMsgBox');
+      const msgInput = document.getElementById('customerMsgInput');
+      if (msgBox)   msgBox.style.display = 'none';
+      if (msgInput) msgInput.value = '';
+
+      // 2) Bağlandı ekranını göstər
+      window._customerTableId   = null;
+      window._customerTableData = null;
+      showCustomerClosedScreen('🙏 Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
+    }
   });
 }
 
 function openCustomerPanel(tableId, tableData) {
-  showScreen('customerScreen');
-  document.getElementById('customerTableName').textContent = tableData.name || 'Masa';
-  document.getElementById('customerInactiveOverlay').classList.remove('show');
   window._customerTableId   = tableId;
   window._customerTableData = tableData;
-
-  // [e] Müştəri çatını başlat
-  initCustomerChat(tableId);
-
-  // [f] Log: müştəri masaya bağlandı
-  addLog('customer',`Müştəri "${tableData.name}" masasına bağlandı`,{ tableId });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('customerScreen').classList.add('active');
+  document.getElementById('customerTableName').textContent = tableData.name || 'Masa';
 }
-
+function showCustomerClosedScreen(msg) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById('customerScreen');
+  screen.classList.add('active');
+  // Ekranı təmizlə, bildiriş göstər
+  const wrap = screen.querySelector('div');
+  if (wrap) {
+    wrap.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;
+                  justify-content:center;min-height:100vh;text-align:center;padding:30px;">
+        <div style="font-size:72px;margin-bottom:20px;">🙏</div>
+        <p style="color:#eee;font-size:20px;font-weight:600;line-height:1.6;">${msg}</p>
+      </div>`;
+  }
+}
 // [c] Menyu düyməsi
 function openMenu() {
   db.ref('settings/menuUrl').once('value', snap => {
