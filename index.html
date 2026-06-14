@@ -1006,10 +1006,14 @@ function editWaiter(id) {
 
 function deleteWaiter(id) {
   const w = state.waiters.find(x=>x.id===id);
+  // Aktiv masası varmı yoxla
+  const activeTables = state.tables.filter(t => t.occupant === id);
+  if (activeTables.length > 0) {
+    const names = activeTables.map(t=>t.name).join(', ');
+    showToast(`❌ ${w?.name} adlı qarsonun aktiv masası var: ${names}. Əvvəlcə masaları bağlayın!`);
+    return;
+  }
   if (!confirm(`"${w?.name}" adlı qarson silinsin?`)) return;
-  state.tables.forEach(t => {
-    if (t.occupant === id) R.tables.child(t.id).update({ occupant: null, notes: '' });
-  });
   R.waiters.child(id).remove();
   addLog('admin',`${w?.name} silindi`,{ waiterId:id });
   showToast('🗑️ Qarson silindi');
@@ -1027,10 +1031,12 @@ function editTable(id) {
 
 function deleteTable(id) {
   const t = state.tables.find(x=>x.id===id);
-  const msg = t?.occupant
-    ? `"${t?.name}" masası hal-hazırda aktivdir! Yenə də silinsin?`
-    : `"${t?.name}" masası silinsin?`;
-  if (!confirm(msg)) return;
+  // Aktiv masa silinə bilməz
+  if (t?.occupant) {
+    showToast(`❌ "${t?.name}" masası hal-hazırda aktivdir! Əvvəlcə masanı bağlayın.`);
+    return;
+  }
+  if (!confirm(`"${t?.name}" masası silinsin?`)) return;
   R.tables.child(id).remove();
   addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
   showToast('🗑️ Masa silindi');
@@ -1285,9 +1291,17 @@ function confirmDeactivateTable() {
   const tableId = state.pendingCloseTableId;
   if (!tableId) return;
   const t = state.tables.find(x=>x.id===tableId);
+
+  // 3) Köhnə yazışmaları sil (Firebase-dən chats silinirsə varsa)
+  db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).once('value', snap => {
+    snap.forEach(child => child.ref.remove());
+  });
+  db.ref('chats/' + tableId).remove();
+
+  // Masanı bağla
   R.tables.child(tableId).update({ occupant: null, notes: '' });
-  if (t) addLog('table',`${state.user.name} "${t.name}" masasını bağladı`,{ waiterId:state.user.id, tableId });
-  showToast(`✅ ${t?t.name:'Masa'} bağlandı`);
+  if (t) addLog('table', `${state.user.name} "${t.name}" masasını bağladı`, { waiterId: state.user.id, tableId });
+  showToast(`✅ ${t ? t.name : 'Masa'} bağlandı`);
   closeConfirmCloseModal();
 }
 
@@ -1679,29 +1693,50 @@ function checkCustomerMode() {
   const tableId = params.get('table');
   if (!tableId) return;
 
-  R.tables.child(tableId).once('value', snap => {
+  // Masanı bir dəfə yüklə, sonra real-time izlə
+  R.tables.child(tableId).on('value', snap => {
     const t = snap.val();
     if (!t) { showCustomerToast('❌ Masa tapılmadı'); return; }
 
-    // [d] KRİTİK: Masa aktiv deyilsə müştəri paneli işləmir
-    if (!t.occupant) {
-      showScreen('customerScreen');
-      document.getElementById('customerTableName').textContent = t.name || 'Masa';
-      document.getElementById('customerInactiveOverlay').classList.add('show');
-      // Masanın aktiv olmasını gözlə
-      R.tables.child(tableId).on('value', newSnap => {
-        const newT = newSnap.val();
-        if (newT && newT.occupant) {
-          document.getElementById('customerInactiveOverlay').classList.remove('show');
-          openCustomerPanel(tableId, newT);
-          R.tables.child(tableId).off(); // bir dəfəlik
-        }
-      });
+    // 2) Masa bağlandıqda (occupant null olduqda) müştəri ekranı sıfırlan
+    if (!t.occupant && window._customerTableId) {
+      // Masa bağlandı — ekranı sıfırla
+      window._customerTableId   = null;
+      window._customerTableData = null;
+      document.getElementById('customerMsgInput') && 
+        (document.getElementById('customerMsgInput').value = '');
+      document.getElementById('customerMsgBox') && 
+        (document.getElementById('customerMsgBox').style.display = 'none');
+      // 3) Köhnə yazışmaları ekrandan sil
+      const msgBox = document.getElementById('custMsgList');
+      if (msgBox) msgBox.innerHTML = '';
+
+      // Bağlı masa bildirişi göstər
+      showCustomerClosedScreen();
       return;
     }
 
-    openCustomerPanel(tableId, t);
+    if (t.occupant) {
+      openCustomerPanel(tableId, t);
+    }
   });
+}
+
+function showCustomerClosedScreen() {
+  // Bütün ekranları gizlət, boş bir bildiriş göstər
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById('customerScreen');
+  screen.classList.add('active');
+  screen.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                min-height:100vh;text-align:center;padding:30px;
+                background:linear-gradient(135deg,#0f0f1a,#1a1a2e);">
+      <div style="font-size:72px;margin-bottom:20px;">🙏</div>
+      <h2 style="color:#eee;font-size:24px;margin-bottom:12px;">Təşəkkür edirik!</h2>
+      <p style="color:#aaa;font-size:16px;line-height:1.6;">
+        Masa bağlandı.<br>Yenidən gəlməyinizi gözləyirik!
+      </p>
+    </div>`;
 }
 
 function openCustomerPanel(tableId, tableData) {
