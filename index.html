@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1a1a2e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
 <title>Restoran Sistemi</title>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -485,6 +482,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 <!-- Toast -->
 <div id="toast"></div>
 
+<!-- BUG FIX #9: Xarici skriptlər <head>-dən </body>-nin əvvəlinə köçürüldü (performans üçün) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <script>
 /* ═══════════════════ FIREBASE ═══════════════════ */
 const firebaseConfig = {
@@ -707,7 +709,14 @@ initCustomerRequestListener();
 }
 
 function removeListeners() {
-  R.waiters.off(); R.tables.off(); R.orders.off(); R.logs.off();
+  // BUG FIX #6: Bütün Firebase dinləyiciləri düzgün ləğv edilir
+  R.waiters.off();
+  R.tables.off();
+  R.orders.off();
+  R.logs.off();
+  db.ref('customerRequests').off();  // müştəri tələbləri dinləyicisi
+  db.ref('feedbacks').off();         // şikayət dinləyicisi
+  db.ref('settings/kitchenPin').off(); // PIN ayarları dinləyicisi
 }
 
 function toArr(obj) {
@@ -872,6 +881,12 @@ function editWaiter(id) {
 function deleteWaiter(id) {
   const w = state.waiters.find(x=>x.id===id);
   if (!confirm(`"${w?.name}" adlı qarson silinsin?`)) return;
+  // BUG FIX #2: Qarson silinərkən onun idarə etdiyi masalar da boşaldılır
+  state.tables.forEach(t => {
+    if (t.occupant === id) {
+      R.tables.child(t.id).update({ occupant: null, notes: '' });
+    }
+  });
   R.waiters.child(id).remove();
   addLog('admin',`${w?.name} silindi`,{ waiterId:id });
   showToast('🗑️ Qarson silindi');
@@ -889,7 +904,12 @@ function editTable(id) {
 
 function deleteTable(id) {
   const t = state.tables.find(x=>x.id===id);
-  if (!confirm(`"${t?.name}" masası silinsin?`)) return;
+  // BUG FIX #7: Aktiv (dolu) masa silinməzdən əvvəl xəbərdarlıq edilir
+  if (t?.occupant) {
+    if (!confirm(`"${t?.name}" masası hal-hazırda aktivdir! Yenə də silinsin?`)) return;
+  } else {
+    if (!confirm(`"${t?.name}" masası silinsin?`)) return;
+  }
   R.tables.child(id).remove();
   addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
   showToast('🗑️ Masa silindi');
@@ -1153,6 +1173,8 @@ function checkIncomingOrders() {
 
 function triggerAlarm(order) {
   state.alarm = order.id;
+  // BUG FIX #3: Movcud interval varsa evvelden legv et
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
   document.getElementById('alarmSub').textContent = 'Sifarişiniz hazırdır!';
   document.getElementById('alarmOverlay').classList.add('show');
   playBeep();
@@ -1411,6 +1433,8 @@ function triggerCustomerAlarm(request) {
 
   document.getElementById('alarmSub').textContent = request.message;
   document.getElementById('alarmOverlay').classList.add('show');
+  // BUG FIX #4: Movcud interval varsa evvelden legv et
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
   playBeep();
   state.alarmInterval = setInterval(playBeep, 700);
   if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
@@ -1427,7 +1451,32 @@ function triggerCustomerAlarm(request) {
 // }
 
 function renderCustomerRequests(list) {
-  // Admin feedback seksiyasında göstər
+  // BUG FIX #8: Admin panelinde müştəri tələbləri feedbackList-də göstərilir
+  const el = document.getElementById('feedbackList');
+  if (!el) return;
+  if (!list.length) {
+    // Yalnız şikayət yoxdursa məlumat ver (feedbacks dinləyicisi boş array göndərə bilər)
+    return;
+  }
+  const colors = { call:'#e74c3c', bill_cash:'#f39c12', bill_pos:'#8e44ad', admin:'#c0392b', message:'#3498db' };
+  const icons  = { call:'🔔', bill_cash:'💵', bill_pos:'💳', admin:'🚨', message:'💬' };
+  const requestHtml = list.map(r => `
+    <div class="log-item" style="margin-bottom:8px;border-left:3px solid ${colors[r.type]||'#666'};">
+      <span class="log-badge" style="background:${colors[r.type]||'#666'}22;color:${colors[r.type]||'#aaa'}">${icons[r.type]||'📋'} ${r.tableName||''}</span>
+      <span class="log-text">${r.message||''}</span>
+      <span class="log-time">${r.time||''}</span>
+    </div>
+  `).join('');
+  // Mövcud şikayət listinin əvvəlinə müştəri tələblərini əlavə et
+  const existingFeedbacks = el.querySelector('.feedback-section');
+  const requestSection = document.createElement('div');
+  requestSection.className = 'request-section';
+  requestSection.innerHTML = `<p style="color:var(--orange);font-size:12px;font-weight:700;margin-bottom:8px;">⚡ ANI TƏLƏBlƏR</p>${requestHtml}`;
+  if (existingFeedbacks) {
+    el.insertBefore(requestSection, existingFeedbacks);
+  } else {
+    el.insertBefore(requestSection, el.firstChild);
+  }
 }
 
 function renderFeedbacks(list) {
