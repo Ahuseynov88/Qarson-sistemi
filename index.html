@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1a1a2e">
@@ -241,6 +242,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
       <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
       <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
+<button class="admin-tab" onclick="adminTab('feedback',this)">💬 Şikayətlər</button>
     </div>
 
     <!-- Dashboard -->
@@ -280,6 +282,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
           <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Cari PIN: <strong id="currentKitchenPin" style="color:var(--orange);">****</strong></p>
           <button class="btn btn-blue" onclick="openKitchenPinModal()" style="width:100%;padding:13px;">🔑 PIN-i Dəyiş</button>
         </div>
+<div class="admin-section" id="sec-feedback">
+  <h3 style="color:var(--text2);margin-bottom:16px;font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
+  <div id="feedbackList" class="log-list"></div>
+</div>
+</div>
         <div class="table-card">
           <h3 style="margin-bottom:8px;">ℹ️ Sistem Məlumatları</h3>
           <p style="font-size:13px;color:var(--text2);margin-top:8px;">Admin PIN: <strong style="color:var(--green);">0000</strong></p>
@@ -433,7 +440,58 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
+<!-- QR Modal -->
+<div class="modal-bg" id="qrModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <h2 id="qrModalTitle">QR Kod</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Müştəri bu kodu oxudub masaya xidmət istəyə bilər</p>
+    <div id="qrCanvas" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
+    <p id="qrLink" style="font-size:11px;color:var(--text3);word-break:break-all;margin-bottom:16px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeQRModal()">Bağla</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="printQR()">🖨️ Çap Et</button>
+    </div>
+  </div>
+</div>
+<!-- MÜŞTƏRİ PANELİ -->
+<div class="screen" id="customerScreen" style="background:linear-gradient(135deg,#0f0f1a,#1a1a2e);align-items:center;justify-content:flex-start;padding:20px;">
+  <div style="width:100%;max-width:420px;margin:0 auto;">
+    <div style="text-align:center;padding:30px 0 20px;">
+      <div style="font-size:48px;margin-bottom:8px;">🍽️</div>
+      <h1 style="font-size:22px;color:var(--text);" id="customerTableName">Masa</h1>
+      <p style="color:var(--text2);font-size:14px;margin-top:4px;">Xidmət üçün seçim edin</p>
+    </div>
 
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+      <button onclick="customerAction('call')" style="padding:18px;background:rgba(231,76,60,.15);border:2px solid #e74c3c;border-radius:14px;color:#e74c3c;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">🔔</span> Ofisiantı Çağır
+      </button>
+      <button onclick="customerAction('bill_cash')" style="padding:18px;background:rgba(243,156,18,.15);border:2px solid #f39c12;border-radius:14px;color:#f39c12;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">💵</span> Hesab (Nağd)
+      </button>
+      <button onclick="customerAction('bill_pos')" style="padding:18px;background:rgba(142,68,173,.15);border:2px solid #8e44ad;border-radius:14px;color:#8e44ad;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">💳</span> Hesab (POS Terminal)
+      </button>
+      <button onclick="customerAction('admin')" style="padding:18px;background:rgba(192,57,43,.15);border:2px solid #c0392b;border-radius:14px;color:#c0392b;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">🚨</span> Administrator
+      </button>
+      <button onclick="document.getElementById('customerMsgBox').style.display=document.getElementById('customerMsgBox').style.display==='none'?'block':'none'" style="padding:18px;background:rgba(52,152,219,.15);border:2px solid #3498db;border-radius:14px;color:#3498db;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">💬</span> Ofisantla Əlaqə
+      </button>
+      <div id="customerMsgBox" style="display:none;background:var(--card);border-radius:12px;padding:14px;">
+        <textarea id="customerMsgInput" placeholder="Mesajınızı yazın..." style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:none;min-height:80px;"></textarea>
+        <button onclick="sendCustomerMessage()" style="width:100%;margin-top:8px;padding:12px;background:var(--blue);border:none;border-radius:8px;color:white;font-weight:700;cursor:pointer;">Göndər</button>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border-radius:14px;padding:16px;border:1px solid var(--border);">
+      <h3 style="font-size:15px;margin-bottom:12px;color:var(--text2);">📝 Şikayət / Təklif</h3>
+      <textarea id="feedbackInput" placeholder="Şikayət və ya təklifinizi yazın..." style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:none;min-height:80px;"></textarea>
+      <button onclick="sendFeedback()" style="width:100%;margin-top:8px;padding:12px;background:var(--green);border:none;border-radius:8px;color:white;font-weight:700;cursor:pointer;">Göndər</button>
+    </div>
+  </div>
+  <div id="customerToast" style="display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);"></div>
+</div>
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -640,7 +698,7 @@ function initListeners() {
       }
     }
   });
-
+initCustomerRequestListener();
   _listeners.tables = R.tables.on('value', snap=>{
     state.tables = toArr(snap.val());
     onDataChange();
@@ -728,6 +786,7 @@ function renderDashboard() {
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" style="flex:1;padding:10px;font-size:13px;" onclick="adminEditTableNote('${t.id}')">📝 Qeyd</button>
         <button class="btn btn-red" style="flex:1;padding:10px;font-size:13px;" onclick="adminCloseTable('${t.id}')">🔒 Bağla</button>
+        
       </div>
     </div>`;
   }).join('');
@@ -769,7 +828,8 @@ function renderTables() {
       <div class="meta">${occ?`Qarson: <strong>${esc(occ)}</strong>`:'Boş'}</div>
       <div class="item-actions">
         <button class="btn btn-ghost" onclick="editTable('${t.id}')">✏️ Düzəliş</button>
-        <button class="btn btn-red" onclick="deleteTable('${t.id}')">🗑️ Sil</button>
+  <button class="btn btn-blue" onclick="showQR('${t.id}','${esc(t.name)}')">📱 QR</button>
+  <button class="btn btn-red" onclick="deleteTable('${t.id}')">🗑️ Sil</button>
       </div>
     </div>`;
   }).join('');
@@ -1142,7 +1202,10 @@ function acceptAlarm() {
     if (next.length) triggerAlarm(next[0]);
   },500);
 }
-
+if (window._currentRequestId) {
+    db.ref('customerRequests').child(window._currentRequestId).update({ status:'accepted' });
+    window._currentRequestId = null;
+  }
 function stopAlarm() {
   state.alarm = null;
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
@@ -1209,6 +1272,209 @@ function closeConfirmCloseModal() {
   document.getElementById('confirmCloseTableModal').classList.remove('open');
   state.pendingCloseTableId = null;
 }
+/* ═══════ QR KOD ═══════ */
+function showQR(tableId, tableName) {
+  const baseUrl = location.origin + location.pathname;
+  const url = baseUrl + '?table=' + tableId;
+  document.getElementById('qrModalTitle').textContent = '📱 ' + tableName;
+  document.getElementById('qrLink').textContent = url;
+  const canvas = document.getElementById('qrCanvas');
+  canvas.innerHTML = '';
+  new QRCode(canvas, {
+    text: url,
+    width: 200,
+    height: 200,
+    colorDark: '#000',
+    colorLight: '#fff'
+  });
+  document.getElementById('qrModal').classList.add('open');
+}
+
+function closeQRModal() {
+  document.getElementById('qrModal').classList.remove('open');
+}
+
+function printQR() {
+  const title = document.getElementById('qrModalTitle').textContent;
+  const canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) return;
+  const img = canvas.toDataURL();
+  const w = window.open('', '_blank');
+  w.document.write(`
+    <html><head><title>${title}</title>
+    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;}
+    h2{margin-bottom:16px;} p{color:#666;font-size:13px;}</style></head>
+    <body><h2>${title}</h2><img src="${img}" width="250"><p>QR kodu oxudun</p>
+    <script>window.onload=()=>window.print()<\/script></body></html>
+  `);
+}
+
+/* ═══════ MÜŞTƏRİ PANELİ YÜKLƏNMƏ ═══════ */
+function checkCustomerMode() {
+  const params = new URLSearchParams(location.search);
+  const tableId = params.get('table');
+  if (!tableId) return;
+  // Müştəri modu — login ekranını gizlət, müştəri panelini göstər
+  R.tables.child(tableId).once('value', snap => {
+    const t = snap.val();
+    if (!t) { showToast('❌ Masa tapılmadı'); return; }
+    openCustomerPanel(tableId, t);
+  });
+}
+
+function openCustomerPanel(tableId, tableData) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('customerScreen').classList.add('active');
+  document.getElementById('customerTableName').textContent = tableData.name || 'Masa';
+  window._customerTableId = tableId;
+  window._customerTableData = tableData;
+}
+
+function customerAction(type) {
+  const tableId = window._customerTableId;
+  const t = window._customerTableData;
+  if (!tableId || !t) return;
+
+  const messages = {
+    call:     { text: t.name + ' sizi çağırır! 🔔',         color: '#e74c3c', icon: '🔔' },
+    bill_cash:{ text: t.name + ' hesab istəyir (Nağd) 💵',   color: '#f39c12', icon: '💵' },
+    bill_pos: { text: t.name + ' hesab istəyir (POS) 💳',    color: '#8e44ad', icon: '💳' },
+    admin:    { text: t.name + ' Administrator istəyir! 🚨',  color: '#c0392b', icon: '🚨' }
+  };
+
+  const m = messages[type];
+  if (!m) return;
+
+  // Firebase-ə müştəri tələbi yaz
+  db.ref('customerRequests').push({
+    tableId, tableName: t.name,
+    type, message: m.text,
+    status: 'pending',
+    time: new Date().toLocaleTimeString('az-AZ'),
+    createdAt: Date.now()
+  });
+
+  showCustomerToast(m.icon + ' ' + 'Bildiriş göndərildi!');
+}
+
+function sendCustomerMessage() {
+  const msg = document.getElementById('customerMsgInput').value.trim();
+  if (!msg) return;
+  const tableId = window._customerTableId;
+  const t = window._customerTableData;
+
+  db.ref('customerRequests').push({
+    tableId, tableName: t.name,
+    type: 'message',
+    message: t.name + ' mesaj: ' + msg,
+    status: 'pending',
+    time: new Date().toLocaleTimeString('az-AZ'),
+    createdAt: Date.now()
+  });
+
+  document.getElementById('customerMsgInput').value = '';
+  showCustomerToast('✅ Mesajınız göndərildi!');
+}
+
+function sendFeedback() {
+  const msg = document.getElementById('feedbackInput').value.trim();
+  if (!msg) return;
+  const tableId = window._customerTableId;
+  const t = window._customerTableData;
+
+  db.ref('feedbacks').push({
+    tableId, tableName: t ? t.name : '?',
+    message: msg,
+    time: new Date().toLocaleTimeString('az-AZ'),
+    date: new Date().toLocaleDateString('az-AZ'),
+    createdAt: Date.now(),
+    status: 'new'
+  });
+
+  document.getElementById('feedbackInput').value = '';
+  showCustomerToast('✅ Şikayət/təklifiniz qeyd edildi!');
+}
+
+function showCustomerToast(msg) {
+  const el = document.getElementById('customerToast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = 'none', 3000);
+}
+
+/* ═══════ ADMIN — MÜŞTƏRİ TƏLƏBLƏRİ ═══════ */
+function initCustomerRequestListener() {
+  db.ref('customerRequests').orderByChild('status').equalTo('pending').on('value', snap => {
+    const data = snap.val() || {};
+    const list = Object.keys(data).map(k => ({id:k,...data[k]}));
+
+    // Qarson üçün — öz masasına gələn tələblər
+    if (state.user && state.user.role === 'waiter') {
+      list.filter(r => {
+        const t = state.tables.find(x => x.id === r.tableId);
+        return t && t.occupant === state.user.id;
+      }).forEach(r => {
+        triggerCustomerAlarm(r);
+      });
+    }
+
+    // Admin üçün — bütün tələblər
+    if (state.user && state.user.role === 'admin') {
+      renderCustomerRequests(list);
+    }
+  });
+
+  // Şikayətlər
+  db.ref('feedbacks').orderByChild('createdAt').limitToLast(50).on('value', snap => {
+    const data = snap.val() || {};
+    const list = Object.keys(data).map(k => ({id:k,...data[k]})).reverse();
+    if (state.user && state.user.role === 'admin') renderFeedbacks(list);
+  });
+}
+
+function triggerCustomerAlarm(request) {
+  if (state._shownRequests && state._shownRequests.includes(request.id)) return;
+  if (!state._shownRequests) state._shownRequests = [];
+  state._shownRequests.push(request.id);
+
+  document.getElementById('alarmSub').textContent = request.message;
+  document.getElementById('alarmOverlay').classList.add('show');
+  playBeep();
+  state.alarmInterval = setInterval(playBeep, 700);
+  if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
+
+  // Qəbul edildikdə request-i bağla
+  window._currentRequestId = request.id;
+}
+
+// Mövcud acceptAlarm funksiyasını bu cür genişləndir:
+// acceptAlarm() içinə əlavə et:
+// if (window._currentRequestId) {
+//   db.ref('customerRequests').child(window._currentRequestId).update({status:'accepted'});
+//   window._currentRequestId = null;
+// }
+
+function renderCustomerRequests(list) {
+  // Admin feedback seksiyasında göstər
+}
+
+function renderFeedbacks(list) {
+  const el = document.getElementById('feedbackList');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = '<p style="color:var(--text3);padding:16px;">Hələ şikayət/təklif yoxdur.</p>'; return; }
+  const colors = { call:'#e74c3c', bill_cash:'#f39c12', bill_pos:'#8e44ad', admin:'#c0392b', message:'#3498db', feedback:'#2ecc71' };
+  const icons  = { call:'🔔', bill_cash:'💵', bill_pos:'💳', admin:'🚨', message:'💬', feedback:'📝' };
+  el.innerHTML = list.map(f => `
+    <div class="log-item" style="margin-bottom:8px;">
+      <span class="log-badge" style="background:${colors[f.type]||'#2ecc71'}22;color:${colors[f.type]||'#2ecc71'}">${icons[f.type]||'📝'} ${esc(f.tableName||'')}</span>
+      <span class="log-text">${esc(f.message)}</span>
+      <span class="log-time">${f.time} ${f.date||''}</span>
+    </div>
+  `).join('');
+}
+// Müştəri modu yoxla
+checkCustomerMode();
 // Init fab visibility
 document.getElementById('adminFab').style.display='none';
 </script>
