@@ -224,28 +224,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .cust-feedback textarea{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;min-height:80px;}
 .cust-feedback button{width:100%;margin-top:8px;padding:13px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:16px;}
 
-/* ── Müştəri paneli — qarson widget ── */
-#custWaiterCard{
-  position:fixed;top:16px;right:16px;
-  background:rgba(26,26,46,.92);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:10px 14px;
-  display:flex;align-items:center;gap:10px;
-  z-index:100;
-  backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.4);
-  max-width:200px;
-}
-#custWaiterCard img{
-  width:48px;height:48px;border-radius:50%;
-  object-fit:cover;border:2px solid var(--green);
-  flex-shrink:0;
-}
-#custWaiterCard .cw-info{display:flex;flex-direction:column;}
-#custWaiterCard .cw-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
-#custWaiterCard .cw-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:2px;}
-
 /* Müştəri inactive overlay */
 #customerInactiveOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
 #customerInactiveOverlay.show{display:flex;}
@@ -317,6 +295,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 <div class="admin-section" id="sec-waiters">
   <div class="grid-2" id="waitersGrid"></div>
 </div>
+<div class="admin-section" id="sec-tables">
   <!-- Kateqoriya filter düymələri -->
   <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
   <!-- Masalar -->
@@ -548,14 +527,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
 <div class="screen" id="customerScreen">
-  <!-- Qarson widget — sağ yuxarı künc -->
-  <div id="custWaiterCard" style="display:none;">
-    <img id="custWaiterAvatar" src="" alt="">
-    <div class="cw-info">
-      <span class="cw-label">Sizə xidmət edir</span>
-      <span class="cw-name" id="custWaiterName">—</span>
-    </div>
-  </div>
   <div class="cust-wrap">
     <div class="cust-header">
       <div class="icon">🍽️</div>
@@ -630,7 +601,7 @@ const R = {
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
-const ADMIN_PIN = '0000';
+const ADMIN_PIN = '0803';
 
 let state = {
   role: 'admin',
@@ -654,7 +625,8 @@ let state = {
   _shownRequests: [],    // eyni tələbin iki dəfə göstərilməməsi üçün
   // [e] Çat state
   activeChatTableId: null,
-  activeChatConvId: null
+  activeChatConvId: null,
+  _tableCatFilter: 'all'
 };
 
 /* ═══════════════════════════════════════════
@@ -1010,8 +982,6 @@ function renderWaiters() {
   }).join('');
 }
 
-// Aktiv kateqoriya filtri
-state._tableCatFilter = state._tableCatFilter || 'all';
 
 function renderTables() {
   const el    = document.getElementById('tablesGrid');
@@ -1118,7 +1088,7 @@ function editWaiter(id) {
   if (!w) return;
   state.editTarget = { type:'waiter', id };
   document.getElementById('addModalTitle').textContent = '✏️ Qarson Düzəliş';
-  document.getElementById('addModalBody').innerHTML = waiterForm(w.name, w.pin, w.avatar || '');
+  document.getElementById('addModalBody').innerHTML = waiterForm(w.name, w.pin);
   document.getElementById('addModal').classList.add('open');
 }
 
@@ -1161,24 +1131,9 @@ function deleteTable(id) {
 }
 
 /* ── Add modal ── */
-function waiterForm(name='', pin='', avatar='') {
-  return `
-    <div class="form-group"><label>Ad Soyad</label>
-      <input type="text" id="fw_name" value="${esc(name)}" placeholder="Əli Məmmədov">
-    </div>
-    <div class="form-group"><label>PIN (4 rəqəm)</label>
-      <input type="text" id="fw_pin" value="${pin}" maxlength="4" placeholder="1234">
-    </div>
-    <div class="form-group">
-      <label>Şəkil URL (isteğe bağlı)</label>
-      <input type="url" id="fw_avatar" value="${esc(avatar)}"
-        placeholder="https://... (boş buraxsanız avtomatik yaranır)"
-        style="font-size:13px;">
-      <small style="color:var(--text2);font-size:11px;margin-top:4px;display:block;">
-        Şəkil linki daxil edin və ya boş buraxın — ad əsasında avtomatik yaranacaq
-      </small>
-      ${avatar ? `<img src="${esc(avatar)}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-top:8px;border:2px solid var(--green);" onerror="this.style.display='none'">` : ''}
-    </div>`;
+function waiterForm(name='', pin='') {
+  return `<div class="form-group"><label>Ad Soyad</label><input type="text" id="fw_name" value="${esc(name)}" placeholder="Əli Məmmədov"></div>
+          <div class="form-group"><label>PIN (4 rəqəm)</label><input type="text" id="fw_pin" value="${pin}" maxlength="4" placeholder="1234"></div>`;
 }
 function tableForm(name='', isEdit=false) {
   return `
@@ -1234,8 +1189,7 @@ function saveItem() {
     const conflict = state.waiters.find(w => w.pin === pin &&
       (!state.editTarget || w.id !== state.editTarget.id));
     if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
-    const avatarInput = document.getElementById('fw_avatar')?.value?.trim();
-    const avatar = avatarInput || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
     if (state.editTarget) {
       R.waiters.child(state.editTarget.id).update({ name, pin, avatar });
       addLog('admin', `Qarson düzəlişi: ${name}`, {});
@@ -1370,8 +1324,7 @@ function renderKitchen() {
     const stLabel = hasPending ? '🔴 Gözləyir' : (w.status==='online'?'🟢 Aktiv':'🟢 Hazır');
     return `<div class="k-card ${st}" ${!hasPending?`onclick="callWaiter('${w.id}')"`:''}>
       ${hasPending?'<div class="k-no-click-overlay"></div>':''}
-      <img src="${w.avatar}" alt="${esc(w.name)}"
-           onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(w.name)}&background=2ecc71&color=fff&size=200'">
+      <img src="${w.avatar}" alt="${esc(w.name)}">
       <h3>${esc(w.name)}</h3>
       <div class="k-status">${stLabel}</div>
       <div class="k-tables-under">
@@ -1917,8 +1870,6 @@ function checkCustomerMode() {
     if (t.occupant) {
       document.getElementById('customerInactiveOverlay').classList.remove('show');
       document.getElementById('customerTableName').textContent = t.name || 'Masa';
-      // Qarson widget-i yenilə
-      showCustomerWaiterCard(t.occupant);
       if (!window._customerTableId) {
         window._customerTableId   = tableId;
         window._customerTableData = t;
@@ -1936,26 +1887,8 @@ function checkCustomerMode() {
       window._customerTableId   = null;
       window._customerTableData = null;
       db.ref('chats/' + tableId).off();
-      // Qarson widget-i gizlət
-      document.getElementById('custWaiterCard').style.display = 'none';
       showCustomerClosedScreen('🙏 Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
     }
-  });
-}
-
-function showCustomerWaiterCard(waiterId) {
-  // Firebase-dən qarsonun məlumatlarını çək
-  R.waiters.child(waiterId).once('value', snap => {
-    const w = snap.val();
-    if (!w) return;
-    const card   = document.getElementById('custWaiterCard');
-    const avatar = document.getElementById('custWaiterAvatar');
-    const name   = document.getElementById('custWaiterName');
-    if (!card) return;
-    avatar.src = w.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(w.name)}&background=2ecc71&color=fff&size=200`;
-    avatar.onerror = () => { avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(w.name)}&background=2ecc71&color=fff&size=200`; };
-    name.textContent = w.name || '—';
-    card.style.display = 'flex';
   });
 }
 
