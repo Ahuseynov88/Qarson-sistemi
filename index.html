@@ -1712,6 +1712,7 @@ function checkCustomerMode() {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('customerScreen').classList.add('active');
         document.getElementById('customerTableName').textContent = t.name || 'Masa';
+        initCustomerChat(tableId); 
       }
       return;
     }
