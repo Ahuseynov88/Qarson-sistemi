@@ -295,6 +295,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 <div class="admin-section" id="sec-waiters">
   <div class="grid-2" id="waitersGrid"></div>
 </div>
+<div class="admin-section" id="sec-tables">
   <!-- Kateqoriya filter düymələri -->
   <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
   <!-- Masalar -->
@@ -624,7 +625,8 @@ let state = {
   _shownRequests: [],    // eyni tələbin iki dəfə göstərilməməsi üçün
   // [e] Çat state
   activeChatTableId: null,
-  activeChatConvId: null
+  activeChatConvId: null,
+  _tableCatFilter: 'all'
 };
 
 /* ═══════════════════════════════════════════
@@ -980,8 +982,6 @@ function renderWaiters() {
   }).join('');
 }
 
-// Aktiv kateqoriya filtri
-state._tableCatFilter = state._tableCatFilter || 'all';
 
 function renderTables() {
   const el    = document.getElementById('tablesGrid');
