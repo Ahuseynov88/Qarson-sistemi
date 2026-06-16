@@ -1259,6 +1259,7 @@ function adminCloseTable(tableId) {
   const t = state.tables.find(x=>x.id===tableId);
   if (!t) return;
   state.pendingCloseTableId = tableId;
+  addLog('table', `Admin "${t.name}" masasını bağlamaq istədi`, { tableId });
   document.getElementById('confirmCloseTableName').textContent = t.name;
   document.getElementById('confirmCloseTableModal').classList.remove('open');
   void document.getElementById('confirmCloseTableModal').offsetWidth;
@@ -1427,7 +1428,9 @@ function closeNotesModal() { document.getElementById('notesModal').classList.rem
 function saveNote() {
   if (!state.noteTableId) return;
   const notes = document.getElementById('noteText').value;
+  const t = state.tables.find(x => x.id === state.noteTableId);
   R.tables.child(state.noteTableId).update({ notes });
+  addLog('table', `${state.user.name} "${t?.name}" masasına qeyd yazdı: ${notes.substring(0,40)}`, { waiterId: state.user.id, tableId: state.noteTableId });
   closeNotesModal();
   showToast('✅ Qeyd saxlanıldı');
 }
