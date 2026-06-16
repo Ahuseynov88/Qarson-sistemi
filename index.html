@@ -1741,37 +1741,41 @@ function printQR() {
 function checkCustomerMode() {
   const params  = new URLSearchParams(location.search);
   const tableId = params.get('table');
-  if (!tableId) return;
+  if (!tableId) return; // URL-də ?table= yoxdursa, login ekranı normal işləsin
+
+  // URL-də ?table= varsa — bu müştəri panelidir
+  // Login ekranını bağla, customerScreen-i aç
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('customerScreen').classList.add('active');
+
   // Masanı real-time izlə
   R.tables.child(tableId).on('value', snap => {
     const t = snap.val();
+
     // Masa tapılmadı
     if (!t) {
       showCustomerClosedScreen('❌ Masa tapılmadı');
       return;
     }
+
     // Masa aktivdir — paneli göstər
     if (t.occupant) {
-      // Gözləmə ekranını gizlət
       document.getElementById('customerInactiveOverlay').classList.remove('show');
-      // Yalnız ilk dəfə açılırsa ekrana keç
+      document.getElementById('customerTableName').textContent = t.name || 'Masa';
+
       if (!window._customerTableId) {
         window._customerTableId   = tableId;
         window._customerTableData = t;
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById('customerScreen').classList.add('active');
-        document.getElementById('customerTableName').textContent = t.name || 'Masa';
         initCustomerChat(tableId);
       }
       return;
     }
-    // ── MASA AKTİV DEYİL ──
-    // customerScreen-i göstər, üstündə inactive overlay aç
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('customerScreen').classList.add('active');
+
+    // Masa aktiv deyil — gözləmə ekranı göstər
     document.getElementById('customerTableName').textContent = t.name || 'Masa';
     document.getElementById('customerInactiveOverlay').classList.add('show');
-    // Masa bağlandısa (əvvəl açıq idi, indi bağlandı)
+
+    // Əgər əvvəl açıq idi, indi bağlandı
     if (window._customerTableId) {
       window._customerTableId   = null;
       window._customerTableData = null;
