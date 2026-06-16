@@ -1818,6 +1818,40 @@ function checkCustomerMode() {
 
     // Masa aktivdir — paneli göstər
     if (t.occupant) {
+      // Gözləmə ekranını gizlət
+      document.getElementById('customerInactiveOverlay').classList.remove('show');
+
+      // Yalnız ilk dəfə açılırsa ekrana keç
+      if (!window._customerTableId) {
+        window._customerTableId   = tableId;
+        window._customerTableData = t;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('customerScreen').classList.add('active');
+        document.getElementById('customerTableName').textContent = t.name || 'Masa';
+        initCustomerChat(tableId);
+      }
+      return;
+    }
+
+    // ── MASA AKTİV DEYİL ──
+    // customerScreen-i göstər, üstündə inactive overlay aç
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('customerScreen').classList.add('active');
+    document.getElementById('customerTableName').textContent = t.name || 'Masa';
+    document.getElementById('customerInactiveOverlay').classList.add('show');
+
+    // Masa bağlandısa (əvvəl açıq idi, indi bağlandı)
+    if (window._customerTableId) {
+      window._customerTableId   = null;
+      window._customerTableData = null;
+      db.ref('chats/' + tableId).off();
+      showCustomerClosedScreen('🙏 Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
+    }
+  });
+}
+
+    // Masa aktivdir — paneli göstər
+    if (t.occupant) {
       // Yalnız ilk dəfə açılırsa ekrana keç
       if (!window._customerTableId) {
         window._customerTableId   = tableId;
