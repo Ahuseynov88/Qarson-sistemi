@@ -698,6 +698,16 @@ function doLogin() {
         status: 'ready',
         lastSeen: Date.now()
       });
+      // Qarson bağlantını kəsəndə log yaz
+      const disconnectLogRef = R.logs.push();
+      disconnectLogRef.onDisconnect().set({
+        type: 'logout',
+        message: `${state.user.name} sistemdən çıxdı (bağlantı kəsildi)`,
+        details: { waiterId: state.user.id, method: 'disconnect' },
+        timestamp: Date.now(),
+        time: new Date().toLocaleTimeString('az-AZ'),
+        date: new Date().toLocaleDateString('az-AZ')
+      });
     });
     return;
   }
