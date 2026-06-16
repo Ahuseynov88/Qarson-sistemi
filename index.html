@@ -292,10 +292,12 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <h3 style="color:var(--text2);margin-bottom:14px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">Aktiv Masalar</h3>
       <div class="grid-2" id="activeTables"></div>
     </div>
-
-    <div class="admin-section" id="sec-waiters">
-      <div class="grid-2" id="waitersGrid"></div>
-    </div>
+<div class="admin-section" id="sec-tables">
+  <!-- Kateqoriya filter düymələri -->
+  <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+  <!-- Masalar -->
+  <div class="grid-2" id="tablesGrid"></div>
+</div>
 
     <div class="admin-section" id="sec-tables">
       <div class="grid-2" id="tablesGrid"></div>
@@ -936,21 +938,65 @@ function renderWaiters() {
   }).join('');
 }
 
+// Aktiv kateqoriya filtri
+state._tableCatFilter = state._tableCatFilter || 'all';
+
 function renderTables() {
-  const el = document.getElementById('tablesGrid');
-  if (!state.tables.length) { el.innerHTML='<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>'; return; }
-  el.innerHTML = state.tables.map(t=>{
-    const occ = t.occupant ? (state.waiters.find(w=>w.id===t.occupant)||{name:'?'}).name : null;
+  const el    = document.getElementById('tablesGrid');
+  const tabEl = document.getElementById('tableCatTabs');
+  if (!state.tables.length) {
+    el.innerHTML  = '<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>';
+    tabEl.innerHTML = '';
+    return;
+  }
+
+  // Mövcud kateqoriyaları tap (category sahəsi yoxdursa addan prefiks çıxar)
+  const cats = ['all', ...new Set(state.tables.map(t =>
+    t.category || t.name.replace(/\s+\d+$/, '') || t.name
+  ))];
+
+  // Kateqoriya düymələrini render et
+  tabEl.innerHTML = cats.map(c => `
+    <button onclick="setTableCat('${esc(c)}')"
+      style="padding:8px 18px;border-radius:20px;border:1px solid var(--border);
+             background:${state._tableCatFilter===c?'var(--blue)':'transparent'};
+             color:${state._tableCatFilter===c?'white':'var(--text2)'};
+             font-weight:600;font-size:13px;cursor:pointer;">
+      ${c === 'all' ? '🪑 Hamısı' : esc(c)}
+    </button>
+  `).join('');
+
+  // Filtrlə
+  const filtered = state._tableCatFilter === 'all'
+    ? state.tables
+    : state.tables.filter(t =>
+        (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._tableCatFilter
+      );
+
+  if (!filtered.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(t => {
+    const occ = t.occupant
+      ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }).name
+      : null;
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
-      <div class="meta">${occ?`Qarson: <strong>${esc(occ)}</strong>`:'Boş'}</div>
+      <div class="meta">${occ ? `Qarson: <strong>${esc(occ)}</strong>` : 'Boş'}</div>
       <div class="item-actions">
         <button class="btn btn-ghost" onclick="editTable('${t.id}')">✏️ Düzəliş</button>
-        <button class="btn btn-blue" onclick="showQR('${t.id}','${esc(t.name)}')">📱 QR</button>
-        <button class="btn btn-red" onclick="deleteTable('${t.id}')">🗑️ Sil</button>
+        <button class="btn btn-blue"  onclick="showQR('${t.id}','${esc(t.name)}')">📱 QR</button>
+        <button class="btn btn-red"   onclick="deleteTable('${t.id}')">🗑️ Sil</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function setTableCat(cat) {
+  state._tableCatFilter = cat;
+  renderTables();
 }
 
 function renderLogs() {
@@ -1024,8 +1070,8 @@ function editTable(id) {
   const t = state.tables.find(x=>x.id===id);
   if (!t) return;
   state.editTarget = { type:'table', id };
-  document.getElementById('addModalTitle').textContent = '✏️ Masa Düzəliş';
-  document.getElementById('addModalBody').innerHTML = tableForm(t.name, t.capacity||4);
+  document.getElementById('addModalTitle').textContent = '✏️ Masa Adını Dəyiş';
+document.getElementById('addModalBody').innerHTML = tableForm(t.name, true);
   document.getElementById('addModal').classList.add('open');
 }
 
@@ -1047,55 +1093,95 @@ function waiterForm(name='', pin='') {
   return `<div class="form-group"><label>Ad Soyad</label><input type="text" id="fw_name" value="${esc(name)}" placeholder="Əli Məmmədov"></div>
           <div class="form-group"><label>PIN (4 rəqəm)</label><input type="text" id="fw_pin" value="${pin}" maxlength="4" placeholder="1234"></div>`;
 }
-function tableForm(name='', capacity=4) {
-  return `<div class="form-group"><label>Masa Adı</label><input type="text" id="ft_name" value="${esc(name)}" placeholder="VIP Otaq / Terras 1"></div>
-          <div class="form-group"><label>Nəfər Sayı</label><input type="number" id="ft_cap" value="${capacity}" min="1" max="20"></div>`;
+function tableForm(name='', isEdit=false) {
+  return `
+    <div class="form-group">
+      <label>Kateqoriya Adı</label>
+      <input type="text" id="ft_name" value="${esc(name)}"
+        placeholder="Məs: Masa, VIP, Terras, Bar"
+        style="font-size:16px;">
+      <small style="color:var(--text2);font-size:12px;margin-top:5px;display:block;">
+        Bu ad həm kateqoriya, həm də prefiks kimi istifadə olunur.
+      </small>
+    </div>
+    ${!isEdit ? `
+    <div class="form-group">
+      <label>Neçə ədəd masa yaransın?</label>
+      <input type="number" id="ft_count" value="1" min="1" max="99"
+        style="font-size:18px;text-align:center;">
+      <small style="color:var(--text2);font-size:12px;margin-top:5px;display:block;">
+        Məs: "Masa" + 6 → Masa 1, Masa 2 ... Masa 6
+      </small>
+    </div>` : ''}
+  `;
 }
 
 function openAddModal() {
   state.editTarget = null;
-  if (state.adminSection==='waiters') {
+  if (state.adminSection === 'waiters') {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
     document.getElementById('addModalBody').innerHTML = waiterForm();
   } else {
-    document.getElementById('addModalTitle').textContent = '➕ Yeni Masa';
-    document.getElementById('addModalBody').innerHTML = tableForm();
+    document.getElementById('addModalTitle').textContent = '➕ Yeni Kateqoriya və Masalar';
+    document.getElementById('addModalBody').innerHTML = tableForm('', false);
   }
   document.getElementById('addModal').classList.add('open');
 }
 
-function closeAddModal() { document.getElementById('addModal').classList.remove('open'); state.editTarget=null; }
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('open');
+  state.editTarget = null;
+}
 
 function saveItem() {
-  const sec = state.editTarget ? state.editTarget.type : (state.adminSection==='waiters'?'waiter':'table');
-  if (sec==='waiter') {
+  const sec = state.editTarget
+    ? state.editTarget.type
+    : (state.adminSection === 'waiters' ? 'waiter' : 'table');
+
+  if (sec === 'waiter') {
     const name = document.getElementById('fw_name').value.trim();
     const pin  = document.getElementById('fw_pin').value.trim();
-    if (!name||pin.length!==4||!/^\d{4}$/.test(pin)) { showToast('❌ Ad və 4 rəqəmli PIN lazımdır'); return; }
-    const conflict = state.waiters.find(w=>w.pin===pin&&(!state.editTarget||w.id!==state.editTarget.id));
+    if (!name || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      showToast('❌ Ad və 4 rəqəmli PIN lazımdır'); return;
+    }
+    const conflict = state.waiters.find(w => w.pin === pin &&
+      (!state.editTarget || w.id !== state.editTarget.id));
     if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
     const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
     if (state.editTarget) {
       R.waiters.child(state.editTarget.id).update({ name, pin, avatar });
-      addLog('admin',`Qarson düzəlişi: ${name}`,{});
+      addLog('admin', `Qarson düzəlişi: ${name}`, {});
       showToast('✅ Düzəliş saxlanıldı');
     } else {
-      R.waiters.push({ name, pin, avatar, status:'ready', createdAt:Date.now() });
-      addLog('admin',`Yeni qarson əlavə edildi: ${name}`,{});
+      R.waiters.push({ name, pin, avatar, status: 'ready', createdAt: Date.now() });
+      addLog('admin', `Yeni qarson əlavə edildi: ${name}`, {});
       showToast('✅ Qarson əlavə edildi');
     }
+
   } else {
-    const name = document.getElementById('ft_name').value.trim();
-    const capacity = parseInt(document.getElementById('ft_cap').value)||4;
-    if (!name) { showToast('❌ Masa adı lazımdır'); return; }
+    const prefix = document.getElementById('ft_name').value.trim();
+    if (!prefix) { showToast('❌ Kateqoriya adı lazımdır'); return; }
+
     if (state.editTarget) {
-      R.tables.child(state.editTarget.id).update({ name, capacity });
-      addLog('admin',`Masa düzəlişi: ${name}`,{});
+      // Tək masanın adını dəyiş
+      R.tables.child(state.editTarget.id).update({ name: prefix });
+      addLog('admin', `Masa adı dəyişdirildi: ${prefix}`, {});
       showToast('✅ Masa yeniləndi');
     } else {
-      R.tables.push({ name, capacity, occupant:null, notes:'', createdAt:Date.now() });
-      addLog('admin',`Yeni masa əlavə edildi: ${name}`,{});
-      showToast('✅ Masa əlavə edildi');
+      // Toplu əlavə et
+      const count = parseInt(document.getElementById('ft_count').value) || 1;
+      for (let i = 1; i <= count; i++) {
+        const tName = count === 1 ? prefix : `${prefix} ${i}`;
+        R.tables.push({
+          name: tName,
+          category: prefix,   // kateqoriya sahəsi — filter üçün
+          occupant: null,
+          notes: '',
+          createdAt: Date.now() + i
+        });
+      }
+      addLog('admin', `${count} ədəd masa əlavə edildi: ${prefix}`, {});
+      showToast(`✅ ${count} ədəd masa əlavə edildi`);
     }
   }
   closeAddModal();
@@ -1224,23 +1310,50 @@ function callWaiter(waiterId) {
    WAITER PANEL
 ═══════════════════════════════════════════ */
 function renderWaiterTables() {
-  if (!state.user || state.user.role!=='waiter') return;
+  if (!state.user || state.user.role !== 'waiter') return;
   const el = document.getElementById('waiterTables');
-  if (!state.tables.length) { el.innerHTML='<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>'; return; }
-  el.innerHTML = state.tables.map(t=>{
-    const isMine  = t.occupant === state.user.id;
-    const isOther = t.occupant && !isMine;
-    const otherW  = isOther ? (state.waiters.find(w=>w.id===t.occupant)||{name:'?'}) : null;
-    let cls='free', statusText='Boş', clickAttr='';
-    if (isMine)       { cls='mine';  statusText='Aktiv (mənim)'; clickAttr=`onclick="openNotesModal('${t.id}')"`;  }
-    else if (isOther) { cls='other'; statusText=`${esc(otherW.name)} xidmət edir`; }
-    else              { clickAttr=`onclick="activateTable('${t.id}')"`;  }
-    return `<div class="w-table-card ${cls}" ${clickAttr}>
-      <div class="w-table-name">${esc(t.name)}</div>
-      <div class="w-table-status">${statusText}</div>
-      ${isMine&&t.notes?`<div style="font-size:11px;color:var(--text3);margin-top:6px;">${esc(t.notes.substring(0,40))}${t.notes.length>40?'…':''}</div>`:''}
-    </div>`;
-  }).join('');
+  if (!state.tables.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
+    return;
+  }
+
+  // Kateqoriyalara qruplaşdır
+  const groups = {};
+  state.tables.forEach(t => {
+    const cat = t.category || t.name.replace(/\s+\d+$/, '') || t.name;
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(t);
+  });
+
+  el.innerHTML = Object.keys(groups).map(cat => `
+    <div style="margin-bottom:20px;">
+      <h4 style="color:var(--text2);font-size:13px;text-transform:uppercase;
+                 letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;
+                 border-bottom:1px solid var(--border);">
+        🪑 ${esc(cat)}
+      </h4>
+      <div class="tables-grid">
+        ${groups[cat].map(t => {
+          const isMine  = t.occupant === state.user.id;
+          const isOther = t.occupant && !isMine;
+          const otherW  = isOther ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }) : null;
+          let cls = '', statusText = 'Boş', clickAttr = '';
+          if (isMine)       { cls = 'mine';  statusText = 'Aktiv (mənim)'; clickAttr = `onclick="openNotesModal('${t.id}')"`;  }
+          else if (isOther) { cls = 'other'; statusText = `${esc(otherW.name)} xidmət edir`; }
+          else              { clickAttr = `onclick="activateTable('${t.id}')"`;  }
+          return `<div class="w-table-card ${cls}" ${clickAttr}>
+            <div class="w-table-name">${esc(t.name)}</div>
+            <div class="w-table-status">${statusText}</div>
+            ${isMine && t.notes
+              ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">
+                   ${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}
+                 </div>`
+              : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
 }
 
 function activateTable(tableId) {
