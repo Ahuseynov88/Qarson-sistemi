@@ -235,7 +235,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 </style>
 </head>
 <body>
-
 <!-- ═══ LOGIN ═══ -->
 <div class="screen active" id="loginScreen">
   <div class="login-box">
@@ -271,7 +270,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     <div class="err-msg" id="loginErr"></div>
   </div>
 </div>
-
 <!-- ═══ ADMIN ═══ -->
 <div class="screen" id="adminScreen">
   <div class="topbar">
@@ -289,22 +287,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)">💬 Şikayətlər</button>
     </div>
-
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
       <h3 style="color:var(--text2);margin-bottom:14px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">Aktiv Masalar</h3>
       <div class="grid-2" id="activeTables"></div>
     </div>
-<div class="admin-section" id="sec-tables">
+<div class="admin-section" id="sec-waiters">
+  <div class="grid-2" id="waitersGrid"></div>
+</div>
   <!-- Kateqoriya filter düymələri -->
   <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
   <!-- Masalar -->
   <div class="grid-2" id="tablesGrid"></div>
 </div>
-
-    <div class="admin-section" id="sec-tables">
-      <div class="grid-2" id="tablesGrid"></div>
-    </div>
 
     <div class="admin-section" id="sec-logs">
       <div class="log-filter-bar">
