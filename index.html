@@ -698,6 +698,12 @@ function doLogin() {
       document.getElementById('wName').textContent = w.name;
       document.getElementById('wAvatar').src = w.avatar;
       lockScreen();
+      // Qarson istənilən şəkildə çıxsa Firebase-i xəbərdar et
+const presenceRef = R.waiters.child(state.user.id);
+presenceRef.onDisconnect().update({
+  status: 'ready',
+  lastSeen: Date.now()
+});
     });
     return;
   }
@@ -755,6 +761,35 @@ function unlockScreen() {
 window.onpopstate = ()=>{
   if (state.user?.role==='waiter') history.pushState(null,'',location.href);
 };
+  window.addEventListener('pageshow', (e) => {
+  if (!state.user || state.user.role !== 'waiter') return;
+  if (document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }
+  R.waiters.child(state.user.id).update({ status: 'online' });
+});
+  // Qarson tab-ı gizlədəndə (telefonu kilidləyəndə, başqa tətbiqə keçəndə)
+document.addEventListener('visibilitychange', () => {
+  if (!state.user || state.user.role !== 'waiter') return;
+  
+  if (document.hidden) {
+    // Arxa plana getdi — Firebase-də qeyd et
+    R.waiters.child(state.user.id).update({
+      status: 'away',
+      lastSeen: Date.now()
+    });
+  } else {
+    // Geri qayıtdı — yenidən aktiv et
+    R.waiters.child(state.user.id).update({
+      status: 'online',
+      lastSeen: Date.now()
+    });
+    // Tam ekrana qayıt
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(()=>{});
+    }
+  }
+});
 document.addEventListener('keydown', e=>{
   if (state.user?.role!=='waiter') return;
   if (['F5','F12','Escape'].includes(e.key)||(e.ctrlKey&&['r','w','t'].includes(e.key))||(e.altKey&&e.key==='F4')) {
