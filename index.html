@@ -1794,19 +1794,22 @@ function checkCustomerMode() {
       return;
     }
 
-    // Masa bağlandı (occupant yox oldu)
-    if (window._customerTableId) {
-      // 3) Mesaj qutusunu sıfırla
-      const msgBox   = document.getElementById('customerMsgBox');
-      const msgInput = document.getElementById('customerMsgInput');
-      if (msgBox)   msgBox.style.display = 'none';
-      if (msgInput) msgInput.value = '';
+    // ── MASA AKTİV DEYİL ──
+    // Əvvəlcə customerScreen-i göstər
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('customerScreen').classList.add('active');
+    document.getElementById('customerTableName').textContent = t.name || 'Masa';
+    document.getElementById('customerInactiveOverlay').classList.add('show');
 
-      // 2) Bağlandı ekranını göstər
+    // Masa bağlandısa (əvvəl açıq idi, indi bağlandı)
+    if (window._customerTableId) {
       window._customerTableId   = null;
       window._customerTableData = null;
+      db.ref('chats/' + tableId).off();
       showCustomerClosedScreen('🙏 Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
     }
+  });
+}
   });
 }
 
