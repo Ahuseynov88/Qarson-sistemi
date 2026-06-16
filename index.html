@@ -699,11 +699,10 @@ function doLogin() {
       document.getElementById('wAvatar').src = w.avatar;
       lockScreen();
       // Qarson istənilən şəkildə çıxsa Firebase-i xəbərdar et
-const presenceRef = R.waiters.child(state.user.id);
-presenceRef.onDisconnect().update({
-  status: 'ready',
-  lastSeen: Date.now()
-});
+      R.waiters.child(state.user.id).onDisconnect().update({
+        status: 'ready',
+        lastSeen: Date.now()
+      });
     });
     return;
   }
