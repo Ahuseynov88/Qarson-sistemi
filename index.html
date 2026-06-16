@@ -94,7 +94,14 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── MODAL ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.open{display:flex;}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:420px;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+.modal-section{border-top:1px solid var(--border);margin-top:16px;padding-top:16px;}
+.modal-section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;}
+.avatar-upload-area{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:8px;}
+.avatar-upload-area:hover{border-color:var(--green);background:rgba(46,204,113,.05);}
+.avatar-upload-area input[type=file]{display:none;}
+.avatar-preview{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:0 auto 8px;display:none;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .modal h2{font-size:20px;margin-bottom:20px;}
 .form-group{margin-bottom:16px;}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;}
@@ -239,10 +246,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   box-shadow:0 4px 20px rgba(0,0,0,.5);
   max-width:190px;
 }
-#custWaiterCard img{
-  width:46px;height:46px;border-radius:50%;
-  object-fit:cover;border:2px solid var(--green);flex-shrink:0;
-}
+#custWaiterCard img{width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;}
 #custWaiterCard .cw-info{display:flex;flex-direction:column;overflow:hidden;}
 #custWaiterCard .cw-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
 #custWaiterCard .cw-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -550,7 +554,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
 <div class="screen" id="customerScreen">
-  <!-- Qarson widget — sağ yuxarı künc -->
   <div id="custWaiterCard">
     <img id="custWaiterAvatar" src="" alt="">
     <div class="cw-info">
@@ -995,10 +998,13 @@ function renderWaiters() {
     const bc = w.status==='offline'?'badge-red':'badge-green';
     return `<div class="item-card">
       <div class="item-card-header">
-        <img class="avatar" src="${w.avatar}" alt="">
+        <img class="avatar" src="${w.avatar}" alt=""
+             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(w.name)}&background=2ecc71&color=fff&size=200'">
         <div class="item-info">
           <h3>${esc(w.name)}</h3>
-          <small>PIN: ${w.pin}</small>
+          <small style="color:var(--text2);">PIN: ${w.pin}</small>
+          ${w.phone ? `<small style="color:var(--text3);display:block;">📞 ${esc(w.phone)}</small>` : ''}
+          ${w.fin   ? `<small style="color:var(--text3);display:block;">🪪 FİN: ${esc(w.fin)}</small>` : ''}
         </div>
       </div>
       <span class="status-badge ${bc}">${st}</span>
@@ -1119,7 +1125,7 @@ function editWaiter(id) {
   if (!w) return;
   state.editTarget = { type:'waiter', id };
   document.getElementById('addModalTitle').textContent = '✏️ Qarson Düzəliş';
-  document.getElementById('addModalBody').innerHTML = waiterForm(w.name, w.pin, w.avatar || '');
+  document.getElementById('addModalBody').innerHTML = waiterForm(w);
   document.getElementById('addModal').classList.add('open');
 }
 
@@ -1162,24 +1168,76 @@ function deleteTable(id) {
 }
 
 /* ── Add modal ── */
-function waiterForm(name='', pin='', avatar='') {
+function waiterForm(w={}) {
   return `
-    <div class="form-group">
-      <label>Ad Soyad</label>
-      <input type="text" id="fw_name" value="${esc(name)}" placeholder="Əli Məmmədov">
+    <!-- Şəkil upload -->
+    <div style="text-align:center;margin-bottom:16px;">
+      <img id="fw_preview" class="avatar-preview"
+           src="${esc(w.avatar||'')}"
+           style="${w.avatar?'display:block':'display:none'}">
+      <div class="avatar-upload-area" onclick="document.getElementById('fw_file').click()">
+        <div style="font-size:32px;margin-bottom:6px;">📷</div>
+        <div style="font-size:13px;color:var(--text2);">Şəkil yükləmək üçün klikləyin</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">JPG, PNG — maks. 2MB</div>
+        <input type="file" id="fw_file" accept="image/*" onchange="previewWaiterPhoto(this)">
+      </div>
+      <input type="hidden" id="fw_avatar" value="${esc(w.avatar||'')}">
+    </div>
+
+    <!-- Şəxsi məlumatlar -->
+    <div class="modal-section-title">👤 Şəxsi Məlumatlar</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ad *</label>
+        <input type="text" id="fw_firstname" value="${esc(w.firstname||w.name?.split(' ')[0]||'')}" placeholder="Əli">
+      </div>
+      <div class="form-group">
+        <label>Soyad *</label>
+        <input type="text" id="fw_lastname" value="${esc(w.lastname||w.name?.split(' ')[1]||'')}" placeholder="Məmmədov">
+      </div>
     </div>
     <div class="form-group">
-      <label>PIN (4 rəqəm)</label>
-      <input type="text" id="fw_pin" value="${pin}" maxlength="4" placeholder="1234">
+      <label>Ata adı</label>
+      <input type="text" id="fw_fathername" value="${esc(w.fathername||'')}" placeholder="Vüsal">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Doğum tarixi</label>
+        <input type="date" id="fw_birthdate" value="${esc(w.birthdate||'')}">
+      </div>
+      <div class="form-group">
+        <label>Əlaqə nömrəsi</label>
+        <input type="tel" id="fw_phone" value="${esc(w.phone||'')}" placeholder="+994 50 000 00 00">
+      </div>
     </div>
     <div class="form-group">
-      <label>Şəkil URL (istəyə görə)</label>
-      <input type="url" id="fw_avatar" value="${esc(avatar)}"
-        placeholder="https://... (boş buraxsanız avtomatik yaranır)" style="font-size:13px;">
-      <small style="color:var(--text2);font-size:11px;margin-top:4px;display:block;">
-        Şəkil linki daxil edin və ya boş buraxın — avtomatik yaranacaq
-      </small>
-      ${avatar ? `<img src="${esc(avatar)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin-top:8px;border:2px solid var(--green);" onerror="this.style.display='none'">` : ''}
+      <label>Ünvan</label>
+      <input type="text" id="fw_address" value="${esc(w.address||'')}" placeholder="Bakı, Nərimanov r., ...">
+    </div>
+
+    <!-- Sənəd məlumatları -->
+    <div class="modal-section-title" style="margin-top:16px;">📋 Sənəd Məlumatları</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ş/V nömrəsi</label>
+        <input type="text" id="fw_idcard" value="${esc(w.idcard||'')}" placeholder="AA1234567">
+      </div>
+      <div class="form-group">
+        <label>FİN nömrəsi</label>
+        <input type="text" id="fw_fin" value="${esc(w.fin||'')}" placeholder="1234ABC">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>VÖEN nömrəsi</label>
+      <input type="text" id="fw_voen" value="${esc(w.voen||'')}" placeholder="1234567890">
+    </div>
+
+    <!-- Sistem məlumatları -->
+    <div class="modal-section-title" style="margin-top:16px;">⚙️ Sistem Məlumatları</div>
+    <div class="form-group">
+      <label>PIN kod * (4 rəqəm)</label>
+      <input type="text" id="fw_pin" value="${esc(w.pin||'')}" maxlength="4" placeholder="1234"
+             style="font-size:24px;letter-spacing:8px;text-align:center;">
     </div>`;
 }
 function tableForm(name='', isEdit=false) {
@@ -1209,7 +1267,7 @@ function openAddModal() {
   state.editTarget = null;
   if (state.adminSection === 'waiters') {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
-    document.getElementById('addModalBody').innerHTML = waiterForm();
+    document.getElementById('addModalBody').innerHTML = waiterForm({});
   } else {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Kateqoriya və Masalar';
     document.getElementById('addModalBody').innerHTML = tableForm('', false);
@@ -1228,22 +1286,42 @@ function saveItem() {
     : (state.adminSection === 'waiters' ? 'waiter' : 'table');
 
   if (sec === 'waiter') {
-    const name = document.getElementById('fw_name').value.trim();
-    const pin  = document.getElementById('fw_pin').value.trim();
-    if (!name || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-      showToast('❌ Ad və 4 rəqəmli PIN lazımdır'); return;
-    }
+    const firstname  = (document.getElementById('fw_firstname')?.value||'').trim();
+    const lastname   = (document.getElementById('fw_lastname')?.value||'').trim();
+    const fathername = (document.getElementById('fw_fathername')?.value||'').trim();
+    const birthdate  = (document.getElementById('fw_birthdate')?.value||'').trim();
+    const phone      = (document.getElementById('fw_phone')?.value||'').trim();
+    const address    = (document.getElementById('fw_address')?.value||'').trim();
+    const idcard     = (document.getElementById('fw_idcard')?.value||'').trim();
+    const fin        = (document.getElementById('fw_fin')?.value||'').trim();
+    const voen       = (document.getElementById('fw_voen')?.value||'').trim();
+    const pin        = (document.getElementById('fw_pin')?.value||'').trim();
+    const avatarVal  = (document.getElementById('fw_avatar')?.value||'').trim();
+
+    const name = [firstname, lastname].filter(Boolean).join(' ') || firstname || lastname;
+
+    if (!firstname || !lastname) { showToast('❌ Ad və Soyad mütləqdir'); return; }
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('❌ 4 rəqəmli PIN lazımdır'); return; }
+
     const conflict = state.waiters.find(w => w.pin === pin &&
       (!state.editTarget || w.id !== state.editTarget.id));
     if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
-    const avatarInput = document.getElementById('fw_avatar')?.value?.trim();
-    const avatar = avatarInput || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
+
+    const avatar = avatarVal ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
+
+    const waiterData = {
+      name, firstname, lastname, fathername,
+      birthdate, phone, address, idcard, fin, voen,
+      pin, avatar
+    };
+
     if (state.editTarget) {
-      R.waiters.child(state.editTarget.id).update({ name, pin, avatar });
-      addLog('admin', `Qarson düzəlişi: ${name}`, {});
-      showToast('✅ Düzəliş saxlanıldı');
+      R.waiters.child(state.editTarget.id).update(waiterData);
+      addLog('admin', `Qarson məlumatları yeniləndi: ${name}`, { waiterId: state.editTarget.id });
+      showToast('✅ Məlumatlar yeniləndi');
     } else {
-      R.waiters.push({ name, pin, avatar, status: 'ready', createdAt: Date.now() });
+      R.waiters.push({ ...waiterData, status: 'ready', createdAt: Date.now() });
       addLog('admin', `Yeni qarson əlavə edildi: ${name}`, {});
       showToast('✅ Qarson əlavə edildi');
     }
@@ -1372,7 +1450,7 @@ function renderKitchen() {
     const stLabel = hasPending ? '🔴 Gözləyir' : (w.status==='online'?'🟢 Aktiv':'🟢 Hazır');
     return `<div class="k-card ${st}" ${!hasPending?`onclick="callWaiter('${w.id}')"`:''}>
       ${hasPending?'<div class="k-no-click-overlay"></div>':''}
-      <img src="${w.avatar}" alt="${esc(w.name)}" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${esc(w.name)}')+'&background=2ecc71&color=fff&size=200'">
+      <img src="${w.avatar}" alt="${esc(w.name)}">
       <h3>${esc(w.name)}</h3>
       <div class="k-status">${stLabel}</div>
       <div class="k-tables-under">
@@ -1836,6 +1914,29 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Qarson şəkili — önizləmə + base64 saxlama
+function previewWaiterPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('❌ Şəkil 2MB-dan böyük olmamalıdır');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result;
+    // Önizləmə
+    const preview = document.getElementById('fw_preview');
+    if (preview) { preview.src = base64; preview.style.display = 'block'; }
+    // Gizli sahəyə yaz
+    const avatarField = document.getElementById('fw_avatar');
+    if (avatarField) avatarField.value = base64;
+    showToast('✅ Şəkil yükləndi');
+  };
+  reader.readAsDataURL(file);
+}
+
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -1918,7 +2019,6 @@ function checkCustomerMode() {
     if (t.occupant) {
       document.getElementById('customerInactiveOverlay').classList.remove('show');
       document.getElementById('customerTableName').textContent = t.name || 'Masa';
-      // Qarson widget-i yenilə
       showCustomerWaiterCard(t.occupant);
       if (!window._customerTableId) {
         window._customerTableId   = tableId;
@@ -1937,9 +2037,6 @@ function checkCustomerMode() {
       window._customerTableId   = null;
       window._customerTableData = null;
       db.ref('chats/' + tableId).off();
-      // Qarson widget-i gizlət
-      const wCard = document.getElementById('custWaiterCard');
-      if (wCard) wCard.style.display = 'none';
       showCustomerClosedScreen('🙏 Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
     }
   });
