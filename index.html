@@ -16,11 +16,9 @@
   --text:#eee;--text2:#aaa;--text3:#666;
 }
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
-
 /* ── SCREEN ── */
 .screen{display:none;min-height:100vh;}
 .screen.active{display:flex;flex-direction:column;}
-
 /* ── LOGIN ── */
 #loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0f1a,#1a1a2e);}
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
@@ -39,7 +37,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:10px;}
 .login-btn:active{background:var(--green-dark);}
 .err-msg{color:var(--red);font-size:13px;min-height:20px;}
-
 /* ── TOPBAR ── */
 .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
 .topbar h2{font-size:18px;font-weight:600;}
@@ -50,7 +47,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .btn-green{background:var(--green);color:white;}
 .btn-blue{background:var(--blue);color:white;}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
-
 /* ── ADMIN ── */
 #adminScreen{background:var(--bg);}
 .admin-body{flex:1;overflow-y:auto;padding:20px;}
@@ -77,7 +73,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
 .table-card h3{font-size:16px;margin-bottom:6px;}
 .table-card .meta{font-size:13px;color:var(--text2);margin-bottom:14px;}
-
 /* ── LOG ── */
 .log-list{display:flex;flex-direction:column;gap:6px;}
 .log-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
@@ -87,7 +82,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .log-filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .log-filter{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
 .log-filter.active{background:var(--blue);color:white;border-color:var(--blue);}
-
 /* ── MODAL ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.open{display:flex;}
@@ -100,7 +94,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .modal-actions{display:flex;gap:10px;margin-top:20px;}
 .modal-actions .btn{flex:1;padding:14px;}
 .add-fab{position:fixed;bottom:28px;right:28px;width:60px;height:60px;border-radius:50%;background:var(--green);color:white;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(46,204,113,.4);z-index:100;}
-
 /* ── KITCHEN ── */
 #kitchenScreen{background:var(--bg);}
 .kitchen-body{flex:1;padding:20px;overflow-y:auto;}
@@ -120,7 +113,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .k-tables-under{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:8px;min-height:20px;}
 .k-table-chip{background:rgba(52,152,219,.2);border:1px solid rgba(52,152,219,.4);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--blue);}
 .k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
-
 /* ── WAITER ── */
 #waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
 .waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
@@ -137,7 +129,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .w-table-card.mine .w-table-status{color:var(--green);}
 .w-table-card.other .w-table-status{color:var(--blue);}
 .notes-area{width:100%;margin-top:10px;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
-
 /* ── ALARM ── (rəng dinamik olaraq JS ilə dəyişdirilir) */
 #alarmOverlay{display:none;position:fixed;inset:0;z-index:9000;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
 #alarmOverlay.show{display:flex;}
@@ -147,7 +138,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* [a] Böyük şrift ölçüsü: alarm-sub indi daha böyük və oxunaqlı */
 .alarm-sub{font-size:26px;font-weight:700;color:white;margin-bottom:36px;line-height:1.4;max-width:340px;}
 .alarm-btn{padding:20px 60px;background:white;border:none;border-radius:50px;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.25);}
-
 /* ── CHAT PANELI (Qarson) ── */
 #waiterChatPanel{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--border);z-index:600;padding:12px 16px;box-shadow:0 -4px 20px rgba(0,0,0,.4);}
 #waiterChatPanel.show{display:block;}
@@ -160,24 +150,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .chat-input-row{display:flex;gap:8px;}
 .chat-input-row textarea{flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:none;min-height:44px;max-height:100px;}
 .chat-input-row button{padding:10px 18px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:15px;}
-
 /* ── DEACTIVATED ── */
 #deactivatedOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
 #deactivatedOverlay.show{display:flex;}
-
 /* ── EXIT CONFIRM ── */
 #exitModal .modal{max-width:340px;text-align:center;}
 #exitModal h2{color:var(--red);}
-
 /* ── TOAST ── */
 #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
 #toast.show{display:block;}
-
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
-
 /* ── MÜŞTƏRİ PANELİ ── */
 #customerScreen{background:linear-gradient(135deg,#0f0f1a,#1a1a2e);overflow-y:auto;}
 .cust-wrap{width:100%;max-width:440px;margin:0 auto;padding:20px;}
@@ -185,24 +170,20 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .cust-header .icon{font-size:52px;margin-bottom:8px;}
 .cust-header h1{font-size:24px;color:var(--text);}
 .cust-header p{color:var(--text2);font-size:14px;margin-top:4px;}
-
 /* [c] Menyu düyməsi */
 .menu-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:20px;background:linear-gradient(135deg,rgba(52,152,219,.2),rgba(52,152,219,.08));border:2px solid #3498db;border-radius:16px;color:#3498db;font-size:18px;font-weight:800;cursor:pointer;margin-bottom:16px;letter-spacing:.3px;transition:.2s;}
 .menu-btn:active{transform:scale(0.97);}
 .menu-btn .menu-icon{font-size:32px;}
-
 /* Müştəri action düymələri */
 .cust-actions{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
 .cust-btn{display:flex;align-items:center;gap:14px;width:100%;padding:20px 18px;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer;border:2px solid;transition:.2s;letter-spacing:.2px;}
 .cust-btn:active{transform:scale(0.97);}
 .cust-btn .cust-icon{font-size:34px;flex-shrink:0;}
-
 /* [a] Fərqli rənglər: Sarı=çağır, Yaşıl=nağd, Mavi=POS */
 .cust-btn.call-btn{background:rgba(241,196,15,.15);border-color:#f1c40f;color:#f1c40f;}
 .cust-btn.cash-btn{background:rgba(46,204,113,.15);border-color:#2ecc71;color:#2ecc71;}
 .cust-btn.pos-btn{background:rgba(52,152,219,.15);border-color:#3498db;color:#3498db;}
 .cust-btn.msg-btn{background:rgba(243,156,18,.12);border-color:#f39c12;color:#f39c12;}
-
 /* [e] Müştəri çat bölməsi */
 .cust-chat-section{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--border);margin-bottom:20px;}
 .cust-chat-section h3{font-size:15px;margin-bottom:12px;color:var(--text2);}
@@ -214,25 +195,21 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .cust-input-row{display:flex;gap:8px;}
 .cust-input-row textarea{flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;min-height:48px;}
 .cust-input-row button{padding:10px 18px;background:var(--orange);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;}
-
 /* Şikayət bölməsi */
 .cust-feedback{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--border);}
 .cust-feedback h3{font-size:15px;margin-bottom:12px;color:var(--text2);}
 .cust-feedback textarea{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;min-height:80px;}
 .cust-feedback button{width:100%;margin-top:8px;padding:13px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:16px;}
-
 /* Müştəri inactive overlay */
 #customerInactiveOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
 #customerInactiveOverlay.show{display:flex;}
 #customerInactiveOverlay h2{color:var(--red);font-size:24px;margin-bottom:12px;}
 #customerInactiveOverlay p{color:var(--text2);font-size:16px;}
-
 /* Müştəri toast */
 #customerToast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:15px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
 </style>
 </head>
 <body>
-
 <!-- ═══ LOGIN ═══ -->
 <div class="screen active" id="loginScreen">
   <div class="login-box">
@@ -268,7 +245,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     <div class="err-msg" id="loginErr"></div>
   </div>
 </div>
-
 <!-- ═══ ADMIN ═══ -->
 <div class="screen" id="adminScreen">
   <div class="topbar">
@@ -286,24 +262,21 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)">💬 Şikayətlər</button>
     </div>
-
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
       <h3 style="color:var(--text2);margin-bottom:14px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">Aktiv Masalar</h3>
       <div class="grid-2" id="activeTables"></div>
     </div>
+    <div class="admin-section" id="sec-waiters">
+  <div class="grid-2" id="waitersGrid"></div>
+</div>
 <div class="admin-section" id="sec-tables">
   <!-- Kateqoriya filter düymələri -->
   <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
   <!-- Masalar -->
   <div class="grid-2" id="tablesGrid"></div>
 </div>
-
-    <div class="admin-section" id="sec-tables">
-      <div class="grid-2" id="tablesGrid"></div>
-    </div>
-
-    <div class="admin-section" id="sec-logs">
+        <div class="admin-section" id="sec-logs">
       <div class="log-filter-bar">
         <button class="log-filter active" onclick="setLogFilter('all',this)">Hamısı</button>
         <button class="log-filter" onclick="setLogFilter('login',this)">Giriş/Çıxış</button>
@@ -315,7 +288,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       </div>
       <div class="log-list" id="logList"></div>
     </div>
-
     <div class="admin-section" id="sec-settings">
       <div style="max-width:500px;">
         <div class="table-card" style="margin-bottom:16px;">
@@ -340,7 +312,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
         </div>
       </div>
     </div>
-
     <div class="admin-section" id="sec-feedback">
       <h3 style="color:var(--text2);margin-bottom:16px;font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
       <div id="feedbackList" class="log-list"></div>
@@ -348,7 +319,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
 </div>
-
 <!-- ═══ KITCHEN ═══ -->
 <div class="screen" id="kitchenScreen">
   <div class="topbar">
@@ -359,7 +329,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     <div class="kitchen-grid" id="kitchenGrid"></div>
   </div>
 </div>
-
 <!-- ═══ WAITER ═══ -->
 <div class="screen" id="waiterScreen">
   <div class="waiter-header">
@@ -377,7 +346,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     <div class="tables-grid" id="waiterTables"></div>
   </div>
 </div>
-
 <!-- [e] Qarson çat paneli (ekranın altında açılır) -->
 <div id="waiterChatPanel">
   <div class="chat-header">
@@ -390,7 +358,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     <button onclick="sendWaiterReply()">Göndər</button>
   </div>
 </div>
-
 <!-- ═══ OVERLAYS ═══ -->
 <!-- [1] BUG FIX: Alarm overlay - rəng JS ilə set edilir, "Qəbul Etdim" düyməsi işləkdir -->
 <div id="alarmOverlay">
@@ -401,20 +368,17 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   <!-- [1] BUG FIX: alarm-btn artıq düzgün acceptAlarm() çağırır -->
   <button class="alarm-btn" id="alarmAcceptBtn" onclick="acceptAlarm()">✅ Qəbul Etdim</button>
 </div>
-
 <div id="deactivatedOverlay">
   <div style="font-size:70px;margin-bottom:16px;">🚫</div>
   <h1 style="color:var(--red);margin-bottom:10px;">Deaktiv Edildiniz</h1>
   <p style="color:var(--text2);">Admin sizi sistemdən çıxardı.</p>
 </div>
-
 <!-- Müştəri paneli aktiv deyil overlay -->
 <div id="customerInactiveOverlay">
   <div style="font-size:64px;margin-bottom:16px;">🪑</div>
   <h2>Bu masa hələ aktiv deyil</h2>
   <p>Zəhmət olmasa ofisiantı gözləyin.<br>Masa rezerv edildikdən sonra xidmət aktiv olacaq.</p>
 </div>
-
 <!-- Masa təsdiq modalı -->
 <div class="modal-bg" id="confirmTableModal">
   <div class="modal" style="max-width:320px;text-align:center;">
@@ -427,7 +391,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- Masa bağlamaq modalı -->
 <div class="modal-bg" id="confirmCloseTableModal">
   <div class="modal" style="max-width:320px;text-align:center;">
@@ -440,7 +403,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- Exit confirm -->
 <div class="modal-bg" id="exitModal">
   <div class="modal" style="max-width:320px;text-align:center;">
@@ -453,7 +415,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- Notes modal (waiter) -->
 <div class="modal-bg" id="notesModal">
   <div class="modal">
@@ -469,7 +430,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- Add/Edit modal (admin) -->
 <div class="modal-bg" id="addModal">
   <div class="modal" id="addModalInner">
@@ -481,7 +441,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- Admin masa qeyd modalı -->
 <div class="modal-bg" id="adminNoteModal">
   <div class="modal">
@@ -496,7 +455,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- Mətbəx PIN modalı -->
 <div class="modal-bg" id="kitchenPinModal">
   <div class="modal" style="max-width:340px;text-align:center;">
@@ -511,7 +469,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- QR Modal -->
 <div class="modal-bg" id="qrModal">
   <div class="modal" style="max-width:340px;text-align:center;">
@@ -525,7 +482,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     </div>
   </div>
 </div>
-
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
 <div class="screen" id="customerScreen">
   <div class="cust-wrap">
@@ -534,12 +490,10 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <h1 id="customerTableName">Masa</h1>
       <p>Xidmət üçün seçim edin</p>
     </div>
-
     <!-- [c] Menyu düyməsi - ən yuxarıda -->
     <button class="menu-btn" onclick="openMenu()">
       <span class="menu-icon">📋</span> Menyuya Bax
     </button>
-
     <!-- [b] Administrator düyməsi silindi, [a] Rənglər dəyişdirildi -->
     <div class="cust-actions">
       <!-- [a] SARI = Ofisiantı Çağır -->
@@ -555,7 +509,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
         <span class="cust-icon">💳</span> Hesab (POS Terminal)
       </button>
     </div>
-
     <!-- [e] Müştəri çat - ofisiantla mesajlaşma -->
     <div class="cust-chat-section">
       <h3>💬 Ofisiantla Əlaqə</h3>
@@ -565,7 +518,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
         <button onclick="sendCustomerMsg()">Göndər</button>
       </div>
     </div>
-
     <!-- Şikayət / Təklif -->
     <div class="cust-feedback">
       <h3>📝 Şikayət / Təklif</h3>
@@ -575,14 +527,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   </div>
   <div id="customerToast"></div>
 </div>
-
 <div id="toast"></div>
-
 <!-- Firebase + QR skriptləri body-nin sonuna köçürüldü -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
 <script>
 /* ═══════════════════════════════════════════
    FIREBASE KONFİQURASİYA
@@ -598,12 +547,10 @@ const R = {
   orders:  db.ref('orders'),
   logs:    db.ref('logs')
 };
-
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
 const ADMIN_PIN = '0000';
-
 let state = {
   role: 'admin',
   user: null,
@@ -628,7 +575,6 @@ let state = {
   activeChatTableId: null,
   activeChatConvId: null
 };
-
 /* ═══════════════════════════════════════════
    LOGIN / PIN
 ═══════════════════════════════════════════ */
@@ -638,7 +584,6 @@ function setRole(r, el) {
   el.classList.add('active');
   clearPin();
 }
-
 function numPress(v) {
   if (v === 'clear') { clearPin(); return; }
   if (v === 'back')  { state.pinBuffer = state.pinBuffer.slice(0,-1); updatePinDots(); return; }
@@ -647,23 +592,19 @@ function numPress(v) {
   updatePinDots();
   if (state.pinBuffer.length === 4) setTimeout(doLogin, 200);
 }
-
 function updatePinDots() {
   for (let i=0;i<4;i++) {
     document.getElementById('d'+i).classList.toggle('filled', i < state.pinBuffer.length);
   }
 }
-
 function clearPin() {
   state.pinBuffer = '';
   updatePinDots();
   document.getElementById('loginErr').textContent = '';
 }
-
 function doLogin() {
   const pin = state.pinBuffer;
   clearPin();
-
   if (state.role === 'admin' && pin === ADMIN_PIN) {
     state.user = { role:'admin', name:'Admin' };
     addLog('login','Admin sistemə daxil oldu',{type:'admin'});
@@ -671,7 +612,6 @@ function doLogin() {
     showScreen('adminScreen');
     return;
   }
-
   if (state.role === 'kitchen' && pin === state.kitchenPin) {
     state.user = { role:'kitchen', name:'Mətbəx' };
     addLog('login','Mətbəx sistemə daxil oldu',{type:'kitchen'});
@@ -1782,9 +1722,7 @@ function showQR(tableId, tableName) {
   new QRCode(canvas, { text:url, width:200, height:200, colorDark:'#000', colorLight:'#fff' });
   document.getElementById('qrModal').classList.add('open');
 }
-
 function closeQRModal() { document.getElementById('qrModal').classList.remove('open'); }
-
 function printQR() {
   const title  = document.getElementById('qrModalTitle').textContent;
   const canvas = document.querySelector('#qrCanvas canvas');
@@ -1797,7 +1735,6 @@ function printQR() {
     <body><h2>${title}</h2><img src="${img}" width="250"><p>QR kodu oxudun</p>
     <script>window.onload=()=>window.print()<\/script></body></html>`);
 }
-
 /* ═══════════════════════════════════════════
    MÜŞTƏRİ PANELİ
 ═══════════════════════════════════════════ */
@@ -1805,22 +1742,18 @@ function checkCustomerMode() {
   const params  = new URLSearchParams(location.search);
   const tableId = params.get('table');
   if (!tableId) return;
-
   // Masanı real-time izlə
   R.tables.child(tableId).on('value', snap => {
     const t = snap.val();
-
     // Masa tapılmadı
     if (!t) {
       showCustomerClosedScreen('❌ Masa tapılmadı');
       return;
     }
-
     // Masa aktivdir — paneli göstər
     if (t.occupant) {
       // Gözləmə ekranını gizlət
       document.getElementById('customerInactiveOverlay').classList.remove('show');
-
       // Yalnız ilk dəfə açılırsa ekrana keç
       if (!window._customerTableId) {
         window._customerTableId   = tableId;
@@ -1832,14 +1765,12 @@ function checkCustomerMode() {
       }
       return;
     }
-
     // ── MASA AKTİV DEYİL ──
     // customerScreen-i göstər, üstündə inactive overlay aç
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('customerScreen').classList.add('active');
     document.getElementById('customerTableName').textContent = t.name || 'Masa';
     document.getElementById('customerInactiveOverlay').classList.add('show');
-
     // Masa bağlandısa (əvvəl açıq idi, indi bağlandı)
     if (window._customerTableId) {
       window._customerTableId   = null;
@@ -1849,7 +1780,6 @@ function checkCustomerMode() {
     }
   });
 }
-
     // Masa aktivdir — paneli göstər
     if (t.occupant) {
       // Yalnız ilk dəfə açılırsa ekrana keç
