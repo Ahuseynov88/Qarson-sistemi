@@ -635,7 +635,7 @@ const R = {
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
-const ADMIN_PIN = '0803';
+let ADMIN_PIN = null; // Firebase-dən yüklənəcək
 
 let state = {
   role: 'admin',
@@ -862,7 +862,9 @@ function initListeners() {
   db.ref('settings/kitchenPin').on('value', snap => {
     if (snap.val()) state.kitchenPin = snap.val();
   });
-
+db.ref('settings/adminPin').on('value', snap => {
+    if (snap.val()) ADMIN_PIN = snap.val();
+  });
   R.waiters.on('value', snap=>{
     state.waiters = toArr(snap.val());
     onDataChange();
@@ -2222,8 +2224,10 @@ function showCustomerToast(msg) {
 /* ═══════════════════════════════════════════
    İLK YÜKLƏMƏ
 ═══════════════════════════════════════════ */
-checkCustomerMode();
-document.getElementById('adminFab').style.display='none';
+// Admin PIN-i Firebase-dən əvvəlcədən yüklə
+db.ref('settings/adminPin').once('value', snap => {
+  if (snap.val()) ADMIN_PIN = snap.val();
+});
 </script>
 </body>
 </html>
