@@ -698,7 +698,7 @@ function doLogin() {
   const pin = state.pinBuffer;
   clearPin();
 
-  if (state.role === 'admin' && pin === ADMIN_PIN) {
+  if (state.role === 'admin' && String(pin) === String(ADMIN_PIN)) {
     state.user = { role:'admin', name:'Admin' };
     addLog('login','Admin sistemə daxil oldu',{type:'admin'});
     initListeners();
