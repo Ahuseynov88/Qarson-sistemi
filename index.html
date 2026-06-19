@@ -2228,6 +2228,8 @@ function showCustomerToast(msg) {
 db.ref('settings/adminPin').once('value', snap => {
   if (snap.val()) ADMIN_PIN = snap.val();
 });
+  checkCustomerMode();
+document.getElementById('adminFab').style.display='none';
 </script>
 </body>
 </html>
