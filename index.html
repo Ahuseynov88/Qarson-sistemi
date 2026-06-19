@@ -706,7 +706,7 @@ function doLogin() {
     return;
   }
 
-  if (state.role === 'kitchen' && pin === state.kitchenPin) {
+ if (state.role === 'kitchen' && String(pin) === String(state.kitchenPin)) {
     state.user = { role:'kitchen', name:'Mətbəx' };
     addLog('login','Mətbəx sistemə daxil oldu',{type:'kitchen'});
     initListeners();
