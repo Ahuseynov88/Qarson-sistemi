@@ -219,8 +219,8 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 
 /* ── Müştəri paneli qarson widget ── */
 #custWaiterCard{
-  position:fixed;top:16px;right:16px;
-  width:120px;height:160px;
+  position:fixed;top:10px;right:16px;
+  width:120px;height:180px;
   background:rgba(26,26,46,.93);
   border:1px solid var(--border);
   border-radius:16px;
