@@ -220,22 +220,22 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── Müştəri paneli qarson widget ── */
 #custWaiterCard{
   position:fixed;top:16px;right:16px;
+  width:3cm;height:2cm;
   background:rgba(26,26,46,.93);
   border:1px solid var(--border);
   border-radius:16px;
-  padding:10px 14px;
+  padding:8px 10px;
   display:none;
   align-items:center;
-  gap:10px;
+  gap:8px;
   z-index:200;
   backdrop-filter:blur(8px);
   box-shadow:0 4px 20px rgba(0,0,0,.5);
-  max-width:190px;
 }
-#custWaiterCard img{width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;}
+#custWaiterCard img{width:1.4cm;height:1.4cm;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;}
 #custWaiterCard .cw-info{display:flex;flex-direction:column;overflow:hidden;}
-#custWaiterCard .cw-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
-#custWaiterCard .cw-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#custWaiterCard .cw-label{font-size:9px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+#custWaiterCard .cw-name{font-size:12px;font-weight:700;color:var(--text);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* Müştəri inactive overlay */
 #customerInactiveOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
