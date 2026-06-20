@@ -13,6 +13,7 @@ let state = {
   tables: [],
   orders: [],
   logs: [],
+  menuItems: [],
   logFilter: 'all',
   adminSection: 'dashboard',
   alarm: null,           // aktiv alarm (order id və ya request id)
@@ -27,5 +28,6 @@ let state = {
   _shownRequests: [],    // eyni tələbin iki dəfə göstərilməməsi üçün
   activeChatTableId: null,
   activeChatConvId: null,
-  _tableCatFilter: 'all'
+  _tableCatFilter: 'all',
+  _menuCatFilter: 'all'
 };
