@@ -63,6 +63,7 @@
       <button class="admin-tab active" onclick="adminTab('dashboard',this)">📊 İcmal</button>
       <button class="admin-tab" onclick="adminTab('waiters',this)">🤵 Qarsonlar</button>
       <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
+      <button class="admin-tab" onclick="adminTab('menu',this)">🍔 Menyu</button>
       <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
       <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)">💬 Şikayətlər</button>
@@ -78,6 +79,10 @@
     <div class="admin-section" id="sec-tables">
       <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div class="grid-2" id="tablesGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-menu">
+      <div id="menuCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div class="grid-2" id="menuGrid"></div>
     </div>
     <div class="admin-section" id="sec-logs">
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
@@ -354,6 +359,7 @@
 <script src="js/admin-dashboard.js"></script>
 <script src="js/admin-waiters.js"></script>
 <script src="js/admin-tables.js"></script>
+<script src="js/admin-menu.js"></script>
 <script src="js/admin-settings.js"></script>
 <script src="js/admin-feedback.js"></script>
 <script src="js/kitchen.js"></script>
