@@ -31,5 +31,8 @@ db.ref('settings/adminPin').once('value', snap => {
 /* ── Müştəri rejimi yoxlanışı (?table=... varsa) ── */
 checkCustomerMode();
 
+/* ── Saxlanılmış gecə/gündüz seçimini tətbiq et ── */
+loadSavedTheme();
+
 /* ── Başlanğıcda "+" düyməsi gizli olsun ── */
 document.getElementById('adminFab').style.display='none';
