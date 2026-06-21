@@ -116,13 +116,26 @@ function renderOrderItemsList() {
     const draft = state._orderDraft[m.id];
     const qty = draft?.qty || 0;
 
-    return `<div class="order-item-card ${qty>0?'selected':''}" onclick="openOrderItemDetail('${m.id}')">
+    return `<div class="order-item-card ${qty>0?'selected':''}" onclick="addOrderItemDirect('${m.id}')">
       ${qty>0 ? `<span class="order-item-qty-badge">${qty}x</span>` : ''}
       <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'">
       <h4>${esc(m.name)}</h4>
       <span>${Number(m.price||0).toFixed(2)} ₼</span>
     </div>`;
   }).join('');
+}
+
+/* ── Mal kartına klik = birbaşa səbətə 1 ədəd əlavə et, pəncərə açmadan ── */
+function addOrderItemDirect(menuItemId) {
+  const existing = state._orderDraft[menuItemId];
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    state._orderDraft[menuItemId] = { qty: 1, note: '', extraFee: 0 };
+  }
+  renderOrderItemsList();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
 }
 
 /* ── Aşağı yarıda seçilmiş malların siyahısı ── */
@@ -141,9 +154,12 @@ function renderOrderDraftList() {
     if (!m) return '';
     const draft = state._orderDraft[menuItemId];
     const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
-    return `<div class="order-summary-line" style="background:var(--card);border-radius:8px;padding:8px 10px;cursor:pointer;" onclick="openOrderItemDetail('${menuItemId}')">
+    return `<div class="order-summary-line" style="background:var(--card);border-radius:8px;padding:8px 10px;">
       <span>${draft.qty}x ${esc(m.name)}${draft.note ? ` <span style="color:var(--text3);">📝</span>` : ''}</span>
-      <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
+        <button onclick="openOrderItemDetail('${menuItemId}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
+      </span>
     </div>`;
   }).join('');
 }
