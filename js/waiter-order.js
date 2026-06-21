@@ -138,6 +138,19 @@ function addOrderItemDirect(menuItemId) {
   updateOrderDraftTotal();
 }
 
+/* ── Səbətdəki mal sətrindəki −/+ düymələri ── */
+function draftChangeQty(menuItemId, delta) {
+  const draft = state._orderDraft[menuItemId];
+  if (!draft) return;
+  draft.qty += delta;
+  if (draft.qty <= 0) {
+    delete state._orderDraft[menuItemId];
+  }
+  renderOrderItemsList();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
+}
+
 /* ── Aşağı yarıda seçilmiş malların siyahısı ── */
 function renderOrderDraftList() {
   const el = document.getElementById('orderDraftList');
@@ -154,12 +167,19 @@ function renderOrderDraftList() {
     if (!m) return '';
     const draft = state._orderDraft[menuItemId];
     const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
-    return `<div class="order-summary-line" style="background:var(--card);border-radius:8px;padding:8px 10px;">
-      <span>${draft.qty}x ${esc(m.name)}${draft.note ? ` <span style="color:var(--text3);">📝</span>` : ''}</span>
-      <span style="display:flex;align-items:center;gap:8px;">
-        <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
-        <button onclick="openOrderItemDetail('${menuItemId}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
-      </span>
+    return `<div class="order-summary-line" style="background:var(--card);border-radius:8px;padding:8px 10px;flex-direction:column;align-items:stretch;gap:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${esc(m.name)}${draft.note ? ` <span style="color:var(--text3);">📝</span>` : ''}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
+          <button onclick="openOrderItemDetail('${menuItemId}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
+        </span>
+      </div>
+      <div class="order-item-stepper" style="justify-content:flex-start;gap:10px;">
+        <button class="order-step-btn" style="width:26px;height:26px;font-size:15px;" onclick="draftChangeQty('${menuItemId}',-1)">−</button>
+        <span class="order-step-qty" style="font-size:13px;min-width:18px;">${draft.qty}</span>
+        <button class="order-step-btn" style="width:26px;height:26px;font-size:15px;" onclick="draftChangeQty('${menuItemId}',1)">+</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -175,7 +195,9 @@ function updateOrderDraftTotal() {
 }
 
 /* ═══════════════════════════════════════════
-   MAL DETAL MODALI — say, qeyd, ekstra xərc
+   MAL DETAL MODALI — yalnız qeyd və ekstra xərc
+   (say artıq bu pəncərədən idarə olunmur, səbət sətrindəki
+   −/+ düymələri ilə dəyişdirilir)
 ═══════════════════════════════════════════ */
 function openOrderItemDetail(menuItemId) {
   const m = state.menuItems.find(x=>x.id===menuItemId);
@@ -183,22 +205,14 @@ function openOrderItemDetail(menuItemId) {
   state._orderDetailItemId = menuItemId;
 
   const draft = state._orderDraft[menuItemId] || { qty: 1, note: '', extraFee: 0 };
-  // Yeni mal seçilirsə, default say 1-dir (RestoMenum-dakı kimi)
-  const startQty = state._orderDraft[menuItemId] ? draft.qty : 1;
 
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
   document.getElementById('oid_photo').src = m.photo || fallback;
   document.getElementById('oid_photo').onerror = function(){ this.src = fallback; };
   document.getElementById('oid_name').textContent = m.name;
   document.getElementById('oid_price').textContent = Number(m.price||0).toFixed(2);
-  document.getElementById('oid_qty').textContent = startQty;
   document.getElementById('oid_note').value = draft.note || '';
   document.getElementById('oid_extraFee').value = draft.extraFee || '';
-
-  // Sürətli rəqəm düymələri (1-5)
-  document.getElementById('oid_quickQty').innerHTML = [1,2,3,4,5].map(n => `
-    <button class="order-step-btn" style="width:38px;height:38px;" onclick="oidSetQty(${n})">${n}</button>
-  `).join('');
 
   document.getElementById('orderItemDetailModal').classList.add('open');
 }
@@ -208,26 +222,16 @@ function closeOrderItemDetailModal() {
   state._orderDetailItemId = null;
 }
 
-function oidChangeQty(delta) {
-  const el = document.getElementById('oid_qty');
-  const current = parseInt(el.textContent) || 1;
-  const next = Math.max(1, current + delta);
-  el.textContent = next;
-}
-
-function oidSetQty(n) {
-  document.getElementById('oid_qty').textContent = n;
-}
-
 function saveOrderItemDetail() {
   const menuItemId = state._orderDetailItemId;
   if (!menuItemId) return;
 
-  const qty      = parseInt(document.getElementById('oid_qty').textContent) || 1;
   const note     = document.getElementById('oid_note').value.trim();
   const extraFee = parseFloat(document.getElementById('oid_extraFee').value) || 0;
+  // Say bu pəncərədən dəyişmir — mövcud dəyəri saxlayırıq (yoxdursa, 1 ilə başlayır)
+  const existingQty = state._orderDraft[menuItemId]?.qty || 1;
 
-  state._orderDraft[menuItemId] = { qty, note, extraFee };
+  state._orderDraft[menuItemId] = { qty: existingQty, note, extraFee };
 
   closeOrderItemDetailModal();
   renderOrderItemsList();
