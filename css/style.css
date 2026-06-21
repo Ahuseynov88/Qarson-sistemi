@@ -265,13 +265,13 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 #customerToast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:15px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
 
 /* ── Qarson sifariş modalı ── */
-.order-item-row{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;transition:.15s;}
-.order-item-row:active{transform:scale(0.98);}
-.order-item-row img{width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;}
-.order-item-info{flex:1;min-width:0;}
-.order-item-info h4{font-size:14px;margin-bottom:2px;}
-.order-item-info span{font-size:13px;color:var(--orange);font-weight:700;}
-.order-item-stepper{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.order-item-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 6px;cursor:pointer;transition:.15s;text-align:center;}
+.order-item-card:active{transform:scale(0.96);}
+.order-item-card.selected{border-color:var(--green);border-width:2px;}
+.order-item-card img{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;margin-bottom:4px;}
+.order-item-card h4{font-size:11px;font-weight:600;margin-bottom:2px;line-height:1.2;}
+.order-item-card span{font-size:11px;color:var(--orange);font-weight:700;}
+.order-item-qty-badge{position:absolute;top:4px;right:4px;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;z-index:1;}
 .order-step-btn{width:30px;height:30px;border-radius:8px;border:none;background:var(--border);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .order-step-btn:active{background:var(--green);}
 .order-step-qty{font-size:15px;font-weight:700;min-width:20px;text-align:center;}
