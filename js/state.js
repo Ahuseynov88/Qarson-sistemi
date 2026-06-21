@@ -14,6 +14,7 @@ let state = {
   orders: [],
   logs: [],
   menuItems: [],
+  tableOrders: {},        // {tableId: {items:{...}, total}} — Firebase-dən real-time gəlir
   logFilter: 'all',
   adminSection: 'dashboard',
   alarm: null,           // aktiv alarm (order id və ya request id)
@@ -29,5 +30,8 @@ let state = {
   activeChatTableId: null,
   activeChatConvId: null,
   _tableCatFilter: 'all',
-  _menuCatFilter: 'all'
+  _menuCatFilter: 'all',
+  orderTableId: null,      // hazırda sifariş edilən masa
+  _orderCatFilter: 'all',  // sifariş modalındaki kateqoriya filtri
+  _orderDraft: {}          // {menuItemId: qty} — hələ göndərilməmiş, modal daxilindəki müvəqqəti səbət
 };
