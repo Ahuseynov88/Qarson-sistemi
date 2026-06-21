@@ -57,15 +57,21 @@ function openOrderModal() {
   }
 
   const t = state.tables.find(x=>x.id===state.orderTableId);
-  document.getElementById('orderModalTitle').textContent = `🍔 ${t ? t.name : 'Masa'} — Sifariş`;
+  document.getElementById('orderModalTitle').textContent = `🍔 ${t ? t.name : 'Masa'}`;
   renderOrderCatTabs();
   renderOrderItemsList();
+  renderOrderDraftList();
   updateOrderDraftTotal();
-  document.getElementById('orderModal').classList.add('open');
+
+  // notesModal-ı bağla, tam-səhifə sifariş ekranına keç
+  document.getElementById('notesModal').classList.remove('open');
+  document.getElementById('waiterScreen').classList.remove('active');
+  document.getElementById('orderScreen').classList.add('active');
 }
 
 function closeOrderModal() {
-  document.getElementById('orderModal').classList.remove('open');
+  document.getElementById('orderScreen').classList.remove('active');
+  document.getElementById('waiterScreen').classList.add('active');
   state.orderTableId = null;
   state._orderDraft = {};
 }
@@ -101,7 +107,7 @@ function renderOrderItemsList() {
     : availableItems.filter(m => (m.category || 'Digər') === state._orderCatFilter);
 
   if (!filtered.length) {
-    el.innerHTML = '<p style="color:var(--text3);padding:10px;">Bu kateqoriyada mal yoxdur.</p>';
+    el.innerHTML = '<p style="color:var(--text3);padding:10px;grid-column:1/-1;">Bu kateqoriyada mal yoxdur.</p>';
     return;
   }
 
@@ -110,28 +116,34 @@ function renderOrderItemsList() {
     const draft = state._orderDraft[m.id];
     const qty = draft?.qty || 0;
 
-    if (qty === 0) {
-      // Hələ seçilməyib — bütün sətir klik olunabiləndir, klik detal modalını açır
-      return `<div class="order-item-row" onclick="openOrderItemDetail('${m.id}')">
-        <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'">
-        <div class="order-item-info">
-          <h4>${esc(m.name)}</h4>
-          <span>${Number(m.price||0).toFixed(2)} ₼</span>
-        </div>
-      </div>`;
-    }
-
-    // Seçilib — say, qeyd işarəsi göstər, sətrə yenidən klik = detalı redaktə et
-    return `<div class="order-item-row" onclick="openOrderItemDetail('${m.id}')">
+    return `<div class="order-item-card ${qty>0?'selected':''}" onclick="openOrderItemDetail('${m.id}')">
+      ${qty>0 ? `<span class="order-item-qty-badge">${qty}x</span>` : ''}
       <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'">
-      <div class="order-item-info">
-        <h4>${esc(m.name)}</h4>
-        <span>${Number(m.price||0).toFixed(2)} ₼</span>
-        ${draft.note ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;">📝 ${esc(draft.note.substring(0,30))}${draft.note.length>30?'…':''}</div>` : ''}
-      </div>
-      <div class="order-item-stepper">
-        <span class="order-step-qty" style="background:var(--green);color:white;border-radius:8px;padding:4px 10px;">${qty}x</span>
-      </div>
+      <h4>${esc(m.name)}</h4>
+      <span>${Number(m.price||0).toFixed(2)} ₼</span>
+    </div>`;
+  }).join('');
+}
+
+/* ── Aşağı yarıda seçilmiş malların siyahısı ── */
+function renderOrderDraftList() {
+  const el = document.getElementById('orderDraftList');
+  if (!el) return;
+  const keys = Object.keys(state._orderDraft);
+
+  if (!keys.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ mal seçilməyib. Yuxarıdan mal seçin.</p>';
+    return;
+  }
+
+  el.innerHTML = keys.map(menuItemId => {
+    const m = state.menuItems.find(x=>x.id===menuItemId);
+    if (!m) return '';
+    const draft = state._orderDraft[menuItemId];
+    const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
+    return `<div class="order-summary-line" style="background:var(--card);border-radius:8px;padding:8px 10px;cursor:pointer;" onclick="openOrderItemDetail('${menuItemId}')">
+      <span>${draft.qty}x ${esc(m.name)}${draft.note ? ` <span style="color:var(--text3);">📝</span>` : ''}</span>
+      <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
     </div>`;
   }).join('');
 }
@@ -203,6 +215,7 @@ function saveOrderItemDetail() {
 
   closeOrderItemDetailModal();
   renderOrderItemsList();
+  renderOrderDraftList();
   updateOrderDraftTotal();
 }
 
