@@ -50,9 +50,11 @@ function openOrderModal() {
   // Mövcud sifarişi draft-a yüklə (əlavə etmək üçün, sıfırdan başlamaq əvəzinə)
   const existing = state.tableOrders[state.orderTableId];
   state._orderDraft = {};
+  state._orderCancelSelection = {};
   if (existing?.items) {
     Object.values(existing.items).forEach(it => {
-      state._orderDraft[it.menuItemId] = { qty: it.qty, note: it.note||'', extraFee: it.extraFee||0 };
+      const lineKey = makeLineKey(it.menuItemId, it.note||'', it.extraFee||0);
+      state._orderDraft[lineKey] = { menuItemId: it.menuItemId, qty: it.qty, note: it.note||'', extraFee: it.extraFee||0 };
     });
   }
 
@@ -113,11 +115,13 @@ function renderOrderItemsList() {
 
   el.innerHTML = filtered.map(m => {
     const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
-    const draft = state._orderDraft[m.id];
-    const qty = draft?.qty || 0;
+    // Bu mala aid bütün sətirlərin cəmi (fərqli qeyd/ekstra xərclə bölünmüş ola bilər)
+    const totalQty = Object.values(state._orderDraft)
+      .filter(d => d.menuItemId === m.id)
+      .reduce((sum, d) => sum + d.qty, 0);
 
-    return `<div class="order-item-card ${qty>0?'selected':''}" onclick="addOrderItemDirect('${m.id}')">
-      ${qty>0 ? `<span class="order-item-qty-badge">${qty}x</span>` : ''}
+    return `<div class="order-item-card ${totalQty>0?'selected':''}" onclick="addOrderItemDirect('${m.id}')">
+      ${totalQty>0 ? `<span class="order-item-qty-badge">${totalQty}x</span>` : ''}
       <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'">
       <h4>${esc(m.name)}</h4>
       <span>${Number(m.price||0).toFixed(2)} ₼</span>
@@ -127,24 +131,34 @@ function renderOrderItemsList() {
 
 /* ── Mal kartına klik = birbaşa səbətə 1 ədəd əlavə et, pəncərə açmadan ── */
 function addOrderItemDirect(menuItemId) {
-  const existing = state._orderDraft[menuItemId];
+  const lineKey = makeLineKey(menuItemId, '', 0);
+  const existing = state._orderDraft[lineKey];
   if (existing) {
     existing.qty += 1;
   } else {
-    state._orderDraft[menuItemId] = { qty: 1, note: '', extraFee: 0 };
+    state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 };
   }
   renderOrderItemsList();
   renderOrderDraftList();
   updateOrderDraftTotal();
 }
 
+/* ── Kompozit açar: eyni mal, eyni qeyd+ekstra xərclə bir sətirdə birləşir;
+     fərqli qeyd/ekstra xərclə isə ayrı sətir olur ── */
+function makeLineKey(menuItemId, note, extraFee) {
+  const safeNote = (note||'').replace(/[.#$\[\]/\s]+/g, '_');
+  let hash = 0;
+  for (let i = 0; i < (note||'').length; i++) { hash = ((hash << 5) - hash + note.charCodeAt(i)) | 0; }
+  return `${menuItemId}__${safeNote}_${Math.abs(hash)}__${String(extraFee||0).replace('.','_')}`;
+}
+
 /* ── Səbətdəki mal sətrindəki −/+ düymələri ── */
-function draftChangeQty(menuItemId, delta) {
-  const draft = state._orderDraft[menuItemId];
+function draftChangeQty(lineKey, delta) {
+  const draft = state._orderDraft[lineKey];
   if (!draft) return;
   draft.qty += delta;
   if (draft.qty <= 0) {
-    delete state._orderDraft[menuItemId];
+    delete state._orderDraft[lineKey];
   }
   renderOrderItemsList();
   renderOrderDraftList();
@@ -162,33 +176,59 @@ function renderOrderDraftList() {
     return;
   }
 
-  el.innerHTML = keys.map(menuItemId => {
-    const m = state.menuItems.find(x=>x.id===menuItemId);
+  el.innerHTML = keys.map(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
     if (!m) return '';
-    const draft = state._orderDraft[menuItemId];
     const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
-    return `<div class="order-summary-line" style="background:var(--card);border-radius:8px;padding:8px 10px;flex-direction:column;align-items:stretch;gap:6px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span>${esc(m.name)}${draft.note ? ` <span style="color:var(--text3);">📝</span>` : ''}</span>
-        <span style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
-          <button onclick="openOrderItemDetail('${menuItemId}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
-        </span>
+    const isChecked = state._orderCancelSelection?.[lineKey] ? 'checked' : '';
+
+    return `<div class="draft-line-card">
+      <div class="draft-line-top">
+        <input type="checkbox" class="draft-cancel-box" ${isChecked} onchange="toggleDraftCancelSelect('${lineKey}')">
+        <span class="draft-line-name">${esc(m.name)}</span>
+        <div class="order-item-stepper" style="gap:8px;">
+          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',-1)">−</button>
+          <span class="order-step-qty" style="font-size:13px;min-width:14px;">${draft.qty}</span>
+          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',1)">+</button>
+        </div>
+        <span class="draft-line-price">${lineTotal.toFixed(2)} ₼</span>
+        <button onclick="openOrderItemDetail('${lineKey}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
       </div>
-      <div class="order-item-stepper" style="justify-content:flex-start;gap:10px;">
-        <button class="order-step-btn" style="width:26px;height:26px;font-size:15px;" onclick="draftChangeQty('${menuItemId}',-1)">−</button>
-        <span class="order-step-qty" style="font-size:13px;min-width:18px;">${draft.qty}</span>
-        <button class="order-step-btn" style="width:26px;height:26px;font-size:15px;" onclick="draftChangeQty('${menuItemId}',1)">+</button>
-      </div>
+      ${draft.note ? `<div class="draft-line-sub">${esc(draft.note)}</div>` : ''}
+      ${draft.extraFee ? `<div class="draft-line-sub" style="display:flex;justify-content:space-between;"><span>Ekstra Ücret</span><span>${Number(draft.extraFee).toFixed(2)} ₼</span></div>` : ''}
     </div>`;
   }).join('');
 }
 
+/* ── Sifarişi göndərmədən əvvəl seçilmiş sətirləri ləğv etmək üçün checkbox state ── */
+function toggleDraftCancelSelect(lineKey) {
+  if (!state._orderCancelSelection) state._orderCancelSelection = {};
+  state._orderCancelSelection[lineKey] = !state._orderCancelSelection[lineKey];
+  const anySelected = Object.values(state._orderCancelSelection).some(v => v);
+  const btn = document.getElementById('removeSelectedBtn');
+  if (btn) btn.style.display = anySelected ? 'block' : 'none';
+}
+
+/* ── İşarələnmiş sətirləri tamamilə səbətdən sil ── */
+function removeSelectedDraftLines() {
+  const sel = state._orderCancelSelection || {};
+  Object.keys(sel).forEach(lineKey => {
+    if (sel[lineKey]) delete state._orderDraft[lineKey];
+  });
+  state._orderCancelSelection = {};
+  const btn = document.getElementById('removeSelectedBtn');
+  if (btn) btn.style.display = 'none';
+  renderOrderItemsList();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
+}
+
 function updateOrderDraftTotal() {
   let total = 0;
-  Object.keys(state._orderDraft).forEach(menuItemId => {
-    const m = state.menuItems.find(x=>x.id===menuItemId);
-    const draft = state._orderDraft[menuItemId];
+  Object.keys(state._orderDraft).forEach(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
     if (m && draft) total += (m.price||0) * draft.qty + (draft.extraFee||0);
   });
   document.getElementById('orderDraftTotal').textContent = total.toFixed(2) + ' ₼';
@@ -199,12 +239,12 @@ function updateOrderDraftTotal() {
    (say artıq bu pəncərədən idarə olunmur, səbət sətrindəki
    −/+ düymələri ilə dəyişdirilir)
 ═══════════════════════════════════════════ */
-function openOrderItemDetail(menuItemId) {
-  const m = state.menuItems.find(x=>x.id===menuItemId);
+function openOrderItemDetail(lineKey) {
+  const draft = state._orderDraft[lineKey];
+  if (!draft) return;
+  const m = state.menuItems.find(x=>x.id===draft.menuItemId);
   if (!m) return;
-  state._orderDetailItemId = menuItemId;
-
-  const draft = state._orderDraft[menuItemId] || { qty: 1, note: '', extraFee: 0 };
+  state._orderDetailLineKey = lineKey;
 
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
   document.getElementById('oid_photo').src = m.photo || fallback;
@@ -219,19 +259,33 @@ function openOrderItemDetail(menuItemId) {
 
 function closeOrderItemDetailModal() {
   document.getElementById('orderItemDetailModal').classList.remove('open');
-  state._orderDetailItemId = null;
+  state._orderDetailLineKey = null;
 }
 
 function saveOrderItemDetail() {
-  const menuItemId = state._orderDetailItemId;
-  if (!menuItemId) return;
+  const oldLineKey = state._orderDetailLineKey;
+  if (!oldLineKey) return;
+  const oldDraft = state._orderDraft[oldLineKey];
+  if (!oldDraft) return;
 
   const note     = document.getElementById('oid_note').value.trim();
   const extraFee = parseFloat(document.getElementById('oid_extraFee').value) || 0;
-  // Say bu pəncərədən dəyişmir — mövcud dəyəri saxlayırıq (yoxdursa, 1 ilə başlayır)
-  const existingQty = state._orderDraft[menuItemId]?.qty || 1;
+  const menuItemId = oldDraft.menuItemId;
+  const qty = oldDraft.qty; // say bu pəncərədən dəyişmir, mövcud dəyəri saxlayırıq
 
-  state._orderDraft[menuItemId] = { qty: existingQty, note, extraFee };
+  // Köhnə sətri sil
+  delete state._orderDraft[oldLineKey];
+
+  // Yeni qeyd/ekstra xərcə uyğun açar hesabla
+  const newLineKey = makeLineKey(menuItemId, note, extraFee);
+
+  if (state._orderDraft[newLineKey]) {
+    // Artıq eyni qeyd+ekstra xərclə bir sətir var — sayları birləşdir
+    state._orderDraft[newLineKey].qty += qty;
+  } else {
+    // Yeni, ayrıca sətir yarat
+    state._orderDraft[newLineKey] = { menuItemId, qty, note, extraFee };
+  }
 
   closeOrderItemDetailModal();
   renderOrderItemsList();
@@ -258,14 +312,14 @@ function confirmSendOrder() {
 
   const items = {};
   let total = 0;
-  draftKeys.forEach(menuItemId => {
-    const m = state.menuItems.find(x=>x.id===menuItemId);
+  draftKeys.forEach(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
     if (!m) return; // mal silinmiş ola bilər
-    const draft = state._orderDraft[menuItemId];
     const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
     total += lineTotal;
-    items[menuItemId] = {
-      menuItemId, name: m.name, price: m.price||0,
+    items[lineKey] = {
+      menuItemId: draft.menuItemId, name: m.name, price: m.price||0,
       qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0
     };
   });
