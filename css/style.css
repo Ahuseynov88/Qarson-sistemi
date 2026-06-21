@@ -286,3 +286,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 }
 .theme-toggle-btn:active{transform:scale(0.92);}
 .cust-theme-toggle{position:fixed;top:16px;left:16px;z-index:200;background:var(--card);box-shadow:0 4px 16px var(--shadow-color);}
+
+/* ── Səbət sətri kartı (sifariş notu/ekstra ücret ekranı) ── */
+.draft-line-card{background:var(--card);border-radius:10px;padding:10px 12px;border:1px solid var(--border);}
+.draft-line-top{display:flex;align-items:center;gap:10px;}
+.draft-cancel-box{width:18px;height:18px;flex-shrink:0;accent-color:var(--red);cursor:pointer;}
+.draft-line-name{flex:1;font-size:14px;font-weight:600;min-width:0;}
+.draft-line-price{font-size:14px;font-weight:700;white-space:nowrap;}
+.draft-line-sub{font-size:12px;color:var(--text3);padding:6px 0 0 28px;border-top:1px solid var(--border);margin-top:6px;}
