@@ -30,6 +30,7 @@ function renderWaiterTables() {
           const isMine  = t.occupant === state.user.id;
           const isOther = t.occupant && !isMine;
           const otherW  = isOther ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }) : null;
+          const tableOrder = state.tableOrders[t.id];
           let cls = '', statusText = 'Boş', clickAttr = '';
           if (isMine)       { cls = 'mine';  statusText = 'Aktiv (mənim)'; clickAttr = `onclick="openNotesModal('${t.id}')"`;  }
           else if (isOther) { cls = 'other'; statusText = `${esc(otherW.name)} xidmət edir`; }
@@ -37,6 +38,11 @@ function renderWaiterTables() {
           return `<div class="w-table-card ${cls}" ${clickAttr}>
             <div class="w-table-name">${esc(t.name)}</div>
             <div class="w-table-status">${statusText}</div>
+            ${isMine && tableOrder?.total
+              ? `<div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:6px;">
+                   🍔 ${(tableOrder.total||0).toFixed(2)} ₼
+                 </div>`
+              : ''}
             ${isMine && t.notes
               ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">
                    ${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}
@@ -79,6 +85,7 @@ function openNotesModal(tableId) {
   state.noteTableId = tableId;
   document.getElementById('noteTitle').textContent = '📝 ' + t.name + ' — Qeydlər';
   document.getElementById('noteText').value = t.notes || '';
+  renderNoteOrderSummary(tableId);
   document.getElementById('notesModal').classList.add('open');
 }
 
@@ -114,6 +121,7 @@ function confirmDeactivateTable() {
     snap.forEach(child => child.ref.remove());
   });
   db.ref('chats/' + tableId).remove();
+  R.tableOrders.child(tableId).remove();
 
   R.tables.child(tableId).update({ occupant: null, notes: '' });
   if (t) addLog('table', `${state.user.name} "${t.name}" masasını bağladı`, { waiterId: state.user.id, tableId });
