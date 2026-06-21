@@ -232,6 +232,11 @@
 <div class="modal-bg" id="notesModal">
   <div class="modal">
     <h2 id="noteTitle">Qeydlər</h2>
+
+    <!-- Cari sifariş xülasəsi -->
+    <div id="noteOrderSummary" style="margin-bottom:14px;"></div>
+    <button class="btn btn-blue" style="width:100%;padding:13px;margin-bottom:14px;" onclick="openOrderModal()">🍔 Sifariş Et / Əlavə Et</button>
+
     <div class="form-group">
       <label>Qeyd yazın</label>
       <textarea id="noteText" class="notes-area" rows="4" placeholder="Xüsusi sifarişlər, qeydlər..."></textarea>
@@ -240,6 +245,23 @@
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeNotesModal()">Bağla</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveNote()">Yadda Saxla</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" onclick="deactivateTable()">Masanı Bağla</button>
+    </div>
+  </div>
+</div>
+
+<!-- Qarson sifariş modalı -->
+<div class="modal-bg" id="orderModal">
+  <div class="modal" style="max-width:480px;">
+    <h2 id="orderModalTitle">🍔 Sifariş</h2>
+    <div id="orderCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+    <div id="orderItemsList" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--border);margin-bottom:10px;">
+      <span style="font-size:14px;color:var(--text2);">Cəmi:</span>
+      <span id="orderDraftTotal" style="font-size:20px;font-weight:800;color:var(--green);">0.00 ₼</span>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeOrderModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="confirmSendOrder()">✅ Sifarişi Göndər</button>
     </div>
   </div>
 </div>
@@ -363,6 +385,7 @@
 <script src="js/admin-settings.js"></script>
 <script src="js/admin-feedback.js"></script>
 <script src="js/kitchen.js"></script>
+<script src="js/waiter-order.js"></script>
 <script src="js/waiter.js"></script>
 <script src="js/alarm.js"></script>
 <script src="js/sound.js"></script>
