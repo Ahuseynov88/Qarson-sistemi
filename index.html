@@ -55,6 +55,7 @@
   <div class="topbar">
     <h2>👨‍💼 Admin Paneli</h2>
     <div class="topbar-right">
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()">🌙</button>
       <button class="btn btn-red" onclick="logout()">Çıxış</button>
     </div>
   </div>
@@ -136,7 +137,10 @@
 <div class="screen" id="kitchenScreen">
   <div class="topbar">
     <h2>👨‍🍳 Mətbəx Paneli</h2>
-    <button class="btn btn-red" onclick="logout()">Çıxış</button>
+    <div class="topbar-right">
+      <button class="theme-toggle-btn" id="themeToggleBtnKitchen" onclick="toggleTheme()">🌙</button>
+      <button class="btn btn-red" onclick="logout()">Çıxış</button>
+    </div>
   </div>
   <div class="kitchen-body">
     <div class="kitchen-grid" id="kitchenGrid"></div>
@@ -153,6 +157,7 @@
         <div style="font-size:12px;color:var(--green);">● Aktiv</div>
       </div>
     </div>
+    <button class="theme-toggle-btn" id="themeToggleBtnWaiter" onclick="toggleTheme()">🌙</button>
     <button class="btn btn-ghost" onclick="showExitModal()">🔒 Çıxış</button>
   </div>
   <div class="waiter-body">
@@ -266,6 +271,37 @@
   </div>
 </div>
 
+<!-- Mal detalı modalı: say, qeyd, ekstra xərc -->
+<div class="modal-bg" id="orderItemDetailModal">
+  <div class="modal" style="max-width:420px;text-align:center;">
+    <img id="oid_photo" src="" alt="" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);margin:0 auto 14px;display:block;">
+    <h2 id="oid_name" style="margin-bottom:4px;">Mal</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:18px;">Fiyat <span id="oid_price">0.00</span> ₼</p>
+
+    <div class="order-item-stepper" style="justify-content:center;gap:16px;margin-bottom:14px;">
+      <button class="order-step-btn" style="width:44px;height:44px;font-size:24px;" onclick="oidChangeQty(-1)">−</button>
+      <span id="oid_qty" class="order-step-qty" style="font-size:24px;min-width:36px;">1</span>
+      <button class="order-step-btn" style="width:44px;height:44px;font-size:24px;" onclick="oidChangeQty(1)">+</button>
+    </div>
+
+    <div id="oid_quickQty" style="display:flex;gap:8px;justify-content:center;margin-bottom:18px;"></div>
+
+    <div class="form-group" style="text-align:left;">
+      <label>Sifariş Notu</label>
+      <textarea id="oid_note" rows="2" placeholder="Məs: az ədviyyatlı, soğansız..."></textarea>
+    </div>
+    <div class="form-group" style="text-align:left;">
+      <label>Ekstra Ücret (₼, istəyə görə)</label>
+      <input type="number" id="oid_extraFee" min="0" step="0.01" placeholder="0.00">
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeOrderItemDetailModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveOrderItemDetail()">💾 Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="addModal">
   <div class="modal" id="addModalInner">
     <h2 id="addModalTitle">Yeni</h2>
@@ -320,6 +356,7 @@
 
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
 <div class="screen" id="customerScreen">
+  <button class="theme-toggle-btn cust-theme-toggle" id="themeToggleBtnCustomer" onclick="toggleTheme()">🌙</button>
   <div id="custWaiterCard">
     <img id="custWaiterAvatar" src="" alt="">
     <div class="cw-info">
@@ -374,6 +411,7 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/theme.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/kiosk-lock.js"></script>
 <script src="js/listeners.js"></script>
