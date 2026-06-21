@@ -77,11 +77,11 @@ function renderOrderCatTabs() {
 
   tabEl.innerHTML = cats.map(c => `
     <button onclick="setOrderCat('${esc(c)}')"
-      style="padding:7px 14px;border-radius:18px;border:1px solid var(--border);
+      style="padding:10px 8px;border-radius:8px;border:none;text-align:left;
              background:${state._orderCatFilter===c?'var(--brand-gradient)':'transparent'};
              color:${state._orderCatFilter===c?'white':'var(--text2)'};
-             font-weight:600;font-size:12px;cursor:pointer;">
-      ${c === 'all' ? '🍔 Hamısı' : esc(c)}
+             font-weight:600;font-size:12px;cursor:pointer;width:100%;">
+      ${c === 'all' ? 'Hamısı' : esc(c)}
     </button>
   `).join('');
 }
