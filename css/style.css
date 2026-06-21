@@ -8,6 +8,8 @@
   --text:#1a1d24;--text2:#5b6573;--text3:#9aa1ad;
   --overlay-strong:rgba(0,0,0,.55);--overlay-soft:rgba(0,0,0,.08);
   --shadow-color:rgba(0,0,0,.12);
+  --brand-gradient:linear-gradient(135deg,#a01942 0%,#5c1030 55%,#280a18 100%);
+  --brand-glow:radial-gradient(circle at 85% 0%, rgba(255,90,140,.35) 0%, transparent 60%);
 }
 
 /* ═══ GECƏ (TÜND) REJİM — body.dark-mode aktiv olanda ═══ */
@@ -26,7 +28,8 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .screen.active{display:flex;flex-direction:column;}
 
 /* ── LOGIN ── */
-#loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg),var(--card));}
+#loginScreen{align-items:center;justify-content:center;background:var(--brand-gradient);position:relative;overflow:hidden;}
+#loginScreen::before{content:'';position:absolute;top:0;right:0;width:60%;height:60%;background:var(--brand-glow);pointer-events:none;}
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
 .login-logo{font-size:48px;margin-bottom:10px;}
 .login-box h1{font-size:24px;margin-bottom:6px;}
@@ -45,7 +48,10 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .err-msg{color:var(--red);font-size:13px;min-height:20px;}
 
 /* ── TOPBAR ── */
-.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.topbar{background:var(--brand-gradient);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:relative;overflow:hidden;}
+.topbar::before{content:'';position:absolute;top:0;right:0;width:200px;height:100%;background:var(--brand-glow);pointer-events:none;}
+.topbar h2,.topbar h1{color:#fff;position:relative;z-index:1;}
+.topbar .topbar-right,.topbar > button{position:relative;z-index:1;}
 .topbar h2{font-size:18px;font-weight:600;}
 .topbar-right{display:flex;align-items:center;gap:10px;}
 .btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;}
@@ -134,7 +140,10 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 
 /* ── WAITER ── */
 #waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
-.waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.waiter-header{background:var(--brand-gradient);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden;}
+.waiter-header::before{content:'';position:absolute;top:0;right:0;width:180px;height:100%;background:var(--brand-glow);pointer-events:none;}
+.waiter-header *{position:relative;z-index:1;}
+.waiter-info,.waiter-info *{color:#fff;}
 .waiter-info{display:flex;align-items:center;gap:12px;}
 .waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
 .waiter-body{flex:1;padding:16px;overflow-y:auto;}
@@ -189,7 +198,8 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
 /* ── MÜŞTƏRİ PANELİ ── */
-#customerScreen{background:linear-gradient(135deg,var(--bg),var(--card));overflow-y:auto;}
+#customerScreen{background:var(--brand-gradient);overflow-y:auto;position:relative;}
+#customerScreen::before{content:'';position:fixed;top:0;right:0;width:50%;height:40%;background:var(--brand-glow);pointer-events:none;z-index:0;}
 .cust-wrap{width:100%;max-width:440px;margin:0 auto;padding:20px;}
 .cust-header{text-align:center;padding:24px 0 20px;}
 .cust-header .icon{font-size:52px;margin-bottom:8px;}
@@ -233,7 +243,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 
 /* ── Müştəri paneli qarson widget ── */
 #custWaiterCard{
-  position:fixed;top:16px;right:16px;
+  position:fixed;top:16px;right:16px;z-index:1;
   display:none;
   flex-direction:column;
   align-items:center;
