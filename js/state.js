@@ -30,8 +30,10 @@ let state = {
   activeChatTableId: null,
   activeChatConvId: null,
   _tableCatFilter: 'all',
+  _waiterCatFilter: 'all',
   _menuCatFilter: 'all',
   orderTableId: null,      // hazırda sifariş edilən masa
   _orderCatFilter: 'all',  // sifariş modalındaki kateqoriya filtri
-  _orderDraft: {}          // {menuItemId: qty} — hələ göndərilməmiş, modal daxilindəki müvəqqəti səbət
+  _orderDraft: {},         // {menuItemId: {qty, note, extraFee}} — hələ göndərilməmiş, modal daxilindəki müvəqqəti səbət
+  _orderDetailItemId: null // hazırda detal pəncərəsi açıq olan malın id-si
 };
