@@ -36,6 +36,11 @@ function initListeners() {
     if (state.user?.role==='admin') onDataChange();
   });
 
+  R.tableOrders.on('value', snap=>{
+    state.tableOrders = snap.val() || {};
+    onDataChange();
+  });
+
   R.orders.on('value', snap=>{
     state.orders = toArr(snap.val());
     onDataChange();
@@ -59,6 +64,7 @@ function removeListeners() {
   R.waiters.off();
   R.tables.off();
   R.menuItems.off();
+  R.tableOrders.off();
   R.orders.off();
   R.logs.off();
   db.ref('customerRequests').off();
