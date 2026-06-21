@@ -1,58 +1,73 @@
 /* ═══════════════════════════════════════════
    WAITER PANEL
-   Bu fayl: qarsonun gördüyü masalar siyahısı (kateqoriyalara
-   qruplaşdırılmış), masa aktivləşdirmə, qeyd yazma, masa bağlama.
+   Bu fayl: qarsonun gördüyü masalar siyahısı. Kateqoriyalar
+   yuxarıda tab şəklində (Menulux-un BAHÇE/SALON/TERAS tabları
+   kimi), yalnız seçilmiş kateqoriyanın masaları göstərilir.
 ═══════════════════════════════════════════ */
+function renderWaiterCatTabs() {
+  const tabEl = document.getElementById('waiterCatTabs');
+  if (!tabEl) return;
+  const cats = ['all', ...new Set(state.tables.map(t => t.category || t.name.replace(/\s+\d+$/, '') || t.name))];
+
+  tabEl.innerHTML = cats.map(c => `
+    <button onclick="setWaiterCat('${esc(c)}')"
+      style="flex:1;padding:10px 6px;border:none;background:transparent;
+             font-size:13px;font-weight:700;cursor:pointer;
+             color:${state._waiterCatFilter===c?'var(--red)':'var(--text2)'};
+             border-bottom:2px solid ${state._waiterCatFilter===c?'var(--red)':'transparent'};">
+      ${c === 'all' ? 'Hamısı' : esc(c).toUpperCase()}
+    </button>
+  `).join('');
+}
+
+function setWaiterCat(cat) {
+  state._waiterCatFilter = cat;
+  renderWaiterCatTabs();
+  renderWaiterTables();
+}
+
 function renderWaiterTables() {
   if (!state.user || state.user.role !== 'waiter') return;
+  renderWaiterCatTabs();
   const el = document.getElementById('waiterTables');
   if (!state.tables.length) {
     el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
     return;
   }
 
-  const groups = {};
-  state.tables.forEach(t => {
-    const cat = t.category || t.name.replace(/\s+\d+$/, '') || t.name;
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(t);
-  });
+  const filtered = state._waiterCatFilter === 'all'
+    ? state.tables
+    : state.tables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._waiterCatFilter);
 
-  el.innerHTML = Object.keys(groups).map(cat => `
-    <div style="margin-bottom:20px;">
-      <h4 style="color:var(--text2);font-size:13px;text-transform:uppercase;
-                 letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;
-                 border-bottom:1px solid var(--border);">
-        🪑 ${esc(cat)}
-      </h4>
-      <div class="tables-grid">
-        ${groups[cat].map(t => {
-          const isMine  = t.occupant === state.user.id;
-          const isOther = t.occupant && !isMine;
-          const otherW  = isOther ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }) : null;
-          const tableOrder = state.tableOrders[t.id];
-          let cls = '', statusText = 'Boş', clickAttr = '';
-          if (isMine)       { cls = 'mine';  statusText = 'Aktiv (mənim)'; clickAttr = `onclick="openNotesModal('${t.id}')"`;  }
-          else if (isOther) { cls = 'other'; statusText = `${esc(otherW.name)} xidmət edir`; }
-          else              { clickAttr = `onclick="activateTable('${t.id}')"`;  }
-          return `<div class="w-table-card ${cls}" ${clickAttr}>
-            <div class="w-table-name">${esc(t.name)}</div>
-            <div class="w-table-status">${statusText}</div>
-            ${isMine && tableOrder?.total
-              ? `<div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:6px;">
-                   🍔 ${(tableOrder.total||0).toFixed(2)} ₼
-                 </div>`
-              : ''}
-            ${isMine && t.notes
-              ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">
-                   ${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}
-                 </div>`
-              : ''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-  `).join('');
+  if (!filtered.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(t => {
+    const isMine  = t.occupant === state.user.id;
+    const isOther = t.occupant && !isMine;
+    const otherW  = isOther ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }) : null;
+    const tableOrder = state.tableOrders[t.id];
+    let cls = '', statusText = 'Boş', clickAttr = '';
+    if (isMine)       { cls = 'mine';  statusText = 'Aktiv (mənim)'; clickAttr = `onclick="openNotesModal('${t.id}')"`;  }
+    else if (isOther) { cls = 'other'; statusText = `${esc(otherW.name)} xidmət edir`; }
+    else              { clickAttr = `onclick="activateTable('${t.id}')"`;  }
+    return `<div class="w-table-card ${cls}" ${clickAttr}>
+      <div class="w-table-name">${esc(t.name)}</div>
+      <div class="w-table-status">${statusText}</div>
+      ${isMine && tableOrder?.total
+        ? `<div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:6px;">
+             🍔 ${(tableOrder.total||0).toFixed(2)} ₼
+           </div>`
+        : ''}
+      ${isMine && t.notes
+        ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">
+             ${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}
+           </div>`
+        : ''}
+    </div>`;
+  }).join('');
 }
 
 function activateTable(tableId) {
