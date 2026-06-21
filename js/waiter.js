@@ -57,7 +57,7 @@ function renderWaiterTables() {
       <div class="w-table-name">${esc(t.name)}</div>
       <div class="w-table-status">${statusText}</div>
       ${isMine && tableOrder?.total
-        ? `<div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:6px;">
+        ? `<div style="font-size:11px;color:var(--orange);font-weight:700;margin-top:4px;">
              🍔 ${(tableOrder.total||0).toFixed(2)} ₼
            </div>`
         : ''}
