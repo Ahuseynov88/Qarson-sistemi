@@ -1,278 +1,38 @@
+/* ═══════════════════════════════════════════
+   İLK YÜKLƏMƏ
+   Bu fayl: HƏMİŞƏ ən sonda yüklənməlidir, çünki burada olan kod
+   səhifə açılan kimi DƏRHAL icra olunur (demo data, admin pin,
+   checkCustomerMode). Bütün digər fayllardakı funksiyalar
+   artıq mövcud olmalıdır ki, bu kod onlara güvənə bilsin.
+═══════════════════════════════════════════ */
 
+/* ── Demo data: yalnız Firebase boşdursa yaranır ── */
+R.waiters.once('value', snap=>{
+  if (snap.val()) return;
+  [
+    {name:'Əli Məmmədov',  pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200',  status:'ready',   createdAt:Date.now()},
+    {name:'Leyla Həsənli', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'ready',   createdAt:Date.now()},
+    {name:'Orxan Əliyev', pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200',  status:'offline',  createdAt:Date.now()}
+  ].forEach(w=>R.waiters.push(w));
+});
 
-/* ═══ GÜNDÜZ (AĞ) REJİM — DEFAULT ═══ */
-:root{
-  --green:#1c6b35;--green-dark:#155327;--red:#a32a24;--red-dark:#84211c;
-  --blue:#3498db;--orange:#c4b02e;--orange-dark:#a8972a;--purple:#8e44ad;--yellow:#f1c40f;
-  --bg:#f4f5f7;--card:#ffffff;--card2:#eef0f3;--border:#dfe2e7;
-  --text:#1a1d24;--text2:#5b6573;--text3:#9aa1ad;
-  --overlay-strong:rgba(0,0,0,.55);--overlay-soft:rgba(0,0,0,.08);
-  --shadow-color:rgba(0,0,0,.12);
-}
+R.tables.once('value', snap=>{
+  if (snap.val()) return;
+  ['Masa 1','Masa 2','Masa 3','VIP Otaq','Terras','Bar'].forEach(name=>{
+    R.tables.push({name, capacity:4, occupant:null, notes:'', createdAt:Date.now()});
+  });
+});
 
-/* ═══ GECƏ (TÜND) REJİM — body.dark-mode aktiv olanda ═══ */
-body.dark-mode{
-  --green:#2ecc71;--green-dark:#27ae60;--red:#e74c3c;--red-dark:#c0392b;
-  --blue:#3498db;--orange:#d4c235;--orange-dark:#bcab2e;--purple:#8e44ad;--yellow:#f1c40f;
-  --bg:#0f0f1a;--card:#1a1a2e;--card2:#16213e;--border:#2d2d4e;
-  --text:#eee;--text2:#aaa;--text3:#666;
-  --overlay-strong:rgba(0,0,0,.75);--overlay-soft:rgba(255,255,255,.04);
-  --shadow-color:rgba(0,0,0,.4);
-}
-body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+/* ── Admin PIN-i Firebase-dən əvvəlcədən yüklə ── */
+db.ref('settings/adminPin').once('value', snap => {
+  if (snap.val()) ADMIN_PIN = snap.val();
+});
 
-/* ── SCREEN ── */
-.screen{display:none;min-height:100vh;}
-.screen.active{display:flex;flex-direction:column;}
+/* ── Müştəri rejimi yoxlanışı (?table=... varsa) ── */
+checkCustomerMode();
 
-/* ── LOGIN ── */
-#loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg),var(--card));}
-.login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
-.login-logo{font-size:48px;margin-bottom:10px;}
-.login-box h1{font-size:24px;margin-bottom:6px;}
-.login-box p{color:var(--text2);margin-bottom:28px;font-size:14px;}
-.role-tabs{display:flex;gap:8px;margin-bottom:24px;background:var(--bg);border-radius:12px;padding:4px;}
-.role-tab{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--text2);border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;}
-.role-tab.active{background:var(--card2);color:var(--text);}
-.pin-display{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
-.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:.2s;}
-.pin-dot.filled{background:var(--green);border-color:var(--green);}
-.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
-.num-btn{padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:22px;font-weight:600;cursor:pointer;transition:.15s;}
-.num-btn:active{transform:scale(0.93);background:var(--border);}
-.login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:10px;}
-.login-btn:active{background:var(--green-dark);}
-.err-msg{color:var(--red);font-size:13px;min-height:20px;}
+/* ── Saxlanılmış gecə/gündüz seçimini tətbiq et ── */
+loadSavedTheme();
 
-/* ── TOPBAR ── */
-.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.topbar h2{font-size:18px;font-weight:600;}
-.topbar-right{display:flex;align-items:center;gap:10px;}
-.btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;}
-.btn:active{transform:scale(0.96);}
-.btn-red{background:var(--red);color:white;}
-.btn-green{background:var(--green);color:white;}
-.btn-blue{background:var(--blue);color:white;}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
-
-/* ── ADMIN ── */
-#adminScreen{background:var(--bg);}
-.admin-body{flex:1;overflow-y:auto;padding:20px;}
-.admin-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
-.admin-tab{padding:9px 20px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text2);cursor:pointer;font-weight:600;font-size:14px;transition:.2s;}
-.admin-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
-.admin-section{display:none;}
-.admin-section.active{display:block;}
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;}
-.stat-num{font-size:32px;font-weight:700;color:var(--green);}
-.stat-label{font-size:12px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.05em;}
-.grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
-.item-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;}
-.item-card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
-.item-info h3{font-size:16px;margin-bottom:3px;}
-.item-info small{color:var(--text2);font-size:13px;}
-.status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
-.badge-green{background:rgba(46,204,113,.15);color:var(--green);}
-.badge-red{background:rgba(231,76,60,.15);color:var(--red);}
-.item-actions{display:flex;gap:8px;margin-top:14px;}
-.item-actions .btn{flex:1;padding:10px;}
-.table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
-.table-card h3{font-size:16px;margin-bottom:6px;}
-.table-card .meta{font-size:13px;color:var(--text2);margin-bottom:14px;}
-
-/* ── LOG ── */
-.log-list{display:flex;flex-direction:column;gap:6px;}
-.log-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-.log-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
-.log-text{font-size:13px;color:var(--text2);flex:1;}
-.log-time{font-size:11px;color:var(--text3);white-space:nowrap;}
-.log-filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
-.log-filter{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
-.log-filter.active{background:var(--blue);color:white;border-color:var(--blue);}
-
-/* ── MODAL ── */
-.modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-strong);z-index:2000;align-items:center;justify-content:center;padding:20px;}
-.modal-bg.open{display:flex;}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
-.modal-section{border-top:1px solid var(--border);margin-top:16px;padding-top:16px;}
-.modal-section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;}
-.avatar-upload-area{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:8px;}
-.avatar-upload-area:hover{border-color:var(--green);background:rgba(46,204,113,.05);}
-.avatar-upload-area input[type=file]{display:none;}
-.avatar-preview{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:0 auto 8px;display:none;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.modal h2{font-size:20px;margin-bottom:20px;}
-.form-group{margin-bottom:16px;}
-.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
-.form-group input:focus,.form-group select:focus{border-color:var(--blue);}
-.modal-actions{display:flex;gap:10px;margin-top:20px;}
-.modal-actions .btn{flex:1;padding:14px;}
-.add-fab{position:fixed;bottom:28px;right:28px;width:60px;height:60px;border-radius:50%;background:var(--green);color:white;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(46,204,113,.4);z-index:100;}
-
-/* ── KITCHEN ── */
-#kitchenScreen{background:var(--bg);}
-.kitchen-body{flex:1;padding:20px;overflow-y:auto;}
-.kitchen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;}
-.k-card{border-radius:18px;padding:20px;text-align:center;cursor:pointer;transition:.2s;position:relative;border:3px solid transparent;}
-.k-card.ready{background:rgba(46,204,113,.1);border-color:var(--green);}
-.k-card.called{background:rgba(231,76,60,.15);border-color:var(--red);animation:pulse-border 1s infinite;}
-.k-card.offline{background:var(--card);border-color:var(--border);opacity:.5;cursor:default;}
-@keyframes pulse-border{0%,100%{border-color:var(--red);}50%{border-color:transparent;}}
-.k-card img{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid currentColor;}
-.k-card.ready img{border-color:var(--green);}
-.k-card.called img{border-color:var(--red);}
-.k-card h3{font-size:17px;margin-bottom:6px;}
-.k-status{font-size:13px;font-weight:600;}
-.k-card.ready .k-status{color:var(--green);}
-.k-card.called .k-status{color:var(--red);}
-.k-tables-under{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:8px;min-height:20px;}
-.k-table-chip{background:rgba(52,152,219,.2);border:1px solid rgba(52,152,219,.4);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--blue);}
-.k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
-
-/* ── WAITER ── */
-#waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
-.waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
-.waiter-info{display:flex;align-items:center;gap:12px;}
-.waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
-.waiter-body{flex:1;padding:16px;overflow-y:auto;}
-.waiter-body h3{font-size:15px;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;}
-.tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
-.w-table-card{border-radius:14px;padding:16px;border:2px solid var(--border);background:var(--card);cursor:pointer;transition:.2s;text-align:center;}
-.w-table-card.mine{background:rgba(46,204,113,.1);border-color:var(--green);}
-.w-table-card.other{background:rgba(52,152,219,.05);border-color:rgba(52,152,219,.3);cursor:default;opacity:.7;}
-.w-table-name{font-size:16px;font-weight:700;margin-bottom:4px;}
-.w-table-status{font-size:12px;color:var(--text2);}
-.w-table-card.mine .w-table-status{color:var(--green);}
-.w-table-card.other .w-table-status{color:var(--blue);}
-.notes-area{width:100%;margin-top:10px;padding:8px;background:var(--overlay-soft);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
-
-/* ── ALARM ── (rəng dinamik olaraq JS ilə dəyişdirilir) */
-#alarmOverlay{display:none;position:fixed;inset:0;z-index:9000;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
-#alarmOverlay.show{display:flex;}
-.alarm-icon{font-size:90px;animation:ring .4s infinite;margin-bottom:10px;}
-@keyframes ring{0%,100%{transform:rotate(0);}25%{transform:rotate(14deg);}75%{transform:rotate(-14deg);}}
-.alarm-title{font-size:32px;font-weight:800;color:white;margin-bottom:10px;letter-spacing:.5px;}
-.alarm-sub{font-size:26px;font-weight:700;color:white;margin-bottom:36px;line-height:1.4;max-width:340px;}
-.alarm-btn{padding:20px 60px;background:white;border:none;border-radius:50px;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px var(--shadow-color);}
-
-/* ── CHAT PANELI (Qarson) ── */
-#waiterChatPanel{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--border);z-index:600;padding:12px 16px;box-shadow:0 -4px 20px var(--shadow-color);}
-#waiterChatPanel.show{display:block;}
-.chat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.chat-header span{font-size:13px;font-weight:700;color:var(--orange);}
-.chat-msg-list{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
-.chat-bubble{padding:8px 12px;border-radius:12px;font-size:14px;max-width:80%;}
-.chat-bubble.customer{background:rgba(52,152,219,.2);color:var(--text);align-self:flex-start;border-bottom-left-radius:2px;}
-.chat-bubble.waiter{background:rgba(46,204,113,.2);color:var(--text);align-self:flex-end;border-bottom-right-radius:2px;}
-.chat-input-row{display:flex;gap:8px;}
-.chat-input-row textarea{flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:none;min-height:44px;max-height:100px;}
-.chat-input-row button{padding:10px 18px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:15px;}
-
-/* ── DEACTIVATED ── */
-#deactivatedOverlay{display:none;position:fixed;inset:0;background:var(--overlay-strong);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
-#deactivatedOverlay.show{display:flex;}
-
-/* ── EXIT CONFIRM ── */
-#exitModal .modal{max-width:340px;text-align:center;}
-#exitModal h2{color:var(--red);}
-
-/* ── TOAST ── */
-#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
-#toast.show{display:block;}
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar{width:5px;}
-::-webkit-scrollbar-track{background:var(--bg);}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
-
-/* ── MÜŞTƏRİ PANELİ ── */
-#customerScreen{background:linear-gradient(135deg,var(--bg),var(--card));overflow-y:auto;}
-.cust-wrap{width:100%;max-width:440px;margin:0 auto;padding:20px;}
-.cust-header{text-align:center;padding:24px 0 20px;}
-.cust-header .icon{font-size:52px;margin-bottom:8px;}
-.cust-header h1{font-size:24px;color:var(--text);}
-.cust-header p{color:var(--text2);font-size:14px;margin-top:4px;}
-
-/* [c] Menyu düyməsi */
-.menu-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:20px;background:linear-gradient(135deg,rgba(52,152,219,.2),rgba(52,152,219,.08));border:2px solid #3498db;border-radius:16px;color:#3498db;font-size:18px;font-weight:800;cursor:pointer;margin-bottom:16px;letter-spacing:.3px;transition:.2s;}
-.menu-btn:active{transform:scale(0.97);}
-.menu-btn .menu-icon{font-size:32px;}
-
-/* Müştəri action düymələri */
-.cust-actions{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
-.cust-btn{display:flex;align-items:center;gap:14px;width:100%;padding:20px 18px;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer;border:2px solid;transition:.2s;letter-spacing:.2px;}
-.cust-btn:active{transform:scale(0.97);}
-.cust-btn .cust-icon{font-size:34px;flex-shrink:0;}
-
-/* [a] Fərqli rənglər: Sarı=çağır, Yaşıl=nağd, Mavi=POS */
-.cust-btn.call-btn{background:rgba(241,196,15,.15);border-color:#f1c40f;color:#f1c40f;}
-.cust-btn.cash-btn{background:rgba(46,204,113,.15);border-color:#2ecc71;color:#2ecc71;}
-.cust-btn.pos-btn{background:rgba(52,152,219,.15);border-color:#3498db;color:#3498db;}
-.cust-btn.msg-btn{background:rgba(243,156,18,.12);border-color:#f39c12;color:#f39c12;}
-
-/* [e] Müştəri çat bölməsi */
-.cust-chat-section{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--border);margin-bottom:20px;}
-.cust-chat-section h3{font-size:15px;margin-bottom:12px;color:var(--text2);}
-.cust-msg-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
-.cust-msg-list:empty::before{content:'Hələ mesaj yoxdur...';font-size:13px;color:var(--text3);text-align:center;display:block;padding:10px 0;}
-.cust-bubble{padding:10px 14px;border-radius:14px;font-size:15px;max-width:85%;line-height:1.4;}
-.cust-bubble.customer{background:rgba(243,156,18,.2);color:var(--text);align-self:flex-start;border-bottom-left-radius:2px;}
-.cust-bubble.waiter{background:rgba(46,204,113,.2);color:var(--text);align-self:flex-end;border-bottom-right-radius:2px;text-align:right;}
-.cust-input-row{display:flex;gap:8px;}
-.cust-input-row textarea{flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;min-height:48px;}
-.cust-input-row button{padding:10px 18px;background:var(--orange);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;}
-
-/* Şikayət bölməsi */
-.cust-feedback{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--border);}
-.cust-feedback h3{font-size:15px;margin-bottom:12px;color:var(--text2);}
-.cust-feedback textarea{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;min-height:80px;}
-.cust-feedback button{width:100%;margin-top:8px;padding:13px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:16px;}
-
-/* ── Müştəri paneli qarson widget ── */
-#custWaiterCard{
-  position:fixed;top:16px;right:16px;
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  gap:6px;
-  z-index:200;
-}
-#custWaiterCard img{width:95px;height:95px;border-radius:50%;object-fit:cover;object-position:center top;border:3px solid var(--green);flex-shrink:0;box-shadow:0 4px 16px var(--shadow-color);}
-#custWaiterCard .cw-info{display:flex;flex-direction:column;align-items:center;text-align:center;}
-#custWaiterCard .cw-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);}
-#custWaiterCard .cw-name{font-size:16px;font-weight:700;color:var(--text);line-height:1.2;margin-top:2px;text-align:center;white-space:normal;word-break:break-word;max-width:140px;text-shadow:0 1px 4px rgba(0,0,0,.8);}
-
-/* Müştəri inactive overlay */
-#customerInactiveOverlay{display:none;position:fixed;inset:0;background:var(--overlay-strong);z-index:9998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
-#customerInactiveOverlay.show{display:flex;}
-#customerInactiveOverlay h2{color:var(--red);font-size:24px;margin-bottom:12px;}
-#customerInactiveOverlay p{color:var(--text2);font-size:16px;}
-
-/* Müştəri toast */
-#customerToast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:15px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
-
-/* ── Qarson sifariş modalı ── */
-.order-item-row{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;transition:.15s;}
-.order-item-row:active{transform:scale(0.98);}
-.order-item-row img{width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;}
-.order-item-info{flex:1;min-width:0;}
-.order-item-info h4{font-size:14px;margin-bottom:2px;}
-.order-item-info span{font-size:13px;color:var(--orange);font-weight:700;}
-.order-item-stepper{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.order-step-btn{width:30px;height:30px;border-radius:8px;border:none;background:var(--border);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.order-step-btn:active{background:var(--green);}
-.order-step-qty{font-size:15px;font-weight:700;min-width:20px;text-align:center;}
-.order-summary-line{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);padding:4px 0;}
-.order-summary-box{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
-
-/* ── GECƏ/GÜNDÜZ KEÇİD DÜYMƏSİ ── */
-.theme-toggle-btn{
-  width:38px;height:38px;border-radius:9px;border:1px solid var(--border);
-  background:var(--card2);font-size:17px;cursor:pointer;display:flex;
-  align-items:center;justify-content:center;
-}
-.theme-toggle-btn:active{transform:scale(0.92);}
-.cust-theme-toggle{position:fixed;top:16px;left:16px;z-index:200;background:var(--card);box-shadow:0 4px 16px var(--shadow-color);}
+/* ── Başlanğıcda "+" düyməsi gizli olsun ── */
+document.getElementById('adminFab').style.display='none';
