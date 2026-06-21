@@ -272,7 +272,10 @@
             <span style="font-size:14px;color:var(--text2);">Cəmi:</span>
             <span id="orderDraftTotal" style="font-size:22px;font-weight:800;color:var(--green);">0.00 ₼</span>
           </div>
-          <button class="btn btn-green" style="width:100%;padding:14px;font-size:15px;" onclick="confirmSendOrder()">✅ Sifarişi Təsdiq Et</button>
+          <div style="display:flex;gap:8px;">
+            <button id="removeSelectedBtn" class="btn btn-red" style="display:none;padding:14px;" onclick="removeSelectedDraftLines()">🗑️ Seçilmişi Sil</button>
+            <button class="btn btn-green" style="flex:1;padding:14px;font-size:15px;" onclick="confirmSendOrder()">✅ Sifarişi Təsdiq Et</button>
+          </div>
         </div>
       </div>
     </div>
