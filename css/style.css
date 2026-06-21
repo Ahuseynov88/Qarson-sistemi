@@ -1,9 +1,23 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+/* ═══ GÜNDÜZ (AĞ) REJİM — DEFAULT ═══ */
 :root{
+  --green:#1c6b35;--green-dark:#155327;--red:#a32a24;--red-dark:#84211c;
+  --blue:#3498db;--orange:#c4b02e;--orange-dark:#a8972a;--purple:#8e44ad;--yellow:#f1c40f;
+  --bg:#f4f5f7;--card:#ffffff;--card2:#eef0f3;--border:#dfe2e7;
+  --text:#1a1d24;--text2:#5b6573;--text3:#9aa1ad;
+  --overlay-strong:rgba(0,0,0,.55);--overlay-soft:rgba(0,0,0,.08);
+  --shadow-color:rgba(0,0,0,.12);
+}
+
+/* ═══ GECƏ (TÜND) REJİM — body.dark-mode aktiv olanda ═══ */
+body.dark-mode{
   --green:#2ecc71;--green-dark:#27ae60;--red:#e74c3c;--red-dark:#c0392b;
-  --blue:#3498db;--orange:#f39c12;--purple:#8e44ad;--yellow:#f1c40f;
+  --blue:#3498db;--orange:#d4c235;--orange-dark:#bcab2e;--purple:#8e44ad;--yellow:#f1c40f;
   --bg:#0f0f1a;--card:#1a1a2e;--card2:#16213e;--border:#2d2d4e;
   --text:#eee;--text2:#aaa;--text3:#666;
+  --overlay-strong:rgba(0,0,0,.75);--overlay-soft:rgba(255,255,255,.04);
+  --shadow-color:rgba(0,0,0,.4);
 }
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 
@@ -12,7 +26,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .screen.active{display:flex;flex-direction:column;}
 
 /* ── LOGIN ── */
-#loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0f1a,#1a1a2e);}
+#loginScreen{align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg),var(--card));}
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
 .login-logo{font-size:48px;margin-bottom:10px;}
 .login-box h1{font-size:24px;margin-bottom:6px;}
@@ -79,7 +93,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .log-filter.active{background:var(--blue);color:white;border-color:var(--blue);}
 
 /* ── MODAL ── */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;}
+.modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-strong);z-index:2000;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.open{display:flex;}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
 .modal-section{border-top:1px solid var(--border);margin-top:16px;padding-top:16px;}
@@ -133,7 +147,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .w-table-status{font-size:12px;color:var(--text2);}
 .w-table-card.mine .w-table-status{color:var(--green);}
 .w-table-card.other .w-table-status{color:var(--blue);}
-.notes-area{width:100%;margin-top:10px;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
+.notes-area{width:100%;margin-top:10px;padding:8px;background:var(--overlay-soft);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
 
 /* ── ALARM ── (rəng dinamik olaraq JS ilə dəyişdirilir) */
 #alarmOverlay{display:none;position:fixed;inset:0;z-index:9000;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
@@ -142,10 +156,10 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 @keyframes ring{0%,100%{transform:rotate(0);}25%{transform:rotate(14deg);}75%{transform:rotate(-14deg);}}
 .alarm-title{font-size:32px;font-weight:800;color:white;margin-bottom:10px;letter-spacing:.5px;}
 .alarm-sub{font-size:26px;font-weight:700;color:white;margin-bottom:36px;line-height:1.4;max-width:340px;}
-.alarm-btn{padding:20px 60px;background:white;border:none;border-radius:50px;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.25);}
+.alarm-btn{padding:20px 60px;background:white;border:none;border-radius:50px;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px var(--shadow-color);}
 
 /* ── CHAT PANELI (Qarson) ── */
-#waiterChatPanel{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--border);z-index:600;padding:12px 16px;box-shadow:0 -4px 20px rgba(0,0,0,.4);}
+#waiterChatPanel{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--border);z-index:600;padding:12px 16px;box-shadow:0 -4px 20px var(--shadow-color);}
 #waiterChatPanel.show{display:block;}
 .chat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .chat-header span{font-size:13px;font-weight:700;color:var(--orange);}
@@ -158,7 +172,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .chat-input-row button{padding:10px 18px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:15px;}
 
 /* ── DEACTIVATED ── */
-#deactivatedOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+#deactivatedOverlay{display:none;position:fixed;inset:0;background:var(--overlay-strong);z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
 #deactivatedOverlay.show{display:flex;}
 
 /* ── EXIT CONFIRM ── */
@@ -166,7 +180,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 #exitModal h2{color:var(--red);}
 
 /* ── TOAST ── */
-#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
 #toast.show{display:block;}
 
 /* ── SCROLLBAR ── */
@@ -175,7 +189,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
 /* ── MÜŞTƏRİ PANELİ ── */
-#customerScreen{background:linear-gradient(135deg,#0f0f1a,#1a1a2e);overflow-y:auto;}
+#customerScreen{background:linear-gradient(135deg,var(--bg),var(--card));overflow-y:auto;}
 .cust-wrap{width:100%;max-width:440px;margin:0 auto;padding:20px;}
 .cust-header{text-align:center;padding:24px 0 20px;}
 .cust-header .icon{font-size:52px;margin-bottom:8px;}
@@ -226,19 +240,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   gap:6px;
   z-index:200;
 }
-#custWaiterCard img{width:95px;height:95px;border-radius:50%;object-fit:cover;object-position:center top;border:3px solid var(--green);flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,.5);}
+#custWaiterCard img{width:95px;height:95px;border-radius:50%;object-fit:cover;object-position:center top;border:3px solid var(--green);flex-shrink:0;box-shadow:0 4px 16px var(--shadow-color);}
 #custWaiterCard .cw-info{display:flex;flex-direction:column;align-items:center;text-align:center;}
 #custWaiterCard .cw-label{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);}
 #custWaiterCard .cw-name{font-size:16px;font-weight:700;color:var(--text);line-height:1.2;margin-top:2px;text-align:center;white-space:normal;word-break:break-word;max-width:140px;text-shadow:0 1px 4px rgba(0,0,0,.8);}
 
 /* Müştəri inactive overlay */
-#customerInactiveOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
+#customerInactiveOverlay{display:none;position:fixed;inset:0;background:var(--overlay-strong);z-index:9998;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
 #customerInactiveOverlay.show{display:flex;}
 #customerInactiveOverlay h2{color:var(--red);font-size:24px;margin-bottom:12px;}
 #customerInactiveOverlay p{color:var(--text2);font-size:16px;}
 
 /* Müştəri toast */
-#customerToast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:15px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.5);}
+#customerToast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:15px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
 
 /* ── Qarson sifariş modalı ── */
 .order-item-row{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;transition:.15s;}
@@ -253,3 +267,12 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .order-step-qty{font-size:15px;font-weight:700;min-width:20px;text-align:center;}
 .order-summary-line{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);padding:4px 0;}
 .order-summary-box{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+
+/* ── GECƏ/GÜNDÜZ KEÇİD DÜYMƏSİ ── */
+.theme-toggle-btn{
+  width:38px;height:38px;border-radius:9px;border:1px solid var(--border);
+  background:var(--card2);font-size:17px;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;
+}
+.theme-toggle-btn:active{transform:scale(0.92);}
+.cust-theme-toggle{position:fixed;top:16px;left:16px;z-index:200;background:var(--card);box-shadow:0 4px 16px var(--shadow-color);}
