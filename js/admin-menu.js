@@ -19,7 +19,7 @@ function renderMenuItems() {
   tabEl.innerHTML = cats.map(c => `
     <button onclick="setMenuCat('${esc(c)}')"
       style="padding:8px 18px;border-radius:20px;border:1px solid var(--border);
-             background:${state._menuCatFilter===c?'var(--blue)':'transparent'};
+             background:${state._menuCatFilter===c?'var(--brand-gradient)':'transparent'};
              color:${state._menuCatFilter===c?'white':'var(--text2)'};
              font-weight:600;font-size:13px;cursor:pointer;">
       ${c === 'all' ? '🍔 Hamısı' : esc(c)}
