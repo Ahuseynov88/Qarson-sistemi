@@ -187,6 +187,8 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── EXIT CONFIRM ── */
 #exitModal .modal{max-width:340px;text-align:center;}
 #exitModal h2{color:var(--red);}
+#exitPin{border-color:#a01942;}
+#exitPin:focus{border-color:#a01942 !important;box-shadow:0 0 0 3px rgba(160,25,66,.15);}
 
 /* ── TOAST ── */
 #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:14px;font-weight:600;z-index:8000;display:none;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
@@ -267,7 +269,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── Qarson sifariş modalı ── */
 .order-item-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 6px;cursor:pointer;transition:.15s;text-align:center;}
 .order-item-card:active{transform:scale(0.96);}
-.order-item-card.selected{border-color:var(--green);border-width:2px;}
+.order-item-card.selected{border-color:var(--green);border-width:1px;box-shadow:0 0 0 1px var(--green);}
 .order-item-card img{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;margin-bottom:4px;}
 .order-item-card h4{font-size:11px;font-weight:600;margin-bottom:2px;line-height:1.2;}
 .order-item-card span{font-size:11px;color:var(--orange);font-weight:700;}
@@ -294,3 +296,14 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .draft-line-name{flex:1;font-size:14px;font-weight:600;min-width:0;}
 .draft-line-price{font-size:14px;font-weight:700;white-space:nowrap;}
 .draft-line-sub{font-size:12px;color:var(--text3);padding:6px 0 0 28px;border-top:1px solid var(--border);margin-top:6px;}
+
+/* ── Müştəri paneli — tam gecə modu dəstəyi ── */
+body.dark-mode .cust-chat-section{background:var(--card2);}
+body.dark-mode .cust-feedback{background:var(--card2);}
+body.dark-mode .cust-chat-section h3,
+body.dark-mode .cust-feedback h3{color:var(--text2);}
+body.dark-mode .cust-feedback textarea,
+body.dark-mode .cust-input-row textarea{background:var(--card);border-color:var(--border);color:var(--text);}
+body.dark-mode .cust-theme-toggle{background:var(--card2);}
+body.dark-mode #custWaiterCard .cw-label{color:var(--text2);}
+body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
