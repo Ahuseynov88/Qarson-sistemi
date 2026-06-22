@@ -30,8 +30,8 @@ function renderNoteOrderSummary(tableId) {
           <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;">
             <span style="flex:1;">${it.qty}x ${esc(it.name)}</span>
             <span>${lineTotal.toFixed(2)} ₼</span>
-            <button onclick="cancelOrderItem('${tableId}','${itemKey}')"
-              style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>
+            ${state.user?.role === 'admin' ? `<button onclick="cancelOrderItem('${tableId}','${itemKey}')"
+              style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>` : ''}
           </div>
           ${it.note ? `<span style="font-size:11px;color:var(--text3);">📝 ${esc(it.note)}</span>` : ''}
         </div>`;
@@ -77,18 +77,10 @@ function openOrderModal() {
   state.orderTableId = state.noteTableId;
   state._orderCatFilter = 'all';
 
-  // Mövcud sifarişi draft-a yüklə (əlavə etmək üçün, sıfırdan başlamaq əvəzinə)
-  // DİQQƏT: artıq göndərilmiş sətirlər 'existing__' prefiksli açarla saxlanılır ki,
-  // yenidən eyni mala toxunanda YENİ sətir açılsın, köhnə (göndərilmiş) sayı dəyişməsin.
-  const existing = state.tableOrders[state.orderTableId];
+  // Draft tamamilə boş başlayır — köhnə sifariş görünmür,
+  // yalnız yeni seçilən mallar görünür. Təsdiqdə köhnə + yeni birləşir.
   state._orderDraft = {};
   state._orderCancelSelection = {};
-  if (existing?.items) {
-    Object.values(existing.items).forEach(it => {
-      const lineKey = 'existing__' + makeLineKey(it.menuItemId, it.note||'', it.extraFee||0);
-      state._orderDraft[lineKey] = { menuItemId: it.menuItemId, qty: it.qty, note: it.note||'', extraFee: it.extraFee||0, isExisting: true };
-    });
-  }
 
   const t = state.tables.find(x=>x.id===state.orderTableId);
   document.getElementById('orderModalTitle').textContent = `🍔 ${t ? t.name : 'Masa'}`;
@@ -215,12 +207,11 @@ function renderOrderDraftList() {
     const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
     const isChecked = state._orderCancelSelection?.[lineKey] ? 'checked' : '';
 
-    const isExisting = lineKey.startsWith('existing__');
-    return `<div class="draft-line-card" style="${isExisting ? 'border-left:3px solid var(--text3);opacity:.85;' : 'border-left:3px solid var(--green);'}">
+    return `<div class="draft-line-card" style="border-left:3px solid var(--green);">
       <div class="draft-line-top">
         <input type="checkbox" class="draft-cancel-box" ${isChecked} onchange="toggleDraftCancelSelect('${lineKey}')">
-        <span class="draft-line-name">${esc(m.name)} ${isExisting ? '<span style="font-size:10px;color:var(--text3);font-weight:400;">• köhnə</span>' : '<span style="font-size:10px;color:var(--green);font-weight:400;">• yeni</span>'}</span>
-        <div class="order-item-stepper" style="gap:6px;flex-shrink:0;">
+        <span class="draft-line-name">${esc(m.name)}</span>
+        <div class="order-item-stepper" style="gap:6px;flex-shrink:0;display:flex;flex-direction:row;align-items:center;">
           <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',-1)">−</button>
           <span class="order-step-qty" style="font-size:13px;min-width:14px;">${draft.qty}</span>
           <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',1)">+</button>
@@ -335,42 +326,41 @@ function confirmSendOrder() {
   const t = state.tables.find(x=>x.id===tableId);
 
   if (!draftKeys.length) {
-    // Səbət boşdur — mövcud sifarişi tamamilə sil
-    R.tableOrders.child(tableId).remove();
-    addLog('order', `${state.user.name} "${t?.name}" masasının sifarişini sildi`, { waiterId: state.user.id, tableId });
-    showToast('🗑️ Sifariş silindi');
-    closeOrderModal();
+    showToast('⚠️ Heç mal seçilməyib');
     return;
   }
 
-  const items = {};
-  let total = 0;
+  // Köhnə (artıq Firebase-dəki) sifarişi götür
+  const existing = state.tableOrders[tableId];
+  const merged = {};
 
-  // Əvvəlcə bütün sətirləri menuItemId+note+extraFee kombinasiyasına görə birləşdir
-  const merged = {}; // cleanLineKey -> {menuItemId, qty, note, extraFee}
+  // Əvvəlcə köhnə sifariş mallarını əlavə et
+  if (existing?.items) {
+    Object.entries(existing.items).forEach(([key, it]) => {
+      merged[key] = { ...it };
+    });
+  }
+
+  // Yeni seçilən malları köhnənin üzərinə birləşdir
   draftKeys.forEach(lineKey => {
     const draft = state._orderDraft[lineKey];
     const m = state.menuItems.find(x=>x.id===draft.menuItemId);
     if (!m) return;
-    // existing__ prefiksini soyaraq "təmiz" açar alırıq — eyni mal+qeyd+ekstra hər iki tərəfdən birləşir
     const cleanKey = makeLineKey(draft.menuItemId, draft.note||'', draft.extraFee||0);
     if (merged[cleanKey]) {
       merged[cleanKey].qty += draft.qty;
     } else {
-      merged[cleanKey] = { menuItemId: draft.menuItemId, qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0 };
+      merged[cleanKey] = {
+        menuItemId: draft.menuItemId, name: m.name, price: m.price||0,
+        qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0
+      };
     }
   });
 
-  Object.keys(merged).forEach(cleanKey => {
-    const d = merged[cleanKey];
-    const m = state.menuItems.find(x=>x.id===d.menuItemId);
-    if (!m) return;
-    const lineTotal = (m.price||0) * d.qty + (d.extraFee||0);
-    total += lineTotal;
-    items[cleanKey] = {
-      menuItemId: d.menuItemId, name: m.name, price: m.price||0,
-      qty: d.qty, note: d.note, extraFee: d.extraFee
-    };
+  const items = merged;
+  let total = 0;
+  Object.values(items).forEach(it => {
+    total += (it.price||0) * it.qty + (it.extraFee||0);
   });
 
   R.tableOrders.child(tableId).set({
