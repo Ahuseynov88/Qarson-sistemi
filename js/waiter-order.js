@@ -14,7 +14,7 @@ function renderNoteOrderSummary(tableId) {
   const el = document.getElementById('noteOrderSummary');
   if (!el) return;
   const order = state.tableOrders[tableId];
-  const items = order?.items ? Object.values(order.items) : [];
+  const items = order?.items ? Object.entries(order.items) : [];
 
   if (!items.length) {
     el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ sifariş yoxdur.</p>';
@@ -23,13 +23,15 @@ function renderNoteOrderSummary(tableId) {
 
   el.innerHTML = `
     <div class="order-summary-box">
-      ${items.map(it => {
+      ${items.map(([itemKey, it]) => {
         const lineTotal = (it.price * it.qty) + (it.extraFee||0);
         return `
         <div class="order-summary-line" style="flex-direction:column;align-items:flex-start;gap:2px;">
-          <div style="display:flex;justify-content:space-between;width:100%;">
-            <span>${it.qty}x ${esc(it.name)}</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;">
+            <span style="flex:1;">${it.qty}x ${esc(it.name)}</span>
             <span>${lineTotal.toFixed(2)} ₼</span>
+            <button onclick="cancelOrderItem('${tableId}','${itemKey}')"
+              style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>
           </div>
           ${it.note ? `<span style="font-size:11px;color:var(--text3);">📝 ${esc(it.note)}</span>` : ''}
         </div>`;
@@ -41,6 +43,34 @@ function renderNoteOrderSummary(tableId) {
     </div>`;
 }
 
+/* ── Qeydlər modalından artıq göndərilmiş malı iptal et ── */
+function cancelOrderItem(tableId, itemKey) {
+  const order = state.tableOrders[tableId];
+  if (!order?.items) return;
+  const it = order.items[itemKey];
+  if (!it) return;
+
+  // Həmin sətri Firebase-dən sil
+  R.tableOrders.child(tableId).child('items').child(itemKey).remove();
+
+  // Yeni cəmi hesabla (silinəndən sonra)
+  const remaining = Object.entries(order.items)
+    .filter(([k]) => k !== itemKey)
+    .map(([, v]) => v);
+
+  if (!remaining.length) {
+    // Sifarişdə mal qalmayıb — node-u tamamilə sil
+    R.tableOrders.child(tableId).remove();
+  } else {
+    const newTotal = remaining.reduce((sum, v) => sum + (v.price * v.qty) + (v.extraFee||0), 0);
+    R.tableOrders.child(tableId).child('total').set(newTotal);
+  }
+
+  addLog('order', `${state.user?.name} "${it.name}" malını sifarişdən iptal etdi`, { tableId, menuItemId: it.menuItemId });
+  showToast(`🗑️ ${it.name} sifarişdən silindi`);
+  renderNoteOrderSummary(tableId);
+}
+
 /* ── Sifariş modalını aç ── */
 function openOrderModal() {
   if (!state.noteTableId) return;
@@ -48,13 +78,15 @@ function openOrderModal() {
   state._orderCatFilter = 'all';
 
   // Mövcud sifarişi draft-a yüklə (əlavə etmək üçün, sıfırdan başlamaq əvəzinə)
+  // DİQQƏT: artıq göndərilmiş sətirlər 'existing__' prefiksli açarla saxlanılır ki,
+  // yenidən eyni mala toxunanda YENİ sətir açılsın, köhnə (göndərilmiş) sayı dəyişməsin.
   const existing = state.tableOrders[state.orderTableId];
   state._orderDraft = {};
   state._orderCancelSelection = {};
   if (existing?.items) {
     Object.values(existing.items).forEach(it => {
-      const lineKey = makeLineKey(it.menuItemId, it.note||'', it.extraFee||0);
-      state._orderDraft[lineKey] = { menuItemId: it.menuItemId, qty: it.qty, note: it.note||'', extraFee: it.extraFee||0 };
+      const lineKey = 'existing__' + makeLineKey(it.menuItemId, it.note||'', it.extraFee||0);
+      state._orderDraft[lineKey] = { menuItemId: it.menuItemId, qty: it.qty, note: it.note||'', extraFee: it.extraFee||0, isExisting: true };
     });
   }
 
@@ -183,11 +215,12 @@ function renderOrderDraftList() {
     const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
     const isChecked = state._orderCancelSelection?.[lineKey] ? 'checked' : '';
 
-    return `<div class="draft-line-card">
+    const isExisting = lineKey.startsWith('existing__');
+    return `<div class="draft-line-card" style="${isExisting ? 'border-left:3px solid var(--text3);opacity:.85;' : 'border-left:3px solid var(--green);'}">
       <div class="draft-line-top">
         <input type="checkbox" class="draft-cancel-box" ${isChecked} onchange="toggleDraftCancelSelect('${lineKey}')">
-        <span class="draft-line-name">${esc(m.name)}</span>
-        <div class="order-item-stepper" style="gap:8px;">
+        <span class="draft-line-name">${esc(m.name)} ${isExisting ? '<span style="font-size:10px;color:var(--text3);font-weight:400;">• köhnə</span>' : '<span style="font-size:10px;color:var(--green);font-weight:400;">• yeni</span>'}</span>
+        <div class="order-item-stepper" style="gap:6px;flex-shrink:0;">
           <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',-1)">−</button>
           <span class="order-step-qty" style="font-size:13px;min-width:14px;">${draft.qty}</span>
           <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',1)">+</button>
@@ -312,15 +345,31 @@ function confirmSendOrder() {
 
   const items = {};
   let total = 0;
+
+  // Əvvəlcə bütün sətirləri menuItemId+note+extraFee kombinasiyasına görə birləşdir
+  const merged = {}; // cleanLineKey -> {menuItemId, qty, note, extraFee}
   draftKeys.forEach(lineKey => {
     const draft = state._orderDraft[lineKey];
     const m = state.menuItems.find(x=>x.id===draft.menuItemId);
-    if (!m) return; // mal silinmiş ola bilər
-    const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
+    if (!m) return;
+    // existing__ prefiksini soyaraq "təmiz" açar alırıq — eyni mal+qeyd+ekstra hər iki tərəfdən birləşir
+    const cleanKey = makeLineKey(draft.menuItemId, draft.note||'', draft.extraFee||0);
+    if (merged[cleanKey]) {
+      merged[cleanKey].qty += draft.qty;
+    } else {
+      merged[cleanKey] = { menuItemId: draft.menuItemId, qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0 };
+    }
+  });
+
+  Object.keys(merged).forEach(cleanKey => {
+    const d = merged[cleanKey];
+    const m = state.menuItems.find(x=>x.id===d.menuItemId);
+    if (!m) return;
+    const lineTotal = (m.price||0) * d.qty + (d.extraFee||0);
     total += lineTotal;
-    items[lineKey] = {
-      menuItemId: draft.menuItemId, name: m.name, price: m.price||0,
-      qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0
+    items[cleanKey] = {
+      menuItemId: d.menuItemId, name: m.name, price: m.price||0,
+      qty: d.qty, note: d.note, extraFee: d.extraFee
     };
   });
 
