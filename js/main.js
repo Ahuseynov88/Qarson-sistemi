@@ -7,13 +7,13 @@
 ═══════════════════════════════════════════ */
 
 /* ── Demo data: yalnız Firebase boşdursa yaranır ── */
-R.waiters.once('value', snap=>{
+R.staff.once('value', snap=>{
   if (snap.val()) return;
   [
     {name:'Əli Məmmədov',  pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200',  status:'ready',   createdAt:Date.now()},
     {name:'Leyla Həsənli', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'ready',   createdAt:Date.now()},
     {name:'Orxan Əliyev', pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200',  status:'offline',  createdAt:Date.now()}
-  ].forEach(w=>R.waiters.push(w));
+  ].forEach(w=>R.staff.push(w));
 });
 
 R.tables.once('value', snap=>{
