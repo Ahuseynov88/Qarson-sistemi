@@ -7,6 +7,7 @@
 function renderAdmin() {
   if (state.adminSection==='dashboard') renderDashboard();
   if (state.adminSection==='waiters')   renderWaiters();
+  if (state.adminSection==='staff')     renderStaff();
   if (state.adminSection==='tables')    renderTables();
   if (state.adminSection==='menu')      renderMenuItems();
   if (state.adminSection==='feedback')  renderFeedbackSection();
@@ -19,7 +20,7 @@ function adminTab(sec, el) {
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+sec).classList.add('active');
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='waiters'||sec==='tables'||sec==='menu') ? 'flex':'none';
+  document.getElementById('adminFab').style.display = (sec==='waiters'||sec==='tables'||sec==='menu'||sec==='staff') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
