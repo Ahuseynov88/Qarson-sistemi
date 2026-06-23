@@ -92,7 +92,7 @@ function saveStaff() {
   if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('❌ 4 rəqəmli PIN lazımdır'); return; }
 
   // Eyni PIN yoxlaması (həm qarsonlar, həm işçilər arasında)
-  const waiterConflict = state.waiters.find(w => w.pin === pin);
+  const waiterConflict = state.staff.find(w => w.pin === pin);
   const staffConflict  = state.staff?.find(s => s.pin === pin &&
     (!state.editTarget?.id || s.id !== state.editTarget.id));
   if (waiterConflict || staffConflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
