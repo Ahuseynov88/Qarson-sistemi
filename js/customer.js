@@ -46,7 +46,7 @@ function checkCustomerMode() {
 
 function showCustomerWaiterCard(waiterId) {
   if (!waiterId) return;
-  R.waiters.child(waiterId).once('value', snap => {
+  R.staff.child(waiterId).once('value', snap => {
     const w = snap.val();
     if (!w) return;
     const card   = document.getElementById('custWaiterCard');
