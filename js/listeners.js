@@ -47,6 +47,11 @@ function initListeners() {
     if (state.user?.role==='waiter') checkIncomingOrders();
   });
 
+  R.staff.on('value', snap=>{
+    state.staff = toArr(snap.val());
+    if (state.user?.role==='admin') renderAdmin();
+  });
+
   R.logs.limitToLast(300).on('value', snap=>{
     state.logs = toArr(snap.val()).reverse();
     if (state.user?.role==='admin') renderLogs();
@@ -67,6 +72,7 @@ function removeListeners() {
   R.tableOrders.off();
   R.orders.off();
   R.logs.off();
+  R.staff.off();
   db.ref('customerRequests').off();
   db.ref('feedbacks').off();
   db.ref('settings/kitchenPin').off();
