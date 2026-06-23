@@ -6,8 +6,8 @@
 ═══════════════════════════════════════════ */
 function renderWaiters() {
   const el = document.getElementById('waitersGrid');
-  if (!state.waiters.length) { el.innerHTML='<p style="color:var(--text3);">Hələ qarson əlavə edilməyib.</p>'; return; }
-  el.innerHTML = state.waiters.map(w=>{
+  if (!state.staff.length) { el.innerHTML='<p style="color:var(--text3);">Hələ qarson əlavə edilməyib.</p>'; return; }
+  el.innerHTML = state.staff.map(w=>{
     const st = w.status==='offline'?'Deaktiv':w.status==='online'?'Onlayn':'Hazır';
     const bc = w.status==='offline'?'badge-red':'badge-green';
     return `<div class="item-card">
@@ -34,16 +34,16 @@ function renderWaiters() {
 }
 
 function toggleWaiter(id) {
-  const w = state.waiters.find(x=>x.id===id);
+  const w = state.staff.find(x=>x.id===id);
   if (!w) return;
   const newStatus = (w.status==='offline') ? 'ready' : 'offline';
-  R.waiters.child(id).update({ status: newStatus });
+  R.staff.child(id).update({ status: newStatus });
   addLog('admin',`${w.name} ${newStatus==='ready'?'aktiv':'deaktiv'} edildi`,{ waiterId:id });
   showToast(newStatus==='ready'?`✅ ${w.name} aktiv edildi`:`🚫 ${w.name} deaktiv edildi`);
 }
 
 function editWaiter(id) {
-  const w = state.waiters.find(x=>x.id===id);
+  const w = state.staff.find(x=>x.id===id);
   if (!w) return;
   state.editTarget = { type:'waiter', id };
   document.getElementById('addModalTitle').textContent = '✏️ Qarson Düzəliş';
@@ -52,7 +52,7 @@ function editWaiter(id) {
 }
 
 function deleteWaiter(id) {
-  const w = state.waiters.find(x=>x.id===id);
+  const w = state.staff.find(x=>x.id===id);
   const activeTables = state.tables.filter(t => t.occupant === id);
   if (activeTables.length > 0) {
     const names = activeTables.map(t=>t.name).join(', ');
@@ -60,7 +60,7 @@ function deleteWaiter(id) {
     return;
   }
   if (!confirm(`"${w?.name}" adlı qarson silinsin?`)) return;
-  R.waiters.child(id).remove();
+  R.staff.child(id).remove();
   addLog('admin',`${w?.name} silindi`,{ waiterId:id });
   showToast('🗑️ Qarson silindi');
 }
