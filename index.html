@@ -21,9 +21,9 @@
     <h1>Restoran Sistemi</h1>
     <p>Rol seçin və PIN daxil edin</p>
     <div class="role-tabs">
-      <button class="role-tab active" onclick="setRole('admin',this)"> Admin</button>
-      <button class="role-tab" onclick="setRole('staff',this)"> Əməkdaş</button>
-      <button class="role-tab" onclick="setRole('kitchen',this)"> Mətbəx</button>
+      <button class="role-tab active" onclick="setRole('admin',this)">👨‍💼 Admin</button>
+      <button class="role-tab" onclick="setRole('staff',this)">👤 Əməkdaş</button>
+      <button class="role-tab" onclick="setRole('kitchen',this)">👨‍🍳 Mətbəx</button>
     </div>
     <div class="pin-display" id="pinDots">
       <div class="pin-dot" id="d0"></div>
@@ -164,9 +164,9 @@
     <button class="theme-toggle-btn" id="themeToggleBtnWaiter" onclick="toggleTheme()">🌙</button>
     <button class="btn btn-ghost" onclick="showExitModal()">🔒 Çıxış</button>
   </div>
-  <div class="waiter-body">
-    <div id="waiterCatTabs" style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);"></div>
-    <div class="tables-grid" id="waiterTables"></div>
+  <div class="waiter-body" style="display:flex;flex-direction:column;overflow:hidden;">
+    <div id="waiterCatTabs" style="display:flex;gap:4px;flex-shrink:0;overflow-x:auto;margin-bottom:16px;border-bottom:1px solid var(--border);"></div>
+    <div class="tables-grid" id="waiterTables" style="flex:1;overflow-y:auto;align-content:start;"></div>
   </div>
 </div>
 
