@@ -27,7 +27,7 @@ function setWaiterCat(cat) {
 }
 
 function renderWaiterTables() {
-  if (!state.user || (state.user.role !== 'waiter' && state.user.role !== 'staff')) return;
+  if (!state.user || (state.user.role !== 'staff' && state.user.role !== 'staff')) return;
   renderWaiterCatTabs();
   const el = document.getElementById('waiterTables');
   if (!state.tables.length) {
