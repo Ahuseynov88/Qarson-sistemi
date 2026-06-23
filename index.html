@@ -63,6 +63,7 @@
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="adminTab('dashboard',this)">📊 İcmal</button>
       <button class="admin-tab" onclick="adminTab('waiters',this)">🤵 Qarsonlar</button>
+      <button class="admin-tab" onclick="adminTab('staff',this)">👔 İşçilər</button>
       <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
       <button class="admin-tab" onclick="adminTab('menu',this)">🍔 Menyu</button>
       <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
@@ -76,6 +77,9 @@
     </div>
     <div class="admin-section" id="sec-waiters">
       <div class="grid-2" id="waitersGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-staff">
+      <div class="grid-2" id="staffGrid"></div>
     </div>
     <div class="admin-section" id="sec-tables">
       <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
@@ -154,7 +158,7 @@
       <img id="wAvatar" src="" alt="">
       <div>
         <div style="font-weight:700;" id="wName">Qarson</div>
-        <div style="font-size:12px;color:var(--green);">● Aktiv</div>
+        <div style="font-size:12px;color:var(--green);">● Aktiv &nbsp;<span id="wRoleBadge" style="color:rgba(255,255,255,.7);"></span></div>
       </div>
     </div>
     <button class="theme-toggle-btn" id="themeToggleBtnWaiter" onclick="toggleTheme()">🌙</button>
@@ -248,8 +252,9 @@
     </div>
     <div style="display:flex;gap:10px;margin-top:6px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeNotesModal()">Bağla</button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="printBill(state.noteTableId)">🖨️ Hesab</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveNote()">Yadda Saxla</button>
-      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="deactivateTable()">Masanı Bağla</button>
+      <button id="notesCloseTableBtn" class="btn btn-red" style="display:none;padding:13px;" onclick="deactivateTable()">🔒 Bağla</button>
     </div>
   </div>
 </div>
@@ -415,6 +420,8 @@
 
 <script src="js/firebase-config.js"></script>
 <script src="js/state.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/staff-permissions.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/theme.js"></script>
 <script src="js/auth.js"></script>
@@ -427,6 +434,7 @@
 <script src="js/admin-menu.js"></script>
 <script src="js/admin-settings.js"></script>
 <script src="js/admin-feedback.js"></script>
+<script src="js/admin-staff.js"></script>
 <script src="js/kitchen.js"></script>
 <script src="js/waiter-order.js"></script>
 <script src="js/waiter.js"></script>
