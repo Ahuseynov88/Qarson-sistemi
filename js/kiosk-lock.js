@@ -14,30 +14,30 @@ function unlockScreen() {
 }
 
 window.onpopstate = ()=>{
-  if (state.user?.role==='waiter') history.pushState(null,'',location.href);
+  if (state.user?.role==='staff') history.pushState(null,'',location.href);
 };
 
 window.addEventListener('pageshow', (e) => {
-  if (!state.user || state.user.role !== 'waiter') return;
+  if (!state.user || state.user.role !== 'staff') return;
   if (document.documentElement.requestFullscreen) {
     document.documentElement.requestFullscreen().catch(()=>{});
   }
-  R.waiters.child(state.user.id).update({ status: 'online' });
+  R.staff.child(state.user.id).update({ status: 'online' });
 });
 
 // Qarson tab-ı gizlədəndə (telefonu kilidləyəndə, başqa tətbiqə keçəndə)
 document.addEventListener('visibilitychange', () => {
-  if (!state.user || state.user.role !== 'waiter') return;
+  if (!state.user || state.user.role !== 'staff') return;
 
   if (document.hidden) {
     // Arxa plana getdi — Firebase-də qeyd et
-    R.waiters.child(state.user.id).update({
+    R.staff.child(state.user.id).update({
       status: 'away',
       lastSeen: Date.now()
     });
   } else {
     // Geri qayıtdı — yenidən aktiv et
-    R.waiters.child(state.user.id).update({
+    R.staff.child(state.user.id).update({
       status: 'online',
       lastSeen: Date.now()
     });
@@ -49,18 +49,18 @@ document.addEventListener('visibilitychange', () => {
 });
 
 document.addEventListener('keydown', e=>{
-  if (state.user?.role!=='waiter') return;
+  if (state.user?.role!=='staff') return;
   if (['F5','F12','Escape'].includes(e.key)||(e.ctrlKey&&['r','w','t'].includes(e.key))||(e.altKey&&e.key==='F4')) {
     e.preventDefault(); return false;
   }
 });
 
 document.addEventListener('contextmenu', e=>{
-  if (state.user?.role==='waiter') e.preventDefault();
+  if (state.user?.role==='staff') e.preventDefault();
 });
 
 window.addEventListener('beforeunload', e=>{
-  if (state.user?.role==='waiter') { e.preventDefault(); e.returnValue=''; }
+  if (state.user?.role==='staff') { e.preventDefault(); e.returnValue=''; }
 });
 
 function showExitModal() { document.getElementById('exitModal').classList.add('open'); }
