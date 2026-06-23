@@ -52,7 +52,7 @@ function doLogin() {
   }
 
   /* ── Əməkdaş girişi (qarson, baş qarson, kassir, müdir...) ── */
-  if (state.role === 'waiter' || state.role === 'staff') {
+  if (state.role === 'staff' || state.role === 'staff') {
     R.staff.once('value', snap => {
       const data = snap.val() || {};
       const list = Object.keys(data).map(k => ({id:k,...data[k]}));
