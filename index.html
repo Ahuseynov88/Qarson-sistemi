@@ -732,22 +732,50 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 
 <script>
 /* ═══════════════════════════════════════════
-   FIREBASE KONFİQURASİYA
+ /* ═══════════════════════════════════════════
+   FIREBASE KONFİQURASİYA - DÜZƏLDİLMİŞ
 ═══════════════════════════════════════════ */
+
+// Firebase Console-dan kopyaladığınız dəyərlər
 const firebaseConfig = {
-  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app"
+  apiKey: "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA",
+  authDomain: "qarsonn-sistemi.firebaseapp.com",
+  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "qarsonn-sistemi",
+  storageBucket: "qarsonn-sistemi.firebasestorage.app",
+  messagingSenderId: "1013093073801",
+  appId: "1:1013093073801:web:5676a351715cf6161a9758"
 };
+
+// Yoxlama: Boş qalıbsa xəbərdarlıq
+if (firebaseConfig.apiKey === "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA") {
+  console.error("❌ XƏTA: Firebase API key daxil edilməyib!");
+  console.log("Addım 7-i yerinə yetirin!");
+}
+
+// Firebase başlat
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// Offline dəstək (internet kəsilsə də işləsin)
+try {
+  firebase.database().enablePersistence({
+    synchronizeTabs: true
+  });
+  console.log("✅ Offline dəstək aktivdir");
+} catch (err) {
+  console.warn("Offline dəstək:", err.message);
+}
+
+// Referenslər
 const R = {
   staff:       db.ref('staff'),
-  
   tables:      db.ref('tables'),
   orders:      db.ref('orders'),
   logs:        db.ref('logs'),
   menuItems:   db.ref('menuItems'),
-  tableOrders: db.ref('tableOrders')
+  tableOrders: db.ref('tableOrders'),
+  settings:    db.ref('settings')  // YENI
 };
 
 /* ═══════════════════════════════════════════
