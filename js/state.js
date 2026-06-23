@@ -9,13 +9,12 @@ let ADMIN_PIN = null; // Firebase-dən yüklənəcək (bax: listeners.js və mai
 let state = {
   role: 'admin',
   user: null,
-  waiters: [],
+  staff: [],              // bütün əməkdaşlar (qarson, baş qarson, kassir, müdir...)
   tables: [],
   orders: [],
   logs: [],
   menuItems: [],
   tableOrders: {},        // {tableId: {items:{...}, total}} — Firebase-dən real-time gəlir
-  staff: [],              // işçilər — admin panelindəki işçilər bölməsi
   logFilter: 'all',
   adminSection: 'dashboard',
   alarm: null,           // aktiv alarm (order id və ya request id)
