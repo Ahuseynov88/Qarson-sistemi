@@ -5,7 +5,7 @@
 ═══════════════════════════════════════════ */
 function renderKitchen() {
   const el = document.getElementById('kitchenGrid');
-  const active = state.waiters.filter(w=>w.status!=='offline');
+  const active = state.staff.filter(w=>w.status!=='offline');
   if (!active.length) { el.innerHTML='<p style="color:var(--text2);text-align:center;padding:40px;">Aktiv qarson yoxdur.</p>'; return; }
   el.innerHTML = active.map(w=>{
     const hasPending = state.orders.some(o=>o.waiterId===w.id&&o.status==='pending');
@@ -26,7 +26,7 @@ function renderKitchen() {
 }
 
 function callWaiter(waiterId) {
-  const w = state.waiters.find(x=>x.id===waiterId);
+  const w = state.staff.find(x=>x.id===waiterId);
   if (!w) return;
   const ref = R.orders.push();
   ref.set({
