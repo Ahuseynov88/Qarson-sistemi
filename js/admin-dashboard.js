@@ -30,11 +30,11 @@ function adminTab(sec, el) {
 }
 
 function renderDashboard() {
-  const activeW   = state.waiters.filter(w=>w.status!=='offline').length;
+  const activeW   = state.staff.filter(w=>w.status!=='offline').length;
   const activeTbl = state.tables.filter(t=>t.occupant).length;
   const pendingO  = state.orders.filter(o=>o.status==='pending').length;
   document.getElementById('statsRow').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${state.waiters.length}</div><div class="stat-label">Cəmi Qarson</div></div>
+    <div class="stat-card"><div class="stat-num">${state.staff.length}</div><div class="stat-label">Cəmi Qarson</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--green)">${activeW}</div><div class="stat-label">Aktiv Qarson</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${state.tables.length}</div><div class="stat-label">Cəmi Masa</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
@@ -44,7 +44,7 @@ function renderDashboard() {
   const el = document.getElementById('activeTables');
   if (!actTbls.length) { el.innerHTML='<p style="color:var(--text3);font-size:14px;">Hal-hazırda aktiv masa yoxdur.</p>'; return; }
   el.innerHTML = actTbls.map(t=>{
-    const w = state.waiters.find(x=>x.id===t.occupant)||{name:'?'};
+    const w = state.staff.find(x=>x.id===t.occupant)||{name:'?'};
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
       <div class="meta">Qarson: <strong>${esc(w.name)}</strong></div>
