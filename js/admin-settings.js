@@ -6,6 +6,10 @@
 ═══════════════════════════════════════════ */
 function openAddModal() {
   state.editTarget = null;
+  if (state.adminSection === 'staff') {
+    openAddStaffModal();
+    return;
+  }
   if (state.adminSection === 'waiters') {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
     document.getElementById('addModalBody').innerHTML = waiterForm({});
@@ -30,7 +34,10 @@ function saveItem() {
     ? state.editTarget.type
     : (state.adminSection === 'waiters' ? 'waiter'
        : state.adminSection === 'menu' ? 'menuItem'
+       : state.adminSection === 'staff' ? 'staff'
        : 'table');
+
+  if (sec === 'staff') { saveStaff(); return; }
 
   if (sec === 'waiter') {
     const firstname  = (document.getElementById('fw_firstname')?.value||'').trim();
@@ -44,6 +51,7 @@ function saveItem() {
     const voen       = (document.getElementById('fw_voen')?.value||'').trim();
     const pin        = (document.getElementById('fw_pin')?.value||'').trim();
     const avatarVal  = (document.getElementById('fw_avatar')?.value||'').trim();
+    const waiterRole = document.getElementById('fw_waiterRole')?.value || 'waiter';
 
     const name = [firstname, lastname].filter(Boolean).join(' ') || firstname || lastname;
 
@@ -60,7 +68,7 @@ function saveItem() {
     const waiterData = {
       name, firstname, lastname, fathername,
       birthdate, phone, address, idcard, fin, voen,
-      pin, avatar
+      pin, avatar, waiterRole
     };
 
     if (state.editTarget) {
