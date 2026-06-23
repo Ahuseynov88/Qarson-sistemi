@@ -733,24 +733,24 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 <script>
 /* ═══════════════════════════════════════════
  /* ═══════════════════════════════════════════
+   /* ═══════════════════════════════════════════
    FIREBASE KONFİQURASİYA - DÜZƏLDİLMİŞ
 ═══════════════════════════════════════════ */
-
-// Firebase Console-dan kopyaladığınız dəyərlər
 const firebaseConfig = {
-  apiKey: "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA",
+  apiKey: "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA",  // ← BURAYA SİZİN API KEY YAZILMALIDIR
   authDomain: "qarsonn-sistemi.firebaseapp.com",
   databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "qarsonn-sistemi",
   storageBucket: "qarsonn-sistemi.firebasestorage.app",
   messagingSenderId: "1013093073801",
-  appId: "1:1013093073801:web:5676a351715cf6161a9758"
+  appId: "1:1013093073801:web:5676a351715cf6161a9758",
+  measurementId: "G-Y7X44BP42M"
 };
 
-// Yoxlama: Boş qalıbsa xəbərdarlıq
-if (firebaseConfig.apiKey === "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA") {
+// Yoxlama: API key boşdursa xəbərdarlıq
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("1234567890")) {
   console.error("❌ XƏTA: Firebase API key daxil edilməyib!");
-  console.log("Addım 7-i yerinə yetirin!");
+  console.error("Firebase Console → Project Settings → General → Your apps → Config");
 }
 
 // Firebase başlat
@@ -758,14 +758,17 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // Offline dəstək (internet kəsilsə də işləsin)
-try {
-  firebase.database().enablePersistence({
-    synchronizeTabs: true
-  });
+firebase.database().enablePersistence({
+  synchronizeTabs: true
+}).then(() => {
   console.log("✅ Offline dəstək aktivdir");
-} catch (err) {
-  console.warn("Offline dəstək:", err.message);
-}
+}).catch(err => {
+  if (err.code === 'failed-precondition') {
+    console.warn("⚠️ Offline: Yalnız bir tab-da aktiv");
+  } else if (err.code === 'unimplemented') {
+    console.warn("⚠️ Brauzer offline dəstəkləmir");
+  }
+});
 
 // Referenslər
 const R = {
@@ -775,9 +778,8 @@ const R = {
   logs:        db.ref('logs'),
   menuItems:   db.ref('menuItems'),
   tableOrders: db.ref('tableOrders'),
-  settings:    db.ref('settings')  // YENI
+  settings:    db.ref('settings')  // YENI: Ayarlar üçün
 };
-
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
