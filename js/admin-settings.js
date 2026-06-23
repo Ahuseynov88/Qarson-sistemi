@@ -58,7 +58,7 @@ function saveItem() {
     if (!firstname || !lastname) { showToast('❌ Ad və Soyad mütləqdir'); return; }
     if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('❌ 4 rəqəmli PIN lazımdır'); return; }
 
-    const conflict = state.waiters.find(w => w.pin === pin &&
+    const conflict = state.staff.find(w => w.pin === pin &&
       (!state.editTarget || w.id !== state.editTarget.id));
     if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
 
@@ -72,11 +72,11 @@ function saveItem() {
     };
 
     if (state.editTarget) {
-      R.waiters.child(state.editTarget.id).update(waiterData);
+      R.staff.child(state.editTarget.id).update(waiterData);
       addLog('admin', `Qarson məlumatları yeniləndi: ${name}`, { waiterId: state.editTarget.id });
       showToast('✅ Məlumatlar yeniləndi');
     } else {
-      R.waiters.push({ ...waiterData, status: 'ready', createdAt: Date.now() });
+      R.staff.push({ ...waiterData, status: 'ready', createdAt: Date.now() });
       addLog('admin', `Yeni qarson əlavə edildi: ${name}`, {});
       showToast('✅ Qarson əlavə edildi');
     }
