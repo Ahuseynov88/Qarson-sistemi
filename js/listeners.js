@@ -13,9 +13,12 @@ function initListeners() {
     if (snap.val()) ADMIN_PIN = snap.val();
   });
 
+  // Bütün əməkdaşlar (qarson, baş qarson, kassir, müdir...)
   R.staff.on('value', snap=>{
     state.staff = toArr(snap.val());
     onDataChange();
+    if (state.user?.role==='admin') renderAdmin();
+    // Deaktiv edilmə yoxlaması
     if (state.user?.role==='staff') {
       const me = state.staff.find(w=>w.id===state.user.id);
       if (me && me.status==='offline') {
@@ -47,11 +50,6 @@ function initListeners() {
     if (state.user?.role==='staff') checkIncomingOrders();
   });
 
-  R.staff.on('value', snap=>{
-    state.staff = toArr(snap.val());
-    if (state.user?.role==='admin') renderAdmin();
-  });
-
   R.logs.limitToLast(300).on('value', snap=>{
     state.logs = toArr(snap.val()).reverse();
     if (state.user?.role==='admin') renderLogs();
@@ -59,7 +57,6 @@ function initListeners() {
 
   initCustomerRequestListener();
 
-  // Qarson üçün çat mesajlarını dinlə
   if (state.user?.role === 'staff') {
     initWaiterChatListener();
   }
@@ -72,7 +69,6 @@ function removeListeners() {
   R.tableOrders.off();
   R.orders.off();
   R.logs.off();
-  R.staff.off();
   db.ref('customerRequests').off();
   db.ref('feedbacks').off();
   db.ref('settings/kitchenPin').off();
@@ -82,7 +78,7 @@ function removeListeners() {
 
 function onDataChange() {
   const r = state.user?.role;
-  if (r==='admin')            renderAdmin();
-  if (r==='kitchen')          renderKitchen();
-  if (r==='waiter'||r==='staff') renderWaiterTables();
+  if (r==='admin')  renderAdmin();
+  if (r==='kitchen') renderKitchen();
+  if (r==='staff')  renderWaiterTables();
 }
