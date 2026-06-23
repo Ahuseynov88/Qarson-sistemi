@@ -735,39 +735,44 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
  /* ═══════════════════════════════════════════
    /* ═══════════════════════════════════════════
 /* ═══════════════════════════════════════════
+  /* ═══════════════════════════════════════════
    FIREBASE KONFİQURASİYA - DÜZƏLDİLMİŞ
 ═══════════════════════════════════════════ */
 const firebaseConfig = {
-  apiKey: "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA",  // ← BURAYA SİZİN API KEY YAZILMALIDIR
+  apiKey: "BURAYA_SIZIN_API_KEY",  // ← Firebase Console-dan alın!
   authDomain: "qarsonn-sistemi.firebaseapp.com",
   databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "qarsonn-sistemi",
   storageBucket: "qarsonn-sistemi.firebasestorage.app",
   messagingSenderId: "1013093073801",
-  appId: "1:1013093073801:web:5676a351715cf6161a9758",
-  measurementId: "G-Y7X44BP42M"
+  appId: "1:1013093073801:web:5676a351715cf6161a9758"
+  // measurementId silindi - lazım deyil
 };
 
 // Yoxlama: API key boşdursa xəbərdarlıq
-if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("1234567890")) {
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "BURAYA_SIZIN_API_KEY") {
   console.error("❌ XƏTA: Firebase API key daxil edilməyib!");
   console.error("Firebase Console → Project Settings → General → Your apps → Config");
+  alert("Firebase konfiqurasiyası tamamlanmamış! Adminə müraciət edin.");
 }
 
 // Firebase başlat
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Offline dəstək (internet kəsilsə də işləsin)
+// Offline dəstək
 firebase.database().enablePersistence({
   synchronizeTabs: true
 }).then(() => {
   console.log("✅ Offline dəstək aktivdir");
 }).catch(err => {
-  if (err.code === 'failed-precondition') {
+  const code = err && err.code ? err.code : 'unknown';
+  if (code === 'failed-precondition') {
     console.warn("⚠️ Offline: Yalnız bir tab-da aktiv");
-  } else if (err.code === 'unimplemented') {
+  } else if (code === 'unimplemented') {
     console.warn("⚠️ Brauzer offline dəstəkləmir");
+  } else {
+    console.warn("⚠️ Offline xətası:", err.message || err);
   }
 });
 
@@ -779,8 +784,37 @@ const R = {
   logs:        db.ref('logs'),
   menuItems:   db.ref('menuItems'),
   tableOrders: db.ref('tableOrders'),
-  settings:    db.ref('settings')  // YENI: Ayarlar üçün
+  settings:    db.ref('settings')
 };
+
+// YENI: Admin PIN initialization
+let ADMIN_PIN = null;
+
+function initAdminPin() {
+  return new Promise((resolve, reject) => {
+    db.ref('settings/adminPin').once('value')
+      .then(snap => {
+        if (snap.val()) {
+          ADMIN_PIN = String(snap.val());
+          console.log('✅ Admin PIN yükləndi');
+          resolve(ADMIN_PIN);
+        } else {
+          ADMIN_PIN = '0000';
+          db.ref('settings/adminPin').set('0000');
+          console.log('⚠️ İlk admin PIN yaradıldı: 0000');
+          resolve(ADMIN_PIN);
+        }
+      })
+      .catch(err => {
+        console.error('❌ Admin PIN xətası:', err);
+        ADMIN_PIN = '0000';
+        resolve(ADMIN_PIN);
+      });
+  });
+}
+
+// İlk yükləmədə başlat
+initAdminPin();
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
