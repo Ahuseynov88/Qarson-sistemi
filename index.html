@@ -375,7 +375,6 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
   <div class="admin-body">
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="adminTab('dashboard',this)">📊 İcmal</button>
-      <button class="admin-tab" onclick="adminTab('waiters',this)">🤵 Qarsonlar</button>
       <button class="admin-tab" onclick="adminTab('staff',this)">👔 İşçilər</button>
       <button class="admin-tab" onclick="adminTab('tables',this)">🪑 Masalar</button>
       <button class="admin-tab" onclick="adminTab('menu',this)">🍔 Menyu</button>
@@ -743,7 +742,7 @@ const db = firebase.database();
 
 const R = {
   staff:       db.ref('staff'),
-  waiters:     db.ref('staff'),
+  
   tables:      db.ref('tables'),
   orders:      db.ref('orders'),
   logs:        db.ref('logs'),
@@ -1005,7 +1004,7 @@ function applyPermissionPreset(presetKey) {
 ═══════════════════════════════════════════ */
 function renderAdmin() {
   if (state.adminSection==='dashboard') renderDashboard();
-  if (state.adminSection==='waiters')   renderWaiters();
+  // 🤵 Qarsonlar case-i SİLİNDİ
   if (state.adminSection==='staff')     renderStaff();
   if (state.adminSection==='tables')    renderTables();
   if (state.adminSection==='menu')      renderMenuItems();
@@ -1020,7 +1019,8 @@ function adminTab(sec, el) {
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+sec).classList.add('active');
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='waiters'||sec==='tables'||sec==='menu'||sec==='staff') ? 'flex':'none';
+  // 🤵 waiters silindi, yalnız staff/tables/menu qaldı
+  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -1030,12 +1030,12 @@ function adminTab(sec, el) {
 }
 
 function renderDashboard() {
-  const activeW   = state.waiters.filter(w=>w.status!=='offline').length;
+  const activeStaff = state.staff.filter(s=>s.status!=='offline').length;
   const activeTbl = state.tables.filter(t=>t.occupant).length;
   const pendingO  = state.orders.filter(o=>o.status==='pending').length;
   document.getElementById('statsRow').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${state.waiters.length}</div><div class="stat-label">Cəmi Qarson</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--green)">${activeW}</div><div class="stat-label">Aktiv Qarson</div></div>
+    <div class="stat-card"><div class="stat-num">${state.staff.length}</div><div class="stat-label">Cəmi İşçi</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--green)">${activeStaff}</div><div class="stat-label">Aktiv İşçi</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${state.tables.length}</div><div class="stat-label">Cəmi Masa</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--red)">${pendingO}</div><div class="stat-label">Gözləyən Sifariş</div></div>
@@ -1044,10 +1044,10 @@ function renderDashboard() {
   const el = document.getElementById('activeTables');
   if (!actTbls.length) { el.innerHTML='<p style="color:var(--text3);font-size:14px;">Hal-hazırda aktiv masa yoxdur.</p>'; return; }
   el.innerHTML = actTbls.map(t=>{
-    const w = state.waiters.find(x=>x.id===t.occupant)||{name:'?'};
+    const w = state.staff.find(x=>x.id===t.occupant)||{name:'?'};
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
-      <div class="meta">Qarson: <strong>${esc(w.name)}</strong></div>
+      <div class="meta">İşçi: <strong>${esc(w.name)}</strong></div>
       ${t.notes?`<div style="font-size:13px;color:var(--text2);background:rgba(255,255,255,.04);border-radius:8px;padding:8px;margin-bottom:10px;">${esc(t.notes)}</div>`:''}
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" style="flex:1;padding:10px;font-size:13px;" onclick="adminEditTableNote('${t.id}')">📝 Qeyd</button>
@@ -1329,10 +1329,7 @@ function openAddModal() {
     openAddStaffModal();
     return;
   }
-  if (state.adminSection === 'waiters') {
-    document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
-    document.getElementById('addModalBody').innerHTML = waiterForm({});
-  } else if (state.adminSection === 'menu') {
+  if (state.adminSection === 'menu') {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Mal';
     document.getElementById('addModalBody').innerHTML = menuItemForm({});
     onMenuCategorySelectChange();
@@ -1343,64 +1340,16 @@ function openAddModal() {
   document.getElementById('addModal').classList.add('open');
 }
 
-function closeAddModal() {
-  document.getElementById('addModal').classList.remove('open');
-  state.editTarget = null;
-}
-
 function saveItem() {
   const sec = state.editTarget
     ? state.editTarget.type
-    : (state.adminSection === 'waiters' ? 'waiter'
-       : state.adminSection === 'menu' ? 'menuItem'
+    : (state.adminSection === 'menu' ? 'menuItem'
        : state.adminSection === 'staff' ? 'staff'
        : 'table');
 
   if (sec === 'staff') { saveStaff(); return; }
 
-  if (sec === 'waiter') {
-    const firstname  = (document.getElementById('fw_firstname')?.value||'').trim();
-    const lastname   = (document.getElementById('fw_lastname')?.value||'').trim();
-    const fathername = (document.getElementById('fw_fathername')?.value||'').trim();
-    const birthdate  = (document.getElementById('fw_birthdate')?.value||'').trim();
-    const phone      = (document.getElementById('fw_phone')?.value||'').trim();
-    const address    = (document.getElementById('fw_address')?.value||'').trim();
-    const idcard     = (document.getElementById('fw_idcard')?.value||'').trim();
-    const fin        = (document.getElementById('fw_fin')?.value||'').trim();
-    const voen       = (document.getElementById('fw_voen')?.value||'').trim();
-    const pin        = (document.getElementById('fw_pin')?.value||'').trim();
-    const avatarVal  = (document.getElementById('fw_avatar')?.value||'').trim();
-    const waiterRole = document.getElementById('fw_waiterRole')?.value || 'waiter';
-
-    const name = [firstname, lastname].filter(Boolean).join(' ') || firstname || lastname;
-
-    if (!firstname || !lastname) { showToast('❌ Ad və Soyad mütləqdir'); return; }
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('❌ 4 rəqəmli PIN lazımdır'); return; }
-
-    const conflict = state.waiters.find(w => w.pin === pin &&
-      (!state.editTarget || w.id !== state.editTarget.id));
-    if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
-
-    const avatar = avatarVal ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2ecc71&color=fff&size=200`;
-
-    const waiterData = {
-      name, firstname, lastname, fathername,
-      birthdate, phone, address, idcard, fin, voen,
-      pin, avatar, waiterRole
-    };
-
-    if (state.editTarget) {
-      R.waiters.child(state.editTarget.id).update(waiterData);
-      addLog('admin', `Qarson məlumatları yeniləndi: ${name}`, { waiterId: state.editTarget.id });
-      showToast('✅ Məlumatlar yeniləndi');
-    } else {
-      R.waiters.push({ ...waiterData, status: 'ready', createdAt: Date.now() });
-      addLog('admin', `Yeni qarson əlavə edildi: ${name}`, {});
-      showToast('✅ Qarson əlavə edildi');
-    }
-
-  } else if (sec === 'menuItem') {
+  if (sec === 'menuItem') {
     const name        = (document.getElementById('fm_name')?.value||'').trim();
     const categorySelect = document.getElementById('fm_category_select')?.value || '';
     const category    = categorySelect === '__new__'
@@ -1453,7 +1402,6 @@ function saveItem() {
   }
   closeAddModal();
 }
-
 /* ── Mətbəx PIN ── */
 function openKitchenPinModal() {
   document.getElementById('newKitchenPin').value = '';
@@ -1569,12 +1517,12 @@ function saveStaff() {
   const permissions = readPermissionCheckboxes();
 
   if (!firstname || !lastname) { showToast('❌ Ad və Soyad mütləqdir'); return; }
+  if (!position) { showToast('❌ Vəzifə seçilməlidir'); return; }
   if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('❌ 4 rəqəmli PIN lazımdır'); return; }
 
-  const waiterConflict = state.waiters.find(w => w.pin === pin);
-  const staffConflict  = state.staff?.find(s => s.pin === pin &&
+  const conflict = state.staff?.find(s => s.pin === pin &&
     (!state.editTarget?.id || s.id !== state.editTarget.id));
-  if (waiterConflict || staffConflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
+  if (conflict) { showToast('❌ Bu PIN artıq istifadə olunur'); return; }
 
   const name = `${firstname} ${lastname}`;
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
@@ -1597,7 +1545,9 @@ function saveStaff() {
 
 function staffForm(s = {}) {
   const existingPerms = s.permissions || [];
+  const currentPos = s.position || '';
   return `
+    <!-- Şəkil -->
     <div style="text-align:center;margin-bottom:16px;">
       <img id="fs_preview" class="avatar-preview"
            src="${esc(s.avatar||'')}"
@@ -1610,6 +1560,7 @@ function staffForm(s = {}) {
       <input type="hidden" id="fs_avatar" value="${esc(s.avatar||'')}">
     </div>
 
+    <!-- Şəxsi məlumatlar -->
     <div class="modal-section-title">👤 Məlumatlar</div>
     <div class="form-row">
       <div class="form-group">
@@ -1623,8 +1574,16 @@ function staffForm(s = {}) {
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Vəzifə</label>
-        <input type="text" id="fs_position" value="${esc(s.position||'')}" placeholder="Kassir, Müdir...">
+        <label>Vəzifə *</label>
+        <select id="fs_position" onchange="onStaffPositionChange()" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;">
+          <option value="">Seçin...</option>
+          <option value="Qarson" ${currentPos==='Qarson'?'selected':''}>🤵 Qarson</option>
+          <option value="Baş Qarson" ${currentPos==='Baş Qarson'?'selected':''}>⭐ Baş Qarson</option>
+          <option value="Kassir" ${currentPos==='Kassir'?'selected':''}>💰 Kassir</option>
+          <option value="Müdir" ${currentPos==='Müdir'?'selected':''}>👔 Müdir</option>
+          <option value="Mətbəx" ${currentPos==='Mətbəx'?'selected':''}>👨‍🍳 Mətbəx</option>
+          <option value="Digər" ${currentPos==='Digər'?'selected':''}>Digər</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Telefon</label>
@@ -1643,6 +1602,7 @@ function staffForm(s = {}) {
       </div>
     </div>
 
+    <!-- Sürətli seçim -->
     <div class="modal-section-title" style="margin-top:8px;">⚡ Sürətli Seçim</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
       <button type="button" onclick="applyPermissionPreset('waiter')"
@@ -1662,11 +1622,23 @@ function staffForm(s = {}) {
                color:var(--red);background:var(--bg);font-size:12px;cursor:pointer;">✕ Hamısını Sil</button>
     </div>
 
+    <!-- İcazələr -->
     <div class="modal-section-title">🔑 İcazələr</div>
     ${renderPermissionCheckboxes(existingPerms)}
   `;
 }
-
+  function onStaffPositionChange() {
+  const pos = document.getElementById('fs_position').value;
+  const map = {
+    'Qarson': 'waiter',
+    'Baş Qarson': 'head_waiter',
+    'Kassir': 'cashier',
+    'Müdir': 'manager'
+  };
+  if (map[pos]) {
+    applyPermissionPreset(map[pos]);
+  }
+}
 function previewStaffPhoto(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1720,11 +1692,11 @@ function renderTables() {
 
   el.innerHTML = filtered.map(t => {
     const occ = t.occupant
-      ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }).name
+      ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name
       : null;
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
-      <div class="meta">${occ ? `Qarson: <strong>${esc(occ)}</strong>` : 'Boş'}</div>
+      <div class="meta">${occ ? `İşçi: <strong>${esc(occ)}</strong>` : 'Boş'}</div>
       <div class="item-actions">
         <button class="btn btn-ghost" onclick="editTable('${t.id}')">✏️ Düzəliş</button>
         <button class="btn btn-blue"  onclick="showQR('${t.id}','${esc(t.name)}')">📱 QR</button>
@@ -1733,7 +1705,6 @@ function renderTables() {
     </div>`;
   }).join('');
 }
-
 function setTableCat(cat) {
   state._tableCatFilter = cat;
   renderTables();
@@ -1786,155 +1757,6 @@ function tableForm(name='', isEdit=false) {
 /* ═══════════════════════════════════════════
    ADMIN — QARSONLAR (CRUD)
 ═══════════════════════════════════════════ */
-function renderWaiters() {
-  const el = document.getElementById('waitersGrid');
-  if (!state.waiters.length) { el.innerHTML='<p style="color:var(--text3);">Hələ qarson əlavə edilməyib.</p>'; return; }
-  el.innerHTML = state.waiters.map(w=>{
-    const st = w.status==='offline'?'Deaktiv':w.status==='online'?'Onlayn':'Hazır';
-    const bc = w.status==='offline'?'badge-red':'badge-green';
-    return `<div class="item-card">
-      <div class="item-card-header">
-        <img class="avatar" src="${w.avatar}" alt=""
-             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(w.name)}&background=2ecc71&color=fff&size=200'">
-        <div class="item-info">
-          <h3>${esc(w.name)}</h3>
-          <small style="color:var(--text2);">PIN: ${w.pin}</small>
-          ${w.phone ? `<small style="color:var(--text3);display:block;">📞 ${esc(w.phone)}</small>` : ''}
-          ${w.fin   ? `<small style="color:var(--text3);display:block;">🪪 FİN: ${esc(w.fin)}</small>` : ''}
-        </div>
-      </div>
-      <span class="status-badge ${bc}">${st}</span>
-      <div class="item-actions">
-        <button class="btn ${w.status==='offline'?'btn-green':'btn-red'}" onclick="toggleWaiter('${w.id}')">
-          ${w.status==='offline'?'Aktiv Et':'Deaktiv Et'}
-        </button>
-        <button class="btn btn-ghost" onclick="editWaiter('${w.id}')">✏️</button>
-        <button class="btn btn-red" onclick="deleteWaiter('${w.id}')">🗑️</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function toggleWaiter(id) {
-  const w = state.waiters.find(x=>x.id===id);
-  if (!w) return;
-  const newStatus = (w.status==='offline') ? 'ready' : 'offline';
-  R.waiters.child(id).update({ status: newStatus });
-  addLog('admin',`${w.name} ${newStatus==='ready'?'aktiv':'deaktiv'} edildi`,{ waiterId:id });
-  showToast(newStatus==='ready'?`✅ ${w.name} aktiv edildi`:`🚫 ${w.name} deaktiv edildi`);
-}
-
-function editWaiter(id) {
-  const w = state.waiters.find(x=>x.id===id);
-  if (!w) return;
-  state.editTarget = { type:'waiter', id };
-  document.getElementById('addModalTitle').textContent = '✏️ Qarson Düzəliş';
-  document.getElementById('addModalBody').innerHTML = waiterForm(w);
-  document.getElementById('addModal').classList.add('open');
-}
-
-function deleteWaiter(id) {
-  const w = state.waiters.find(x=>x.id===id);
-  const activeTables = state.tables.filter(t => t.occupant === id);
-  if (activeTables.length > 0) {
-    const names = activeTables.map(t=>t.name).join(', ');
-    showToast(`❌ ${w?.name} adlı qarsonun aktiv masası var: ${names}. Əvvəlcə masaları bağlayın!`);
-    return;
-  }
-  if (!confirm(`"${w?.name}" adlı qarson silinsin?`)) return;
-  R.waiters.child(id).remove();
-  addLog('admin',`${w?.name} silindi`,{ waiterId:id });
-  showToast('🗑️ Qarson silindi');
-}
-
-function waiterForm(w={}) {
-  return `
-    <div style="text-align:center;margin-bottom:16px;">
-      <img id="fw_preview" class="avatar-preview"
-           src="${esc(w.avatar||'')}"
-           style="${w.avatar?'display:block':'display:none'}">
-      <div class="avatar-upload-area" onclick="document.getElementById('fw_file').click()">
-        <div style="font-size:32px;margin-bottom:6px;">📷</div>
-        <div style="font-size:13px;color:var(--text2);">Şəkil yükləmək üçün klikləyin</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px;">JPG, PNG — maks. 2MB</div>
-        <input type="file" id="fw_file" accept="image/*" onchange="previewWaiterPhoto(this)">
-      </div>
-      <input type="hidden" id="fw_avatar" value="${esc(w.avatar||'')}">
-    </div>
-
-    <div class="modal-section-title">👤 Şəxsi Məlumatlar</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Ad *</label>
-        <input type="text" id="fw_firstname" value="${esc(w.firstname||w.name?.split(' ')[0]||'')}" placeholder="Əli">
-      </div>
-      <div class="form-group">
-        <label>Soyad *</label>
-        <input type="text" id="fw_lastname" value="${esc(w.lastname||w.name?.split(' ')[1]||'')}" placeholder="Məmmədov">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Ata adı</label>
-      <input type="text" id="fw_fathername" value="${esc(w.fathername||'')}" placeholder="Vüsal">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Doğum tarixi</label>
-        <input type="date" id="fw_birthdate" value="${esc(w.birthdate||'')}">
-      </div>
-      <div class="form-group">
-        <label>Əlaqə nömrəsi</label>
-        <input type="tel" id="fw_phone" value="${esc(w.phone||'')}" placeholder="+994 50 000 00 00">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Ünvan</label>
-      <input type="text" id="fw_address" value="${esc(w.address||'')}" placeholder="Bakı, Nərimanov r., ...">
-    </div>
-
-    <div class="modal-section-title" style="margin-top:16px;">📋 Sənəd Məlumatları</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Ş/V nömrəsi</label>
-        <input type="text" id="fw_idcard" value="${esc(w.idcard||'')}" placeholder="AA1234567">
-      </div>
-      <div class="form-group">
-        <label>FİN nömrəsi</label>
-        <input type="text" id="fw_fin" value="${esc(w.fin||'')}" placeholder="1234ABC">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>VÖEN nömrəsi</label>
-      <input type="text" id="fw_voen" value="${esc(w.voen||'')}" placeholder="1234567890">
-    </div>
-
-    <div class="modal-section-title" style="margin-top:16px;">⚙️ Sistem Məlumatları</div>
-    <div class="form-group">
-      <label>PIN kod * (4 rəqəm)</label>
-      <input type="text" id="fw_pin" value="${esc(w.pin||'')}" maxlength="4" placeholder="1234"
-             style="font-size:24px;letter-spacing:8px;text-align:center;">
-    </div>`;
-}
-
-function previewWaiterPhoto(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    showToast('❌ Şəkil 2MB-dan böyük olmamalıdır');
-    input.value = '';
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = e => {
-    const base64 = e.target.result;
-    const preview = document.getElementById('fw_preview');
-    if (preview) { preview.src = base64; preview.style.display = 'block'; }
-    const avatarField = document.getElementById('fw_avatar');
-    if (avatarField) avatarField.value = base64;
-    showToast('✅ Şəkil yükləndi');
-  };
-  reader.readAsDataURL(file);
-}
 
 /* ═══════════════════════════════════════════
    ALARM SİSTEMİ
@@ -2308,7 +2130,7 @@ function checkCustomerMode() {
 
 function showCustomerWaiterCard(waiterId) {
   if (!waiterId) return;
-  R.waiters.child(waiterId).once('value', snap => {
+  R.staff.child(waiterId).once('value', snap => {
     const w = snap.val();
     if (!w) return;
     const card   = document.getElementById('custWaiterCard');
@@ -2539,9 +2361,12 @@ function confirmExit() {
 ═══════════════════════════════════════════ */
 function renderKitchen() {
   const el = document.getElementById('kitchenGrid');
-  const active = state.waiters.filter(w=>w.status!=='offline');
-  if (!active.length) { el.innerHTML='<p style="color:var(--text2);text-align:center;padding:40px;">Aktiv qarson yoxdur.</p>'; return; }
-  el.innerHTML = active.map(w=>{
+  // Yalnız masaya baxa bilən (table.view icazəsi olan) və aktiv işçilər
+  const activeWaiters = state.staff.filter(s=> 
+    s.status !== 'offline' && staffHasPermission(s, 'table.view')
+  );
+  if (!activeWaiters.length) { el.innerHTML='<p style="color:var(--text2);text-align:center;padding:40px;">Aktiv qarson yoxdur.</p>'; return; }
+  el.innerHTML = activeWaiters.map(w=>{
     const hasPending = state.orders.some(o=>o.waiterId===w.id&&o.status==='pending');
     const myTables = state.tables.filter(t=>t.occupant===w.id);
     const st = hasPending ? 'called' : 'ready';
@@ -2560,7 +2385,7 @@ function renderKitchen() {
 }
 
 function callWaiter(waiterId) {
-  const w = state.waiters.find(x=>x.id===waiterId);
+  const w = state.staff.find(x=>x.id===waiterId);
   if (!w) return;
   const ref = R.orders.push();
   ref.set({
@@ -2588,7 +2413,7 @@ function initListeners() {
 
   R.staff.on('value', snap=>{
     state.staff = toArr(snap.val());
-    state.waiters = state.staff;
+
     onDataChange();
     if (state.user?.role==='admin') renderAdmin();
     if (state.user?.role==='staff') {
@@ -3170,7 +2995,7 @@ function renderWaiterTables() {
   el.innerHTML = filtered.map(t => {
     const isMine  = t.occupant === state.user.id;
     const isOther = t.occupant && !isMine;
-    const otherW  = isOther ? (state.staff.find(w => w.id === t.occupant) || { name: '?' }) : null;
+    const otherW  = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
     const tableOrder = state.tableOrders[t.id];
 
     let cls = '', statusText = 'Boş', clickAttr = '';
@@ -3381,7 +3206,14 @@ checkCustomerMode();
 loadSavedTheme();
 
 document.getElementById('adminFab').style.display='none';
-
+R.staff.once('value', snap=>{
+  if (snap.val()) return;
+  [
+    {name:'Əli Məmmədov',  firstname:'Əli', lastname:'Məmmədov', position:'Qarson', pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200',  status:'active',   createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms},
+    {name:'Leyla Həsənli', firstname:'Leyla', lastname:'Həsənli', position:'Qarson', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'active',   createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms},
+    {name:'Orxan Əliyev',  firstname:'Orxan', lastname:'Əliyev', position:'Kassir', pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200',  status:'offline',  createdAt:Date.now(), permissions: PERMISSION_PRESETS.cashier.perms}
+  ].forEach(w=>R.staff.push(w));
+});
 /* ═══════════════════════════════════════════
    ƏLAVƏ FUNKSİYALAR (HAS PERMISSION)
 ═══════════════════════════════════════════ */
