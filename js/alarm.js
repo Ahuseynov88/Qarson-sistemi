@@ -114,7 +114,7 @@ function initCustomerRequestListener() {
     const data = snap.val() || {};
     const list = Object.keys(data).map(k=>({id:k,...data[k]}));
 
-    if (state.user?.role === 'waiter') {
+    if (state.user?.role === 'staff') {
       list.forEach(r => {
         const t = state.tables.find(x=>x.id===r.tableId);
         if (t && t.occupant === state.user.id) {
