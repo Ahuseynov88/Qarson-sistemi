@@ -13,11 +13,11 @@ function initListeners() {
     if (snap.val()) ADMIN_PIN = snap.val();
   });
 
-  R.waiters.on('value', snap=>{
-    state.waiters = toArr(snap.val());
+  R.staff.on('value', snap=>{
+    state.staff = toArr(snap.val());
     onDataChange();
-    if (state.user?.role==='waiter') {
-      const me = state.waiters.find(w=>w.id===state.user.id);
+    if (state.user?.role==='staff') {
+      const me = state.staff.find(w=>w.id===state.user.id);
       if (me && me.status==='offline') {
         document.getElementById('deactivatedOverlay').classList.add('show');
         stopAlarm(); unlockScreen();
@@ -44,7 +44,7 @@ function initListeners() {
   R.orders.on('value', snap=>{
     state.orders = toArr(snap.val());
     onDataChange();
-    if (state.user?.role==='waiter') checkIncomingOrders();
+    if (state.user?.role==='staff') checkIncomingOrders();
   });
 
   R.staff.on('value', snap=>{
@@ -60,13 +60,13 @@ function initListeners() {
   initCustomerRequestListener();
 
   // Qarson üçün çat mesajlarını dinlə
-  if (state.user?.role === 'waiter') {
+  if (state.user?.role === 'staff') {
     initWaiterChatListener();
   }
 }
 
 function removeListeners() {
-  R.waiters.off();
+  R.staff.off();
   R.tables.off();
   R.menuItems.off();
   R.tableOrders.off();
@@ -82,7 +82,7 @@ function removeListeners() {
 
 function onDataChange() {
   const r = state.user?.role;
-  if (r==='admin')   renderAdmin();
-  if (r==='kitchen') renderKitchen();
-  if (r==='waiter')  renderWaiterTables();
+  if (r==='admin')            renderAdmin();
+  if (r==='kitchen')          renderKitchen();
+  if (r==='waiter'||r==='staff') renderWaiterTables();
 }
