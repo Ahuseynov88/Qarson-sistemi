@@ -39,7 +39,7 @@ function renderTables() {
 
   el.innerHTML = filtered.map(t => {
     const occ = t.occupant
-      ? (state.waiters.find(w => w.id === t.occupant) || { name: '?' }).name
+      ? (state.staff.find(w => w.id === t.occupant) || { name: '?' }).name
       : null;
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
