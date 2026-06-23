@@ -734,6 +734,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 /* ═══════════════════════════════════════════
  /* ═══════════════════════════════════════════
    /* ═══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    FIREBASE KONFİQURASİYA - DÜZƏLDİLMİŞ
 ═══════════════════════════════════════════ */
 const firebaseConfig = {
@@ -748,7 +749,7 @@ const firebaseConfig = {
 };
 
 // Yoxlama: API key boşdursa xəbərdarlıq
-if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA")) {
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("1234567890")) {
   console.error("❌ XƏTA: Firebase API key daxil edilməyib!");
   console.error("Firebase Console → Project Settings → General → Your apps → Config");
 }
