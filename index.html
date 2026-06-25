@@ -2001,4 +2001,738 @@ function initCustomerChat(tableId) {
 }
 
 function renderCustomerChatMsgs(msgsObj) {
-  const msgs = toArr(msgsObj).sort((a,b)=>a.createdAt-b.createdAt
+  const msgs = toArr(msgsObj).sort((a,b)=>a.createdAt-b.createdAt);
+  const el = document.getElementById('custMsgList');
+  el.innerHTML = msgs.map(m=>`
+    <div class="cust-bubble ${m.sender}">
+      ${m.sender==='waiter'?`<span style="font-size:11px;font-weight:700;display:block;margin-bottom:2px;">${esc(m.senderName||'Qarson')}</span>`:''}
+      ${esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span>
+    </div>
+  `).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function sendCustomerMsg() {
+  const text = document.getElementById('custMsgInput').value.trim();
+  const tableId = window._customerTableId;
+  const t = window._customerTableData;
+  if (!text || !tableId) return;
+  const ref = db.ref(`chats/${tableId}/messages`).push();
+  ref.set({ sender: 'customer', text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now(), readByWaiter: false });
+  const currentTable = state.tables.find(x=>x.id===tableId);
+  db.ref('customerRequests').push({
+    tableId, tableName: t.name, type: 'message', message: `${t.name}: ${text}`,
+    waiterId: currentTable?.occupant || t.occupant || null, status: 'pending',
+    time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now()
+  });
+  addLog('chat',`"${t.name}" masasından mesaj: ${text}`,{ tableId });
+  document.getElementById('custMsgInput').value = '';
+  showCustomerToast('✅ Mesaj göndərildi!');
+}
+
+function sendFeedback() {
+  const msg = document.getElementById('feedbackInput').value.trim();
+  const tableId = window._customerTableId;
+  const t = window._customerTableData;
+  if (!msg) return;
+  db.ref('feedbacks').push({
+    tableId, tableName: t ? t.name : '?', message: msg,
+    time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'),
+    createdAt: Date.now(), status: 'new'
+  });
+  addLog('customer',`"${t?t.name:'?'}" masasından şikayət/təklif: ${msg}`,{ tableId });
+  document.getElementById('feedbackInput').value = '';
+  showCustomerToast('✅ Şikayət/təklifiniz qeyd edildi!');
+}
+
+/* ═══════════════════════════════════════════
+   KIOSK LOCK
+═══════════════════════════════════════════ */
+function lockScreen() {
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  history.pushState(null,'',location.href);
+}
+
+function unlockScreen() {
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+}
+
+window.onpopstate = ()=>{ if (state.user?.role==='staff') history.pushState(null,'',location.href); };
+
+window.addEventListener('pageshow', (e) => {
+  if (!state.user || state.user.role !== 'staff') return;
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  R.staff.child(state.user.id).update({ status: 'online' });
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!state.user || state.user.role !== 'staff') return;
+  if (document.hidden) {
+    R.staff.child(state.user.id).update({ status: 'away', lastSeen: Date.now() });
+  } else {
+    R.staff.child(state.user.id).update({ status: 'online', lastSeen: Date.now() });
+    if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  }
+});
+
+document.addEventListener('keydown', e=>{
+  if (state.user?.role!=='staff') return;
+  if (['F5','F12','Escape'].includes(e.key)||(e.ctrlKey&&['r','w','t'].includes(e.key))||(e.altKey&&e.key==='F4')) {
+    e.preventDefault(); return false;
+  }
+});
+
+document.addEventListener('contextmenu', e=>{ if (state.user?.role==='staff') e.preventDefault(); });
+
+window.addEventListener('beforeunload', e=>{ if (state.user?.role==='staff') { e.preventDefault(); e.returnValue=''; } });
+
+function showExitModal() { document.getElementById('exitModal').classList.add('open'); }
+function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value=''; }
+
+function confirmExit() {
+  const pin = document.getElementById('exitPin').value;
+  if (String(pin) === String(ADMIN_PIN) || String(pin) === String(state.kitchenPin)) {
+    closeExitModal();
+    logout();
+  } else {
+    showToast('❌ PIN səhvdir!');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   KITCHEN PANEL
+═══════════════════════════════════════════ */
+function renderKitchen() {
+  const el = document.getElementById('kitchenGrid');
+  const activeWaiters = state.staff.filter(s=> s.status !== 'offline' && staffHasPermission(s, 'table.view'));
+  if (!activeWaiters.length) { el.innerHTML='<p style="color:var(--text2);text-align:center;padding:40px;">Aktiv qarson yoxdur.</p>'; return; }
+  el.innerHTML = activeWaiters.map(w=>{
+    const hasPending = state.orders.some(o=>o.waiterId===w.id&&o.status==='pending');
+    const myTables = state.tables.filter(t=>t.occupant===w.id);
+    const st = hasPending ? 'called' : 'ready';
+    const stLabel = hasPending ? '🔴 Gözləyir' : (w.status==='online'?'🟢 Aktiv':'🟢 Hazır');
+    return `<div class="k-card ${st}" ${!hasPending?`onclick="callWaiter('${w.id}')"`:''}>
+      ${hasPending?'<div class="k-no-click-overlay"></div>':''}
+      <img src="${w.avatar}" alt="${esc(w.name)}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(w.name)}&background=2ecc71&color=fff&size=200'">
+      <h3>${esc(w.name)}</h3>
+      <div class="k-status">${stLabel}</div>
+      <div class="k-tables-under">${myTables.map(t=>`<span class="k-table-chip">${esc(t.name)}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function callWaiter(waiterId) {
+  const w = state.staff.find(x=>x.id===waiterId);
+  if (!w) return;
+  const ref = R.orders.push();
+  ref.set({ waiterId: w.id, waiterName: w.name, status: 'pending', time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now() });
+  addLog('order',`Mətbəx ${w.name}-ə sifariş bildirişi göndərdi`,{ waiterId:w.id });
+  showToast(`🔔 ${w.name}-ə bildiriş göndərildi`);
+}
+
+/* ═══════════════════════════════════════════
+   FIREBASE LISTENERS
+═══════════════════════════════════════════ */
+function initListeners() {
+  db.ref('settings/kitchenPin').on('value', snap => { if (snap.val()) state.kitchenPin = snap.val(); });
+  db.ref('settings/adminPin').on('value', snap => { if (snap.val()) ADMIN_PIN = snap.val(); });
+
+  R.staff.on('value', snap=>{
+    state.staff = toArr(snap.val());
+    onDataChange();
+    if (state.user?.role==='admin') renderAdmin();
+    if (state.user?.role==='staff') {
+      const me = state.staff.find(w=>w.id===state.user.id);
+      if (me && me.status==='offline') {
+        document.getElementById('deactivatedOverlay').classList.add('show');
+        stopAlarm(); unlockScreen();
+        setTimeout(()=>{ document.getElementById('deactivatedOverlay').classList.remove('show'); logout(); },3000);
+      }
+    }
+  });
+
+  R.tables.on('value', snap=>{ state.tables = toArr(snap.val()); onDataChange(); });
+  R.menuItems.on('value', snap=>{ state.menuItems = toArr(snap.val()); if (state.user?.role==='admin') onDataChange(); });
+  R.tableOrders.on('value', snap=>{ state.tableOrders = snap.val() || {}; onDataChange(); });
+  R.orders.on('value', snap=>{
+    state.orders = toArr(snap.val());
+    onDataChange();
+    if (state.user?.role==='staff') checkIncomingOrders();
+  });
+  R.logs.limitToLast(300).on('value', snap=>{
+    state.logs = toArr(snap.val()).reverse();
+    if (state.user?.role==='admin') renderLogs();
+  });
+
+  initCustomerRequestListener();
+  if (state.user?.role === 'staff') initWaiterChatListener();
+}
+
+function removeListeners() {
+  R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
+  db.ref('customerRequests').off(); db.ref('feedbacks').off();
+  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('chats').off();
+}
+
+function onDataChange() {
+  const r = state.user?.role;
+  if (r==='admin') renderAdmin();
+  if (r==='kitchen') renderKitchen();
+  if (r==='staff') renderWaiterTables();
+}
+
+/* ═══════════════════════════════════════════
+   LOG
+═══════════════════════════════════════════ */
+function addLog(type, message, details={}) {
+  R.logs.push({ type, message, details, timestamp: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ') });
+}
+
+function renderLogs() {
+  const el = document.getElementById('logList');
+  let list = state.logs;
+  if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
+  if (!list.length) { el.innerHTML='<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
+  const colors = { login:'#2ecc71', logout:'#95a5a6', order:'#f39c12', table:'#3498db', admin:'#8e44ad', chat:'#e67e22', customer:'#e74c3c' };
+  const labels = { login:'GİRİŞ', logout:'ÇIXIŞ', order:'SİFARİŞ', table:'MASA', admin:'ADMİN', chat:'MESAJ', customer:'MÜŞTƏRİ' };
+  el.innerHTML = list.slice(0,150).map(l=>`
+    <div class="log-item">
+      <span class="log-badge" style="background:${colors[l.type]||'#666'}22;color:${colors[l.type]||'#aaa'}">${labels[l.type]||'LOG'}</span>
+      <span class="log-text">${esc(l.message)}</span>
+      <span class="log-time">${l.time} ${l.date}</span>
+    </div>
+  `).join('');
+}
+
+function setLogFilter(f, el) {
+  state.logFilter = f;
+  document.querySelectorAll('.log-filter').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderLogs();
+}
+
+function clearOldLogs() {
+  if (!confirm('30 gündən köhnə bütün tarixçə qeydləri silinsin?')) return;
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  R.logs.once('value', snap => {
+    const data = snap.val() || {};
+    let deletedCount = 0;
+    Object.keys(data).forEach(key => { if (data[key].timestamp < cutoff) { R.logs.child(key).remove(); deletedCount++; } });
+    showToast(`✅ ${deletedCount} köhnə qeyd silindi`);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   QR KOD
+═══════════════════════════════════════════ */
+function showQR(tableId, tableName) {
+  const url = location.origin + location.pathname + '?table=' + tableId;
+  document.getElementById('qrModalTitle').textContent = '📱 ' + tableName;
+  document.getElementById('qrLink').textContent = url;
+  const canvas = document.getElementById('qrCanvas');
+  canvas.innerHTML = '';
+  new QRCode(canvas, { text:url, width:200, height:200, colorDark:'#000', colorLight:'#fff' });
+  document.getElementById('qrModal').classList.add('open');
+}
+
+function closeQRModal() { document.getElementById('qrModal').classList.remove('open'); }
+
+function printQR() {
+  const title = document.getElementById('qrModalTitle').textContent;
+  const canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) return;
+  const img = canvas.toDataURL();
+  const w = window.open('','_blank');
+  w.document.write(`<html><head><title>${title}</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;}h2{margin-bottom:16px;}p{color:#666;font-size:13px;}</style></head><body><h2>${title}</h2><img src="${img}" width="250"><p>QR kodu oxudun</p><script>window.onload=()=>window.print()<\/script></body></html>`);
+}
+
+/* ═══════════════════════════════════════════
+   SƏS
+═══════════════════════════════════════════ */
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx || _audioCtx.state==='closed') _audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if (_audioCtx.state==='suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playBeep() {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.85, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2); gain2.connect(ctx.destination);
+    osc2.frequency.value = 1100; osc2.type = 'sine';
+    gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.05);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    osc2.start(ctx.currentTime + 0.05); osc2.stop(ctx.currentTime + 0.55);
+  } catch(e){}
+}
+
+/* ═══════════════════════════════════════════
+   QARSON — SİFARİŞ GÖTÜRMƏ
+═══════════════════════════════════════════ */
+function renderNoteOrderSummary(tableId) {
+  const el = document.getElementById('noteOrderSummary');
+  if (!el) return;
+  const order = state.tableOrders[tableId];
+  const items = order?.items ? Object.entries(order.items) : [];
+  if (!items.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ sifariş yoxdur.</p>'; return; }
+
+  el.innerHTML = `
+    <div class="order-summary-box">
+      ${items.map(([itemKey, it]) => {
+        const lineTotal = (it.price * it.qty) + (it.extraFee||0);
+        return `<div class="order-summary-line" style="flex-direction:column;align-items:flex-start;gap:2px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;">
+            <span style="flex:1;">${it.qty}x ${esc(it.name)}</span>
+            <span>${lineTotal.toFixed(2)} ₼</span>
+            ${state.user?.role === 'admin' ? `<button onclick="cancelOrderItem('${tableId}','${itemKey}')" style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>` : ''}
+          </div>
+          ${it.note ? `<span style="font-size:11px;color:var(--text3);">📝 ${esc(it.note)}</span>` : ''}
+        </div>`;
+      }).join('')}
+      <div class="order-summary-line" style="border-top:1px solid var(--border);margin-top:6px;padding-top:8px;font-weight:700;color:var(--green);">
+        <span>Cəmi</span><span>${(order.total||0).toFixed(2)} ₼</span>
+      </div>
+    </div>`;
+}
+
+function cancelOrderItem(tableId, itemKey) {
+  const order = state.tableOrders[tableId];
+  if (!order?.items) return;
+  const it = order.items[itemKey];
+  if (!it) return;
+  R.tableOrders.child(tableId).child('items').child(itemKey).remove();
+  const remaining = Object.entries(order.items).filter(([k]) => k !== itemKey).map(([, v]) => v);
+  if (!remaining.length) {
+    R.tableOrders.child(tableId).remove();
+  } else {
+    const newTotal = remaining.reduce((sum, v) => sum + (v.price * v.qty) + (v.extraFee||0), 0);
+    R.tableOrders.child(tableId).child('total').set(newTotal);
+  }
+  addLog('order', `${state.user?.name} "${it.name}" malını sifarişdən iptal etdi`, { tableId, menuItemId: it.menuItemId });
+  showToast(`🗑️ ${it.name} sifarişdən silindi`);
+  renderNoteOrderSummary(tableId);
+}
+
+function openOrderModal() {
+  if (!state.noteTableId) return;
+  state.orderTableId = state.noteTableId;
+  state._orderCatFilter = 'all';
+  state._orderDraft = {};
+  state._orderCancelSelection = {};
+  const t = state.tables.find(x=>x.id===state.orderTableId);
+  document.getElementById('orderModalTitle').textContent = `🍔 ${t ? t.name : 'Masa'}`;
+  renderOrderCatTabs();
+  renderOrderItemsList();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
+  document.getElementById('notesModal').classList.remove('open');
+  document.getElementById('waiterScreen').classList.remove('active');
+  document.getElementById('orderScreen').classList.add('active');
+}
+
+function closeOrderModal() {
+  document.getElementById('orderScreen').classList.remove('active');
+  document.getElementById('waiterScreen').classList.add('active');
+  state.orderTableId = null;
+  state._orderDraft = {};
+}
+
+function renderOrderCatTabs() {
+  const tabEl = document.getElementById('orderCatTabs');
+  const availableItems = state.menuItems.filter(m => m.available !== false);
+  const cats = ['all', ...new Set(availableItems.map(m => m.category || 'Digər'))];
+  tabEl.innerHTML = cats.map(c => `
+    <button onclick="setOrderCat('${esc(c)}')" style="padding:10px 8px;border-radius:8px;border:none;text-align:left;background:${state._orderCatFilter===c?'var(--brand-gradient)':'transparent'};color:${state._orderCatFilter===c?'white':'var(--text2)'};font-weight:600;font-size:12px;cursor:pointer;width:100%;">
+      ${c === 'all' ? 'Hamısı' : esc(c)}
+    </button>
+  `).join('');
+}
+
+function setOrderCat(cat) { state._orderCatFilter = cat; renderOrderCatTabs(); renderOrderItemsList(); }
+
+function renderOrderItemsList() {
+  const el = document.getElementById('orderItemsList');
+  const availableItems = state.menuItems.filter(m => m.available !== false);
+  const filtered = state._orderCatFilter === 'all' ? availableItems : availableItems.filter(m => (m.category || 'Digər') === state._orderCatFilter);
+  if (!filtered.length) { el.innerHTML = '<p style="color:var(--text3);padding:10px;grid-column:1/-1;">Bu kateqoriyada mal yoxdur.</p>'; return; }
+
+  el.innerHTML = filtered.map(m => {
+    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
+    const totalQty = Object.values(state._orderDraft).filter(d => d.menuItemId === m.id).reduce((sum, d) => sum + d.qty, 0);
+    return `<div class="order-item-card ${totalQty>0?'selected':''}" onclick="addOrderItemDirect('${m.id}')">
+      ${totalQty>0 ? `<span class="order-item-qty-badge">${totalQty}x</span>` : ''}
+      <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'">
+      <h4>${esc(m.name)}</h4>
+      <span>${Number(m.price||0).toFixed(2)} ₼</span>
+    </div>`;
+  }).join('');
+}
+
+function addOrderItemDirect(menuItemId) {
+  const lineKey = makeLineKey(menuItemId, '', 0);
+  const existing = state._orderDraft[lineKey];
+  if (existing) { existing.qty += 1; } else { state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 }; }
+  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+}
+
+function makeLineKey(menuItemId, note, extraFee) {
+  const safeNote = (note||'').replace(/[.#$\[\]/\s]+/g, '_');
+  let hash = 0;
+  for (let i = 0; i < (note||'').length; i++) hash = ((hash << 5) - hash + note.charCodeAt(i)) | 0;
+  return `${menuItemId}__${safeNote}_${Math.abs(hash)}__${String(extraFee||0).replace('.','_')}`;
+}
+
+function draftChangeQty(lineKey, delta) {
+  const draft = state._orderDraft[lineKey];
+  if (!draft) return;
+  draft.qty += delta;
+  if (draft.qty <= 0) delete state._orderDraft[lineKey];
+  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+}
+
+function renderOrderDraftList() {
+  const el = document.getElementById('orderDraftList');
+  if (!el) return;
+  const keys = Object.keys(state._orderDraft);
+  if (!keys.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ mal seçilməyib. Yuxarıdan mal seçin.</p>'; return; }
+
+  el.innerHTML = keys.map(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
+    if (!m) return '';
+    const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
+    const isChecked = state._orderCancelSelection?.[lineKey] ? 'checked' : '';
+    return `<div class="draft-line-card" style="border-left:3px solid var(--green);">
+      <div class="draft-line-top">
+        <input type="checkbox" class="draft-cancel-box" ${isChecked} onchange="toggleDraftCancelSelect('${lineKey}')">
+        <span class="draft-line-name">${esc(m.name)}</span>
+        <div class="order-item-stepper" style="gap:6px;flex-shrink:0;display:flex;flex-direction:row;align-items:center;">
+          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',-1)">−</button>
+          <span class="order-step-qty" style="font-size:13px;min-width:14px;">${draft.qty}</span>
+          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',1)">+</button>
+        </div>
+        <span class="draft-line-price">${lineTotal.toFixed(2)} ₼</span>
+        <button onclick="openOrderItemDetail('${lineKey}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
+      </div>
+      ${draft.note ? `<div class="draft-line-sub">${esc(draft.note)}</div>` : ''}
+      ${draft.extraFee ? `<div class="draft-line-sub" style="display:flex;justify-content:space-between;"><span>Ekstra Ücret</span><span>${Number(draft.extraFee).toFixed(2)} ₼</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleDraftCancelSelect(lineKey) {
+  if (!state._orderCancelSelection) state._orderCancelSelection = {};
+  state._orderCancelSelection[lineKey] = !state._orderCancelSelection[lineKey];
+  const anySelected = Object.values(state._orderCancelSelection).some(v => v);
+  const btn = document.getElementById('removeSelectedBtn');
+  if (btn) btn.style.display = anySelected ? 'block' : 'none';
+}
+
+function removeSelectedDraftLines() {
+  const sel = state._orderCancelSelection || {};
+  Object.keys(sel).forEach(lineKey => { if (sel[lineKey]) delete state._orderDraft[lineKey]; });
+  state._orderCancelSelection = {};
+  const btn = document.getElementById('removeSelectedBtn');
+  if (btn) btn.style.display = 'none';
+  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+}
+
+function updateOrderDraftTotal() {
+  let total = 0;
+  Object.keys(state._orderDraft).forEach(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
+    if (m && draft) total += (m.price||0) * draft.qty + (draft.extraFee||0);
+  });
+  document.getElementById('orderDraftTotal').textContent = total.toFixed(2) + ' ₼';
+}
+
+function openOrderItemDetail(lineKey) {
+  const draft = state._orderDraft[lineKey];
+  if (!draft) return;
+  const m = state.menuItems.find(x=>x.id===draft.menuItemId);
+  if (!m) return;
+  state._orderDetailLineKey = lineKey;
+  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
+  document.getElementById('oid_photo').src = m.photo || fallback;
+  document.getElementById('oid_photo').onerror = function(){ this.src = fallback; };
+  document.getElementById('oid_name').textContent = m.name;
+  document.getElementById('oid_price').textContent = Number(m.price||0).toFixed(2);
+  document.getElementById('oid_note').value = draft.note || '';
+  document.getElementById('oid_extraFee').value = draft.extraFee || '';
+  document.getElementById('orderItemDetailModal').classList.add('open');
+}
+
+function closeOrderItemDetailModal() {
+  document.getElementById('orderItemDetailModal').classList.remove('open');
+  state._orderDetailLineKey = null;
+}
+
+function saveOrderItemDetail() {
+  const oldLineKey = state._orderDetailLineKey;
+  if (!oldLineKey) return;
+  const oldDraft = state._orderDraft[oldLineKey];
+  if (!oldDraft) return;
+  const note = document.getElementById('oid_note').value.trim();
+  const extraFee = parseFloat(document.getElementById('oid_extraFee').value) || 0;
+  const menuItemId = oldDraft.menuItemId;
+  const qty = oldDraft.qty;
+  delete state._orderDraft[oldLineKey];
+  const newLineKey = makeLineKey(menuItemId, note, extraFee);
+  if (state._orderDraft[newLineKey]) {
+    state._orderDraft[newLineKey].qty += qty;
+  } else {
+    state._orderDraft[newLineKey] = { menuItemId, qty, note, extraFee };
+  }
+  closeOrderItemDetailModal();
+  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+}
+
+function confirmSendOrder() {
+  const tableId = state.orderTableId;
+  if (!tableId) return;
+  const draftKeys = Object.keys(state._orderDraft);
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!draftKeys.length) { showToast('⚠️ Heç mal seçilməyib'); return; }
+
+  const existing = state.tableOrders[tableId];
+  const merged = {};
+  if (existing?.items) Object.entries(existing.items).forEach(([key, it]) => { merged[key] = { ...it }; });
+
+  draftKeys.forEach(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
+    if (!m) return;
+    const cleanKey = makeLineKey(draft.menuItemId, draft.note||'', draft.extraFee||0);
+    if (merged[cleanKey]) {
+      merged[cleanKey].qty += draft.qty;
+    } else {
+      merged[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price||0, qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0 };
+    }
+  });
+
+  const items = merged;
+  let total = 0;
+  Object.values(items).forEach(it => { total += (it.price||0) * it.qty + (it.extraFee||0); });
+
+  R.tableOrders.child(tableId).set({ items, total, waiterId: state.user.id, updatedAt: Date.now() });
+  addLog('order', `${state.user.name} "${t?.name}" masası üçün sifariş göndərdi (${total.toFixed(2)} ₼)`, { waiterId: state.user.id, tableId });
+  showToast('✅ Sifariş göndərildi');
+  closeOrderModal();
+}
+
+/* ═══════════════════════════════════════════
+   WAITER PANEL
+═══════════════════════════════════════════ */
+function renderWaiterCatTabs() {
+  const tabEl = document.getElementById('waiterCatTabs');
+  if (!tabEl) return;
+  const cats = ['all', ...new Set(state.tables.map(t => t.category || t.name.replace(/\s+\d+$/, '') || t.name))];
+  tabEl.innerHTML = cats.map(c => `
+    <button onclick="setWaiterCat('${esc(c)}')" style="flex:1;padding:10px 6px;border:none;background:transparent;font-size:13px;font-weight:700;cursor:pointer;color:${state._waiterCatFilter===c?'var(--red)':'var(--text2)'};border-bottom:2px solid ${state._waiterCatFilter===c?'var(--red)':'transparent'};">
+      ${c === 'all' ? 'Hamısı' : esc(c).toUpperCase()}
+    </button>
+  `).join('');
+}
+
+function setWaiterCat(cat) { state._waiterCatFilter = cat; renderWaiterCatTabs(); renderWaiterTables(); }
+
+function renderWaiterTables() {
+  if (!state.user || state.user.role !== 'staff') return;
+  renderWaiterCatTabs();
+  const el = document.getElementById('waiterTables');
+  if (!state.tables.length) { el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>'; return; }
+
+  const filtered = state._waiterCatFilter === 'all' ? state.tables : state.tables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._waiterCatFilter);
+  if (!filtered.length) { el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>'; return; }
+
+  const canViewOthers = hasPermission('waiter.view');
+  const canCloseTbl = hasPermission('table.close');
+
+  el.innerHTML = filtered.map(t => {
+    const isMine = t.occupant === state.user.id;
+    const isOther = t.occupant && !isMine;
+    const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
+    const tableOrder = state.tableOrders[t.id];
+    let cls = '', statusText = 'Boş', clickAttr = '';
+    if (isMine) {
+      cls = 'mine'; statusText = 'Aktiv (mənim)'; clickAttr = `onclick="openNotesModal('${t.id}')"`;
+    } else if (isOther) {
+      cls = 'other'; statusText = `${esc(otherW.name)} xidmət edir`;
+      if (canViewOthers) { cls = 'other-manage'; clickAttr = `onclick="openNotesModal('${t.id}')"`; }
+    } else {
+      clickAttr = `onclick="activateTable('${t.id}')"`;
+    }
+    return `<div class="w-table-card ${cls}" ${clickAttr}>
+      <div class="w-table-name">${esc(t.name)}</div>
+      <div class="w-table-status">${statusText}</div>
+      ${(isMine || (isOther && canViewOthers)) && tableOrder?.total ? `<div style="font-size:11px;color:var(--orange);font-weight:700;margin-top:4px;">🍔 ${(tableOrder.total||0).toFixed(2)} ₼</div>` : ''}
+      ${isMine && t.notes ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function activateTable(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t||t.occupant) { showToast('❌ Bu masa artıq aktivdir'); return; }
+  state.pendingTableId = tableId;
+  document.getElementById('confirmTableName').textContent = t.name;
+  document.getElementById('confirmTableModal').classList.add('open');
+}
+
+function confirmActivateTable() {
+  const tableId = state.pendingTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t) return;
+  R.tables.child(tableId).update({ occupant: state.user.id });
+  addLog('table',`${state.user.name} "${t.name}" masasını aktiv etdi`,{ waiterId:state.user.id, tableId });
+  showToast(`✅ ${t.name} aktiv edildi`);
+  closeConfirmTableModal();
+}
+
+function closeConfirmTableModal() {
+  document.getElementById('confirmTableModal').classList.remove('open');
+  state.pendingTableId = null;
+}
+
+function openNotesModal(tableId) {
+  const t = state.tables.find(x=>x.id===tableId);
+  if (!t) return;
+  state.noteTableId = tableId;
+  document.getElementById('noteTitle').textContent = '📝 ' + t.name + ' — Qeydlər';
+  document.getElementById('noteText').value = t.notes || '';
+  renderNoteOrderSummary(tableId);
+  const closeBtn = document.getElementById('notesCloseTableBtn');
+  if (closeBtn) closeBtn.style.display = hasPermission('table.close') ? 'block' : 'none';
+  document.getElementById('notesModal').classList.add('open');
+}
+
+function closeNotesModal() { document.getElementById('notesModal').classList.remove('open'); state.noteTableId=null; }
+
+function saveNote() {
+  if (!state.noteTableId) return;
+  const notes = document.getElementById('noteText').value;
+  const t = state.tables.find(x => x.id === state.noteTableId);
+  R.tables.child(state.noteTableId).update({ notes });
+  addLog('table', `${state.user.name} "${t?.name}" masasına qeyd yazdı: ${notes.substring(0,40)}`, { waiterId: state.user.id, tableId: state.noteTableId });
+  closeNotesModal();
+  showToast('✅ Qeyd saxlanıldı');
+}
+
+function deactivateTable() {
+  if (!requirePermission('table.close')) return;
+  if (!state.noteTableId) return;
+  const t = state.tables.find(x=>x.id===state.noteTableId);
+  if (!t) return;
+  state.pendingCloseTableId = state.noteTableId;
+  closeNotesModal();
+  document.getElementById('confirmCloseTableName').textContent = t.name;
+  document.getElementById('confirmCloseTableModal').classList.add('open');
+}
+
+function confirmDeactivateTable() {
+  const tableId = state.pendingCloseTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).once('value', snap => { snap.forEach(child => child.ref.remove()); });
+  db.ref('chats/' + tableId).remove();
+  R.tableOrders.child(tableId).remove();
+  R.tables.child(tableId).update({ occupant: null, notes: '' });
+  if (t) addLog('table', `${state.user.name} "${t.name}" masasını bağladı`, { waiterId: state.user.id, tableId });
+  showToast(`✅ ${t ? t.name : 'Masa'} bağlandı`);
+  closeConfirmCloseModal();
+}
+
+function closeConfirmCloseModal() {
+  document.getElementById('confirmCloseTableModal').classList.remove('open');
+  state.pendingCloseTableId = null;
+}
+
+function printBill(tableId) {
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  const order = state.tableOrders[tableId];
+  const waiterName = state.user?.name || '—';
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('az-AZ', {hour:'2-digit', minute:'2-digit'});
+  const dateStr = now.toLocaleDateString('az-AZ');
+  const items = order?.items ? Object.values(order.items) : [];
+  const total = order?.total || 0;
+  const itemRows = items.length ? items.map(it => {
+    const lineTotal = (it.price * it.qty) + (it.extraFee||0);
+    return `<tr><td style="padding:4px 0;">${it.qty}x ${it.name}${it.note?` <em style="font-size:11px;color:#666;">(${it.note})</em>`:''}</td><td style="text-align:right;padding:4px 0;">${lineTotal.toFixed(2)} ₼</td></tr>`;
+  }).join('') : '<tr><td colspan="2" style="color:#999;font-style:italic;">Sifariş yoxdur</td></tr>';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>🍽️ Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table><tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik! 🙏</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
+
+  const w = window.open('', '_blank', 'width=340,height=600');
+  if (w) {
+    w.document.write(html); w.document.close();
+    addLog('order', `${waiterName} "${t?.name}" masası üçün hesab çap etdi`, { tableId, waiterId: state.user?.id });
+  } else {
+    showToast('❌ Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   İLK YÜKLƏMƏ / DEMO DATA
+═══════════════════════════════════════════ */
+R.tables.once('value', snap=>{
+  if (snap.val()) return;
+  ['Masa 1','Masa 2','Masa 3','VIP Otaq','Terras','Bar'].forEach(name=>{
+    R.tables.push({name, capacity:4, occupant:null, notes:'', createdAt:Date.now()});
+  });
+});
+
+db.ref('settings/adminPin').once('value', snap => {
+  if (snap.val()) {
+    ADMIN_PIN = snap.val();
+  } else {
+    ADMIN_PIN = '0000';
+    db.ref('settings/adminPin').set('0000');
+    console.log('İlk admin PIN yaradıldı: 0000');
+  }
+});
+
+R.staff.once('value', snap=>{
+  if (snap.val()) return;
+  [
+    {name:'Əli Məmmədov', firstname:'Əli', lastname:'Məmmədov', position:'Qarson', pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200', status:'active', createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms},
+    {name:'Leyla Həsənli', firstname:'Leyla', lastname:'Həsənli', position:'Qarson', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'active', createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms},
+    {name:'Orxan Əliyev', firstname:'Orxan', lastname:'Əliyev', position:'Kassir', pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200', status:'offline', createdAt:Date.now(), permissions: PERMISSION_PRESETS.cashier.perms}
+  ].forEach(w=>R.staff.push(w));
+});
+
+checkCustomerMode();
+loadSavedTheme();
+document.getElementById('adminFab').style.display='none';
+
+/* ═══════════════════════════════════════════
+   İCAZƏ YOXLAMA FUNKSİYALARI
+═══════════════════════════════════════════ */
+function hasPermission(action) {
+  return staffHasPermission(state.user, action);
+}
+
+function requirePermission(action) {
+  if (!hasPermission(action)) {
+    showToast('❌ Bu əməliyyat üçün icazəniz yoxdur');
+    return false;
+  }
+  return true;
+}
+</script>
+</body>
+</html>
