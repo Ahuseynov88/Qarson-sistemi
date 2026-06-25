@@ -321,11 +321,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <div class="grid-2" id="activeTables"></div>
     </div>
 <div class="admin-section" id="sec-waiters">
-    </div>
-    <div class="admin-section" id="sec-staff">
-      <div class="grid-2" id="staffGrid"></div>
-    </div>
-    <div style="display:none">
   <div class="grid-2" id="waitersGrid"></div>
 </div>
 <div class="admin-section" id="sec-tables">
@@ -630,7 +625,7 @@ const firebaseConfig = {
   databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
 };
 
-/* ═══ İCAZƏ SİSTEMİ ═══ */
+/* ═══ İCAZƏ + İŞÇİ SİSTEMİ ═══ */
 const ROLE_PERMISSIONS = {
   waiter:['table.view','table.open','order.create','order.view','order.add_item','bill.print','customer.respond','kitchen.notify','chat.send','note.write'],
   head_waiter:['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','bill.print','bill.credit','customer.respond','kitchen.notify','chat.send','note.write','waiter.view'],
@@ -638,228 +633,87 @@ const ROLE_PERMISSIONS = {
   manager:['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.refund','bill.print','bill.credit','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view'],
   admin:['*']
 };
-
-function staffHasPermission(staffUser, action) {
-  if (!staffUser) return false;
-  const perms = staffUser.permissions || [];
-  return perms.includes(action);
+function staffHasPermission(u,a){return u?(u.permissions||[]).includes(a):false;}
+function hasPermission(a){
+  const u=state.user;if(!u)return false;
+  if(u.role==='admin')return true;
+  if(u.role==='staff')return staffHasPermission(u,a);
+  return(ROLE_PERMISSIONS[u.waiterRole||'waiter']||[]).includes(a);
 }
+function requirePermission(a){if(hasPermission(a))return true;showToast('🚫 Bu əməliyyat üçün icazəniz yoxdur');return false;}
+function getRoleDisplayName(r){return{waiter:'🤵 Adi Qarson',head_waiter:'⭐ Baş Qarson',cashier:'💰 Kassir',manager:'👔 Müdir'}[r]||'🤵 Qarson';}
 
-function hasPermission(action) {
-  const user = state.user;
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (user.role === 'staff') return staffHasPermission(user, action);
-  const perms = ROLE_PERMISSIONS[user.waiterRole || 'waiter'] || [];
-  return perms.includes('*') || perms.includes(action);
-}
-
-function requirePermission(action) {
-  if (hasPermission(action)) return true;
-  showToast('🚫 Bu əməliyyat üçün icazəniz yoxdur');
-  return false;
-}
-
-function getRoleDisplayName(r) {
-  return {waiter:'🤵 Adi Qarson',head_waiter:'⭐ Baş Qarson',cashier:'💰 Kassir',manager:'👔 Müdir'}[r]||'🤵 Qarson';
-}
-
-/* ═══ İŞÇİLƏR (STAFF) SİSTEMİ ═══ */
 const ALL_PERMISSIONS=[
-  {group:'Masa əməliyyatları',icon:'🪑',items:[
-    {key:'table.view',label:'Masaları görmək'},{key:'table.open',label:'Masa açmaq'},
-    {key:'table.close',label:'Masanı bağlamaq'},{key:'table.transfer',label:'Masadan-masaya köçürmə'},
-    {key:'waiter.view',label:'Digər işçilərin masalarını görmək'}]},
-  {group:'Sifariş',icon:'🍔',items:[
-    {key:'order.create',label:'Sifariş yaratmaq'},{key:'order.view',label:'Sifarişi görmək'},
-    {key:'order.add_item',label:'Sifarişə mal əlavə etmək'},{key:'order.cancel_item',label:'Sifarişdən mal silmək'},
-    {key:'order.cancel_all',label:'Bütün sifarişi ləğv etmək'},{key:'order.discount',label:'Endirim vermək'},
-    {key:'order.refund',label:'Geri qaytarma'}]},
-  {group:'Hesab və Ödəniş',icon:'💰',items:[
-    {key:'bill.print',label:'Hesab çap etmək'},{key:'bill.payment_cash',label:'Nağd ödəniş qəbul etmək'},
-    {key:'bill.payment_pos',label:'POS ödəniş qəbul etmək'},{key:'bill.credit',label:'Nisyəyə yazmaq'},
-    {key:'bill.payment_credit',label:'Nisyə ödənişi qəbul etmək'}]},
-  {group:'Müştəri xidməti',icon:'👥',items:[
-    {key:'customer.respond',label:'Müştəri çağırışına cavab vermək'},
-    {key:'kitchen.notify',label:'Mətbəxə bildiriş göndərmək'},
-    {key:'chat.send',label:'Müştəri ilə yazışmaq'},{key:'note.write',label:'Masa qeydi yazmaq'}]},
-  {group:'Hesabat',icon:'📊',items:[
-    {key:'report.daily',label:'Gün sonu hesabat'},{key:'report.weekly',label:'Həftəlik hesabat'}]},
-  {group:'İdarəetmə',icon:'👔',items:[
-    {key:'menu.view',label:'Menyunu görmək'},{key:'waiter.manage',label:'İşçi statusunu dəyişmək'},
-    {key:'staff.view',label:'İşçiləri görmək'}]}
+  {group:'Masa',icon:'🪑',items:[{key:'table.view',label:'Masaları görmək'},{key:'table.open',label:'Masa açmaq'},{key:'table.close',label:'Masanı bağlamaq'},{key:'table.transfer',label:'Masa köçürmə'},{key:'waiter.view',label:'Başqasının masasını görmək'}]},
+  {group:'Sifariş',icon:'🍔',items:[{key:'order.create',label:'Sifariş yaratmaq'},{key:'order.view',label:'Sifarişi görmək'},{key:'order.add_item',label:'Mal əlavə etmək'},{key:'order.cancel_item',label:'Mal silmək'},{key:'order.cancel_all',label:'Sifarişi ləğv etmək'},{key:'order.discount',label:'Endirim vermək'},{key:'order.refund',label:'Geri qaytarma'}]},
+  {group:'Ödəniş',icon:'💰',items:[{key:'bill.print',label:'Hesab çap etmək'},{key:'bill.payment_cash',label:'Nağd ödəniş'},{key:'bill.payment_pos',label:'POS ödəniş'},{key:'bill.credit',label:'Nisyəyə yazmaq'},{key:'bill.payment_credit',label:'Nisyə ödənişi'}]},
+  {group:'Müştəri',icon:'👥',items:[{key:'customer.respond',label:'Çağırışa cavab'},{key:'kitchen.notify',label:'Mətbəxə bildiriş'},{key:'chat.send',label:'Müştəri ilə yazışmaq'},{key:'note.write',label:'Qeyd yazmaq'}]},
+  {group:'Hesabat',icon:'📊',items:[{key:'report.daily',label:'Gün sonu hesabat'},{key:'report.weekly',label:'Həftəlik hesabat'}]},
+  {group:'İdarəetmə',icon:'👔',items:[{key:'menu.view',label:'Menyunu görmək'},{key:'waiter.manage',label:'İşçi statusu'},{key:'staff.view',label:'İşçiləri görmək'}]}
 ];
-
 const PERMISSION_PRESETS={
-  waiter:{label:'🤵 Adi Qarson kimi',perms:ROLE_PERMISSIONS.waiter},
-  head_waiter:{label:'⭐ Baş Qarson kimi',perms:ROLE_PERMISSIONS.head_waiter},
-  cashier:{label:'💰 Kassir kimi',perms:ROLE_PERMISSIONS.cashier},
-  manager:{label:'👔 Müdir kimi',perms:ROLE_PERMISSIONS.manager}
+  waiter:{perms:ROLE_PERMISSIONS.waiter},
+  head_waiter:{perms:ROLE_PERMISSIONS.head_waiter},
+  cashier:{perms:ROLE_PERMISSIONS.cashier},
+  manager:{perms:ROLE_PERMISSIONS.manager}
 };
-
-function applyPermissionPreset(presetKey){
-  const preset=PERMISSION_PRESETS[presetKey];
-  if(!preset)return;
-  document.querySelectorAll('input[name="staff_perm"]').forEach(cb=>{cb.checked=preset.perms.includes(cb.value);});
+function applyPermissionPreset(k){const p=PERMISSION_PRESETS[k];if(!p)return;document.querySelectorAll('input[name="staff_perm"]').forEach(cb=>{cb.checked=p.perms.includes(cb.value);});}
+function readPermissionCheckboxes(){return Array.from(document.querySelectorAll('input[name="staff_perm"]:checked')).map(cb=>cb.value);}
+function renderPermissionCheckboxes(ep=[]){
+  return ALL_PERMISSIONS.map(g=>`<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${g.icon} ${g.group}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">${g.items.map(item=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:6px 8px;border-radius:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);"><input type="checkbox" name="staff_perm" value="${item.key}" ${ep.includes(item.key)?'checked':''} style="accent-color:var(--green);width:16px;height:16px;flex-shrink:0;">${item.label}</label>`).join('')}</div></div>`).join('');
 }
-
-function readPermissionCheckboxes(){
-  return Array.from(document.querySelectorAll('input[name="staff_perm"]:checked')).map(cb=>cb.value);
-}
-
-function renderPermissionCheckboxes(existingPerms=[]){
-  return ALL_PERMISSIONS.map(group=>`
-    <div style="margin-bottom:14px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">
-        ${group.icon} ${group.group}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        ${group.items.map(item=>`
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);padding:6px 8px;border-radius:8px;background:var(--bg);border:1px solid var(--border);">
-            <input type="checkbox" name="staff_perm" value="${item.key}" ${existingPerms.includes(item.key)?'checked':''} style="accent-color:var(--green);width:16px;height:16px;flex-shrink:0;">
-            ${item.label}
-          </label>`).join('')}
-      </div>
-    </div>`).join('');
-}
-
 function staffForm(s={}){
-  const existingPerms=s.permissions||[];
-  return `
-    <div style="text-align:center;margin-bottom:16px;">
-      <img id="fs_preview" class="avatar-preview" src="${(s.avatar||'')}" style="${s.avatar?'display:block':'display:none'}">
-      <div class="avatar-upload-area" onclick="document.getElementById('fs_file').click()">
-        <div style="font-size:32px;margin-bottom:6px;">👤</div>
-        <div style="font-size:13px;color:var(--text2);">Şəkil yükləmək üçün klikləyin</div>
-        <input type="file" id="fs_file" accept="image/*" onchange="previewStaffPhoto(this)">
-      </div>
-      <input type="hidden" id="fs_avatar" value="${(s.avatar||'')}">
-    </div>
-    <div class="modal-section-title">👤 Məlumatlar</div>
-    <div class="form-row">
-      <div class="form-group"><label>Ad *</label><input type="text" id="fs_firstname" value="${(s.firstname||s.name?.split(' ')[0]||'')}" placeholder="Əli"></div>
-      <div class="form-group"><label>Soyad *</label><input type="text" id="fs_lastname" value="${(s.lastname||s.name?.split(' ')[1]||'')}" placeholder="Məmmədov"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Vəzifə</label><input type="text" id="fs_position" value="${(s.position||'')}" placeholder="Kassir, Müdir..."></div>
-      <div class="form-group"><label>Telefon</label><input type="tel" id="fs_phone" value="${(s.phone||'')}" placeholder="+994 50 000 00 00"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>FİN nömrəsi</label><input type="text" id="fs_fin" value="${(s.fin||'')}" placeholder="1234ABC"></div>
-      <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${(s.pin||'')}" maxlength="4" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
-    </div>
-    <div class="modal-section-title" style="margin-top:8px;">⚡ Sürətli Seçim</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
-      <button type="button" onclick="applyPermissionPreset('waiter')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">🤵 Adi Qarson kimi</button>
-      <button type="button" onclick="applyPermissionPreset('head_waiter')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">⭐ Baş Qarson kimi</button>
-      <button type="button" onclick="applyPermissionPreset('cashier')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">💰 Kassir kimi</button>
-      <button type="button" onclick="applyPermissionPreset('manager')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">👔 Müdir kimi</button>
-      <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:12px;cursor:pointer;">✕ Hamısını Sil</button>
-    </div>
-    <div class="modal-section-title">🔑 İcazələr</div>
-    ${renderPermissionCheckboxes(existingPerms)}`;
+  const ep=s.permissions||[];
+  return `<div style="text-align:center;margin-bottom:16px;"><img id="fs_preview" class="avatar-preview" src="${s.avatar||''}" style="${s.avatar?'display:block':'display:none'}"><div class="avatar-upload-area" onclick="document.getElementById('fs_file').click()"><div style="font-size:32px;margin-bottom:6px;">👤</div><div style="font-size:13px;color:var(--text2);">Şəkil yükləmək üçün klikləyin</div><input type="file" id="fs_file" accept="image/*" onchange="previewStaffPhoto(this)"></div><input type="hidden" id="fs_avatar" value="${s.avatar||''}"></div>
+  <div class="modal-section-title">👤 Məlumatlar</div>
+  <div class="form-row"><div class="form-group"><label>Ad *</label><input type="text" id="fs_firstname" value="${s.firstname||s.name?.split(' ')[0]||''}" placeholder="Əli"></div><div class="form-group"><label>Soyad *</label><input type="text" id="fs_lastname" value="${s.lastname||s.name?.split(' ')[1]||''}" placeholder="Məmmədov"></div></div>
+  <div class="form-row"><div class="form-group"><label>Vəzifə</label><input type="text" id="fs_position" value="${s.position||''}" placeholder="Kassir, Müdir..."></div><div class="form-group"><label>Telefon</label><input type="tel" id="fs_phone" value="${s.phone||''}" placeholder="+994 50 000 00 00"></div></div>
+  <div class="form-row"><div class="form-group"><label>FİN</label><input type="text" id="fs_fin" value="${s.fin||''}" placeholder="1234ABC"></div><div class="form-group"><label>PIN * (4 rəqəm)</label><input type="text" id="fs_pin" value="${s.pin||''}" maxlength="4" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div></div>
+  <div class="modal-section-title" style="margin-top:8px;">⚡ Sürətli Seçim</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+    <button type="button" onclick="applyPermissionPreset('waiter')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">🤵 Adi Qarson kimi</button>
+    <button type="button" onclick="applyPermissionPreset('head_waiter')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">⭐ Baş Qarson kimi</button>
+    <button type="button" onclick="applyPermissionPreset('cashier')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">💰 Kassir kimi</button>
+    <button type="button" onclick="applyPermissionPreset('manager')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text);">👔 Müdir kimi</button>
+    <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:12px;cursor:pointer;">✕ Sil</button>
+  </div>
+  <div class="modal-section-title">🔑 İcazələr</div>
+  ${renderPermissionCheckboxes(ep)}`;
 }
-
-function previewStaffPhoto(input){
-  const file=input.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const p=document.getElementById('fs_preview');
-    if(p){p.src=e.target.result;p.style.display='block';}
-    const f=document.getElementById('fs_avatar');
-    if(f)f.value=e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
+function previewStaffPhoto(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{const p=document.getElementById('fs_preview');if(p){p.src=e.target.result;p.style.display='block';}const f=document.getElementById('fs_avatar');if(f)f.value=e.target.result;};reader.readAsDataURL(file);}
 function renderStaff(){
-  const el=document.getElementById('staffGrid');
-  if(!el)return;
+  const el=document.getElementById('staffGrid');if(!el)return;
   if(!state.staff||!state.staff.length){el.innerHTML='<p style="color:var(--text3);">Hələ işçi əlavə edilməyib. + düyməsinə basın.</p>';return;}
   el.innerHTML=state.staff.map(s=>{
-    const permCount=(s.permissions||[]).length;
-    const fallback=`https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
+    const pc=(s.permissions||[]).length;
+    const fb=`https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
     const st=s.status==='offline'?'Deaktiv':'Aktiv';
     const bc=s.status==='offline'?'badge-red':'badge-green';
-    return `<div class="item-card">
-      <div class="item-card-header">
-        <img class="avatar" src="${s.avatar||fallback}" alt="" onerror="this.src='${fallback}'">
-        <div class="item-info">
-          <h3>${esc(s.name)}</h3>
-          <small style="color:var(--text2);">${esc(s.position||'İşçi')}</small>
-          <small style="color:var(--purple);display:block;font-weight:600;">🔑 ${permCount} icazə</small>
-          ${s.phone?`<small style="color:var(--text3);display:block;">📞 ${esc(s.phone)}</small>`:''}
-        </div>
-      </div>
-      <span class="status-badge ${bc}">${st}</span>
-      <div class="item-actions">
-        <button class="btn ${s.status==='offline'?'btn-green':'btn-red'}" onclick="toggleStaffStatus('${s.id}')">${s.status==='offline'?'Aktiv Et':'Deaktiv Et'}</button>
-        <button class="btn btn-ghost" onclick="editStaffMember('${s.id}')">✏️</button>
-        <button class="btn btn-red" onclick="deleteStaffMember('${s.id}')">🗑️</button>
-      </div>
-    </div>`;
+    return `<div class="item-card"><div class="item-card-header"><img class="avatar" src="${s.avatar||fb}" alt="" onerror="this.src='${fb}'"><div class="item-info"><h3>${esc(s.name)}</h3><small style="color:var(--text2);">${esc(s.position||'İşçi')}</small><small style="color:var(--purple);display:block;">🔑 ${pc} icazə</small>${s.phone?`<small style="color:var(--text3);display:block;">📞 ${esc(s.phone)}</small>`:''}</div></div><span class="status-badge ${bc}">${st}</span><div class="item-actions"><button class="btn ${s.status==='offline'?'btn-green':'btn-red'}" onclick="toggleStaffStatus('${s.id}')">${s.status==='offline'?'Aktiv Et':'Deaktiv Et'}</button><button class="btn btn-ghost" onclick="editStaffMember('${s.id}')">✏️</button><button class="btn btn-red" onclick="deleteStaffMember('${s.id}')">🗑️</button></div></div>`;
   }).join('');
 }
-
-function toggleStaffStatus(id){
-  const s=state.staff.find(x=>x.id===id);if(!s)return;
-  const ns=s.status==='offline'?'active':'offline';
-  db.ref('staff').child(id).update({status:ns});
-  showToast(ns==='active'?`✅ ${s.name} aktiv edildi`:`🚫 ${s.name} deaktiv edildi`);
-}
-
-function editStaffMember(id){
-  const s=state.staff.find(x=>x.id===id);if(!s)return;
-  state.editTarget={type:'staff',id};
-  document.getElementById('addModalTitle').textContent='✏️ İşçi Düzəliş';
-  document.getElementById('addModalBody').innerHTML=staffForm(s);
-  document.getElementById('addModal').classList.add('open');
-}
-
-function deleteStaffMember(id){
-  const s=state.staff.find(x=>x.id===id);
-  if(!confirm(`"${s?.name}" adlı işçi silinsin?`))return;
-  db.ref('staff').child(id).remove();
-  showToast('🗑️ İşçi silindi');
-}
-
-function openAddStaffModal(){
-  state.editTarget={type:'staff'};
-  document.getElementById('addModalTitle').textContent='➕ Yeni İşçi';
-  document.getElementById('addModalBody').innerHTML=staffForm({});
-  document.getElementById('addModal').classList.add('open');
-}
-
+function toggleStaffStatus(id){const s=state.staff.find(x=>x.id===id);if(!s)return;const ns=s.status==='offline'?'active':'offline';db.ref('staff').child(id).update({status:ns});showToast(ns==='active'?'✅ Aktiv edildi':'🚫 Deaktiv edildi');}
+function editStaffMember(id){const s=state.staff.find(x=>x.id===id);if(!s)return;state.editTarget={type:'staff',id};document.getElementById('addModalTitle').textContent='✏️ İşçi Düzəliş';document.getElementById('addModalBody').innerHTML=staffForm(s);document.getElementById('addModal').classList.add('open');}
+function deleteStaffMember(id){const s=state.staff.find(x=>x.id===id);if(!confirm('"'+(s?.name||'')+'" adlı işçi silinsin?'))return;db.ref('staff').child(id).remove();showToast('🗑️ İşçi silindi');}
+function openAddStaffModal(){state.editTarget={type:'staff'};document.getElementById('addModalTitle').textContent='➕ Yeni İşçi';document.getElementById('addModalBody').innerHTML=staffForm({});document.getElementById('addModal').classList.add('open');}
 function saveStaff(){
-  const firstname=(document.getElementById('fs_firstname')?.value||'').trim();
-  const lastname=(document.getElementById('fs_lastname')?.value||'').trim();
-  const position=(document.getElementById('fs_position')?.value||'').trim();
+  const fn=(document.getElementById('fs_firstname')?.value||'').trim();
+  const ln=(document.getElementById('fs_lastname')?.value||'').trim();
+  const pos=(document.getElementById('fs_position')?.value||'').trim();
   const pin=(document.getElementById('fs_pin')?.value||'').trim();
   const phone=(document.getElementById('fs_phone')?.value||'').trim();
   const fin=(document.getElementById('fs_fin')?.value||'').trim();
-  const avatarVal=(document.getElementById('fs_avatar')?.value||'').trim();
+  const av=(document.getElementById('fs_avatar')?.value||'').trim();
   const permissions=readPermissionCheckboxes();
-
-  if(!firstname||!lastname){showToast('❌ Ad və Soyad mütləqdir');return;}
+  if(!fn||!ln){showToast('❌ Ad və Soyad mütləqdir');return;}
   if(pin.length!==4||!/^\d{4}$/.test(pin)){showToast('❌ 4 rəqəmli PIN lazımdır');return;}
-
-  const allStaff=[...state.staff,...state.staff];
-  const pinConflict=state.staff.find(s=>s.pin===pin&&(!state.editTarget?.id||s.id!==state.editTarget.id));
-  if(pinConflict){showToast('❌ Bu PIN artıq istifadə olunur');return;}
-
-  const name=`${firstname} ${lastname}`;
-  const fallback=`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
-  const avatar=avatarVal||fallback;
-  const staffData={name,firstname,lastname,position,pin,phone,fin,avatar,permissions};
-
-  if(state.editTarget?.id){
-    db.ref('staff').child(state.editTarget.id).update(staffData);
-    showToast('✅ İşçi yeniləndi');
-  } else {
-    db.ref('staff').push({...staffData,status:'active',createdAt:Date.now()});
-    showToast('✅ İşçi əlavə edildi');
-  }
+  const conflict=state.staff.find(s=>s.pin===pin&&(!state.editTarget?.id||s.id!==state.editTarget.id));
+  if(conflict){showToast('❌ Bu PIN artıq istifadə olunur');return;}
+  const name=fn+' '+ln;
+  const fb=`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
+  const data={name,firstname:fn,lastname:ln,position:pos,pin,phone,fin,avatar:av||fb,permissions};
+  if(state.editTarget?.id){db.ref('staff').child(state.editTarget.id).update(data);showToast('✅ İşçi yeniləndi');}
+  else{db.ref('staff').push({...data,status:'active',createdAt:Date.now()});showToast('✅ İşçi əlavə edildi');}
   document.getElementById('addModal').classList.remove('open');
   state.editTarget=null;
 }
@@ -881,7 +735,7 @@ const ADMIN_PIN = '0803';
 let state = {
   role: 'admin',
   user: null,
-  staff: [],   // bütün əməkdaşlar
+  staff: [],
   tables: [],
   orders: [],
   logs: [],
@@ -952,6 +806,40 @@ function doLogin() {
     addLog('login','Mətbəx sistemə daxil oldu',{type:'kitchen'});
     initListeners();
     showScreen('kitchenScreen');
+    return;
+  }
+
+  if (state.role === 'staff') {
+    R.staff.once('value', snap => {
+      const data = snap.val() || {};
+      const list = Object.keys(data).map(k=>({id:k,...data[k]}));
+      const w = list.find(x => x.pin === pin);
+      if (!w) { showErr('PIN kod tapılmadı!'); return; }
+      if (w.status === 'offline') { showErr('Hesabınız deaktivdir. Adminə müraciət edin.'); return; }
+      state.user = { ...w, role:'staff' };
+      R.staff.child(w.id).update({ status:'online', lastLogin: Date.now() });
+      addLog('login', `${w.name} sistemə daxil oldu`, { waiterId: w.id });
+      initListeners();
+      showScreen('waiterScreen');
+      document.getElementById('wName').textContent = w.name;
+      document.getElementById('wAvatar').src = w.avatar;
+      lockScreen();
+      // Qarson istənilən şəkildə çıxsa Firebase-i xəbərdar et
+      R.staff.child(state.user.id).onDisconnect().update({
+        status: 'ready',
+        lastSeen: Date.now()
+      });
+      // Qarson bağlantını kəsəndə log yaz
+      const disconnectLogRef = R.logs.push();
+      disconnectLogRef.onDisconnect().set({
+        type: 'logout',
+        message: `${state.user.name} sistemdən çıxdı (bağlantı kəsildi)`,
+        details: { waiterId: state.user.id, method: 'disconnect' },
+        timestamp: Date.now(),
+        time: new Date().toLocaleTimeString('az-AZ'),
+        date: new Date().toLocaleDateString('az-AZ')
+      });
+    });
     return;
   }
 
@@ -1127,7 +1015,8 @@ function onDataChange() {
   const r = state.user?.role;
   if (r==='admin')   renderAdmin();
   if (r==='kitchen') renderKitchen();
-  if (r==='staff')  renderWaiterTables();
+  if (r==='staff')   renderWaiterTables();
+  if (r==='waiter')  renderWaiterTables();
 }
 
 /* ═══════════════════════════════════════════
@@ -1473,7 +1362,6 @@ function tableForm(name='', isEdit=false) {
 
 function openAddModal() {
   if (state.adminSection === 'staff') { openAddStaffModal(); return; }
-
   state.editTarget = null;
   if (state.adminSection === 'waiters') {
     document.getElementById('addModalTitle').textContent = '➕ Yeni Qarson';
@@ -1491,14 +1379,10 @@ function closeAddModal() {
 }
 
 function saveItem() {
+  if (state.adminSection === 'staff' || state.editTarget?.type === 'staff') { saveStaff(); return; }
   const sec = state.editTarget
     ? state.editTarget.type
-    : (state.adminSection === 'waiters' ? 'waiter'
-       : state.adminSection === 'staff' ? 'staff'
-       : state.adminSection === 'menu' ? 'menuItem'
-       : 'table');
-
-  if (sec === 'staff') { saveStaff(); return; }
+    : (state.adminSection === 'waiters' ? 'waiter' : 'table');
 
   if (sec === 'waiter') {
     const firstname  = (document.getElementById('fw_firstname')?.value||'').trim();
@@ -2183,4 +2067,7 @@ R.tables.once('value', snap=>{
    QR KOD
 ═══════════════════════════════════════════ */
 function showQR(tableId, tableName) {
-  const url = l
+  const url = location.origin + location.pathname + '?table=' + tableId;
+  document.getElementById('qrModalTitle').textContent = '📱 ' + tableName;
+  document.getElementById('qrLink').textContent = url;
+  const canvas = document.getElementById('qrCanva
