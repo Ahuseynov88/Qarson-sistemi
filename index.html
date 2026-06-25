@@ -695,11 +695,36 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 /* ═══════════════════════════════════════════
    FIREBASE KONFİQURASİYA
 ═══════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   FIREBASE KONFİQURASİYA - DÜZƏLDİLMİŞ
+═══════════════════════════════════════════ */
 const firebaseConfig = {
-  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app"
+  apiKey: "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA",
+  authDomain: "qarsonn-sistemi.firebaseapp.com",
+  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "qarsonn-sistemi",
+  storageBucket: "qarsonn-sistemi.appspot.com",
+  messagingSenderId: "1013093073801",
+  appId: "1:1013093073801:web:5676a351715cf6161a9758"
 };
+
+// Yoxlama: API key boşdursa xəbərdarlıq
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "AIzaSyAy9ZwLcWpqiXTOg6oKxnaTvvvuIXC_7yA") {
+  console.error("❌ XƏTA: Firebase API key daxil edilməyib!");
+  console.error("Firebase Console → Project Settings → General → Your apps → Config");
+  alert("Firebase konfiqurasiyası tamamlanmamış! Adminə müraciət edin.");
+}
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+// YENI: Offline dəstək (internet kəsilsə də işləsin)
+firebase.database().enablePersistence({
+  synchronizeTabs: true
+}).catch(err => {
+  console.warn("Offline persistence:", err.code);
+});
 
 const R = {
   staff:       db.ref('staff'),
@@ -707,7 +732,8 @@ const R = {
   orders:      db.ref('orders'),
   logs:        db.ref('logs'),
   menuItems:   db.ref('menuItems'),
-  tableOrders: db.ref('tableOrders')
+  tableOrders: db.ref('tableOrders'),
+  settings:    db.ref('settings')  // YENI: Ayarlar üçün
 };
 
 /* ═══════════════════════════════════════════
