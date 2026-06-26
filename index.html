@@ -283,6 +283,42 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 /* ── CAT FILTER BUTTONS ── */
 .cat-filter-btn{padding:8px 18px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;transition:.2s;white-space:nowrap;}
 .cat-filter-btn.active{background:var(--brand-gradient);color:white;border-color:transparent;}
+
+/* ── ÖDƏMƏ MODALI ── */
+.pay-method-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.pay-method-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 12px;border-radius:16px;border:2px solid var(--border);background:var(--card2);cursor:pointer;transition:.2s;font-size:14px;font-weight:700;color:var(--text);}
+.pay-method-btn:active{transform:scale(0.96);}
+.pay-method-btn .pay-icon{font-size:36px;}
+.pay-method-btn.selected{border-width:2px;box-shadow:0 0 0 2px currentColor;}
+.pay-method-btn.cash{border-color:var(--green);color:var(--green);}
+.pay-method-btn.cash.selected{background:rgba(46,204,113,.12);}
+.pay-method-btn.pos{border-color:var(--blue);color:var(--blue);}
+.pay-method-btn.pos.selected{background:rgba(52,152,219,.12);}
+.pay-method-btn.credit{border-color:var(--orange);color:var(--orange);}
+.pay-method-btn.credit.selected{background:rgba(196,176,46,.12);}
+.pay-method-btn.split{border-color:var(--purple);color:var(--purple);}
+.pay-method-btn.split.selected{background:rgba(142,68,173,.12);}
+.pay-summary-box{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;}
+.pay-summary-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px;border-bottom:1px solid var(--border);}
+.pay-summary-row:last-child{border-bottom:none;}
+.pay-summary-row.total{font-size:18px;font-weight:800;color:var(--green);padding-top:10px;margin-top:4px;}
+.pay-summary-row.discount{color:var(--red);}
+.discount-row{display:flex;gap:8px;align-items:center;margin-bottom:16px;}
+.discount-row input{flex:1;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
+.discount-row select{padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;}
+.pay-confirm-btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;transition:.2s;margin-top:8px;}
+.pay-confirm-btn:active{transform:scale(0.98);}
+.pay-confirm-btn.cash{background:var(--green);color:white;}
+.pay-confirm-btn.pos{background:var(--blue);color:white;}
+.pay-confirm-btn.credit{background:var(--orange);color:white;}
+.pay-confirm-btn.split{background:var(--purple);color:white;}
+.pay-history-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;}
+.pay-history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.pay-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;}
+.pay-badge.cash{background:rgba(46,204,113,.15);color:var(--green);}
+.pay-badge.pos{background:rgba(52,152,219,.15);color:var(--blue);}
+.pay-badge.credit{background:rgba(196,176,46,.15);color:var(--orange);}
+.pay-badge.split{background:rgba(142,68,173,.15);color:var(--purple);}
 </style>
 </head>
 <body>
@@ -341,6 +377,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
       <button class="admin-tab" onclick="adminTab('logs',this)">📋 Tarixçə</button>
       <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)">💬 Tələblər</button>
+      <button class="admin-tab" onclick="adminTab('payments',this)">💰 Ödənişlər</button>
     </div>
 
     <!-- Dashboard -->
@@ -415,6 +452,25 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
         <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldFeedbacks()">🗑️ 30 Gündən Köhnəni Sil</button>
       </div>
       <div id="feedbackList" class="log-list"></div>
+    </div>
+
+    <!-- Payments -->
+    <div class="admin-section" id="sec-payments">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <h3 style="color:var(--text2);font-size:13px;text-transform:uppercase;">Ödəniş Tarixçəsi</h3>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span id="payTotalToday" style="font-size:13px;color:var(--green);font-weight:700;"></span>
+          <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldPayments()">🗑️ 30 Gündən Köhnəni Sil</button>
+        </div>
+      </div>
+      <div class="log-filter-bar" style="margin-bottom:16px;">
+        <button class="log-filter active" onclick="setPayFilter('all',this)">Hamısı</button>
+        <button class="log-filter" onclick="setPayFilter('cash',this)">💵 Nağd</button>
+        <button class="log-filter" onclick="setPayFilter('pos',this)">💳 POS</button>
+        <button class="log-filter" onclick="setPayFilter('credit',this)">📒 Nisyə</button>
+        <button class="log-filter" onclick="setPayFilter('split',this)">✂️ Bölünmüş</button>
+      </div>
+      <div id="paymentHistoryList" class="log-list"></div>
     </div>
   </div>
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
@@ -566,6 +622,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
     <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost-dark" style="flex:1;padding:13px;min-width:80px;" onclick="closeNotesModal()">Bağla</button>
       <button class="btn btn-blue" style="flex:1;padding:13px;min-width:80px;" onclick="printBill(state.noteTableId)">🖨️ Hesab</button>
+      <button class="btn btn-orange" style="flex:1;padding:13px;min-width:80px;" onclick="openPaymentModal(state.noteTableId)">💳 Ödəmə</button>
       <button class="btn btn-green" style="flex:1;padding:13px;min-width:80px;" onclick="saveNote()">💾 Saxla</button>
       <button id="notesCloseTableBtn" class="btn btn-red" style="display:none;padding:13px;min-width:80px;" onclick="deactivateTable()">🔒 Bağla</button>
     </div>
@@ -695,6 +752,107 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   <div style="font-size:64px;margin-bottom:16px;">🪑</div>
   <h2>Bu masa hələ aktiv deyil</h2>
   <p style="color:rgba(255,255,255,.7);margin-top:8px;">Zəhmət olmasa ofisiantı gözləyin.</p>
+</div>
+
+<!-- ═══ ÖDƏMƏ MODALI ═══ -->
+<div class="modal-bg" id="paymentModal">
+  <div class="modal" style="max-width:480px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="margin:0;" id="paymentModalTitle">💳 Ödəmə</h2>
+      <button onclick="closePaymentModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">✕</button>
+    </div>
+
+    <!-- Sifariş xülasəsi -->
+    <div class="pay-summary-box" id="paySummaryBox"></div>
+
+    <!-- Endirim -->
+    <div id="discountSection">
+      <div class="modal-section-title">🏷️ Endirim (istəyə görə)</div>
+      <div class="discount-row">
+        <input type="number" id="discountValue" min="0" placeholder="0" inputmode="decimal" oninput="recalcPayment()">
+        <select id="discountType" onchange="recalcPayment()">
+          <option value="amount">₼ Məbləğ</option>
+          <option value="percent">% Faiz</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Ödəmə üsulu -->
+    <div class="modal-section-title">💰 Ödəmə Üsulu</div>
+    <div class="pay-method-grid">
+      <button class="pay-method-btn cash" onclick="selectPayMethod('cash')">
+        <span class="pay-icon">💵</span>
+        Nağd
+      </button>
+      <button class="pay-method-btn pos" onclick="selectPayMethod('pos')">
+        <span class="pay-icon">💳</span>
+        POS Terminal
+      </button>
+      <button class="pay-method-btn credit" onclick="selectPayMethod('credit')">
+        <span class="pay-icon">📒</span>
+        Nisyə
+      </button>
+      <button class="pay-method-btn split" onclick="selectPayMethod('split')">
+        <span class="pay-icon">✂️</span>
+        Bölünmüş
+      </button>
+    </div>
+
+    <!-- Bölünmüş ödəmə -->
+    <div id="splitPaySection" style="display:none;">
+      <div class="modal-section-title">✂️ Bölünmüş Ödəmə</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div class="form-group" style="flex:1;margin:0;">
+          <label>Nağd (₼)</label>
+          <input type="number" id="splitCash" min="0" step="0.01" placeholder="0.00" inputmode="decimal" oninput="recalcSplit()">
+        </div>
+        <div class="form-group" style="flex:1;margin:0;">
+          <label>POS (₼)</label>
+          <input type="number" id="splitPos" min="0" step="0.01" placeholder="0.00" inputmode="decimal" oninput="recalcSplit()">
+        </div>
+      </div>
+      <div id="splitRemaining" style="font-size:13px;color:var(--text2);margin-bottom:8px;"></div>
+    </div>
+
+    <!-- Nisyə -->
+    <div id="creditSection" style="display:none;">
+      <div class="modal-section-title">📒 Nisyə Məlumatları</div>
+      <div class="form-group">
+        <label>Müştəri adı / nömrəsi</label>
+        <input type="text" id="creditCustomer" placeholder="Əli Məmmədov / +994 50...">
+      </div>
+      <div class="form-group">
+        <label>Qeyd</label>
+        <input type="text" id="creditNote" placeholder="Nisyə səbəbi...">
+      </div>
+    </div>
+
+    <!-- Cəmi -->
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:14px;color:var(--text2);">Ödəniləcək məbləğ:</span>
+        <span id="payFinalTotal" style="font-size:24px;font-weight:800;color:var(--green);">0.00 ₼</span>
+      </div>
+    </div>
+
+    <button class="pay-confirm-btn cash" id="payConfirmBtn" onclick="confirmPayment()" style="display:none;">
+      ✅ Ödənişi Təsdiqlə
+    </button>
+  </div>
+</div>
+
+<!-- ═══ ÖDƏMƏ UĞURLU ═══ -->
+<div class="modal-bg" id="paymentSuccessModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <div style="font-size:72px;margin-bottom:16px;">✅</div>
+    <h2 style="color:var(--green);margin-bottom:8px;" id="paySuccessTitle">Ödəniş Qəbul Edildi!</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:6px;" id="paySuccessAmount"></p>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:24px;" id="paySuccessMethod"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost-dark" style="flex:1;padding:13px;" onclick="closePaymentSuccess(false)">Masanı Açıq Burax</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="closePaymentSuccess(true)">🔒 Masanı Bağla</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -975,8 +1133,7 @@ function loadSavedTheme() {
 function renderAdmin() {
   const sec = state.adminSection;
   if (sec === 'dashboard') renderDashboard();
-  if (sec === 'staff')     renderStaff();
-  if (sec === 'tables')    renderTables();
+  if (sec === 'staff')     renderStaff();  if (sec === 'tables')    renderTables();
   if (sec === 'menu')      renderMenuItems();
   if (sec === 'logs')      renderLogs();
   if (sec === 'feedback')  renderFeedbackSection();
@@ -997,6 +1154,7 @@ function adminTab(sec, el) {
       if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
     });
   }
+  if (sec === 'payments') renderPaymentHistoryAdmin();
 }
 
 /* ── Dashboard ── */
@@ -1242,7 +1400,8 @@ function previewStaffPhoto(input) {
 function renderTables() {
   const el    = document.getElementById('tablesGrid');
   const tabEl = document.getElementById('tableCatTabs');
-  if (!state.tables.length) {    el.innerHTML = '<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>';
+  if (!state.tables.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>';
     tabEl.innerHTML = '';
     return;
   }
@@ -2110,8 +2269,7 @@ function sendCustomerMsg() {
   const t       = state.customerTableData;
   if (!text || !tableId) return;
   db.ref(`chats/${tableId}/messages`).push({
-    sender:'customer', text,
-    time:new Date().toLocaleTimeString('az-AZ'),
+    sender:'customer', text,    time:new Date().toLocaleTimeString('az-AZ'),
     createdAt:Date.now(), readByWaiter:false
   });
   db.ref('customerRequests').push({
@@ -2674,8 +2832,363 @@ function printBill(tableId) {
 }
 
 /* ═══════════════════════════════════════════
-   KIOSK LOCK
+   ÖDƏMƏ SİSTEMİ
 ═══════════════════════════════════════════ */
+
+// Cari ödəmə state-i
+const payState = {
+  tableId: null,
+  method: null,      // 'cash' | 'pos' | 'credit' | 'split'
+  originalTotal: 0,
+  discountAmount: 0,
+  finalTotal: 0
+};
+
+function openPaymentModal(tableId) {
+  if (!tableId) return;
+
+  // İcazə yoxla
+  const hasCash   = hasPermission('bill.payment_cash');
+  const hasPos    = hasPermission('bill.payment_pos');
+  const hasCredit = hasPermission('bill.credit');
+  if (!hasCash && !hasPos && !hasCredit && state.user?.role !== 'admin') {
+    showToast('❌ Ödəmə qəbul etmək üçün icazəniz yoxdur');
+    return;
+  }
+
+  const t     = state.tables.find(x => x.id === tableId);
+  const order = state.tableOrders[tableId];
+
+  payState.tableId       = tableId;
+  payState.method        = null;
+  payState.discountAmount = 0;
+  payState.originalTotal  = order?.total || 0;
+  payState.finalTotal     = payState.originalTotal;
+
+  // Başlıq
+  document.getElementById('paymentModalTitle').textContent = `💳 ${t?.name || 'Masa'} — Ödəmə`;
+
+  // Sifariş xülasəsi
+  renderPaySummary(order);
+
+  // Endirim sıfırla
+  document.getElementById('discountValue').value = '';
+  document.getElementById('discountType').value  = 'amount';
+
+  // Bölünmüş / nisyə gizlət
+  document.getElementById('splitPaySection').style.display  = 'none';
+  document.getElementById('creditSection').style.display    = 'none';
+  document.getElementById('splitCash').value = '';
+  document.getElementById('splitPos').value  = '';
+  document.getElementById('creditCustomer').value = '';
+  document.getElementById('creditNote').value     = '';
+
+  // Cəmi yenilə
+  document.getElementById('payFinalTotal').textContent = payState.finalTotal.toFixed(2) + ' ₼';
+
+  // Düymə metodları — icazəyə görə göstər/gizlət
+  const grid = document.querySelector('.pay-method-grid');
+  grid.querySelectorAll('.pay-method-btn').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  const cashBtn   = grid.querySelector('.cash');
+  const posBtn    = grid.querySelector('.pos');
+  const creditBtn = grid.querySelector('.credit');
+  if (cashBtn)   cashBtn.style.display   = (hasCash   || state.user?.role==='admin') ? '' : 'none';
+  if (posBtn)    posBtn.style.display    = (hasPos    || state.user?.role==='admin') ? '' : 'none';
+  if (creditBtn) creditBtn.style.display = (hasCredit || state.user?.role==='admin') ? '' : 'none';
+
+  // Endirim bölməsi
+  const hasDiscount = hasPermission('order.discount') || state.user?.role === 'admin';
+  document.getElementById('discountSection').style.display = hasDiscount ? '' : 'none';
+
+  document.getElementById('payConfirmBtn').style.display = 'none';
+  document.getElementById('paymentModal').classList.add('open');
+
+  // Notes modal-ı bağla
+  closeNotesModal();
+}
+
+function renderPaySummary(order) {
+  const el    = document.getElementById('paySummaryBox');
+  const items = order?.items ? Object.values(order.items) : [];
+  if (!items.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Sifariş yoxdur.</p>';
+    return;
+  }
+  el.innerHTML = `
+    ${items.map(it => {
+      const line = (it.price * it.qty) + (it.extraFee||0);
+      return `<div class="pay-summary-row">
+        <span>${it.qty}x ${esc(it.name)}${it.note ? ` <small style="color:var(--text3);">(${esc(it.note)})</small>` : ''}</span>
+        <span>${line.toFixed(2)} ₼</span>
+      </div>`;
+    }).join('')}
+    <div class="pay-summary-row" style="font-weight:700;border-top:2px solid var(--border);margin-top:4px;padding-top:10px;">
+      <span>Aratoplam</span>
+      <span>${(order?.total||0).toFixed(2)} ₼</span>
+    </div>
+  `;
+}
+
+function recalcPayment() {
+  const raw  = parseFloat(document.getElementById('discountValue').value) || 0;
+  const type = document.getElementById('discountType').value;
+  const orig = payState.originalTotal;
+
+  if (type === 'percent') {
+    payState.discountAmount = Math.min(orig, (orig * raw / 100));
+  } else {
+    payState.discountAmount = Math.min(orig, raw);
+  }
+  payState.finalTotal = Math.max(0, orig - payState.discountAmount);
+
+  // Xülasəni yenilə
+  const summaryEl = document.getElementById('paySummaryBox');
+  // Köhnə endirim sətirini sil
+  summaryEl.querySelectorAll('.discount-line').forEach(el => el.remove());
+  summaryEl.querySelectorAll('.final-line').forEach(el => el.remove());
+
+  if (payState.discountAmount > 0) {
+    summaryEl.innerHTML += `
+      <div class="pay-summary-row discount discount-line">
+        <span>🏷️ Endirim${type==='percent' ? ` (${raw}%)` : ''}</span>
+        <span>− ${payState.discountAmount.toFixed(2)} ₼</span>
+      </div>
+      <div class="pay-summary-row total final-line">
+        <span>💰 Ödəniləcək</span>
+        <span>${payState.finalTotal.toFixed(2)} ₼</span>
+      </div>
+    `;
+  }
+
+  document.getElementById('payFinalTotal').textContent = payState.finalTotal.toFixed(2) + ' ₼';
+
+  // Split varsa yenilə
+  if (payState.method === 'split') recalcSplit();
+}
+
+function selectPayMethod(method) {
+  payState.method = method;
+
+  // Seçilmiş düyməni highlight et
+  document.querySelectorAll('.pay-method-btn').forEach(btn => btn.classList.remove('selected'));
+  document.querySelector(`.pay-method-btn.${method}`)?.classList.add('selected');
+
+  // Bölmələri göstər/gizlət
+  document.getElementById('splitPaySection').style.display  = method === 'split'  ? '' : 'none';
+  document.getElementById('creditSection').style.display    = method === 'credit' ? '' : 'none';
+
+  // Təsdiq düyməsi
+  const btn = document.getElementById('payConfirmBtn');
+  const labels = {
+    cash:   '✅ Nağd Ödənişi Qəbul Et',
+    pos:    '✅ POS Ödənişini Qəbul Et',
+    credit: '✅ Nisyəyə Yaz',
+    split:  '✅ Bölünmüş Ödənişi Tamamla'
+  };
+  btn.textContent  = labels[method] || '✅ Tamamla';
+  btn.className    = `pay-confirm-btn ${method}`;
+  btn.style.display = '';
+}
+
+function recalcSplit() {
+  const cash      = parseFloat(document.getElementById('splitCash').value) || 0;
+  const pos       = parseFloat(document.getElementById('splitPos').value)  || 0;
+  const total     = payState.finalTotal;
+  const remaining = Math.max(0, total - cash - pos);
+  const el        = document.getElementById('splitRemaining');
+  if (remaining > 0.009) {
+    el.innerHTML = `<span style="color:var(--red);">⚠️ Qalan: <strong>${remaining.toFixed(2)} ₼</strong></span>`;
+  } else if (cash + pos > total) {
+    const change = (cash + pos) - total;
+    el.innerHTML = `<span style="color:var(--green);">✅ Qaytarılacaq: <strong>${change.toFixed(2)} ₼</strong></span>`;
+  } else {
+    el.innerHTML = `<span style="color:var(--green);">✅ Ödəniş tamamdır</span>`;
+  }
+}
+
+function confirmPayment() {
+  if (!payState.method) { showToast('❌ Ödəmə üsulu seçin'); return; }
+
+  const tableId = payState.tableId;
+  const t       = state.tables.find(x => x.id === tableId);
+  const total   = payState.finalTotal;
+
+  // Split yoxla
+  if (payState.method === 'split') {
+    const cash = parseFloat(document.getElementById('splitCash').value) || 0;
+    const pos  = parseFloat(document.getElementById('splitPos').value)  || 0;
+    if (cash + pos < total - 0.01) {
+      showToast(`❌ Məbləğ çatışmır: ${(total - cash - pos).toFixed(2)} ₼ qalıb`);
+      return;
+    }
+  }
+
+  // Nisyə yoxla
+  if (payState.method === 'credit') {
+    const customer = document.getElementById('creditCustomer').value.trim();
+    if (!customer) { showToast('❌ Nisyə üçün müştəri adı daxil edin'); return; }
+  }
+
+  // Ödəmə qeydini Firebase-ə yaz
+  const methodLabels = {cash:'Nağd', pos:'POS Terminal', credit:'Nisyə', split:'Bölünmüş'};
+  const now = new Date();
+  const payRecord = {
+    tableId,
+    tableName:       t?.name || '?',
+    waiterId:        state.user?.id || null,
+    waiterName:      state.user?.name || '?',
+    method:          payState.method,
+    methodLabel:     methodLabels[payState.method],
+    originalTotal:   payState.originalTotal,
+    discountAmount:  payState.discountAmount,
+    finalTotal:      total,
+    time:            now.toLocaleTimeString('az-AZ'),
+    date:            now.toLocaleDateString('az-AZ'),
+    createdAt:       Date.now()
+  };
+
+  // Split məlumatları
+  if (payState.method === 'split') {
+    payRecord.splitCash = parseFloat(document.getElementById('splitCash').value) || 0;
+    payRecord.splitPos  = parseFloat(document.getElementById('splitPos').value)  || 0;
+  }
+
+  // Nisyə məlumatları
+  if (payState.method === 'credit') {
+    payRecord.creditCustomer = document.getElementById('creditCustomer').value.trim();
+    payRecord.creditNote     = document.getElementById('creditNote').value.trim();
+  }
+
+  db.ref('payments').push(payRecord);
+
+  // Log
+  const discStr = payState.discountAmount > 0
+    ? `, endirim: ${payState.discountAmount.toFixed(2)} ₼`
+    : '';
+  addLog('order',
+    `${state.user?.name} "${t?.name}" masası üçün ${methodLabels[payState.method]} ödənişi qəbul etdi: ${total.toFixed(2)} ₼${discStr}`,
+    { tableId, method: payState.method, amount: total }
+  );
+
+  // Modal-ı bağla
+  closePaymentModal();
+
+  // Uğur ekranı
+  document.getElementById('paySuccessTitle').textContent  = `✅ ${methodLabels[payState.method]} Ödənişi Qəbul Edildi!`;
+  document.getElementById('paySuccessAmount').textContent = `Məbləğ: ${total.toFixed(2)} ₼`;
+  let methodDetail = methodLabels[payState.method];
+  if (payState.method === 'split') {
+    const c = parseFloat(document.getElementById('splitCash')?.value)||0;
+    const p = parseFloat(document.getElementById('splitPos')?.value)||0;
+    methodDetail += ` (Nağd: ${c.toFixed(2)} ₼ + POS: ${p.toFixed(2)} ₼)`;
+  }
+  if (payState.discountAmount > 0) {
+    methodDetail += ` · Endirim: ${payState.discountAmount.toFixed(2)} ₼`;
+  }
+  document.getElementById('paySuccessMethod').textContent = methodDetail;
+  document.getElementById('paymentSuccessModal').classList.add('open');
+
+  showToast(`✅ ${total.toFixed(2)} ₼ — ${methodLabels[payState.method]}`);
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').classList.remove('open');
+  payState.tableId = null;
+  payState.method  = null;
+}
+
+function closePaymentSuccess(closeTable) {
+  document.getElementById('paymentSuccessModal').classList.remove('open');
+  if (closeTable && payState.tableId) {
+    state.pendingCloseTableId = payState.tableId;
+    const t = state.tables.find(x => x.id === payState.tableId);
+    if (t) {
+      document.getElementById('confirmCloseTableName').textContent = t.name;
+      document.getElementById('confirmCloseTableModal').classList.add('open');
+    }
+  } else if (closeTable) {
+    // tableId artıq payState-dədirsə
+    const tid = payState.tableId || document.getElementById('paymentSuccessModal').dataset.tableId;
+    if (tid) {
+      state.pendingCloseTableId = tid;
+      confirmDeactivateTable();
+    }
+  }
+  payState.tableId = null;
+}
+
+/* ── Ödəmə tarixçəsi (admin üçün) ── */
+let _payFilter = 'all';
+
+function renderPaymentHistoryAdmin() {
+  const el = document.getElementById('paymentHistoryList');
+  if (!el) return;
+  db.ref('payments').orderByChild('createdAt').limitToLast(200).once('value', snap => {
+    let list = toArr(snap.val()).reverse();
+
+    // Bugünün cəmini hesabla
+    const todayStr = new Date().toLocaleDateString('az-AZ');
+    const todayTotal = list
+      .filter(p => p.date === todayStr && p.method !== 'credit')
+      .reduce((s,p) => s + (p.finalTotal||0), 0);
+    const todayEl = document.getElementById('payTotalToday');
+    if (todayEl) todayEl.textContent = `Bugün: ${todayTotal.toFixed(2)} ₼`;
+
+    // Filter
+    if (_payFilter !== 'all') list = list.filter(p => p.method === _payFilter);
+
+    if (!list.length) {
+      el.innerHTML = '<p style="color:var(--text3);padding:16px;">Ödəniş tapılmadı.</p>';
+      return;
+    }
+
+    const methodColors = {cash:'#2ecc71', pos:'#3498db', credit:'#c4b02e', split:'#8e44ad'};
+    const methodIcons  = {cash:'💵', pos:'💳', credit:'📒', split:'✂️'};
+
+    el.innerHTML = list.map(p => `
+      <div class="log-item" style="border-left:3px solid ${methodColors[p.method]||'#aaa'};flex-direction:column;align-items:flex-start;gap:6px;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="log-badge" style="background:${methodColors[p.method]||'#aaa'}22;color:${methodColors[p.method]||'#aaa'}">${methodIcons[p.method]||'💰'} ${esc(p.methodLabel||p.method||'?')}</span>
+            <span style="font-weight:700;font-size:14px;">🪑 ${esc(p.tableName||'?')}</span>
+          </div>
+          <span style="font-size:16px;font-weight:800;color:var(--green);white-space:nowrap;">${(p.finalTotal||0).toFixed(2)} ₼</span>
+        </div>
+        <div style="display:flex;gap:12px;font-size:12px;color:var(--text3);flex-wrap:wrap;">
+          <span>👤 ${esc(p.waiterName||'?')}</span>
+          ${p.discountAmount > 0 ? `<span style="color:var(--red);">🏷️ -${p.discountAmount.toFixed(2)} ₼</span>` : ''}
+          ${p.creditCustomer ? `<span style="color:var(--orange);">📒 ${esc(p.creditCustomer)}</span>` : ''}
+          ${p.method==='split' ? `<span>Nağd:${(p.splitCash||0).toFixed(2)} + POS:${(p.splitPos||0).toFixed(2)}</span>` : ''}
+          <span>${p.time||''} ${p.date||''}</span>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function setPayFilter(f, el) {
+  _payFilter = f;
+  document.querySelectorAll('.log-filter').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderPaymentHistoryAdmin();
+}
+
+function clearOldPayments() {
+  if (!confirm('30 gündən köhnə bütün ödəniş qeydləri silinsin?')) return;
+  const cutoff = Date.now() - 30*24*60*60*1000;
+  db.ref('payments').once('value', snap => {
+    const data = snap.val() || {};
+    let n = 0;
+    Object.keys(data).forEach(k => {
+      if (data[k].createdAt < cutoff) { db.ref('payments/'+k).remove(); n++; }
+    });
+    addLog('admin', `${n} köhnə ödəniş qeydi silindi`, {});
+    showToast(`✅ ${n} ödəniş qeydi silindi`);
+    renderPaymentHistoryAdmin();
+  });
+}
 function lockScreen() {
   if (document.documentElement.requestFullscreen)
     document.documentElement.requestFullscreen().catch(()=>{});
