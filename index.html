@@ -588,7 +588,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
   <div class="modal" style="max-width:320px;text-align:center;">
     <div style="font-size:48px;margin-bottom:12px;">🔒</div>
     <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz?<br><small style="color:var(--red);">Qeydlər və sifarişlər silinəcək.</small></p>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz?</p>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost-dark" style="flex:1;padding:13px;" onclick="closeConfirmCloseModal()">Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDeactivateTable()">🔒 Masanı Bağla</button>
@@ -1114,31 +1114,6 @@ function applyTheme(isDark) {
     if (btn) btn.textContent = icon;
   });
 }
-
-function toggleTheme() {
-  const isDark = !document.body.classList.contains('dark-mode');
-  applyTheme(isDark);
-  try { localStorage.setItem('themeMode', isDark ? 'dark' : 'light'); } catch(e) {}
-}
-
-function loadSavedTheme() {
-  let saved = null;
-  try { saved = localStorage.getItem('themeMode'); } catch(e) {}
-  applyTheme(saved === 'dark');
-}
-
-/* ═══════════════════════════════════════════
-   ADMIN — TAB / RENDER
-═══════════════════════════════════════════ */
-function renderAdmin() {
-  const sec = state.adminSection;
-  if (sec === 'dashboard') renderDashboard();
-  if (sec === 'staff')     renderStaff();  if (sec === 'tables')    renderTables();
-  if (sec === 'menu')      renderMenuItems();
-  if (sec === 'logs')      renderLogs();
-  if (sec === 'feedback')  renderFeedbackSection();
-}
-
 function adminTab(sec, el) {
   state.adminSection = sec;
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
@@ -2269,7 +2244,8 @@ function sendCustomerMsg() {
   const t       = state.customerTableData;
   if (!text || !tableId) return;
   db.ref(`chats/${tableId}/messages`).push({
-    sender:'customer', text,    time:new Date().toLocaleTimeString('az-AZ'),
+    sender:'customer', text,
+    time:new Date().toLocaleTimeString('az-AZ'),
     createdAt:Date.now(), readByWaiter:false
   });
   db.ref('customerRequests').push({
@@ -2279,7 +2255,30 @@ function sendCustomerMsg() {
     status:'pending',
     time:new Date().toLocaleTimeString('az-AZ'),
     createdAt:Date.now()
-  });
+
+function toggleTheme() {
+  const isDark = !document.body.classList.contains('dark-mode');
+  applyTheme(isDark);
+  try { localStorage.setItem('themeMode', isDark ? 'dark' : 'light'); } catch(e) {}
+}
+
+function loadSavedTheme() {
+  let saved = null;
+  try { saved = localStorage.getItem('themeMode'); } catch(e) {}
+  applyTheme(saved === 'dark');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — TAB / RENDER
+═══════════════════════════════════════════ */
+function renderAdmin() {
+  const sec = state.adminSection;
+  if (sec === 'dashboard') renderDashboard();
+  if (sec === 'staff')     renderStaff();
+  if (sec === 'tables')    renderTables();
+  if (sec === 'menu')      renderMenuItems();
+  if (sec === 'logs')      renderLogs();
+  if (sec === 'feedback')  renderFeedbackSection();  });
   addLog('chat', `"${t.name}" masasından mesaj: ${text.substring(0,40)}`, {tableId});
   document.getElementById('custMsgInput').value = '';
   showCustomerToast('✅ Mesaj göndərildi!');
@@ -2505,6 +2504,10 @@ function cancelOrderItem(tableId, itemKey) {
   if (!order?.items) return;
   const it = order.items[itemKey];
   if (!it) return;
+
+  // Təsdiq
+  if (!confirm(`"${it.name}" sifarişdən silinsin?`)) return;
+
   R.tableOrders.child(tableId).child('items').child(itemKey).remove();
   const remaining = Object.entries(order.items).filter(([k]) => k!==itemKey).map(([,v]) => v);
   if (!remaining.length) {
@@ -2532,16 +2535,38 @@ function deactivateTable() {
 function confirmDeactivateTable() {
   const tableId = state.pendingCloseTableId;
   if (!tableId) return;
-  const t = state.tables.find(x => x.id===tableId);
-  // Təmizlik
+  const t     = state.tables.find(x => x.id === tableId);
+  const order = state.tableOrders[tableId];
+  const now   = new Date();
+
+  // Bağlanma qeydi — silinməzdən əvvəl saxla
+  const closeRecord = {
+    tableId,
+    tableName:   t?.name || '?',
+    closedBy:    state.user?.name || 'Admin',
+    closedById:  state.user?.id   || null,
+    notes:       t?.notes || '',
+    orderTotal:  order?.total || 0,
+    orderItems:  order?.items ? Object.values(order.items) : [],
+    time:        now.toLocaleTimeString('az-AZ'),
+    date:        now.toLocaleDateString('az-AZ'),
+    createdAt:   Date.now()
+  };
+  db.ref('closedTables').push(closeRecord);
+
+  // Aktiv tələbləri sil
   db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).once('value', snap => {
     snap.forEach(child => child.ref.remove());
   });
   db.ref('chats/'+tableId).remove();
   R.tableOrders.child(tableId).remove();
-  R.tables.child(tableId).update({occupant:null, notes:''});
-  if (t) addLog('table', `${state.user?.name||'Admin'} "${t.name}" masasını bağladı`, {tableId});
-  showToast(`✅ ${t?t.name:'Masa'} bağlandı`);
+  R.tables.child(tableId).update({ occupant: null, notes: '' });
+
+  if (t) addLog('table',
+    `${state.user?.name||'Admin'} "${t.name}" masasını bağladı (${closeRecord.orderTotal.toFixed(2)} ₼)`,
+    { tableId, total: closeRecord.orderTotal }
+  );
+  showToast(`✅ ${t ? t.name : 'Masa'} bağlandı`);
   closeConfirmCloseModal();
 }
 
@@ -3011,86 +3036,82 @@ function recalcSplit() {
 function confirmPayment() {
   if (!payState.method) { showToast('❌ Ödəmə üsulu seçin'); return; }
 
-  const tableId = payState.tableId;
-  const t       = state.tables.find(x => x.id === tableId);
-  const total   = payState.finalTotal;
-
-  // Split yoxla
-  if (payState.method === 'split') {
-    const cash = parseFloat(document.getElementById('splitCash').value) || 0;
-    const pos  = parseFloat(document.getElementById('splitPos').value)  || 0;
-    if (cash + pos < total - 0.01) {
-      showToast(`❌ Məbləğ çatışmır: ${(total - cash - pos).toFixed(2)} ₼ qalıb`);
-      return;
-    }
-  }
-
-  // Nisyə yoxla
-  if (payState.method === 'credit') {
-    const customer = document.getElementById('creditCustomer').value.trim();
-    if (!customer) { showToast('❌ Nisyə üçün müştəri adı daxil edin'); return; }
-  }
-
-  // Ödəmə qeydini Firebase-ə yaz
-  const methodLabels = {cash:'Nağd', pos:'POS Terminal', credit:'Nisyə', split:'Bölünmüş'};
-  const now = new Date();
-  const payRecord = {
-    tableId,
-    tableName:       t?.name || '?',
-    waiterId:        state.user?.id || null,
-    waiterName:      state.user?.name || '?',
-    method:          payState.method,
-    methodLabel:     methodLabels[payState.method],
-    originalTotal:   payState.originalTotal,
-    discountAmount:  payState.discountAmount,
-    finalTotal:      total,
-    time:            now.toLocaleTimeString('az-AZ'),
-    date:            now.toLocaleDateString('az-AZ'),
-    createdAt:       Date.now()
+  // ƏVVƏLCƏDƏN bütün dəyərləri oxu - modal bağlanmazdan əvvəl
+  const snap = {
+    tableId:        payState.tableId,
+    method:         payState.method,
+    originalTotal:  payState.originalTotal,
+    discountAmount: payState.discountAmount,
+    finalTotal:     payState.finalTotal,
+    splitCash:      payState.method === 'split' ? (parseFloat(document.getElementById('splitCash').value)||0) : 0,
+    splitPos:       payState.method === 'split' ? (parseFloat(document.getElementById('splitPos').value)||0)  : 0,
+    creditCustomer: payState.method === 'credit' ? document.getElementById('creditCustomer').value.trim() : '',
+    creditNote:     payState.method === 'credit' ? document.getElementById('creditNote').value.trim()     : ''
   };
 
-  // Split məlumatları
-  if (payState.method === 'split') {
-    payRecord.splitCash = parseFloat(document.getElementById('splitCash').value) || 0;
-    payRecord.splitPos  = parseFloat(document.getElementById('splitPos').value)  || 0;
+  const t = state.tables.find(x => x.id === snap.tableId);
+  snap.tableName = t?.name || '?';
+
+  // Validasiyalar
+  if (snap.method === 'split' && snap.splitCash + snap.splitPos < snap.finalTotal - 0.01) {
+    showToast(`❌ Məbləğ çatışmır: ${(snap.finalTotal - snap.splitCash - snap.splitPos).toFixed(2)} ₼ qalıb`);
+    return;
+  }
+  if (snap.method === 'credit' && !snap.creditCustomer) {
+    showToast('❌ Nisyə üçün müştəri adı daxil edin');
+    return;
   }
 
-  // Nisyə məlumatları
-  if (payState.method === 'credit') {
-    payRecord.creditCustomer = document.getElementById('creditCustomer').value.trim();
-    payRecord.creditNote     = document.getElementById('creditNote').value.trim();
-  }
+  const methodLabels = {cash:'Nağd', pos:'POS Terminal', credit:'Nisyə', split:'Bölünmüş'};
+  const now = new Date();
+
+  // Firebase-ə yaz
+  const payRecord = {
+    tableId:        snap.tableId,
+    tableName:      snap.tableName,
+    waiterId:       state.user?.id   || null,
+    waiterName:     state.user?.name || '?',
+    method:         snap.method,
+    methodLabel:    methodLabels[snap.method],
+    originalTotal:  snap.originalTotal,
+    discountAmount: snap.discountAmount,
+    finalTotal:     snap.finalTotal,
+    time:           now.toLocaleTimeString('az-AZ'),
+    date:           now.toLocaleDateString('az-AZ'),
+    createdAt:      Date.now()
+  };
+  if (snap.method === 'split')  { payRecord.splitCash = snap.splitCash; payRecord.splitPos = snap.splitPos; }
+  if (snap.method === 'credit') { payRecord.creditCustomer = snap.creditCustomer; payRecord.creditNote = snap.creditNote; }
 
   db.ref('payments').push(payRecord);
 
   // Log
-  const discStr = payState.discountAmount > 0
-    ? `, endirim: ${payState.discountAmount.toFixed(2)} ₼`
-    : '';
+  const discStr = snap.discountAmount > 0 ? `, endirim: ${snap.discountAmount.toFixed(2)} ₼` : '';
   addLog('order',
-    `${state.user?.name} "${t?.name}" masası üçün ${methodLabels[payState.method]} ödənişi qəbul etdi: ${total.toFixed(2)} ₼${discStr}`,
-    { tableId, method: payState.method, amount: total }
+    `${state.user?.name} "${snap.tableName}" masası üçün ${methodLabels[snap.method]} ödənişi: ${snap.finalTotal.toFixed(2)} ₼${discStr}`,
+    { tableId: snap.tableId, method: snap.method, amount: snap.finalTotal }
   );
 
-  // Modal-ı bağla
+  // Modalı bağla (payState burada sıfırlanır)
   closePaymentModal();
 
-  // Uğur ekranı
-  document.getElementById('paySuccessTitle').textContent  = `✅ ${methodLabels[payState.method]} Ödənişi Qəbul Edildi!`;
-  document.getElementById('paySuccessAmount').textContent = `Məbləğ: ${total.toFixed(2)} ₼`;
-  let methodDetail = methodLabels[payState.method];
-  if (payState.method === 'split') {
-    const c = parseFloat(document.getElementById('splitCash')?.value)||0;
-    const p = parseFloat(document.getElementById('splitPos')?.value)||0;
-    methodDetail += ` (Nağd: ${c.toFixed(2)} ₼ + POS: ${p.toFixed(2)} ₼)`;
-  }
-  if (payState.discountAmount > 0) {
-    methodDetail += ` · Endirim: ${payState.discountAmount.toFixed(2)} ₼`;
-  }
-  document.getElementById('paySuccessMethod').textContent = methodDetail;
-  document.getElementById('paymentSuccessModal').classList.add('open');
+  // Uğur modalını doldur — snap istifadə et, payState yox
+  const successModal = document.getElementById('paymentSuccessModal');
+  successModal.dataset.tableId = snap.tableId;
 
-  showToast(`✅ ${total.toFixed(2)} ₼ — ${methodLabels[payState.method]}`);
+  document.getElementById('paySuccessTitle').textContent =
+    `✅ ${methodLabels[snap.method]} Ödənişi Qəbul Edildi!`;
+  document.getElementById('paySuccessAmount').textContent =
+    `${snap.tableName}  ·  ${snap.finalTotal.toFixed(2)} ₼`;
+
+  let detail = methodLabels[snap.method];
+  if (snap.method === 'split')  detail += ` (Nağd: ${snap.splitCash.toFixed(2)} ₼ + POS: ${snap.splitPos.toFixed(2)} ₼)`;
+  if (snap.discountAmount > 0)  detail += ` · Endirim: −${snap.discountAmount.toFixed(2)} ₼`;
+  if (snap.method === 'credit' && snap.creditCustomer) detail += ` · ${snap.creditCustomer}`;
+  document.getElementById('paySuccessMethod').textContent = detail;
+
+  successModal.classList.add('open');
+  showToast(`✅ ${snap.finalTotal.toFixed(2)} ₼ — ${methodLabels[snap.method]}`);
 }
 
 function closePaymentModal() {
@@ -3100,23 +3121,16 @@ function closePaymentModal() {
 }
 
 function closePaymentSuccess(closeTable) {
-  document.getElementById('paymentSuccessModal').classList.remove('open');
-  if (closeTable && payState.tableId) {
-    state.pendingCloseTableId = payState.tableId;
-    const t = state.tables.find(x => x.id === payState.tableId);
-    if (t) {
-      document.getElementById('confirmCloseTableName').textContent = t.name;
-      document.getElementById('confirmCloseTableModal').classList.add('open');
-    }
-  } else if (closeTable) {
-    // tableId artıq payState-dədirsə
-    const tid = payState.tableId || document.getElementById('paymentSuccessModal').dataset.tableId;
-    if (tid) {
-      state.pendingCloseTableId = tid;
-      confirmDeactivateTable();
-    }
+  const successModal = document.getElementById('paymentSuccessModal');
+  // tableId-ni dataset-dən oxu (payState artıq null-dur)
+  const tableId = successModal.dataset.tableId;
+  successModal.classList.remove('open');
+  delete successModal.dataset.tableId;
+
+  if (closeTable && tableId) {
+    state.pendingCloseTableId = tableId;
+    confirmDeactivateTable();
   }
-  payState.tableId = null;
 }
 
 /* ── Ödəmə tarixçəsi (admin üçün) ── */
@@ -3405,3 +3419,6 @@ loadSavedTheme();
 </script>
 </body>
 </html>
+
+  
+}
