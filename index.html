@@ -375,8 +375,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
-      <h3 style="color:var(--text2);margin-bottom:14px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;">Aktiv Masalar</h3>
-      <div class="grid-2" id="activeTables"></div>
+      
     </div>
     <div class="admin-section" id="sec-staff">
       <div class="grid-2" id="staffGrid"></div>
@@ -1128,10 +1127,7 @@ function renderDashboard() {
     <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--red)">${pendingO}</div><div class="stat-label">Gözləyən Sifariş</div></div>
   `;
-  const actTbls = state.tables.filter(t=>t.occupant);
-  const el = document.getElementById('activeTables');
-  if (!actTbls.length) { el.innerHTML='<p style="color:var(--text3);font-size:14px;">Hal-hazırda aktiv masa yoxdur.</p>'; return; }
-  el.innerHTML = actTbls.map(t=>{
+  
     const w = state.staff.find(x=>x.id===t.occupant)||{name:'?'};
     return `<div class="table-card">
       <h3>🪑 ${esc(t.name)}</h3>
