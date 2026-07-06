@@ -2868,8 +2868,8 @@ function confirmDeactivateTable() {
       showToast('❌ Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.');
       closeConfirmCloseModal();
       return;
-    }
-  }
+  
+  
   const tableId = state.pendingCloseTableId;
   if (!tableId) return;
   const t = state.tables.find(x=>x.id===tableId);
