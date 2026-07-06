@@ -2882,14 +2882,11 @@ document.getElementById('adminFab').style.display='none';
    İCAZƏ YOXLAMA FUNKSİYALARI
 ═══════════════════════════════════════════ */
 function hasPermission(action) {
+  if (!state.user) return false;
+  // Admin hər şeyə icazəlidir
+  if (state.user.role === 'admin') return true;
+  // İşçi — fərdi icazə massivindən yoxla
   return staffHasPermission(state.user, action);
-}
-  function requirePermission(action) {
-  if (!hasPermission(action)) {
-    showToast('❌ Bu əməliyyat üçün icazəniz yoxdur');
-    return false;
-  }
-  return true;
 }
 /* ═══════════════════════════════════════════
    ÖDƏNİŞ SİSTEMİ
