@@ -2870,11 +2870,7 @@ function confirmDeactivateTable() {
       return;
   
   
-  const tableId = state.pendingCloseTableId;
-  if (!tableId) return;
-  const t = state.tables.find(x=>x.id===tableId);
-  const order = state.tableOrders[tableId];
-
+  
   // 1. Sifarişi arxivə köçür (silinmir, closedOrders-ə yazılır)
   if (order && order.items) {
     const archiveData = {
@@ -3187,32 +3183,7 @@ function confirmPayment() {
     setTimeout(() => openPaymentModal(), 500);
   }
 }
-EOF
-Output
 
-function confirmPayment() {
-  if (!_payment.type) { showToast('⚠️ Ödəniş növü seçin'); return; }
-  const tableId = _payment.tableId;
-  const t = state.tables.find(x=>x.id===tableId);
-  const remaining = _payment.remainingAmount || _payment.finalTotal;
-
-  // Bu ödənişdə nə qədər ödənilir?
-  let thisPay = 0;
-  if (_payment.type === 'cash') {
-    const given = parseFloat(document.getElementById('paymentCashGiven').value)||0;
-    if (given <= 0) { showToast('❌ Məbləğ daxil edin'); return; }
-    thisPay = Math.min(given, remaining);
-  } else if (_payment.type === 'split') {
-    const cash = parseFloat(document.getElementById('splitCash').value)||0;
-    const pos = parseFloat(document.getElementById('splitPos').value)||0;
-    thisPay = cash + pos;
-    if (thisPay <= 0) { showToast('❌ Məbləğ daxil edin'); return; }
-    thisPay = Math.min(thisPay, remaining);
-  } else if (_payment.type === 'pos') {
-    thisPay = remaining; // POS tam ödəyir
-  } else if (_payment.type === 'credit') {
-    thisPay = remaining; // Nisyə tam yazılır
-  }
 
   const payData = {
     tableId, tableName: t?.name||'?',
