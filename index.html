@@ -313,7 +313,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 /* ── Endirim badgei ── */
 .discount-badge{display:inline-block;background:rgba(196,176,46,.2);color:var(--orange);
   border:1px solid var(--orange);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;}
-</style>
+  </style>
 </head>
 <body>
 
@@ -1752,7 +1752,7 @@ function tableForm(name='', isEdit=false) {
     </div>` : ''}
   `;
 }
-/* ═══════════════════════════════════════════
+  /* ═══════════════════════════════════════════
    ALARM SİSTEMİ
 ═══════════════════════════════════════════ */
 const ALARM_THEMES = {
@@ -2767,6 +2767,14 @@ function openNotesModal(tableId) {
   renderNoteOrderSummary(tableId);
   const closeBtn = document.getElementById('notesCloseTableBtn');
   if (closeBtn) closeBtn.style.display = hasPermission('table.close') ? 'block' : 'none';
+  // Yeni düymələr - icazəyə görə
+  const discBtn = document.getElementById('notesDiscountBtn');
+  if (discBtn) discBtn.style.display = hasPermission('order.discount') ? 'flex' : 'none';
+  const transferBtn = document.getElementById('notesTransferBtn');
+  if (transferBtn) transferBtn.style.display = hasPermission('table.transfer') ? 'flex' : 'none';
+  const payBtn = document.getElementById('notesPaymentBtn');
+  if (payBtn) payBtn.style.display =
+    (hasPermission('bill.payment_cash')||hasPermission('bill.payment_pos')||hasPermission('bill.credit')) ? 'block' : 'none';
   document.getElementById('notesModal').classList.add('open');
 }
 
@@ -2876,15 +2884,14 @@ document.getElementById('adminFab').style.display='none';
 function hasPermission(action) {
   return staffHasPermission(state.user, action);
 }
-
-function requirePermission(action) {
+  function requirePermission(action) {
   if (!hasPermission(action)) {
     showToast('❌ Bu əməliyyat üçün icazəniz yoxdur');
     return false;
   }
   return true;
 }
-  /* ═══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    ÖDƏNİŞ SİSTEMİ
    Firebase: /payments/{id}
 ═══════════════════════════════════════════ */
@@ -3268,19 +3275,6 @@ function clearOldPayments() {
     snap.forEach(child=>{ if((child.val().createdAt||0)<cutoff){child.ref.remove();n++;} });
     showToast(`✅ ${n} köhnə ödəniş silindi`);
   });
-}
-
-/* ═══ openNotesModal genişləndirilməsi ═══ */
-const _origOpenNotesModal = openNotesModal;
-function openNotesModal(tableId) {
-  _origOpenNotesModal(tableId);
-  const discBtn = document.getElementById('notesDiscountBtn');
-  if (discBtn) discBtn.style.display = hasPermission('order.discount') ? 'flex' : 'none';
-  const transferBtn = document.getElementById('notesTransferBtn');
-  if (transferBtn) transferBtn.style.display = hasPermission('table.transfer') ? 'flex' : 'none';
-  const payBtn = document.getElementById('notesPaymentBtn');
-  if (payBtn) payBtn.style.display =
-    (hasPermission('bill.payment_cash')||hasPermission('bill.payment_pos')||hasPermission('bill.credit')) ? 'block' : 'none';
 }
 
 </script>
