@@ -732,6 +732,14 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
         <span style="color:var(--text2);font-size:14px;">Ümumi məbləğ:</span>
         <span id="paymentTotalAmount" style="font-size:22px;font-weight:800;color:var(--green);"></span>
       </div>
+      <div id="paymentRemainingRow" style="display:none;display:flex;justify-content:space-between;margin-top:6px;">
+  <span style="color:var(--text2);font-size:14px;">Ödənilmiş:</span>
+  <span id="paymentPaidSoFar" style="font-size:16px;font-weight:700;color:var(--blue);"></span>
+</div>
+<div id="paymentRemainingAmount" style="display:none;justify-content:space-between;margin-top:4px;">
+  <span style="color:var(--text2);font-size:14px;">Qalan:</span>
+  <span id="paymentRemaining" style="font-size:20px;font-weight:800;color:var(--orange);"></span>
+</div>
     </div>
     <div id="paymentDiscountRow" style="display:none;background:rgba(196,176,46,.1);border:1px solid var(--orange);border-radius:10px;padding:10px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;">
@@ -2435,17 +2443,27 @@ function renderNoteOrderSummary(tableId) {
   if (!el) return;
   const order = state.tableOrders[tableId];
   const items = order?.items ? Object.entries(order.items) : [];
-  if (!items.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ sifariş yoxdur.</p>'; return; }
-
+  if (!items.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ sifariş yoxdur.</p>';
+    return;
+  }
   el.innerHTML = `
     <div class="order-summary-box">
       ${items.map(([itemKey, it]) => {
         const lineTotal = (it.price * it.qty) + (it.extraFee||0);
+        const canEdit = hasPermission('order.cancel_item');
         return `<div class="order-summary-line" style="flex-direction:column;align-items:flex-start;gap:2px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;">
-            <span style="flex:1;">${it.qty}x ${esc(it.name)}</span>
-            <span>${lineTotal.toFixed(2)} ₼</span>
-            ${hasPermission('order.cancel_item') ? `<button onclick="cancelOrderItem('${tableId}','${itemKey}')" style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>` : ''}
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;">
+            <span style="flex:1;">${esc(it.name)}</span>
+            <span style="color:var(--text3);font-size:12px;">${it.price.toFixed(2)}₼ x</span>
+            ${canEdit ? `<button onclick="changeOrderItemQty('${tableId}','${itemKey}',-1)"
+              style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:16px;cursor:pointer;font-weight:700;">−</button>` : ''}
+            <span style="font-weight:700;min-width:20px;text-align:center;">${it.qty}</span>
+            ${canEdit ? `<button onclick="changeOrderItemQty('${tableId}','${itemKey}',1)"
+              style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:16px;cursor:pointer;font-weight:700;">+</button>` : ''}
+            <span style="font-weight:700;">${lineTotal.toFixed(2)} ₼</span>
+            ${canEdit ? `<button onclick="cancelOrderItem('${tableId}','${itemKey}')"
+              style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;font-weight:700;">✕</button>` : ''}
           </div>
           ${it.note ? `<span style="font-size:11px;color:var(--text3);">📝 ${esc(it.note)}</span>` : ''}
         </div>`;
@@ -2455,7 +2473,38 @@ function renderNoteOrderSummary(tableId) {
       </div>
     </div>`;
 }
-
+  function updateStock(menuItemId, delta) {
+  if (!menuItemId) return;
+  const item = state.menuItems.find(x => x.id === menuItemId);
+  if (!item || item.stock === undefined || item.stock === null) return;
+  const newStock = Math.max(0, (item.stock || 0) + delta);
+  R.menuItems.child(menuItemId).update({ stock: newStock });
+}
+function changeOrderItemQty(tableId, itemKey, delta) {
+  if (!hasPermission('order.cancel_item')) return;
+  const order = state.tableOrders[tableId];
+  if (!order?.items) return;
+  const it = order.items[itemKey];
+  if (!it) return;
+  const newQty = it.qty + delta;
+  if (newQty <= 0) {
+    // Sıfıra düşdü — tam sil + stok artır
+    cancelOrderItem(tableId, itemKey);
+    return;
+  }
+  // Yeni say yaz
+  R.tableOrders.child(tableId).child('items').child(itemKey).update({ qty: newQty });
+  // Cəmi yenilə
+  const newTotal = Object.entries(order.items).reduce((sum, [k, v]) => {
+    const qty = k === itemKey ? newQty : v.qty;
+    return sum + (v.price * qty) + (v.extraFee||0);
+  }, 0);
+  R.tableOrders.child(tableId).child('total').set(newTotal);
+  // Stok dəyişikliyi
+  if (delta < 0) updateStock(it.menuItemId, 1);   // azaldıldı → stok artır
+  else           updateStock(it.menuItemId, -1);  // artırıldı → stok azalt
+  renderNoteOrderSummary(tableId);
+}
 function cancelOrderItem(tableId, itemKey) {
   const order = state.tableOrders[tableId];
   if (!order?.items) return;
@@ -2469,6 +2518,7 @@ function cancelOrderItem(tableId, itemKey) {
     const newTotal = remaining.reduce((sum, v) => sum + (v.price * v.qty) + (v.extraFee||0), 0);
     R.tableOrders.child(tableId).child('total').set(newTotal);
   }
+  updateStock(it.menuItemId, it.qty);  // stok geri qayıt
   addLog('order', `${state.user?.name} "${it.name}" malını sifarişdən iptal etdi`, { tableId, menuItemId: it.menuItemId });
   showToast(`🗑️ ${it.name} sifarişdən silindi`);
   renderNoteOrderSummary(tableId);
@@ -2675,7 +2725,11 @@ function confirmSendOrder() {
   const items = merged;
   let total = 0;
   Object.values(items).forEach(it => { total += (it.price||0) * it.qty + (it.extraFee||0); });
-
+// Yalnız yeni əlavə olunan malların stokunu azalt
+  draftKeys.forEach(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    if (draft) updateStock(draft.menuItemId, -draft.qty);
+  });
   R.tableOrders.child(tableId).set({ items, total, waiterId: state.user.id, updatedAt: Date.now() });
   addLog('order', `${state.user.name} "${t?.name}" masası üçün sifariş göndərdi (${total.toFixed(2)} ₼)`, { waiterId: state.user.id, tableId });
   showToast('✅ Sifariş göndərildi');
@@ -2926,7 +2980,12 @@ function requirePermission(action) {
    ÖDƏNİŞ SİSTEMİ
    Firebase: /payments/{id}
 ═══════════════════════════════════════════ */
-let _payment = { tableId:null, type:null, discountType:null, discountValue:0, originalTotal:0, finalTotal:0 };
+let _payment = {
+  tableId:null, type:null, discountType:null, discountValue:0,
+  originalTotal:0, finalTotal:0,
+  paidAmount:0,   // indiyə qədər ödənilmiş məbləğ
+  remainingAmount:0  // qalan məbləğ
+};
 
 function openPaymentModal() {
   if (!hasPermission('bill.payment_cash') && !hasPermission('bill.payment_pos') && !hasPermission('bill.credit')) {
@@ -2940,11 +2999,24 @@ function openPaymentModal() {
 
   _payment.tableId = tableId;
   _payment.originalTotal = order.total || 0;
-  _payment.finalTotal = _payment.discountValue ? _payment.finalTotal : _payment.originalTotal;
+ _payment.finalTotal = _payment.discountValue ? _payment.finalTotal : _payment.originalTotal;
+_payment.remainingAmount = _payment.finalTotal - _payment.paidAmount;
   _payment.type = null;
 
   document.getElementById('paymentTableName').textContent = t ? t.name : '—';
-  document.getElementById('paymentTotalAmount').textContent = _payment.originalTotal.toFixed(2) + ' ₼';
+ document.getElementById('paymentTotalAmount').textContent = _payment.originalTotal.toFixed(2) + ' ₼';
+// Qalan məbləği göstər
+const remainRow = document.getElementById('paymentRemainingRow');
+const remainAmtRow = document.getElementById('paymentRemainingAmount');
+if (_payment.paidAmount > 0) {
+  document.getElementById('paymentPaidSoFar').textContent = _payment.paidAmount.toFixed(2) + ' ₼';
+  document.getElementById('paymentRemaining').textContent = _payment.remainingAmount.toFixed(2) + ' ₼';
+  if (remainRow) remainRow.style.display = 'flex';
+  if (remainAmtRow) remainAmtRow.style.display = 'flex';
+} else {
+  if (remainRow) remainRow.style.display = 'none';
+  if (remainAmtRow) remainAmtRow.style.display = 'none';
+}
 
   if (_payment.discountValue > 0) {
     document.getElementById('paymentDiscountInfo').textContent =
@@ -3024,6 +3096,25 @@ function confirmPayment() {
   if (!_payment.type) { showToast('⚠️ Ödəniş növü seçin'); return; }
   const tableId = _payment.tableId;
   const t = state.tables.find(x=>x.id===tableId);
+  const remaining = _payment.remainingAmount || _payment.finalTotal;
+
+  // Bu ödənişdə nə qədər ödənilir?
+  let thisPay = 0;
+  if (_payment.type === 'cash') {
+    const given = parseFloat(document.getElementById('paymentCashGiven').value)||0;
+    if (given <= 0) { showToast('❌ Məbləğ daxil edin'); return; }
+    thisPay = Math.min(given, remaining);
+  } else if (_payment.type === 'split') {
+    const cash = parseFloat(document.getElementById('splitCash').value)||0;
+    const pos = parseFloat(document.getElementById('splitPos').value)||0;
+    thisPay = cash + pos;
+    if (thisPay <= 0) { showToast('❌ Məbləğ daxil edin'); return; }
+    thisPay = Math.min(thisPay, remaining);
+  } else if (_payment.type === 'pos') {
+    thisPay = remaining; // POS tam ödəyir
+  } else if (_payment.type === 'credit') {
+    thisPay = remaining; // Nisyə tam yazılır
+  }
 
   const payData = {
     tableId, tableName: t?.name||'?',
@@ -3031,6 +3122,8 @@ function confirmPayment() {
     type: _payment.type,
     originalAmount: _payment.originalTotal,
     finalAmount: _payment.finalTotal,
+    thisPay,
+    paidBefore: _payment.paidAmount,
     discountType: _payment.discountType||null,
     discountValue: _payment.discountValue||0,
     createdAt: Date.now(),
@@ -3040,36 +3133,126 @@ function confirmPayment() {
 
   if (_payment.type === 'cash') {
     const given = parseFloat(document.getElementById('paymentCashGiven').value)||0;
-    if (given < _payment.finalTotal) { showToast('❌ Verilən məbləğ çatışmır'); return; }
     payData.cashGiven = given;
-    payData.change = given - _payment.finalTotal;
+    payData.change = Math.max(0, given - remaining);
   }
   if (_payment.type === 'split') {
-    const cash = parseFloat(document.getElementById('splitCash').value)||0;
-    const pos = parseFloat(document.getElementById('splitPos').value)||0;
-    if (Math.abs(cash+pos-_payment.finalTotal) > 0.01) { showToast('❌ Məbləğlər uyğun gəlmir'); return; }
-    payData.splitCash = cash; payData.splitPos = pos;
+    payData.splitCash = parseFloat(document.getElementById('splitCash').value)||0;
+    payData.splitPos = parseFloat(document.getElementById('splitPos').value)||0;
   }
   if (_payment.type === 'credit') {
     payData.creditName = document.getElementById('creditName').value.trim()||'Naməlum';
   }
 
   db.ref('payments').push(payData);
-  addLog('order', `${state.user.name} "${t?.name}" ödənişi qəbul etdi (${_payment.finalTotal.toFixed(2)} ₼, ${_payment.type})`, { tableId });
+  _payment.paidAmount += thisPay;
+  _payment.remainingAmount = _payment.finalTotal - _payment.paidAmount;
 
-  // Endirim sıfırla
-  _payment.discountType = null; _payment.discountValue = 0;
+  addLog('order', `${state.user.name} "${t?.name}" — ${thisPay.toFixed(2)} ₼ ödəniş (${_payment.type})`, { tableId });
 
   closePaymentModal();
-  showToast(`✅ Ödəniş qeyd edildi: ${_payment.finalTotal.toFixed(2)} ₼`);
-  closeNotesModal();
 
-  // Masa bağlama
-  if (hasPermission('table.close')) {
-    state.pendingCloseTableId = tableId;
-    const tName = t?.name||'Masa';
-    document.getElementById('confirmCloseTableName').textContent = tName;
-    document.getElementById('confirmCloseTableModal').classList.add('open');
+  // Tam ödənibmi?
+  if (_payment.remainingAmount <= 0.01) {
+    // Tam ödəndi
+    _payment.discountType = null; _payment.discountValue = 0;
+    _payment.paidAmount = 0; _payment.remainingAmount = 0;
+    showToast(`✅ Tam ödənildi: ${_payment.finalTotal.toFixed(2)} ₼`);
+    // Masa bağlama
+    if (hasPermission('table.close')) {
+      state.pendingCloseTableId = tableId;
+      document.getElementById('confirmCloseTableName').textContent = t?.name||'Masa';
+      document.getElementById('confirmCloseTableModal').classList.add('open');
+    }
+    closeNotesModal();
+  } else {
+    // Hələ qalan var
+    showToast(`✅ ${thisPay.toFixed(2)} ₼ ödənildi. Qalan: ${_payment.remainingAmount.toFixed(2)} ₼`);
+    // Ödəniş modalını yenidən aç - qalan məbləğlə
+    setTimeout(() => openPaymentModal(), 500);
+  }
+}
+EOF
+Output
+
+function confirmPayment() {
+  if (!_payment.type) { showToast('⚠️ Ödəniş növü seçin'); return; }
+  const tableId = _payment.tableId;
+  const t = state.tables.find(x=>x.id===tableId);
+  const remaining = _payment.remainingAmount || _payment.finalTotal;
+
+  // Bu ödənişdə nə qədər ödənilir?
+  let thisPay = 0;
+  if (_payment.type === 'cash') {
+    const given = parseFloat(document.getElementById('paymentCashGiven').value)||0;
+    if (given <= 0) { showToast('❌ Məbləğ daxil edin'); return; }
+    thisPay = Math.min(given, remaining);
+  } else if (_payment.type === 'split') {
+    const cash = parseFloat(document.getElementById('splitCash').value)||0;
+    const pos = parseFloat(document.getElementById('splitPos').value)||0;
+    thisPay = cash + pos;
+    if (thisPay <= 0) { showToast('❌ Məbləğ daxil edin'); return; }
+    thisPay = Math.min(thisPay, remaining);
+  } else if (_payment.type === 'pos') {
+    thisPay = remaining; // POS tam ödəyir
+  } else if (_payment.type === 'credit') {
+    thisPay = remaining; // Nisyə tam yazılır
+  }
+
+  const payData = {
+    tableId, tableName: t?.name||'?',
+    staffId: state.user.id, staffName: state.user.name,
+    type: _payment.type,
+    originalAmount: _payment.originalTotal,
+    finalAmount: _payment.finalTotal,
+    thisPay,
+    paidBefore: _payment.paidAmount,
+    discountType: _payment.discountType||null,
+    discountValue: _payment.discountValue||0,
+    createdAt: Date.now(),
+    time: new Date().toLocaleTimeString('az-AZ'),
+    date: new Date().toLocaleDateString('az-AZ')
+  };
+
+  if (_payment.type === 'cash') {
+    const given = parseFloat(document.getElementById('paymentCashGiven').value)||0;
+    payData.cashGiven = given;
+    payData.change = Math.max(0, given - remaining);
+  }
+  if (_payment.type === 'split') {
+    payData.splitCash = parseFloat(document.getElementById('splitCash').value)||0;
+    payData.splitPos = parseFloat(document.getElementById('splitPos').value)||0;
+  }
+  if (_payment.type === 'credit') {
+    payData.creditName = document.getElementById('creditName').value.trim()||'Naməlum';
+  }
+
+  db.ref('payments').push(payData);
+  _payment.paidAmount += thisPay;
+  _payment.remainingAmount = _payment.finalTotal - _payment.paidAmount;
+
+  addLog('order', `${state.user.name} "${t?.name}" — ${thisPay.toFixed(2)} ₼ ödəniş (${_payment.type})`, { tableId });
+
+  closePaymentModal();
+
+  // Tam ödənibmi?
+  if (_payment.remainingAmount <= 0.01) {
+    // Tam ödəndi
+    _payment.discountType = null; _payment.discountValue = 0;
+    _payment.paidAmount = 0; _payment.remainingAmount = 0;
+    showToast(`✅ Tam ödənildi: ${_payment.finalTotal.toFixed(2)} ₼`);
+    // Masa bağlama
+    if (hasPermission('table.close')) {
+      state.pendingCloseTableId = tableId;
+      document.getElementById('confirmCloseTableName').textContent = t?.name||'Masa';
+      document.getElementById('confirmCloseTableModal').classList.add('open');
+    }
+    closeNotesModal();
+  } else {
+    // Hələ qalan var
+    showToast(`✅ ${thisPay.toFixed(2)} ₼ ödənildi. Qalan: ${_payment.remainingAmount.toFixed(2)} ₼`);
+    // Ödəniş modalını yenidən aç - qalan məbləğlə
+    setTimeout(() => openPaymentModal(), 500);
   }
 }
 
