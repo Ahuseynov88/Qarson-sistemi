@@ -2855,12 +2855,20 @@ function deactivateTable() {
 }
 
 function confirmDeactivateTable() {
-  // Ödənilməmiş sifariş varsa bağlatma
-  const order = state.tableOrders[state.pendingCloseTableId];
-  if (order?.total && _payment.remainingAmount > 0.01) {
-    showToast('❌ Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.');
-    closeConfirmCloseModal();
-    return;
+  const tableId = state.pendingCloseTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  const order = state.tableOrders[tableId];
+
+  // Ödənilməmiş sifariş yoxlaması
+  if (order?.total > 0) {
+    const paid = (_payment.tableId === tableId) ? (_payment.paidAmount || 0) : 0;
+    const remaining = (order.total) - paid;
+    if (remaining > 0.01) {
+      showToast('❌ Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.');
+      closeConfirmCloseModal();
+      return;
+    }
   }
   const tableId = state.pendingCloseTableId;
   if (!tableId) return;
