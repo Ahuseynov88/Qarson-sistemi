@@ -2140,6 +2140,7 @@ function initListeners() {
   R.staff.on('value', snap=>{
     state.staff = toArr(snap.val());
     onDataChange();
+    if (state.user?.role==='admin') renderAdmin();
     if (state.user?.role==='staff') {
       const me = state.staff.find(w=>w.id===state.user.id);
       if (me && me.status==='offline') {
@@ -2306,6 +2307,7 @@ function renderNoteOrderSummary(tableId) {
 }
 
 function cancelOrderItem(tableId, itemKey) {
+  if (!hasPermission('order.cancel_item')) return;
   const order = state.tableOrders[tableId];
   if (!order?.items) return;
   const it = order.items[itemKey];
