@@ -304,14 +304,15 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 .payment-type-btn:active{transform:scale(0.97);}
 .payment-type-btn.selected{border-color:var(--green);background:rgba(28,107,53,.15);color:var(--green);}
 /* ── Hesabat tablosu ── */
-.report-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.report-row{display:flex;justify-content:space-between;padding:10px 0;
+  border-bottom:1px solid var(--border);font-size:14px;}
 .report-row:last-child{border-bottom:none;font-weight:700;font-size:16px;color:var(--green);}
 .report-section{background:var(--card2);border-radius:12px;padding:14px;margin-bottom:12px;}
-.report-section h4{font-size:12px;text-transform:uppercase;color:var(--text2);letter-spacing:.06em;margin-bottom:10px;}
+.report-section h4{font-size:12px;text-transform:uppercase;color:var(--text2);
+  letter-spacing:.06em;margin-bottom:10px;}
 /* ── Endirim badgei ── */
 .discount-badge{display:inline-block;background:rgba(196,176,46,.2);color:var(--orange);
   border:1px solid var(--orange);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;}
-
 </style>
 </head>
 <body>
@@ -557,10 +558,9 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
       <label>Qeyd yazın</label>
       <textarea id="noteText" class="notes-area" rows="2" placeholder="Xüsusi sifarişlər, qeydlər..."></textarea>
     </div>
-    <!-- Endirim + köçürmə düymələri (icazəyə görə JS-də göstərilir) -->
-    <div id="notesExtraActions" style="display:none;display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-      <button id="notesDiscountBtn" class="btn" style="flex:1;padding:10px;font-size:13px;border:1px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.1);display:none;" onclick="openDiscountModal()">🏷️ Endirim</button>
-      <button id="notesTransferBtn" class="btn" style="flex:1;padding:10px;font-size:13px;border:1px solid var(--blue);color:var(--blue);background:rgba(52,152,219,.1);display:none;" onclick="openTransferModal()">🔄 Köçür</button>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <button id="notesDiscountBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.1);" onclick="openDiscountModal()">🏷️ Endirim</button>
+      <button id="notesTransferBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--blue);color:var(--blue);background:rgba(52,152,219,.1);" onclick="openTransferModal()">🔄 Köçür</button>
     </div>
     <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeNotesModal()">Bağla</button>
@@ -720,12 +720,130 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 
 <div id="toast"></div>
 
+<!-- ═══ ÖDƏNİŞ MODALI ═══ -->
+<div class="modal-bg" id="paymentModal">
+  <div class="modal" style="max-width:440px;">
+    <h2>💰 Ödəniş Qəbulu</h2>
+    <div style="background:var(--card2);border-radius:10px;padding:12px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:var(--text2);font-size:14px;">Masa:</span>
+        <span id="paymentTableName" style="font-weight:700;"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;">
+        <span style="color:var(--text2);font-size:14px;">Ümumi məbləğ:</span>
+        <span id="paymentTotalAmount" style="font-size:22px;font-weight:800;color:var(--green);"></span>
+      </div>
+    </div>
+    <div id="paymentDiscountRow" style="display:none;background:rgba(196,176,46,.1);border:1px solid var(--orange);border-radius:10px;padding:10px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--orange);">🏷️ Endirim:</span>
+        <span id="paymentDiscountInfo" style="font-weight:700;color:var(--orange);"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <span style="font-size:13px;color:var(--text2);">Endirimli məbləğ:</span>
+        <span id="paymentFinalAmount" style="font-size:18px;font-weight:800;color:var(--green);"></span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Ödəniş Növü *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="payment-type-btn" onclick="selectPaymentType('cash')" id="pt_cash">💵 Nağd</button>
+        <button class="payment-type-btn" onclick="selectPaymentType('pos')" id="pt_pos">💳 POS Terminal</button>
+        <button class="payment-type-btn" onclick="selectPaymentType('credit')" id="pt_credit">📋 Nisyə</button>
+        <button class="payment-type-btn" onclick="selectPaymentType('split')" id="pt_split">✂️ Bölünmüş</button>
+      </div>
+    </div>
+    <div id="paymentCashSection" style="display:none;">
+      <div class="form-group">
+        <label>Müştəri verdi (₼)</label>
+        <input type="number" id="paymentCashGiven" min="0" step="0.01" placeholder="0.00"
+               oninput="calcChange()" style="font-size:20px;text-align:center;">
+      </div>
+      <div id="paymentChangeRow" style="display:none;background:var(--card2);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:13px;color:var(--text2);" id="changeLabel">Qaytarılacaq:</div>
+        <div id="paymentChange" style="font-size:28px;font-weight:800;color:var(--blue);"></div>
+      </div>
+    </div>
+    <div id="paymentSplitSection" style="display:none;">
+      <div class="form-group">
+        <label>Nağd hissə (₼)</label>
+        <input type="number" id="splitCash" min="0" step="0.01" placeholder="0.00" oninput="calcSplit()">
+      </div>
+      <div class="form-group">
+        <label>POS hissə (₼)</label>
+        <input type="number" id="splitPos" min="0" step="0.01" placeholder="0.00" oninput="calcSplit()">
+      </div>
+      <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:-8px;"></div>
+    </div>
+    <div id="paymentCreditSection" style="display:none;">
+      <div class="form-group">
+        <label>Müştəri adı / Qeyd</label>
+        <input type="text" id="creditName" placeholder="Müştəri adı...">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;padding:14px;" onclick="closePaymentModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:14px;font-size:15px;" onclick="confirmPayment()">✅ Təsdiqlə</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ENDİRİM MODALI ═══ -->
+<div class="modal-bg" id="discountModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2>🏷️ Endirim Ver</h2>
+    <p id="discountTableInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
+    <div class="form-group">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button id="disc_pct_btn" onclick="setDiscountType('percent')" style="flex:1;padding:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.15);font-weight:700;border-radius:9px;cursor:pointer;">% Faiz</button>
+        <button id="disc_fix_btn" onclick="setDiscountType('fixed')" style="flex:1;padding:12px;border:1px solid var(--border);color:var(--text2);background:transparent;font-weight:600;border-radius:9px;cursor:pointer;">₼ Sabit</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label id="discountValueLabel">Faiz (0-100)</label>
+      <input type="number" id="discountValue" min="0" step="1" placeholder="10"
+             style="font-size:24px;text-align:center;" oninput="previewDiscount()">
+    </div>
+    <div id="discountPreview" style="background:var(--card2);border-radius:10px;padding:12px;min-height:44px;margin-bottom:4px;"></div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeDiscountModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="applyDiscount()">✅ Tətbiq Et</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MASA KÖÇÜRMƏ MODALI ═══ -->
+<div class="modal-bg" id="transferModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2>🔄 Masa Köçürmə</h2>
+    <p id="transferFromInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
+    <div class="form-group" style="text-align:left;">
+      <label>Hara köçürülsün?</label>
+      <select id="transferToTable" style="font-size:15px;"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeTransferModal()">Ləğv</button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="confirmTransfer()">🔄 Köçür</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HESABAT MODALI ═══ -->
+<div class="modal-bg" id="reportModal">
+  <div class="modal" style="max-width:500px;">
+    <h2>📊 Gün Sonu Hesabat</h2>
+    <div id="reportContent"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeReportModal()">Bağla</button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="printReport()">🖨️ Çap Et</button>
+    </div>
+  </div>
+</div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-<script>
-/* ═══════════════════════════════════════════
+<script>/* ═══════════════════════════════════════════
    FIREBASE KONFİQURASİYA
 ═══════════════════════════════════════════ */
 const firebaseConfig = {
@@ -1634,7 +1752,6 @@ function tableForm(name='', isEdit=false) {
     </div>` : ''}
   `;
 }
-
 /* ═══════════════════════════════════════════
    ALARM SİSTEMİ
 ═══════════════════════════════════════════ */
@@ -2311,8 +2428,7 @@ function playBeep() {
     osc2.start(ctx.currentTime + 0.05); osc2.stop(ctx.currentTime + 0.55);
   } catch(e){}
 }
-
-/* ═══════════════════════════════════════════
+  /* ═══════════════════════════════════════════
    QARSON — SİFARİŞ GÖTÜRMƏ
 ═══════════════════════════════════════════ */
 function renderNoteOrderSummary(tableId) {
@@ -2342,7 +2458,6 @@ function renderNoteOrderSummary(tableId) {
 }
 
 function cancelOrderItem(tableId, itemKey) {
-  if (!hasPermission('order.cancel_item')) return;
   const order = state.tableOrders[tableId];
   if (!order?.items) return;
   const it = order.items[itemKey];
@@ -2751,534 +2866,6 @@ R.staff.once('value', snap=>{
   ].forEach(w=>R.staff.push(w));
 });
 
-
-/* ═══════════════════════════════════════════
-   ÖDƏNİŞ SİSTEMİ
-   Firebase: /payments/{id}
-   Hər ödəniş: tableId, tableName, amount, finalAmount,
-   type (cash/pos/credit/split), discount, staffId, createdAt
-═══════════════════════════════════════════ */
-
-// Aktiv ödəniş state-i
-let _payment = {
-  tableId: null,
-  type: null,
-  discountType: null,   // 'percent' | 'fixed'
-  discountValue: 0,
-  originalTotal: 0,
-  finalTotal: 0
-};
-
-function openPaymentModal() {
-  if (!hasPermission('bill.payment_cash') && !hasPermission('bill.payment_pos') && !hasPermission('bill.credit')) {
-    showToast('🚫 Ödəniş qəbul etmək icazəniz yoxdur');
-    return;
-  }
-  const tableId = state.noteTableId;
-  if (!tableId) return;
-  const t = state.tables.find(x=>x.id===tableId);
-  const order = state.tableOrders[tableId];
-  if (!order || !order.total) { showToast('⚠️ Bu masada aktiv sifariş yoxdur'); return; }
-
-  _payment.tableId = tableId;
-  _payment.originalTotal = order.total || 0;
-  _payment.finalTotal = _payment.originalTotal;
-  _payment.type = null;
-  _payment.discountType = null;
-  _payment.discountValue = 0;
-
-  document.getElementById('paymentTableName').textContent = t ? t.name : '—';
-  document.getElementById('paymentTotalAmount').textContent = _payment.originalTotal.toFixed(2) + ' ₼';
-  document.getElementById('paymentDiscountRow').style.display = 'none';
-  document.getElementById('paymentCashSection').style.display = 'none';
-  document.getElementById('paymentSplitSection').style.display = 'none';
-  document.getElementById('paymentCreditSection').style.display = 'none';
-  document.getElementById('paymentCashGiven').value = '';
-  document.getElementById('paymentChangeRow').style.display = 'none';
-
-  // İcazəyə görə ödəniş növü düymələri
-  document.getElementById('pt_cash').style.display = hasPermission('bill.payment_cash') ? '' : 'none';
-  document.getElementById('pt_pos').style.display = hasPermission('bill.payment_pos') ? '' : 'none';
-  document.getElementById('pt_credit').style.display = hasPermission('bill.credit') ? '' : 'none';
-  document.getElementById('pt_split').style.display = (hasPermission('bill.payment_cash') && hasPermission('bill.payment_pos')) ? '' : 'none';
-
-  // Əvvəlki endirim varsa göstər
-  if (_payment.discountValue > 0) _applyDiscountToPayment();
-
-  ['pt_cash','pt_pos','pt_credit','pt_split'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('selected');
-  });
-
-  document.getElementById('paymentModal').classList.add('open');
-}
-
-function closePaymentModal() {
-  document.getElementById('paymentModal').classList.remove('open');
-}
-
-function selectPaymentType(type) {
-  _payment.type = type;
-  ['pt_cash','pt_pos','pt_credit','pt_split'].forEach(id=>{
-    document.getElementById(id)?.classList.remove('selected');
-  });
-  document.getElementById('pt_'+type)?.classList.add('selected');
-
-  document.getElementById('paymentCashSection').style.display = (type==='cash') ? 'block' : 'none';
-  document.getElementById('paymentSplitSection').style.display = (type==='split') ? 'block' : 'none';
-  document.getElementById('paymentCreditSection').style.display = (type==='credit') ? 'block' : 'none';
-
-  if (type === 'cash') {
-    document.getElementById('paymentCashGiven').value = '';
-    document.getElementById('paymentChangeRow').style.display = 'none';
-  }
-  if (type === 'split') {
-    document.getElementById('splitCash').value = '';
-    document.getElementById('splitPos').value = _payment.finalTotal.toFixed(2);
-    calcSplit();
-  }
-}
-
-function calcChange() {
-  const given = parseFloat(document.getElementById('paymentCashGiven').value) || 0;
-  const change = given - _payment.finalTotal;
-  const row = document.getElementById('paymentChangeRow');
-  if (given > 0) {
-    row.style.display = 'block';
-    document.getElementById('paymentChange').textContent = (change >= 0 ? change : 0).toFixed(2) + ' ₼';
-    document.getElementById('paymentChange').style.color = change >= 0 ? 'var(--blue)' : 'var(--red)';
-    document.getElementById('paymentChange').previousElementSibling.textContent = change >= 0 ? 'Qaytarılacaq:' : 'Çatışmır:';
-  } else {
-    row.style.display = 'none';
-  }
-}
-
-function calcSplit() {
-  const cash = parseFloat(document.getElementById('splitCash').value) || 0;
-  const pos = parseFloat(document.getElementById('splitPos').value) || 0;
-  const total = _payment.finalTotal;
-  const sum = cash + pos;
-  const diff = sum - total;
-  const el = document.getElementById('splitStatus');
-  if (Math.abs(diff) < 0.01) {
-    el.textContent = '✅ Düzgündür';
-    el.style.color = 'var(--green)';
-  } else if (diff > 0) {
-    el.textContent = `⚠️ ${diff.toFixed(2)} ₼ artıqdır`;
-    el.style.color = 'var(--orange)';
-  } else {
-    el.textContent = `❌ ${Math.abs(diff).toFixed(2)} ₼ çatışmır`;
-    el.style.color = 'var(--red)';
-  }
-}
-
-function _applyDiscountToPayment() {
-  if (!_payment.discountValue) return;
-  if (_payment.discountType === 'percent') {
-    _payment.finalTotal = _payment.originalTotal * (1 - _payment.discountValue/100);
-  } else {
-    _payment.finalTotal = Math.max(0, _payment.originalTotal - _payment.discountValue);
-  }
-  const discStr = _payment.discountType === 'percent'
-    ? `${_payment.discountValue}%`
-    : `${_payment.discountValue.toFixed(2)} ₼`;
-  document.getElementById('paymentDiscountInfo').textContent = discStr;
-  document.getElementById('paymentFinalAmount').textContent = _payment.finalTotal.toFixed(2) + ' ₼';
-  document.getElementById('paymentDiscountRow').style.display = 'block';
-  document.getElementById('paymentTotalAmount').innerHTML =
-    `<span style="text-decoration:line-through;color:var(--text3);font-size:16px;">${_payment.originalTotal.toFixed(2)} ₼</span>`;
-}
-
-function confirmPayment() {
-  if (!_payment.type) { showToast('⚠️ Ödəniş növü seçin'); return; }
-  const tableId = _payment.tableId;
-  const t = state.tables.find(x=>x.id===tableId);
-
-  let paymentData = {
-    tableId,
-    tableName: t?.name || '?',
-    staffId: state.user.id,
-    staffName: state.user.name,
-    type: _payment.type,
-    originalAmount: _payment.originalTotal,
-    finalAmount: _payment.finalTotal,
-    discountType: _payment.discountType || null,
-    discountValue: _payment.discountValue || 0,
-    createdAt: Date.now(),
-    time: new Date().toLocaleTimeString('az-AZ'),
-    date: new Date().toLocaleDateString('az-AZ')
-  };
-
-  if (_payment.type === 'cash') {
-    const given = parseFloat(document.getElementById('paymentCashGiven').value) || 0;
-    if (given < _payment.finalTotal) { showToast('❌ Verilən məbləğ çatışmır'); return; }
-    paymentData.cashGiven = given;
-    paymentData.change = given - _payment.finalTotal;
-  }
-  if (_payment.type === 'split') {
-    const cash = parseFloat(document.getElementById('splitCash').value) || 0;
-    const pos = parseFloat(document.getElementById('splitPos').value) || 0;
-    if (Math.abs(cash + pos - _payment.finalTotal) > 0.01) { showToast('❌ Məbləğlər uyğun gəlmir'); return; }
-    paymentData.splitCash = cash;
-    paymentData.splitPos = pos;
-  }
-  if (_payment.type === 'credit') {
-    paymentData.creditName = document.getElementById('creditName').value.trim() || 'Naməlum';
-  }
-
-  // Firebase-ə yaz
-  db.ref('payments').push(paymentData);
-  addLog('order', `${state.user.name} "${t?.name}" masası ödənişini qəbul etdi (${_payment.finalTotal.toFixed(2)} ₼, ${_payment.type})`, { tableId });
-
-  closePaymentModal();
-
-  // Masa bağlama sualı
-  state.pendingCloseTableId = tableId;
-  const closeBtn = document.getElementById('notesCloseTableBtn');
-  if (closeBtn && closeBtn.style.display !== 'none') {
-    confirmDeactivateTable();
-  } else {
-    showToast(`✅ Ödəniş qeyd edildi: ${_payment.finalTotal.toFixed(2)} ₼`);
-  }
-  closeNotesModal();
-}
-
-/* ═══════════════════════════════════════════
-   ENDİRİM SİSTEMİ
-═══════════════════════════════════════════ */
-let _discountTableId = null;
-let _discountType = 'percent';
-
-function openDiscountModal() {
-  if (!hasPermission('order.discount')) { showToast('🚫 Endirim vermək icazəniz yoxdur'); return; }
-  const tableId = state.noteTableId;
-  if (!tableId) return;
-  const order = state.tableOrders[tableId];
-  if (!order?.total) { showToast('⚠️ Sifariş yoxdur'); return; }
-  _discountTableId = tableId;
-  _discountType = 'percent';
-  const t = state.tables.find(x=>x.id===tableId);
-  document.getElementById('discountTableInfo').textContent = `${t?.name || 'Masa'} — Cəmi: ${order.total.toFixed(2)} ₼`;
-  document.getElementById('discountValue').value = '';
-  document.getElementById('discountPreview').innerHTML = '';
-  setDiscountType('percent');
-  document.getElementById('discountModal').classList.add('open');
-}
-
-function closeDiscountModal() {
-  document.getElementById('discountModal').classList.remove('open');
-}
-
-function setDiscountType(type) {
-  _discountType = type;
-  const pBtn = document.getElementById('disc_pct_btn');
-  const fBtn = document.getElementById('disc_fix_btn');
-  if (type === 'percent') {
-    pBtn.style.cssText = 'flex:1;padding:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.15);font-weight:700;border-radius:9px;cursor:pointer;';
-    fBtn.style.cssText = 'flex:1;padding:12px;border:1px solid var(--border);color:var(--text2);background:transparent;font-weight:600;border-radius:9px;cursor:pointer;';
-    document.getElementById('discountValueLabel').textContent = 'Faiz (0-100)';
-    document.getElementById('discountValue').max = '100';
-    document.getElementById('discountValue').placeholder = '10';
-  } else {
-    fBtn.style.cssText = 'flex:1;padding:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.15);font-weight:700;border-radius:9px;cursor:pointer;';
-    pBtn.style.cssText = 'flex:1;padding:12px;border:1px solid var(--border);color:var(--text2);background:transparent;font-weight:600;border-radius:9px;cursor:pointer;';
-    document.getElementById('discountValueLabel').textContent = 'Məbləğ (₼)';
-    document.getElementById('discountValue').max = '';
-    document.getElementById('discountValue').placeholder = '5.00';
-  }
-  previewDiscount();
-}
-
-function previewDiscount() {
-  const val = parseFloat(document.getElementById('discountValue').value) || 0;
-  const order = state.tableOrders[_discountTableId];
-  if (!order || !val) { document.getElementById('discountPreview').innerHTML = ''; return; }
-  const orig = order.total;
-  let final, discStr;
-  if (_discountType === 'percent') {
-    final = orig * (1 - val/100);
-    discStr = `${val}%`;
-  } else {
-    final = Math.max(0, orig - val);
-    discStr = `${val.toFixed(2)} ₼`;
-  }
-  document.getElementById('discountPreview').innerHTML = `
-    <div style="display:flex;justify-content:space-between;font-size:14px;">
-      <span style="color:var(--text2);">Əvvəlki məbləğ:</span>
-      <span style="text-decoration:line-through;color:var(--text3);">${orig.toFixed(2)} ₼</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--green);margin-top:4px;">
-      <span>Endirimli məbləğ:</span>
-      <span>${final.toFixed(2)} ₼</span>
-    </div>`;
-}
-
-function applyDiscount() {
-  const val = parseFloat(document.getElementById('discountValue').value) || 0;
-  if (!val) { showToast('⚠️ Endirim dəyəri daxil edin'); return; }
-  const order = state.tableOrders[_discountTableId];
-  const t = state.tables.find(x=>x.id===_discountTableId);
-  let final;
-  if (_discountType === 'percent') {
-    if (val > 100) { showToast('❌ Faiz 100-dən çox ola bilməz'); return; }
-    final = order.total * (1 - val/100);
-  } else {
-    if (val >= order.total) { showToast('❌ Endirim məbləğdən çox ola bilməz'); return; }
-    final = order.total - val;
-  }
-  // State-ə endirim qeyd et
-  _payment.discountType = _discountType;
-  _payment.discountValue = val;
-  _payment.originalTotal = order.total;
-  _payment.finalTotal = final;
-  _payment.tableId = _discountTableId;
-
-  const discStr = _discountType === 'percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
-  addLog('order', `${state.user.name} "${t?.name}" masasına ${discStr} endirim verdi`, { tableId: _discountTableId });
-  showToast(`✅ Endirim tətbiq edildi: ${discStr}`);
-  closeDiscountModal();
-}
-
-/* ═══════════════════════════════════════════
-   MASA KÖÇÜRMƏ SİSTEMİ
-═══════════════════════════════════════════ */
-let _transferFromTableId = null;
-
-function openTransferModal() {
-  if (!hasPermission('table.transfer')) { showToast('🚫 Masa köçürmə icazəniz yoxdur'); return; }
-  const tableId = state.noteTableId;
-  if (!tableId) return;
-  const t = state.tables.find(x=>x.id===tableId);
-  _transferFromTableId = tableId;
-
-  // Boş masaları tap (özü xaric)
-  const emptyTables = state.tables.filter(x => x.id !== tableId && !x.occupant);
-  if (!emptyTables.length) { showToast('⚠️ Köçürüləcək boş masa yoxdur'); return; }
-
-  document.getElementById('transferFromInfo').textContent =
-    `"${t?.name || 'Masa'}" masasından köçürülür`;
-  const sel = document.getElementById('transferToTable');
-  sel.innerHTML = emptyTables.map(m =>
-    `<option value="${m.id}">${esc(m.name)}</option>`
-  ).join('');
-  document.getElementById('transferModal').classList.add('open');
-}
-
-function closeTransferModal() {
-  document.getElementById('transferModal').classList.remove('open');
-}
-
-function confirmTransfer() {
-  const fromId = _transferFromTableId;
-  const toId = document.getElementById('transferToTable').value;
-  if (!fromId || !toId) return;
-
-  const fromT = state.tables.find(x=>x.id===fromId);
-  const toT = state.tables.find(x=>x.id===toId);
-
-  // Sifariş köçür
-  const order = state.tableOrders[fromId];
-  if (order) {
-    R.tableOrders.child(toId).set({ ...order, tableId: toId, updatedAt: Date.now() });
-    R.tableOrders.child(fromId).remove();
-  }
-  // Qeydlər köçür
-  const notes = fromT?.notes || '';
-  // Masa occupant köçür
-  R.tables.child(toId).update({ occupant: state.user.id, notes });
-  R.tables.child(fromId).update({ occupant: null, notes: '' });
-
-  addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü`, {
-    fromTableId: fromId, toTableId: toId, staffId: state.user.id
-  });
-  showToast(`✅ "${fromT?.name}" → "${toT?.name}" köçürüldü`);
-  closeTransferModal();
-  closeNotesModal();
-}
-
-/* ═══════════════════════════════════════════
-   GÜN SONU HESABAT
-═══════════════════════════════════════════ */
-function generateDailyReport() {
-  if (!hasPermission('report.daily')) { showToast('🚫 Hesabat icazəniz yoxdur'); return; }
-
-  db.ref('payments').orderByChild('date').equalTo(
-    new Date().toLocaleDateString('az-AZ')
-  ).once('value', snap => {
-    const data = snap.val() || {};
-    const payments = Object.values(data);
-
-    if (!payments.length) {
-      document.getElementById('reportContent').innerHTML =
-        '<p style="color:var(--text3);text-align:center;padding:20px;">Bu gün heç bir ödəniş yoxdur.</p>';
-      document.getElementById('reportModal').classList.add('open');
-      return;
-    }
-
-    // Növlərə görə qruplaşdır
-    const byType = { cash:0, pos:0, credit:0, split:0 };
-    const typeNames = { cash:'💵 Nağd', pos:'💳 POS', credit:'📋 Nisyə', split:'✂️ Bölünmüş' };
-    let totalRevenue = 0;
-    let totalDiscount = 0;
-
-    payments.forEach(p => {
-      byType[p.type] = (byType[p.type] || 0) + (p.finalAmount || 0);
-      totalRevenue += (p.finalAmount || 0);
-      if (p.discountValue) {
-        if (p.discountType === 'percent') {
-          totalDiscount += (p.originalAmount - p.finalAmount);
-        } else {
-          totalDiscount += p.discountValue;
-        }
-      }
-    });
-
-    const html = `
-      <div class="report-section">
-        <h4>📅 ${new Date().toLocaleDateString('az-AZ')} — Günlük icmal</h4>
-        <div class="report-row"><span>Ümumi əməliyyat:</span><span>${payments.length} ödəniş</span></div>
-        <div class="report-row"><span>Verilən endirim:</span><span style="color:var(--orange);">${totalDiscount.toFixed(2)} ₼</span></div>
-        <div class="report-row"><span>Ümumi gəlir:</span><span>${totalRevenue.toFixed(2)} ₼</span></div>
-      </div>
-      <div class="report-section">
-        <h4>💰 Ödəniş növlərinə görə</h4>
-        ${Object.entries(byType).filter(([,v])=>v>0).map(([type,amount])=>`
-          <div class="report-row">
-            <span>${typeNames[type]||type}</span>
-            <span>${amount.toFixed(2)} ₼</span>
-          </div>`).join('')}
-      </div>
-      <div class="report-section">
-        <h4>📋 Son 10 əməliyyat</h4>
-        ${payments.slice(-10).reverse().map(p=>`
-          <div class="report-row" style="font-size:13px;">
-            <span>${p.tableName} — ${typeNames[p.type]||p.type}</span>
-            <span>${(p.finalAmount||0).toFixed(2)} ₼ &nbsp;<small style="color:var(--text3);">${p.time||''}</small></span>
-          </div>`).join('')}
-      </div>`;
-
-    document.getElementById('reportContent').innerHTML = html;
-    document.getElementById('reportModal').classList.add('open');
-  });
-}
-
-function closeReportModal() {
-  document.getElementById('reportModal').classList.remove('open');
-}
-
-function printReport() {
-  const html = document.getElementById('reportContent').innerHTML;
-  const w = window.open('', '_blank', 'width=500,height=700');
-  if (!w) return;
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Gün Sonu Hesabat</title>
-    <style>
-      body{font-family:'Segoe UI',sans-serif;padding:20px;max-width:400px;margin:0 auto;}
-      h1{font-size:18px;text-align:center;margin-bottom:16px;}
-      .report-section{margin-bottom:16px;}
-      .report-section h4{font-size:11px;text-transform:uppercase;color:#666;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px;}
-      .report-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;}
-      .report-row:last-child{font-weight:700;font-size:15px;border-bottom:none;}
-      @media print{body{padding:0;}}
-    </style></head>
-    <body>
-    <h1>📊 Gün Sonu Hesabat<br><small style="font-size:13px;font-weight:400;">${new Date().toLocaleDateString('az-AZ')}</small></h1>
-    ${html}
-    <script>window.onload=()=>window.print()<\/script>
-    </body></html>`);
-  w.document.close();
-}
-
-/* ═══════════════════════════════════════════
-   ÖDƏNİŞLƏR PANELİ (Admin)
-═══════════════════════════════════════════ */
-function renderPayments() {
-  const el = document.getElementById('paymentsList');
-  const statsEl = document.getElementById('paymentsStatsRow');
-  if (!el) return;
-
-  db.ref('payments').limitToLast(100).once('value', snap => {
-    const data = snap.val() || {};
-    const payments = Object.entries(data).map(([id,v])=>({id,...v}))
-      .sort((a,b)=>b.createdAt-a.createdAt);
-
-    if (!payments.length) {
-      el.innerHTML = '<p style="color:var(--text3);padding:16px;">Hələ ödəniş yoxdur.</p>';
-      if (statsEl) statsEl.innerHTML = '';
-      return;
-    }
-
-    // Statistika
-    const today = new Date().toLocaleDateString('az-AZ');
-    const todayP = payments.filter(p=>p.date===today);
-    const todayTotal = todayP.reduce((s,p)=>s+(p.finalAmount||0),0);
-    const totalAll = payments.reduce((s,p)=>s+(p.finalAmount||0),0);
-    const typeNames = {cash:'💵 Nağd',pos:'💳 POS',credit:'📋 Nisyə',split:'✂️ Bölünmüş'};
-    const typeColors = {cash:'var(--green)',pos:'var(--blue)',credit:'var(--orange)',split:'var(--purple)'};
-
-    if (statsEl) {
-      statsEl.innerHTML = `
-        <div class="stat-card"><div class="stat-num" style="color:var(--green);">${todayTotal.toFixed(0)}₼</div><div class="stat-label">Bu gün</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${todayP.length}</div><div class="stat-label">Bugünkü əməliyyat</div></div>
-        <div class="stat-card"><div class="stat-num" style="font-size:20px;">${totalAll.toFixed(0)}₼</div><div class="stat-label">Ümumi cəmi</div></div>`;
-    }
-
-    el.innerHTML = payments.slice(0, 50).map(p => {
-      const discountStr = p.discountValue
-        ? `<span class="discount-badge">${p.discountType==='percent'?p.discountValue+'%':p.discountValue.toFixed(2)+'₼ endirim'}</span> `
-        : '';
-      return `<div class="log-item">
-        <span class="log-badge" style="background:${typeColors[p.type]||'#666'}22;color:${typeColors[p.type]||'#aaa'}">${typeNames[p.type]||p.type}</span>
-        <span class="log-text">${esc(p.tableName||'?')} — ${discountStr}${esc(p.staffName||'?')}</span>
-        <span class="log-time" style="text-align:right;">
-          <strong style="color:var(--green);font-size:14px;">${(p.finalAmount||0).toFixed(2)} ₼</strong><br>
-          <small>${p.time||''} ${p.date||''}</small>
-        </span>
-      </div>`;
-    }).join('');
-  });
-}
-
-function clearOldPayments() {
-  if (!confirm('30 gündən köhnə ödəniş qeydləri silinsin?')) return;
-  const cutoff = Date.now() - 30*24*60*60*1000;
-  db.ref('payments').once('value', snap => {
-    let n = 0;
-    snap.forEach(child => {
-      if ((child.val().createdAt||0) < cutoff) { child.ref.remove(); n++; }
-    });
-    showToast(`✅ ${n} köhnə ödəniş silindi`);
-  });
-}
-
-/* ═══════════════════════════════════════════
-   openNotesModal - yeni düymələr icazəyə görə
-═══════════════════════════════════════════ */
-// Mövcud openNotesModal-ı genişləndir — bu funksiya artıq var,
-// sadəcə yeni düymələri icazəyə görə göstər/gizlət
-const _origOpenNotesModal = openNotesModal;
-function openNotesModal(tableId) {
-  _origOpenNotesModal(tableId);
-  // Endirim düyməsi
-  const discBtn = document.getElementById('notesDiscountBtn');
-  if (discBtn) discBtn.style.display = hasPermission('order.discount') ? 'block' : 'none';
-  // Köçürmə düyməsi
-  const transferBtn = document.getElementById('notesTransferBtn');
-  if (transferBtn) transferBtn.style.display = hasPermission('table.transfer') ? 'block' : 'none';
-  // Ödəniş düyməsi
-  const payBtn = document.getElementById('notesPaymentBtn');
-  if (payBtn) payBtn.style.display =
-    (hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit')) ? 'block' : 'none';
-  // Əgər hər hansı əlavə düymə varsa, əlavə sıranı göstər
-  const extraRow = document.getElementById('notesExtraActions');
-  if (extraRow) {
-    const hasExtra = (discBtn?.style.display !== 'none') || (transferBtn?.style.display !== 'none');
-    extraRow.style.display = hasExtra ? 'flex' : 'none';
-  }
-}
-
-
-
 checkCustomerMode();
 loadSavedTheme();
 document.getElementById('adminFab').style.display='none';
@@ -3297,148 +2884,405 @@ function requirePermission(action) {
   }
   return true;
 }
+  /* ═══════════════════════════════════════════
+   ÖDƏNİŞ SİSTEMİ
+   Firebase: /payments/{id}
+═══════════════════════════════════════════ */
+let _payment = { tableId:null, type:null, discountType:null, discountValue:0, originalTotal:0, finalTotal:0 };
+
+function openPaymentModal() {
+  if (!hasPermission('bill.payment_cash') && !hasPermission('bill.payment_pos') && !hasPermission('bill.credit')) {
+    showToast('🚫 Ödəniş qəbul etmək icazəniz yoxdur'); return;
+  }
+  const tableId = state.noteTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  const order = state.tableOrders[tableId];
+  if (!order || !order.total) { showToast('⚠️ Bu masada aktiv sifariş yoxdur'); return; }
+
+  _payment.tableId = tableId;
+  _payment.originalTotal = order.total || 0;
+  _payment.finalTotal = _payment.discountValue ? _payment.finalTotal : _payment.originalTotal;
+  _payment.type = null;
+
+  document.getElementById('paymentTableName').textContent = t ? t.name : '—';
+  document.getElementById('paymentTotalAmount').textContent = _payment.originalTotal.toFixed(2) + ' ₼';
+
+  if (_payment.discountValue > 0) {
+    document.getElementById('paymentDiscountInfo').textContent =
+      _payment.discountType==='percent' ? _payment.discountValue+'%' : _payment.discountValue.toFixed(2)+' ₼';
+    document.getElementById('paymentFinalAmount').textContent = _payment.finalTotal.toFixed(2) + ' ₼';
+    document.getElementById('paymentDiscountRow').style.display = 'block';
+    document.getElementById('paymentTotalAmount').innerHTML =
+      `<span style="text-decoration:line-through;color:var(--text3);font-size:16px;">${_payment.originalTotal.toFixed(2)} ₼</span>`;
+  } else {
+    document.getElementById('paymentDiscountRow').style.display = 'none';
+    _payment.finalTotal = _payment.originalTotal;
+  }
+
+  document.getElementById('paymentCashSection').style.display = 'none';
+  document.getElementById('paymentSplitSection').style.display = 'none';
+  document.getElementById('paymentCreditSection').style.display = 'none';
+  document.getElementById('paymentCashGiven').value = '';
+  document.getElementById('paymentChangeRow').style.display = 'none';
+
+  document.getElementById('pt_cash').style.display = hasPermission('bill.payment_cash') ? '' : 'none';
+  document.getElementById('pt_pos').style.display = hasPermission('bill.payment_pos') ? '' : 'none';
+  document.getElementById('pt_credit').style.display = hasPermission('bill.credit') ? '' : 'none';
+  document.getElementById('pt_split').style.display =
+    (hasPermission('bill.payment_cash') && hasPermission('bill.payment_pos')) ? '' : 'none';
+
+  ['pt_cash','pt_pos','pt_credit','pt_split'].forEach(id => {
+    document.getElementById(id)?.classList.remove('selected');
+  });
+  document.getElementById('paymentModal').classList.add('open');
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').classList.remove('open');
+}
+
+function selectPaymentType(type) {
+  _payment.type = type;
+  ['pt_cash','pt_pos','pt_credit','pt_split'].forEach(id => {
+    document.getElementById(id)?.classList.remove('selected');
+  });
+  document.getElementById('pt_'+type)?.classList.add('selected');
+  document.getElementById('paymentCashSection').style.display = type==='cash' ? 'block' : 'none';
+  document.getElementById('paymentSplitSection').style.display = type==='split' ? 'block' : 'none';
+  document.getElementById('paymentCreditSection').style.display = type==='credit' ? 'block' : 'none';
+  if (type==='split') {
+    document.getElementById('splitCash').value = '';
+    document.getElementById('splitPos').value = _payment.finalTotal.toFixed(2);
+    calcSplit();
+  }
+}
+
+function calcChange() {
+  const given = parseFloat(document.getElementById('paymentCashGiven').value) || 0;
+  const change = given - _payment.finalTotal;
+  const row = document.getElementById('paymentChangeRow');
+  if (given > 0) {
+    row.style.display = 'block';
+    document.getElementById('paymentChange').textContent = Math.abs(change).toFixed(2) + ' ₼';
+    document.getElementById('paymentChange').style.color = change >= 0 ? 'var(--blue)' : 'var(--red)';
+    document.getElementById('changeLabel').textContent = change >= 0 ? 'Qaytarılacaq:' : 'Çatışmır:';
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+function calcSplit() {
+  const cash = parseFloat(document.getElementById('splitCash').value) || 0;
+  const pos = parseFloat(document.getElementById('splitPos').value) || 0;
+  const diff = cash + pos - _payment.finalTotal;
+  const el = document.getElementById('splitStatus');
+  if (Math.abs(diff) < 0.01) { el.textContent='✅ Düzgündür'; el.style.color='var(--green)'; }
+  else if (diff > 0) { el.textContent=`⚠️ ${diff.toFixed(2)} ₼ artıqdır`; el.style.color='var(--orange)'; }
+  else { el.textContent=`❌ ${Math.abs(diff).toFixed(2)} ₼ çatışmır`; el.style.color='var(--red)'; }
+}
+
+function confirmPayment() {
+  if (!_payment.type) { showToast('⚠️ Ödəniş növü seçin'); return; }
+  const tableId = _payment.tableId;
+  const t = state.tables.find(x=>x.id===tableId);
+
+  const payData = {
+    tableId, tableName: t?.name||'?',
+    staffId: state.user.id, staffName: state.user.name,
+    type: _payment.type,
+    originalAmount: _payment.originalTotal,
+    finalAmount: _payment.finalTotal,
+    discountType: _payment.discountType||null,
+    discountValue: _payment.discountValue||0,
+    createdAt: Date.now(),
+    time: new Date().toLocaleTimeString('az-AZ'),
+    date: new Date().toLocaleDateString('az-AZ')
+  };
+
+  if (_payment.type === 'cash') {
+    const given = parseFloat(document.getElementById('paymentCashGiven').value)||0;
+    if (given < _payment.finalTotal) { showToast('❌ Verilən məbləğ çatışmır'); return; }
+    payData.cashGiven = given;
+    payData.change = given - _payment.finalTotal;
+  }
+  if (_payment.type === 'split') {
+    const cash = parseFloat(document.getElementById('splitCash').value)||0;
+    const pos = parseFloat(document.getElementById('splitPos').value)||0;
+    if (Math.abs(cash+pos-_payment.finalTotal) > 0.01) { showToast('❌ Məbləğlər uyğun gəlmir'); return; }
+    payData.splitCash = cash; payData.splitPos = pos;
+  }
+  if (_payment.type === 'credit') {
+    payData.creditName = document.getElementById('creditName').value.trim()||'Naməlum';
+  }
+
+  db.ref('payments').push(payData);
+  addLog('order', `${state.user.name} "${t?.name}" ödənişi qəbul etdi (${_payment.finalTotal.toFixed(2)} ₼, ${_payment.type})`, { tableId });
+
+  // Endirim sıfırla
+  _payment.discountType = null; _payment.discountValue = 0;
+
+  closePaymentModal();
+  showToast(`✅ Ödəniş qeyd edildi: ${_payment.finalTotal.toFixed(2)} ₼`);
+  closeNotesModal();
+
+  // Masa bağlama
+  if (hasPermission('table.close')) {
+    state.pendingCloseTableId = tableId;
+    const tName = t?.name||'Masa';
+    document.getElementById('confirmCloseTableName').textContent = tName;
+    document.getElementById('confirmCloseTableModal').classList.add('open');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   ENDİRİM SİSTEMİ
+═══════════════════════════════════════════ */
+let _discountTableId = null;
+let _discountType = 'percent';
+
+function openDiscountModal() {
+  if (!hasPermission('order.discount')) { showToast('🚫 Endirim icazəniz yoxdur'); return; }
+  const tableId = state.noteTableId;
+  if (!tableId) return;
+  const order = state.tableOrders[tableId];
+  if (!order?.total) { showToast('⚠️ Sifariş yoxdur'); return; }
+  _discountTableId = tableId;
+  _discountType = 'percent';
+  const t = state.tables.find(x=>x.id===tableId);
+  document.getElementById('discountTableInfo').textContent =
+    `${t?.name||'Masa'} — Cəmi: ${order.total.toFixed(2)} ₼`;
+  document.getElementById('discountValue').value = '';
+  document.getElementById('discountPreview').innerHTML = '';
+  setDiscountType('percent');
+  document.getElementById('discountModal').classList.add('open');
+}
+
+function closeDiscountModal() {
+  document.getElementById('discountModal').classList.remove('open');
+}
+
+function setDiscountType(type) {
+  _discountType = type;
+  const activeStyle = 'flex:1;padding:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.15);font-weight:700;border-radius:9px;cursor:pointer;';
+  const inactiveStyle = 'flex:1;padding:12px;border:1px solid var(--border);color:var(--text2);background:transparent;font-weight:600;border-radius:9px;cursor:pointer;';
+  document.getElementById('disc_pct_btn').style.cssText = type==='percent' ? activeStyle : inactiveStyle;
+  document.getElementById('disc_fix_btn').style.cssText = type==='fixed' ? activeStyle : inactiveStyle;
+  document.getElementById('discountValueLabel').textContent = type==='percent' ? 'Faiz (0-100)' : 'Məbləğ (₼)';
+  document.getElementById('discountValue').placeholder = type==='percent' ? '10' : '5.00';
+  document.getElementById('discountValue').max = type==='percent' ? '100' : '';
+  previewDiscount();
+}
+
+function previewDiscount() {
+  const val = parseFloat(document.getElementById('discountValue').value)||0;
+  const order = state.tableOrders[_discountTableId];
+  if (!order||!val) { document.getElementById('discountPreview').innerHTML=''; return; }
+  const orig = order.total;
+  const final = _discountType==='percent' ? orig*(1-val/100) : Math.max(0,orig-val);
+  document.getElementById('discountPreview').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:14px;">
+      <span style="color:var(--text2);">Əvvəlki məbləğ:</span>
+      <span style="text-decoration:line-through;color:var(--text3);">${orig.toFixed(2)} ₼</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--green);margin-top:4px;">
+      <span>Endirimli məbləğ:</span><span>${final.toFixed(2)} ₼</span>
+    </div>`;
+}
+
+function applyDiscount() {
+  const val = parseFloat(document.getElementById('discountValue').value)||0;
+  if (!val) { showToast('⚠️ Endirim dəyəri daxil edin'); return; }
+  const order = state.tableOrders[_discountTableId];
+  const t = state.tables.find(x=>x.id===_discountTableId);
+  if (_discountType==='percent' && val>100) { showToast('❌ Faiz 100-dən çox ola bilməz'); return; }
+  if (_discountType==='fixed' && val>=order.total) { showToast('❌ Endirim məbləğdən çox ola bilməz'); return; }
+  const final = _discountType==='percent' ? order.total*(1-val/100) : order.total-val;
+  _payment.discountType = _discountType;
+  _payment.discountValue = val;
+  _payment.originalTotal = order.total;
+  _payment.finalTotal = final;
+  _payment.tableId = _discountTableId;
+  const discStr = _discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
+  addLog('order', `${state.user.name} "${t?.name}" masasına ${discStr} endirim verdi`, { tableId: _discountTableId });
+  showToast(`✅ Endirim tətbiq edildi: ${discStr}`);
+  closeDiscountModal();
+}
+
+/* ═══════════════════════════════════════════
+   MASA KÖÇÜRMƏ SİSTEMİ
+═══════════════════════════════════════════ */
+let _transferFromTableId = null;
+
+function openTransferModal() {
+  if (!hasPermission('table.transfer')) { showToast('🚫 Masa köçürmə icazəniz yoxdur'); return; }
+  const tableId = state.noteTableId;
+  if (!tableId) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  _transferFromTableId = tableId;
+  const emptyTables = state.tables.filter(x=>x.id!==tableId&&!x.occupant);
+  if (!emptyTables.length) { showToast('⚠️ Köçürüləcək boş masa yoxdur'); return; }
+  document.getElementById('transferFromInfo').textContent =
+    `"${t?.name||'Masa'}" masasından köçürülür`;
+  document.getElementById('transferToTable').innerHTML =
+    emptyTables.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  document.getElementById('transferModal').classList.add('open');
+}
+
+function closeTransferModal() {
+  document.getElementById('transferModal').classList.remove('open');
+}
+
+function confirmTransfer() {
+  const fromId = _transferFromTableId;
+  const toId = document.getElementById('transferToTable').value;
+  if (!fromId||!toId) return;
+  const fromT = state.tables.find(x=>x.id===fromId);
+  const toT = state.tables.find(x=>x.id===toId);
+  const order = state.tableOrders[fromId];
+  if (order) {
+    R.tableOrders.child(toId).set({...order, updatedAt:Date.now()});
+    R.tableOrders.child(fromId).remove();
+  }
+  R.tables.child(toId).update({ occupant: state.user.id, notes: fromT?.notes||'' });
+  R.tables.child(fromId).update({ occupant: null, notes: '' });
+  addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü`,
+    { fromTableId: fromId, toTableId: toId });
+  showToast(`✅ "${fromT?.name}" → "${toT?.name}" köçürüldü`);
+  closeTransferModal();
+  closeNotesModal();
+}
+
+/* ═══════════════════════════════════════════
+   GÜN SONU HESABAT
+═══════════════════════════════════════════ */
+function generateDailyReport() {
+  if (!hasPermission('report.daily')) { showToast('🚫 Hesabat icazəniz yoxdur'); return; }
+  db.ref('payments').orderByChild('date').equalTo(
+    new Date().toLocaleDateString('az-AZ')
+  ).once('value', snap => {
+    const payments = Object.values(snap.val()||{});
+    if (!payments.length) {
+      document.getElementById('reportContent').innerHTML =
+        '<p style="color:var(--text3);text-align:center;padding:20px;">Bu gün heç bir ödəniş yoxdur.</p>';
+      document.getElementById('reportModal').classList.add('open');
+      return;
+    }
+    const typeNames = {cash:'💵 Nağd',pos:'💳 POS',credit:'📋 Nisyə',split:'✂️ Bölünmüş'};
+    const byType = {};
+    let totalRevenue = 0, totalDiscount = 0;
+    payments.forEach(p => {
+      byType[p.type] = (byType[p.type]||0) + (p.finalAmount||0);
+      totalRevenue += p.finalAmount||0;
+      if (p.discountValue) totalDiscount += p.originalAmount - p.finalAmount;
+    });
+    document.getElementById('reportContent').innerHTML = `
+      <div class="report-section">
+        <h4>📅 ${new Date().toLocaleDateString('az-AZ')} — Günlük icmal</h4>
+        <div class="report-row"><span>Ümumi əməliyyat:</span><span>${payments.length} ödəniş</span></div>
+        <div class="report-row"><span>Verilən endirim:</span><span style="color:var(--orange);">${totalDiscount.toFixed(2)} ₼</span></div>
+        <div class="report-row"><span>Ümumi gəlir:</span><span>${totalRevenue.toFixed(2)} ₼</span></div>
+      </div>
+      <div class="report-section">
+        <h4>💰 Ödəniş növlərinə görə</h4>
+        ${Object.entries(byType).filter(([,v])=>v>0).map(([type,amount])=>`
+          <div class="report-row"><span>${typeNames[type]||type}</span><span>${amount.toFixed(2)} ₼</span></div>
+        `).join('')}
+      </div>
+      <div class="report-section">
+        <h4>📋 Son 10 əməliyyat</h4>
+        ${payments.slice(-10).reverse().map(p=>`
+          <div class="report-row" style="font-size:13px;">
+            <span>${esc(p.tableName||'?')} — ${typeNames[p.type]||p.type}</span>
+            <span>${(p.finalAmount||0).toFixed(2)} ₼ <small style="color:var(--text3);">${p.time||''}</small></span>
+          </div>`).join('')}
+      </div>`;
+    document.getElementById('reportModal').classList.add('open');
+  });
+}
+
+function closeReportModal() {
+  document.getElementById('reportModal').classList.remove('open');
+}
+
+function printReport() {
+  const html = document.getElementById('reportContent').innerHTML;
+  const w = window.open('','_blank','width=500,height=700');
+  if (!w) return;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesabat</title>
+    <style>body{font-family:sans-serif;padding:20px;max-width:400px;margin:0 auto;}
+    .report-section{margin-bottom:16px;}.report-section h4{font-size:11px;text-transform:uppercase;color:#666;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px;}
+    .report-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;}
+    .report-row:last-child{font-weight:700;font-size:15px;border-bottom:none;}
+    @media print{body{padding:0;}}</style></head>
+    <body><h2 style="text-align:center;font-size:16px;">📊 Gün Sonu Hesabat<br>
+    <small style="font-weight:400;font-size:13px;">${new Date().toLocaleDateString('az-AZ')}</small></h2>
+    ${html}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+/* ═══════════════════════════════════════════
+   ÖDƏNİŞLƏR PANELİ (Admin)
+═══════════════════════════════════════════ */
+function renderPayments() {
+  const el = document.getElementById('paymentsList');
+  const statsEl = document.getElementById('paymentsStatsRow');
+  if (!el) return;
+  db.ref('payments').limitToLast(100).once('value', snap => {
+    const payments = Object.entries(snap.val()||{})
+      .map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
+    if (!payments.length) {
+      el.innerHTML='<p style="color:var(--text3);padding:16px;">Hələ ödəniş yoxdur.</p>';
+      if (statsEl) statsEl.innerHTML=''; return;
+    }
+    const today = new Date().toLocaleDateString('az-AZ');
+    const todayP = payments.filter(p=>p.date===today);
+    const todayTotal = todayP.reduce((s,p)=>s+(p.finalAmount||0),0);
+    const totalAll = payments.reduce((s,p)=>s+(p.finalAmount||0),0);
+    if (statsEl) statsEl.innerHTML = `
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${todayTotal.toFixed(0)}₼</div><div class="stat-label">Bu gün</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${todayP.length}</div><div class="stat-label">Bugünkü əməliyyat</div></div>
+      <div class="stat-card"><div class="stat-num" style="font-size:20px;">${totalAll.toFixed(0)}₼</div><div class="stat-label">Ümumi cəmi</div></div>`;
+    const typeNames={cash:'💵 Nağd',pos:'💳 POS',credit:'📋 Nisyə',split:'✂️ Bölünmüş'};
+    const typeColors={cash:'var(--green)',pos:'var(--blue)',credit:'var(--orange)',split:'var(--purple)'};
+    el.innerHTML = payments.slice(0,50).map(p=>{
+      const disc = p.discountValue ?
+        `<span class="discount-badge">${p.discountType==='percent'?p.discountValue+'%':p.discountValue.toFixed(2)+'₼'} endirim</span> ` : '';
+      return `<div class="log-item">
+        <span class="log-badge" style="background:${typeColors[p.type]||'#666'}22;color:${typeColors[p.type]||'#aaa'}">${typeNames[p.type]||p.type}</span>
+        <span class="log-text">${esc(p.tableName||'?')} — ${disc}${esc(p.staffName||'?')}</span>
+        <span class="log-time" style="text-align:right;">
+          <strong style="color:var(--green);font-size:14px;">${(p.finalAmount||0).toFixed(2)} ₼</strong><br>
+          <small>${p.time||''} ${p.date||''}</small>
+        </span>
+      </div>`;
+    }).join('');
+  });
+}
+
+function clearOldPayments() {
+  if (!confirm('30 gündən köhnə ödəniş qeydləri silinsin?')) return;
+  const cutoff = Date.now()-30*24*60*60*1000;
+  db.ref('payments').once('value', snap=>{
+    let n=0;
+    snap.forEach(child=>{ if((child.val().createdAt||0)<cutoff){child.ref.remove();n++;} });
+    showToast(`✅ ${n} köhnə ödəniş silindi`);
+  });
+}
+
+/* ═══ openNotesModal genişləndirilməsi ═══ */
+const _origOpenNotesModal = openNotesModal;
+function openNotesModal(tableId) {
+  _origOpenNotesModal(tableId);
+  const discBtn = document.getElementById('notesDiscountBtn');
+  if (discBtn) discBtn.style.display = hasPermission('order.discount') ? 'flex' : 'none';
+  const transferBtn = document.getElementById('notesTransferBtn');
+  if (transferBtn) transferBtn.style.display = hasPermission('table.transfer') ? 'flex' : 'none';
+  const payBtn = document.getElementById('notesPaymentBtn');
+  if (payBtn) payBtn.style.display =
+    (hasPermission('bill.payment_cash')||hasPermission('bill.payment_pos')||hasPermission('bill.credit')) ? 'block' : 'none';
+}
+
 </script>
-
-<!-- ═══ ÖDƏNİŞ MODALI ═══ -->
-<div class="modal-bg" id="paymentModal">
-  <div class="modal" style="max-width:440px;">
-    <h2>💰 Ödəniş Qəbulu</h2>
-    <div id="paymentTableInfo" style="background:var(--card2);border-radius:10px;padding:12px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="color:var(--text2);font-size:14px;">Masa:</span>
-        <span id="paymentTableName" style="font-weight:700;"></span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-        <span style="color:var(--text2);font-size:14px;">Ümumi məbləğ:</span>
-        <span id="paymentTotalAmount" style="font-size:22px;font-weight:800;color:var(--green);"></span>
-      </div>
-    </div>
-
-    <!-- Endirim -->
-    <div id="paymentDiscountRow" style="display:none;background:rgba(196,176,46,.1);border:1px solid var(--orange);border-radius:10px;padding:10px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:13px;color:var(--orange);">🏷️ Endirim tətbiq edilib:</span>
-        <span id="paymentDiscountInfo" style="font-weight:700;color:var(--orange);"></span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-        <span style="font-size:13px;color:var(--text2);">Endirimli məbləğ:</span>
-        <span id="paymentFinalAmount" style="font-size:18px;font-weight:800;color:var(--green);"></span>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label>Ödəniş Növü *</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button class="payment-type-btn" onclick="selectPaymentType('cash')" id="pt_cash">
-          💵 Nağd
-        </button>
-        <button class="payment-type-btn" onclick="selectPaymentType('pos')" id="pt_pos">
-          💳 POS Terminal
-        </button>
-        <button class="payment-type-btn" onclick="selectPaymentType('credit')" id="pt_credit">
-          📋 Nisyə
-        </button>
-        <button class="payment-type-btn" onclick="selectPaymentType('split')" id="pt_split">
-          ✂️ Bölünmüş
-        </button>
-      </div>
-    </div>
-
-    <!-- Nağd üçün -->
-    <div id="paymentCashSection" style="display:none;">
-      <div class="form-group">
-        <label>Müştəri verdi (₼)</label>
-        <input type="number" id="paymentCashGiven" min="0" step="0.01" placeholder="0.00"
-               oninput="calcChange()" style="font-size:20px;text-align:center;">
-      </div>
-      <div id="paymentChangeRow" style="display:none;background:var(--card2);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:13px;color:var(--text2);">Qaytarılacaq:</div>
-        <div id="paymentChange" style="font-size:28px;font-weight:800;color:var(--blue);"></div>
-      </div>
-    </div>
-
-    <!-- Bölünmüş ödəniş üçün -->
-    <div id="paymentSplitSection" style="display:none;">
-      <div class="form-group">
-        <label>Nağd hissə (₼)</label>
-        <input type="number" id="splitCash" min="0" step="0.01" placeholder="0.00" oninput="calcSplit()">
-      </div>
-      <div class="form-group">
-        <label>POS hissə (₼)</label>
-        <input type="number" id="splitPos" min="0" step="0.01" placeholder="0.00" oninput="calcSplit()">
-      </div>
-      <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:-8px;"></div>
-    </div>
-
-    <!-- Nisyə üçün -->
-    <div id="paymentCreditSection" style="display:none;">
-      <div class="form-group">
-        <label>Müştəri adı / Qeyd</label>
-        <input type="text" id="creditName" placeholder="Müştəri adı...">
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:16px;">
-      <button class="btn btn-ghost" style="flex:1;padding:14px;" onclick="closePaymentModal()">Ləğv</button>
-      <button class="btn btn-green" style="flex:1;padding:14px;font-size:15px;" onclick="confirmPayment()">✅ Təsdiqlə</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ENDİRİM MODALI ═══ -->
-<div class="modal-bg" id="discountModal">
-  <div class="modal" style="max-width:360px;text-align:center;">
-    <h2>🏷️ Endirim Ver</h2>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;" id="discountTableInfo"></p>
-    <div class="form-group">
-      <label>Endirim növü</label>
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <button class="btn" id="disc_pct_btn" onclick="setDiscountType('percent')"
-          style="flex:1;padding:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.1);">% Faiz</button>
-        <button class="btn" id="disc_fix_btn" onclick="setDiscountType('fixed')"
-          style="flex:1;padding:12px;border:1px solid var(--border);color:var(--text2);background:transparent;">₼ Sabit</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label id="discountValueLabel">Faiz (0-100)</label>
-      <input type="number" id="discountValue" min="0" max="100" step="1" placeholder="0"
-             style="font-size:24px;text-align:center;" oninput="previewDiscount()">
-    </div>
-    <div id="discountPreview" style="background:var(--card2);border-radius:10px;padding:12px;min-height:44px;margin-bottom:4px;"></div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeDiscountModal()">Ləğv</button>
-      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="applyDiscount()">✅ Tətbiq Et</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MASA KÖÇÜRMƏ MODALI ═══ -->
-<div class="modal-bg" id="transferModal">
-  <div class="modal" style="max-width:360px;text-align:center;">
-    <h2>🔄 Masa Köçürmə</h2>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;" id="transferFromInfo"></p>
-    <div class="form-group" style="text-align:left;">
-      <label>Hara köçürülsün?</label>
-      <select id="transferToTable" style="font-size:15px;"></select>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeTransferModal()">Ləğv</button>
-      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="confirmTransfer()">🔄 Köçür</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ HESABAT MODALI ═══ -->
-<div class="modal-bg" id="reportModal">
-  <div class="modal" style="max-width:500px;">
-    <h2>📊 Gün Sonu Hesabat</h2>
-    <div id="reportContent"></div>
-    <div style="display:flex;gap:10px;margin-top:16px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeReportModal()">Bağla</button>
-      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="printReport()">🖨️ Çap Et</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
