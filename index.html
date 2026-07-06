@@ -313,7 +313,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 /* ── Endirim badgei ── */
 .discount-badge{display:inline-block;background:rgba(196,176,46,.2);color:var(--orange);
   border:1px solid var(--orange);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;}
-  </style>
+</style>
 </head>
 <body>
 
@@ -839,6 +839,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
     </div>
   </div>
 </div>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -1752,7 +1753,8 @@ function tableForm(name='', isEdit=false) {
     </div>` : ''}
   `;
 }
-  /* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════
    ALARM SİSTEMİ
 ═══════════════════════════════════════════ */
 const ALARM_THEMES = {
@@ -2428,7 +2430,8 @@ function playBeep() {
     osc2.start(ctx.currentTime + 0.05); osc2.stop(ctx.currentTime + 0.55);
   } catch(e){}
 }
-  /* ═══════════════════════════════════════════
+
+/* ═══════════════════════════════════════════
    QARSON — SİFARİŞ GÖTÜRMƏ
 ═══════════════════════════════════════════ */
 function renderNoteOrderSummary(tableId) {
@@ -2446,7 +2449,7 @@ function renderNoteOrderSummary(tableId) {
           <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;">
             <span style="flex:1;">${it.qty}x ${esc(it.name)}</span>
             <span>${lineTotal.toFixed(2)} ₼</span>
-            ${state.user?.role === 'admin' ? `<button onclick="cancelOrderItem('${tableId}','${itemKey}')" style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>` : ''}
+            ${hasPermission('order.cancel_item') ? `<button onclick="cancelOrderItem('${tableId}','${itemKey}')" style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>` : ''}
           </div>
           ${it.note ? `<span style="font-size:11px;color:var(--text3);">📝 ${esc(it.note)}</span>` : ''}
         </div>`;
@@ -2805,11 +2808,38 @@ function confirmDeactivateTable() {
   const tableId = state.pendingCloseTableId;
   if (!tableId) return;
   const t = state.tables.find(x=>x.id===tableId);
-  db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).once('value', snap => { snap.forEach(child => child.ref.remove()); });
+  const order = state.tableOrders[tableId];
+
+  // 1. Sifarişi arxivə köçür (silinmir, closedOrders-ə yazılır)
+  if (order && order.items) {
+    const archiveData = {
+      tableId,
+      tableName: t?.name || '?',
+      staffId: state.user?.id || null,
+      staffName: state.user?.name || '?',
+      items: order.items,
+      total: order.total || 0,
+      notes: t?.notes || '',
+      closedAt: Date.now(),
+      closedTime: new Date().toLocaleTimeString('az-AZ'),
+      closedDate: new Date().toLocaleDateString('az-AZ')
+    };
+    db.ref('closedOrders').push(archiveData);
+  }
+
+  // 2. Müştəri tələblərini və chatı sil (bunlar keçicidir)
+  db.ref('customerRequests').orderByChild('tableId').equalTo(tableId)
+    .once('value', snap => { snap.forEach(child => child.ref.remove()); });
   db.ref('chats/' + tableId).remove();
+
+  // 3. Aktiv sifarişi sil
   R.tableOrders.child(tableId).remove();
+
+  // 4. Masanı boşalt (qeydləri saxla - yalnız occupant sıfırla)
   R.tables.child(tableId).update({ occupant: null, notes: '' });
-  if (t) addLog('table', `${state.user.name} "${t.name}" masasını bağladı`, { waiterId: state.user.id, tableId });
+
+  if (t) addLog('table', `${state.user?.name} "${t.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`,
+    { staffId: state.user?.id, tableId });
   showToast(`✅ ${t ? t.name : 'Masa'} bağlandı`);
   closeConfirmCloseModal();
 }
@@ -2887,6 +2917,14 @@ function hasPermission(action) {
   if (state.user.role === 'admin') return true;
   // İşçi — fərdi icazə massivindən yoxla
   return staffHasPermission(state.user, action);
+}
+
+function requirePermission(action) {
+  if (!hasPermission(action)) {
+    showToast('❌ Bu əməliyyat üçün icazəniz yoxdur');
+    return false;
+  }
+  return true;
 }
 /* ═══════════════════════════════════════════
    ÖDƏNİŞ SİSTEMİ
@@ -3162,45 +3200,55 @@ function confirmTransfer() {
 ═══════════════════════════════════════════ */
 function generateDailyReport() {
   if (!hasPermission('report.daily')) { showToast('🚫 Hesabat icazəniz yoxdur'); return; }
-  db.ref('payments').orderByChild('date').equalTo(
-    new Date().toLocaleDateString('az-AZ')
-  ).once('value', snap => {
-    const payments = Object.values(snap.val()||{});
-    if (!payments.length) {
-      document.getElementById('reportContent').innerHTML =
-        '<p style="color:var(--text3);text-align:center;padding:20px;">Bu gün heç bir ödəniş yoxdur.</p>';
-      document.getElementById('reportModal').classList.add('open');
-      return;
-    }
-    const typeNames = {cash:'💵 Nağd',pos:'💳 POS',credit:'📋 Nisyə',split:'✂️ Bölünmüş'};
+  const today = new Date().toLocaleDateString('az-AZ');
+
+  // Həm ödənişləri həm bağlanan masaları yüklə
+  Promise.all([
+    new Promise(res => db.ref('payments').orderByChild('date').equalTo(today).once('value', snap => res(snap.val()||{}))),
+    new Promise(res => db.ref('closedOrders').orderByChild('closedDate').equalTo(today).once('value', snap => res(snap.val()||{})))
+  ]).then(([paymentsData, closedData]) => {
+    const payments = Object.values(paymentsData);
+    const closed = Object.values(closedData);
+
+    const typeNames = {cash:'💵 Nağd', pos:'💳 POS', credit:'📋 Nisyə', split:'✂️ Bölünmüş'};
     const byType = {};
     let totalRevenue = 0, totalDiscount = 0;
+
     payments.forEach(p => {
       byType[p.type] = (byType[p.type]||0) + (p.finalAmount||0);
       totalRevenue += p.finalAmount||0;
-      if (p.discountValue) totalDiscount += p.originalAmount - p.finalAmount;
+      if (p.discountValue) totalDiscount += (p.originalAmount||0) - (p.finalAmount||0);
     });
-    document.getElementById('reportContent').innerHTML = `
+
+    // Ödənişsiz bağlanan masalar (ödəniş sistemi istifadə edilməmiş)
+    const unpaidClosed = closed.filter(c => !payments.some(p => p.tableId === c.tableId &&
+      Math.abs(p.closedAt - c.closedAt) < 60000));
+
+    const html = `
       <div class="report-section">
-        <h4>📅 ${new Date().toLocaleDateString('az-AZ')} — Günlük icmal</h4>
-        <div class="report-row"><span>Ümumi əməliyyat:</span><span>${payments.length} ödəniş</span></div>
+        <h4>📅 ${today} — Günlük icmal</h4>
+        <div class="report-row"><span>Bağlanan masalar:</span><span>${closed.length}</span></div>
+        <div class="report-row"><span>Ödəniş əməliyyatı:</span><span>${payments.length}</span></div>
         <div class="report-row"><span>Verilən endirim:</span><span style="color:var(--orange);">${totalDiscount.toFixed(2)} ₼</span></div>
         <div class="report-row"><span>Ümumi gəlir:</span><span>${totalRevenue.toFixed(2)} ₼</span></div>
       </div>
+      ${payments.length ? `
       <div class="report-section">
         <h4>💰 Ödəniş növlərinə görə</h4>
         ${Object.entries(byType).filter(([,v])=>v>0).map(([type,amount])=>`
           <div class="report-row"><span>${typeNames[type]||type}</span><span>${amount.toFixed(2)} ₼</span></div>
         `).join('')}
-      </div>
+      </div>` : ''}
       <div class="report-section">
-        <h4>📋 Son 10 əməliyyat</h4>
-        ${payments.slice(-10).reverse().map(p=>`
+        <h4>🪑 Bağlanan masalar</h4>
+        ${closed.length ? closed.map(c=>`
           <div class="report-row" style="font-size:13px;">
-            <span>${esc(p.tableName||'?')} — ${typeNames[p.type]||p.type}</span>
-            <span>${(p.finalAmount||0).toFixed(2)} ₼ <small style="color:var(--text3);">${p.time||''}</small></span>
-          </div>`).join('')}
+            <span>${esc(c.tableName||'?')} — ${esc(c.staffName||'?')}</span>
+            <span>${(c.total||0).toFixed(2)} ₼ <small style="color:var(--text3);">${c.closedTime||''}</small></span>
+          </div>`).join('') : '<div style="color:var(--text3);font-size:13px;">Bu gün bağlanan masa yoxdur</div>'}
       </div>`;
+
+    document.getElementById('reportContent').innerHTML = html;
     document.getElementById('reportModal').classList.add('open');
   });
 }
@@ -3232,35 +3280,59 @@ function renderPayments() {
   const el = document.getElementById('paymentsList');
   const statsEl = document.getElementById('paymentsStatsRow');
   if (!el) return;
-  db.ref('payments').limitToLast(100).once('value', snap => {
-    const payments = Object.entries(snap.val()||{})
-      .map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
-    if (!payments.length) {
-      el.innerHTML='<p style="color:var(--text3);padding:16px;">Hələ ödəniş yoxdur.</p>';
-      if (statsEl) statsEl.innerHTML=''; return;
-    }
+
+  Promise.all([
+    new Promise(res => db.ref('payments').limitToLast(100).once('value', snap => res(snap.val()||{}))),
+    new Promise(res => db.ref('closedOrders').limitToLast(100).once('value', snap => res(snap.val()||{})))
+  ]).then(([paymentsData, closedData]) => {
+    const payments = Object.entries(paymentsData).map(([id,v])=>({id,...v,_type:'payment'}))
+      .sort((a,b)=>b.createdAt-a.createdAt);
+    const closed = Object.entries(closedData).map(([id,v])=>({id,...v,_type:'closed'}))
+      .sort((a,b)=>b.closedAt-a.closedAt);
+
     const today = new Date().toLocaleDateString('az-AZ');
     const todayP = payments.filter(p=>p.date===today);
+    const todayC = closed.filter(c=>c.closedDate===today);
     const todayTotal = todayP.reduce((s,p)=>s+(p.finalAmount||0),0);
+    const todayTableTotal = todayC.reduce((s,c)=>s+(c.total||0),0);
     const totalAll = payments.reduce((s,p)=>s+(p.finalAmount||0),0);
+
     if (statsEl) statsEl.innerHTML = `
-      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${todayTotal.toFixed(0)}₼</div><div class="stat-label">Bu gün</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${todayP.length}</div><div class="stat-label">Bugünkü əməliyyat</div></div>
-      <div class="stat-card"><div class="stat-num" style="font-size:20px;">${totalAll.toFixed(0)}₼</div><div class="stat-label">Ümumi cəmi</div></div>`;
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${todayTotal.toFixed(0)}₼</div><div class="stat-label">Bu gün ödəniş</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${todayC.length}</div><div class="stat-label">Bağlanan masa</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${todayTableTotal.toFixed(0)}₼</div><div class="stat-label">Masa cəmi</div></div>
+      <div class="stat-card"><div class="stat-num" style="font-size:20px;">${totalAll.toFixed(0)}₼</div><div class="stat-label">Ümumi</div></div>`;
+
     const typeNames={cash:'💵 Nağd',pos:'💳 POS',credit:'📋 Nisyə',split:'✂️ Bölünmüş'};
     const typeColors={cash:'var(--green)',pos:'var(--blue)',credit:'var(--orange)',split:'var(--purple)'};
-    el.innerHTML = payments.slice(0,50).map(p=>{
+
+    const payHtml = payments.slice(0,30).map(p=>{
       const disc = p.discountValue ?
-        `<span class="discount-badge">${p.discountType==='percent'?p.discountValue+'%':p.discountValue.toFixed(2)+'₼'} endirim</span> ` : '';
+        `<span class="discount-badge">${p.discountType==='percent'?p.discountValue+'%':p.discountValue.toFixed(2)+'₼'}</span> ` : '';
       return `<div class="log-item">
         <span class="log-badge" style="background:${typeColors[p.type]||'#666'}22;color:${typeColors[p.type]||'#aaa'}">${typeNames[p.type]||p.type}</span>
-        <span class="log-text">${esc(p.tableName||'?')} — ${disc}${esc(p.staffName||'?')}</span>
+        <span class="log-text">${esc(p.tableName||'?')} ${disc}— ${esc(p.staffName||'?')}</span>
         <span class="log-time" style="text-align:right;">
           <strong style="color:var(--green);font-size:14px;">${(p.finalAmount||0).toFixed(2)} ₼</strong><br>
           <small>${p.time||''} ${p.date||''}</small>
         </span>
       </div>`;
     }).join('');
+
+    const closedHtml = closed.slice(0,30).map(c=>`
+      <div class="log-item">
+        <span class="log-badge" style="background:rgba(142,68,173,.15);color:var(--purple)">🪑 MASA</span>
+        <span class="log-text">${esc(c.tableName||'?')} — ${esc(c.staffName||'?')}</span>
+        <span class="log-time" style="text-align:right;">
+          <strong style="color:var(--purple);font-size:14px;">${(c.total||0).toFixed(2)} ₼</strong><br>
+          <small>${c.closedTime||''} ${c.closedDate||''}</small>
+        </span>
+      </div>`).join('');
+
+    el.innerHTML = `
+      ${payments.length ? `<h4 style="font-size:12px;text-transform:uppercase;color:var(--text2);margin:0 0 10px;">💰 Ödənişlər</h4>${payHtml}` : ''}
+      ${closed.length ? `<h4 style="font-size:12px;text-transform:uppercase;color:var(--text2);margin:16px 0 10px;">🪑 Bağlanan Masalar</h4>${closedHtml}` : ''}
+      ${!payments.length && !closed.length ? '<p style="color:var(--text3);padding:16px;">Hələ heç bir qeyd yoxdur.</p>' : ''}`;
   });
 }
 
