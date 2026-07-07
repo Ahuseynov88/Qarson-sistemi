@@ -830,6 +830,31 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
       <label>Hara köçürülsün?</label>
       <select id="transferToTable" style="font-size:15px;"></select>
     </div>
+    <!-- ═══ MAL KÖÇÜRMƏ MODALI ═══ -->
+<div class="modal-bg" id="itemTransferModal">
+  <div class="modal" style="max-width:380px;">
+    <h2>🔀 Mal Köçürmə</h2>
+    <p id="itemTransferInfo" style="color:var(--text2);font-size:13px;margin-bottom:12px;"></p>
+    <div class="form-group">
+      <label>Hansı mal?</label>
+      <select id="itemTransferItem" style="font-size:14px;"></select>
+    </div>
+    <div class="form-group">
+      <label>Miqdar</label>
+      <input type="number" id="itemTransferQty" min="1" value="1"
+             style="font-size:18px;text-align:center;">
+    </div>
+    <div class="form-group">
+      <label>Hara köçürülsün?</label>
+      <select id="itemTransferToTable" style="font-size:14px;"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeItemTransferModal()">Ləğv</button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="confirmItemTransfer()">🔀 Köçür</button>
+      <button id="notesItemTransferBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--purple);color:var(--purple);background:rgba(142,68,173,.1);" onclick="openItemTransferModal()">🔀 Mal Köçür</button>
+    </div>
+  </div>
+</div>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeTransferModal()">Ləğv</button>
       <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="confirmTransfer()">🔄 Köçür</button>
