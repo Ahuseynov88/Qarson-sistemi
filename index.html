@@ -570,6 +570,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveNote()">Yadda Saxla</button>
       <button id="notesPaymentBtn" class="btn" style="display:none;padding:13px;background:var(--green);color:white;" onclick="openPaymentModal()">💰 Ödəniş Al</button>
       <button id="notesCloseTableBtn" class="btn btn-red" style="display:none;padding:13px;" onclick="deactivateTable()">🔒 Masanı bağla</button>
+      <button id="notesComplimentBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--green);color:var(--green);background:rgba(28,107,53,.1);" onclick="openComplimentModal()">🎁 İkram</button>
     </div>
   </div>
 </div>
@@ -861,7 +862,21 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
     </div>
   </div>
 </div>
-
+<!-- ═══ İKRAM MODALI ═══ -->
+<div class="modal-bg" id="complimentModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2>🎁 İkram Et</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Seçilən mal pulsuz olacaq</p>
+    <div class="form-group" style="text-align:left;">
+      <label>Hansı mal ikram edilsin?</label>
+      <select id="complimentItem" style="font-size:14px;"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeComplimentModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="confirmCompliment()">🎁 İkram Et</button>
+    </div>
+  </div>
+</div>
 <!-- ═══ HESABAT MODALI ═══ -->
 <div class="modal-bg" id="reportModal">
   <div class="modal" style="max-width:500px;">
@@ -3334,7 +3349,39 @@ function closeTransferModal() {
   if (!activeTables.length) { showToast('⚠️ Başqa aktiv masa yoxdur'); return; }
   document.getElementById('itemTransferModal').classList.add('open');
 }
+function openComplimentModal() {
+  if (!hasPermission('order.discount')) { showToast('🚫 İkram icazəniz yoxdur'); return; }
+  const tableId = state.noteTableId;
+  if (!tableId) return;
+  const order = state.tableOrders[tableId];
+  if (!order?.items) { showToast('⚠️ Sifariş yoxdur'); return; }
+  const sel = document.getElementById('complimentItem');
+  sel.innerHTML = Object.entries(order.items).map(([k,v])=>
+    `<option value="${k}">${esc(v.name)} — ${(v.price*v.qty).toFixed(2)} ₼</option>`).join('');
+  document.getElementById('complimentModal').classList.add('open');
+}
 
+function closeComplimentModal() {
+  document.getElementById('complimentModal').classList.remove('open');
+}
+
+function confirmCompliment() {
+  const tableId = state.noteTableId;
+  const itemKey = document.getElementById('complimentItem').value;
+  const order = state.tableOrders[tableId];
+  const it = order?.items?.[itemKey];
+  if (!it) return;
+  const t = state.tables.find(x=>x.id===tableId);
+  // İkram — malı sifarişdən sil, qiymətini sıfırla (qeydə al)
+  R.tableOrders.child(tableId).child('items').child(itemKey).update({ price: 0, extraFee: 0, compliment: true });
+  const newTotal = Object.entries(order.items)
+    .reduce((s,[k,v])=>s+(k===itemKey?0:(v.price*v.qty)+(v.extraFee||0)),0);
+  R.tableOrders.child(tableId).child('total').set(newTotal);
+  addLog('order', `${state.user?.name} "${t?.name}" masasına "${it.name}" ikram etdi`, { tableId });
+  showToast(`🎁 "${it.name}" ikram edildi`);
+  closeComplimentModal();
+  renderNoteOrderSummary(tableId);
+}
 function closeItemTransferModal() {
   document.getElementById('itemTransferModal').classList.remove('open');
 }
