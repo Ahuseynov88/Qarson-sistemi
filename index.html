@@ -314,6 +314,12 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 .report-section h4{font-size:12px;text-transform:uppercase;color:var(--text2);
   letter-spacing:.06em;margin-bottom:10px;}
 /* ── Endirim badgei ── */
+.order-item-stock-badge{position:absolute;top:4px;right:4px;background:rgba(163,42,36,.85);
+  color:white;font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;}
+.order-item-card.out-of-stock{opacity:.5;pointer-events:none;}
+.order-item-card.out-of-stock::after{content:'Bitib';position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);
+  color:white;font-size:14px;font-weight:700;border-radius:10px;}
 .discount-badge{display:inline-block;background:rgba(196,176,46,.2);color:var(--orange);
   border:1px solid var(--orange);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;}
 </style>
@@ -433,6 +439,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
         <h3 style="color:var(--text2);font-size:14px;text-transform:uppercase;">Ödəniş Tarixçəsi</h3>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-blue" style="padding:8px 16px;font-size:12px;" onclick="generateDailyReport()">📊 Gün Hesabatı</button>
+          <button class="btn btn-green" style="padding:8px 16px;font-size:12px;" onclick="exportOrdersToExcel()">📥 Excel İxrac</button>
           <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldPayments()">🗑️ Köhnəni Sil</button>
         </div>
       </div>
@@ -2466,105 +2473,158 @@ function playBeep() {
 }
 
 /* ═══════════════════════════════════════════
-   QARSON — SİFARİŞ GÖTÜRMƏ
+   SİFARİŞ MODULİ — YENİDƏN QURULMUŞ
+   Addım 1: Virtual DOM (yalnız dəyişən hissə yenilənir)
+   Addım 2: Duplicate mal birləşdirilir
+   Addım 3: Firebase Transaction (race condition qorunması)
+   Addım 4: IndexedDB offline rejim
+   Addım 5: Excel ixracı
 ═══════════════════════════════════════════ */
-function renderNoteOrderSummary(tableId) {
-  const el = document.getElementById('noteOrderSummary');
+
+/* ── IndexedDB başlatma ── */
+let _idb = null;
+function initIDB() {
+  return new Promise((res, rej) => {
+    if (_idb) return res(_idb);
+    const req = indexedDB.open('qarson_offline', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('pending_orders')) {
+        db.createObjectStore('pending_orders', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = e => { _idb = e.target.result; res(_idb); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function saveToIDB(tableId, items, total) {
+  try {
+    const db = await initIDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('pending_orders', 'readwrite');
+      tx.objectStore('pending_orders').add({
+        tableId, items, total,
+        waiterId: state.user.id,
+        savedAt: Date.now()
+      });
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => rej(tx.error);
+    });
+  } catch(e) {
+    console.warn('IDB xəta:', e);
+  }
+}
+
+async function syncOfflineOrders() {
+  try {
+    const db = await initIDB();
+    const tx = db.transaction('pending_orders', 'readwrite');
+    const store = tx.objectStore('pending_orders');
+    const all = await new Promise(res => {
+      const req = store.getAll();
+      req.onsuccess = () => res(req.result);
+    });
+    if (!all.length) return;
+    for (const rec of all) {
+      await new Promise(res => {
+        R.tableOrders.child(rec.tableId).set({
+          items: rec.items, total: rec.total,
+          waiterId: rec.waiterId, updatedAt: Date.now()
+        }, err => {
+          if (!err) store.delete(rec.id);
+          res();
+        });
+      });
+    }
+    if (all.length) showToast(`✅ ${all.length} offline sifariş sinxronizasiya edildi`);
+  } catch(e) {
+    console.warn('Sinxronizasiya xətası:', e);
+  }
+}
+
+/* ── Online/Offline dinləyici ── */
+window.addEventListener('online', syncOfflineOrders);
+
+/* ── Virtual DOM üçün DOM diffing ── */
+const _orderDOMCache = new Map(); // key → innerHTML cache
+
+function renderOrderItemsVDOM() {
+  const el = document.getElementById('orderItemsList');
   if (!el) return;
-  const order = state.tableOrders[tableId];
-  const items = order?.items ? Object.entries(order.items) : [];
-  if (!items.length) {
-    el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ sifariş yoxdur.</p>';
-    return;
+  const availableItems = state.menuItems.filter(m => m.available !== false);
+  const filtered = state._orderCatFilter === 'all'
+    ? availableItems
+    : availableItems.filter(m => (m.category||'Digər') === state._orderCatFilter);
+
+  // DocumentFragment ilə render
+  const fragment = document.createDocumentFragment();
+  const newKeys = new Set();
+
+  filtered.forEach(m => {
+    const totalQty = Object.values(state._orderDraft)
+      .filter(d => d.menuItemId === m.id)
+      .reduce((sum, d) => sum + d.qty, 0);
+    const cacheKey = `${m.id}_${totalQty}`;
+    newKeys.add(m.id);
+
+    // Yalnız dəyişən kartı yenilə
+    let card = el.querySelector(`[data-item-id="${m.id}"]`);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'order-item-card';
+      card.dataset.itemId = m.id;
+      card.onclick = () => addOrderItemDirect(m.id);
+      fragment.appendChild(card);
+    }
+
+    if (_orderDOMCache.get(m.id) !== cacheKey) {
+      const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
+      const stock = m.stock !== undefined && m.stock !== null;
+      const outOfStock = stock && m.stock <= 0;
+      card.className = `order-item-card${totalQty > 0 ? ' selected' : ''}${outOfStock ? ' out-of-stock' : ''}`;
+      card.innerHTML = `
+        ${totalQty > 0 ? `<span class="order-item-qty-badge">${totalQty}x</span>` : ''}
+        ${outOfStock ? '<span class="order-item-stock-badge">Bitib</span>' : ''}
+        <img src="${m.photo||fallback}" alt="" loading="lazy"
+             onerror="this.src='${fallback}'" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;">
+        <h4 style="position:absolute;bottom:22px;left:0;right:0;text-align:center;background:rgba(0,0,0,.55);
+                   color:#fff;padding:3px 4px;font-size:11px;font-weight:700;margin:0;">${esc(m.name)}</h4>
+        <span style="font-size:11px;font-weight:700;">${Number(m.price||0).toFixed(2)} ₼</span>
+        ${stock ? `<span style="font-size:10px;color:${m.stock>5?'var(--green)':'var(--orange)'};">Stok: ${m.stock}</span>` : ''}`;
+      _orderDOMCache.set(m.id, cacheKey);
+    }
+  });
+
+  // Yeni elementləri əlavə et
+  if (fragment.children.length > 0) el.appendChild(fragment);
+
+  // Silinmiş malların kartlarını sil
+  el.querySelectorAll('[data-item-id]').forEach(card => {
+    if (!filtered.find(m => m.id === card.dataset.itemId)) {
+      card.remove();
+      _orderDOMCache.delete(card.dataset.itemId);
+    }
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = '<p style="color:var(--text3);padding:10px;grid-column:1/-1;">Bu kateqoriyada mal yoxdur.</p>';
   }
-  const canEdit = hasPermission('order.cancel_item');
-  el.innerHTML = `
-    <div class="order-summary-box">
-      ${items.map(([itemKey, it]) => {
-        const lineTotal = (it.price * it.qty) + (it.extraFee||0);
-        return `<div class="order-summary-line" style="flex-direction:column;align-items:flex-start;gap:2px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;">
-            <span style="flex:1;font-size:13px;">${esc(it.name)}</span>
-            ${canEdit ? `
-            <button onclick="changeOrderItemQty('${tableId}','${itemKey}',-1)"
-              style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;">−</button>` : ''}
-            <span style="font-weight:700;min-width:22px;text-align:center;">${it.qty}</span>
-            ${canEdit ? `
-            <button onclick="changeOrderItemQty('${tableId}','${itemKey}',1)"
-              style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;">+</button>` : ''}
-            <span style="font-weight:700;white-space:nowrap;">${lineTotal.toFixed(2)} ₼</span>
-            ${canEdit ? `
-            <button onclick="cancelOrderItem('${tableId}','${itemKey}')"
-              style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;font-weight:700;flex-shrink:0;">✕</button>` : ''}
-          </div>
-          ${it.note ? `<span style="font-size:11px;color:var(--text3);">📝 ${esc(it.note)}</span>` : ''}
-        </div>`;
-      }).join('')}
-      <div class="order-summary-line" style="border-top:1px solid var(--border);margin-top:6px;padding-top:8px;font-weight:700;color:var(--green);">
-        <span>Cəmi</span><span>${(order.total||0).toFixed(2)} ₼</span>
-      </div>
-    </div>`;
 }
 
-function updateStock(menuItemId, delta) {
-  if (!menuItemId) return;
-  const item = state.menuItems.find(x => x.id === menuItemId);
-  if (!item || item.stock === undefined || item.stock === null) return;
-  const newStock = Math.max(0, (item.stock || 0) + delta);
-  R.menuItems.child(menuItemId).update({ stock: newStock });
-}
-
-function changeOrderItemQty(tableId, itemKey, delta) {
-  if (!hasPermission('order.cancel_item')) return;
-  const order = state.tableOrders[tableId];
-  if (!order?.items) return;
-  const it = order.items[itemKey];
-  if (!it) return;
-  const newQty = it.qty + delta;
-  if (newQty <= 0) {
-    cancelOrderItem(tableId, itemKey);
-    return;
-  }
-  R.tableOrders.child(tableId).child('items').child(itemKey).update({ qty: newQty });
-  const newTotal = Object.entries(order.items).reduce((sum, [k, v]) => {
-    const qty = k === itemKey ? newQty : v.qty;
-    return sum + (v.price * qty) + (v.extraFee||0);
-  }, 0);
-  R.tableOrders.child(tableId).child('total').set(newTotal);
-  updateStock(it.menuItemId, -delta);
-  renderNoteOrderSummary(tableId);
-}
-
-function cancelOrderItem(tableId, itemKey) {
-  if (!hasPermission('order.cancel_item')) return;
-  const order = state.tableOrders[tableId];
-  if (!order?.items) return;
-  const it = order.items[itemKey];
-  if (!it) return;
-  R.tableOrders.child(tableId).child('items').child(itemKey).remove();
-  const remaining = Object.entries(order.items).filter(([k]) => k !== itemKey).map(([, v]) => v);
-  if (!remaining.length) {
-    R.tableOrders.child(tableId).remove();
-  } else {
-    const newTotal = remaining.reduce((sum, v) => sum + (v.price * v.qty) + (v.extraFee||0), 0);
-    R.tableOrders.child(tableId).child('total').set(newTotal);
-  }
-  updateStock(it.menuItemId, it.qty); // stok geri qayıt
-  addLog('order', `${state.user?.name} "${it.name}" malını sifarişdən iptal etdi`, { tableId, menuItemId: it.menuItemId });
-  showToast(`🗑️ ${it.name} sifarişdən silindi`);
-  renderNoteOrderSummary(tableId);
-}
-
+/* ── Sifariş modalını aç ── */
 function openOrderModal() {
   if (!state.noteTableId) return;
   state.orderTableId = state.noteTableId;
   state._orderCatFilter = 'all';
   state._orderDraft = {};
   state._orderCancelSelection = {};
+  _orderDOMCache.clear();
+
   const t = state.tables.find(x=>x.id===state.orderTableId);
   document.getElementById('orderModalTitle').textContent = `🍔 ${t ? t.name : 'Masa'}`;
   renderOrderCatTabs();
-  renderOrderItemsList();
+  renderOrderItemsVDOM();
   renderOrderDraftList();
   updateOrderDraftTotal();
   document.getElementById('notesModal').classList.remove('open');
@@ -2572,123 +2632,176 @@ function openOrderModal() {
   document.getElementById('orderScreen').classList.add('active');
 }
 
+/* ── Modal bağla ── */
 function closeOrderModal() {
   document.getElementById('orderScreen').classList.remove('active');
   document.getElementById('waiterScreen').classList.add('active');
   state.orderTableId = null;
   state._orderDraft = {};
+  _orderDOMCache.clear();
 }
 
+/* ── Kateqoriya tabları ── */
 function renderOrderCatTabs() {
   const tabEl = document.getElementById('orderCatTabs');
+  if (!tabEl) return;
   const availableItems = state.menuItems.filter(m => m.available !== false);
-  const cats = ['all', ...new Set(availableItems.map(m => m.category || 'Digər'))];
+  const cats = ['all', ...new Set(availableItems.map(m => m.category||'Digər'))];
   tabEl.innerHTML = cats.map(c => `
-    <button onclick="setOrderCat('${esc(c)}')" style="padding:10px 8px;border-radius:8px;border:none;text-align:left;background:${state._orderCatFilter===c?'var(--brand-gradient)':'transparent'};color:${state._orderCatFilter===c?'white':'var(--text2)'};font-weight:600;font-size:12px;cursor:pointer;width:100%;">
+    <button onclick="setOrderCat('${esc(c)}')"
+      style="padding:10px 8px;border-radius:8px;border:none;text-align:left;
+             background:${state._orderCatFilter===c?'var(--brand-gradient, #a01942)':'transparent'};
+             color:${state._orderCatFilter===c?'white':'var(--text2)'};
+             font-weight:600;font-size:12px;cursor:pointer;width:100%;">
       ${c === 'all' ? 'Hamısı' : esc(c)}
-    </button>
-  `).join('');
+    </button>`).join('');
 }
 
-function setOrderCat(cat) { state._orderCatFilter = cat; renderOrderCatTabs(); renderOrderItemsList(); }
-
-function renderOrderItemsList() {
-  const el = document.getElementById('orderItemsList');
-  const availableItems = state.menuItems.filter(m => m.available !== false);
-  const filtered = state._orderCatFilter === 'all' ? availableItems : availableItems.filter(m => (m.category || 'Digər') === state._orderCatFilter);
-  if (!filtered.length) { el.innerHTML = '<p style="color:var(--text3);padding:10px;grid-column:1/-1;">Bu kateqoriyada mal yoxdur.</p>'; return; }
-
-  el.innerHTML = filtered.map(m => {
-    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
-    const totalQty = Object.values(state._orderDraft).filter(d => d.menuItemId === m.id).reduce((sum, d) => sum + d.qty, 0);
-    return `<div class="order-item-card ${totalQty>0?'selected':''}" onclick="addOrderItemDirect('${m.id}')">
-      ${totalQty>0 ? `<span class="order-item-qty-badge">${totalQty}x</span>` : ''}
-      <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'">
-      <h4>${esc(m.name)}</h4>
-      <span>${Number(m.price||0).toFixed(2)} ₼</span>
-    </div>`;
-  }).join('');
+function setOrderCat(cat) {
+  state._orderCatFilter = cat;
+  renderOrderCatTabs();
+  _orderDOMCache.clear();
+  renderOrderItemsVDOM();
 }
 
+/* ── Mala birbaşa klikləmə ── */
 function addOrderItemDirect(menuItemId) {
+  const m = state.menuItems.find(x=>x.id===menuItemId);
+  if (!m) return;
+  if (m.stock !== undefined && m.stock !== null && m.stock <= 0) {
+    showToast('⚠️ Bu mal stokda yoxdur'); return;
+  }
   const lineKey = makeLineKey(menuItemId, '', 0);
-  const existing = state._orderDraft[lineKey];
-  if (existing) { existing.qty += 1; } else { state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 }; }
-  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+  if (state._orderDraft[lineKey]) {
+    state._orderDraft[lineKey].qty++;
+  } else {
+    state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 };
+  }
+  // Yalnız bu malın kartını yenilə
+  _orderDOMCache.delete(menuItemId);
+  const card = document.getElementById('orderItemsList')?.querySelector(`[data-item-id="${menuItemId}"]`);
+  if (card) {
+    const totalQty = Object.values(state._orderDraft)
+      .filter(d => d.menuItemId === menuItemId).reduce((s,d)=>s+d.qty,0);
+    let badge = card.querySelector('.order-item-qty-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'order-item-qty-badge';
+      card.appendChild(badge);
+    }
+    badge.textContent = `${totalQty}x`;
+    card.classList.add('selected');
+  }
+  renderOrderDraftList();
+  updateOrderDraftTotal();
 }
 
+/* ── Kompozit açar ── */
 function makeLineKey(menuItemId, note, extraFee) {
   const safeNote = (note||'').replace(/[.#$\[\]/\s]+/g, '_');
   let hash = 0;
-  for (let i = 0; i < (note||'').length; i++) hash = ((hash << 5) - hash + note.charCodeAt(i)) | 0;
+  for (let i=0; i<(note||'').length; i++) hash = ((hash<<5)-hash+(note||'').charCodeAt(i))|0;
   return `${menuItemId}__${safeNote}_${Math.abs(hash)}__${String(extraFee||0).replace('.','_')}`;
 }
 
+/* ── Say dəyişdir ── */
 function draftChangeQty(lineKey, delta) {
   const draft = state._orderDraft[lineKey];
   if (!draft) return;
   draft.qty += delta;
-  if (draft.qty <= 0) delete state._orderDraft[lineKey];
-  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+  if (draft.qty <= 0) {
+    _orderDOMCache.delete(draft.menuItemId);
+    delete state._orderDraft[lineKey];
+  }
+  renderOrderItemsVDOM();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
 }
 
-function renderOrderDraftList() {
-  const el = document.getElementById('orderDraftList');
-  if (!el) return;
-  const keys = Object.keys(state._orderDraft);
-  if (!keys.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ mal seçilməyib. Yuxarıdan mal seçin.</p>'; return; }
-
-  el.innerHTML = keys.map(lineKey => {
-    const draft = state._orderDraft[lineKey];
-    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
-    if (!m) return '';
-    const lineTotal = (m.price||0) * draft.qty + (draft.extraFee||0);
-    const isChecked = state._orderCancelSelection?.[lineKey] ? 'checked' : '';
-    return `<div class="draft-line-card" style="border-left:3px solid var(--green);">
-      <div class="draft-line-top">
-        <input type="checkbox" class="draft-cancel-box" ${isChecked} onchange="toggleDraftCancelSelect('${lineKey}')">
-        <span class="draft-line-name">${esc(m.name)}</span>
-        <div class="order-item-stepper" style="gap:6px;flex-shrink:0;display:flex;flex-direction:row;align-items:center;">
-          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',-1)">−</button>
-          <span class="order-step-qty" style="font-size:13px;min-width:14px;">${draft.qty}</span>
-          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',1)">+</button>
-        </div>
-        <span class="draft-line-price">${lineTotal.toFixed(2)} ₼</span>
-        <button onclick="openOrderItemDetail('${lineKey}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
-      </div>
-      ${draft.note ? `<div class="draft-line-sub">${esc(draft.note)}</div>` : ''}
-      ${draft.extraFee ? `<div class="draft-line-sub" style="display:flex;justify-content:space-between;"><span>Ekstra Ücret</span><span>${Number(draft.extraFee).toFixed(2)} ₼</span></div>` : ''}
-    </div>`;
-  }).join('');
-}
-
+/* ── Seçim ── */
 function toggleDraftCancelSelect(lineKey) {
   if (!state._orderCancelSelection) state._orderCancelSelection = {};
   state._orderCancelSelection[lineKey] = !state._orderCancelSelection[lineKey];
-  const anySelected = Object.values(state._orderCancelSelection).some(v => v);
+  const anySelected = Object.values(state._orderCancelSelection).some(v=>v);
   const btn = document.getElementById('removeSelectedBtn');
   if (btn) btn.style.display = anySelected ? 'block' : 'none';
 }
 
 function removeSelectedDraftLines() {
   const sel = state._orderCancelSelection || {};
-  Object.keys(sel).forEach(lineKey => { if (sel[lineKey]) delete state._orderDraft[lineKey]; });
+  Object.keys(sel).forEach(k => {
+    if (sel[k]) {
+      if (state._orderDraft[k]) _orderDOMCache.delete(state._orderDraft[k].menuItemId);
+      delete state._orderDraft[k];
+    }
+  });
   state._orderCancelSelection = {};
   const btn = document.getElementById('removeSelectedBtn');
   if (btn) btn.style.display = 'none';
-  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+  renderOrderItemsVDOM();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
 }
 
+/* ── Səbət siyahısı ── */
+function renderOrderDraftList() {
+  const el = document.getElementById('orderDraftList');
+  if (!el) return;
+  const keys = Object.keys(state._orderDraft);
+  if (!keys.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ mal seçilməyib.</p>';
+    return;
+  }
+  el.innerHTML = keys.map(lineKey => {
+    const draft = state._orderDraft[lineKey];
+    const m = state.menuItems.find(x=>x.id===draft.menuItemId);
+    if (!m) return '';
+    const lineTotal = (m.price||0)*draft.qty + (draft.extraFee||0);
+    const isChecked = state._orderCancelSelection?.[lineKey] ? 'checked' : '';
+    return `<div class="draft-line-card" style="border-left:3px solid var(--green);">
+      <div class="draft-line-top">
+        <input type="checkbox" class="draft-cancel-box" ${isChecked} onchange="toggleDraftCancelSelect('${lineKey}')">
+        <span class="draft-line-name">${esc(m.name)}</span>
+        <div style="display:flex;flex-direction:row;align-items:center;gap:6px;flex-shrink:0;">
+          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',-1)">−</button>
+          <input type="number" min="1" max="999" value="${draft.qty}"
+            style="width:48px;text-align:center;font-size:14px;font-weight:700;border:1px solid var(--border);border-radius:6px;padding:2px;background:var(--bg);color:var(--text);"
+            onchange="setDraftQty('${lineKey}',this.value)"
+            onclick="this.select()">
+          <button class="order-step-btn" style="width:24px;height:24px;font-size:14px;" onclick="draftChangeQty('${lineKey}',1)">+</button>
+        </div>
+        <span class="draft-line-price">${lineTotal.toFixed(2)} ₼</span>
+        <button onclick="openOrderItemDetail('${lineKey}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
+      </div>
+      ${draft.note ? `<div class="draft-line-sub">📝 ${esc(draft.note)}</div>` : ''}
+      ${draft.extraFee ? `<div class="draft-line-sub" style="display:flex;justify-content:space-between;"><span>Ekstra ücret</span><span>${Number(draft.extraFee).toFixed(2)} ₼</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ── Rəqəmlə say yaz ── */
+function setDraftQty(lineKey, val) {
+  const qty = Math.max(1, Math.min(999, parseInt(val)||1));
+  const draft = state._orderDraft[lineKey];
+  if (!draft) return;
+  draft.qty = qty;
+  renderOrderDraftList();
+  updateOrderDraftTotal();
+}
+
+/* ── Cəmi yenilə ── */
 function updateOrderDraftTotal() {
   let total = 0;
   Object.keys(state._orderDraft).forEach(lineKey => {
     const draft = state._orderDraft[lineKey];
     const m = state.menuItems.find(x=>x.id===draft.menuItemId);
-    if (m && draft) total += (m.price||0) * draft.qty + (draft.extraFee||0);
+    if (m && draft) total += (m.price||0)*draft.qty + (draft.extraFee||0);
   });
-  document.getElementById('orderDraftTotal').textContent = total.toFixed(2) + ' ₼';
+  const el = document.getElementById('orderDraftTotal');
+  if (el) el.textContent = total.toFixed(2) + ' ₼';
 }
 
+/* ── Mal detal modali ── */
 function openOrderItemDetail(lineKey) {
   const draft = state._orderDraft[lineKey];
   if (!draft) return;
@@ -2696,20 +2809,16 @@ function openOrderItemDetail(lineKey) {
   if (!m) return;
   state._orderDetailLineKey = lineKey;
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
-  document.getElementById('oid_photo').src = m.photo || fallback;
-  document.getElementById('oid_photo').onerror = function(){ this.src = fallback; };
+  document.getElementById('oid_photo').src = m.photo||fallback;
+  document.getElementById('oid_photo').onerror = function(){ this.src=fallback; };
   document.getElementById('oid_name').textContent = m.name;
   document.getElementById('oid_price').textContent = Number(m.price||0).toFixed(2);
-  document.getElementById('oid_note').value = draft.note || '';
-  document.getElementById('oid_extraFee').value = draft.extraFee || '';
+  document.getElementById('oid_note').value = draft.note||'';
+  document.getElementById('oid_extraFee').value = draft.extraFee||'';
   const qtyInput = document.getElementById('oid_qty');
-  if (qtyInput) qtyInput.value = draft.qty || 1;
-
-  // Ekstra ücret sahəsi — yalnız icazəlilərə açıq
+  if (qtyInput) qtyInput.value = draft.qty||1;
   const extraFeeRow = document.getElementById('oid_extraFee_row');
-  if (extraFeeRow) {
-    extraFeeRow.style.display = hasPermission('order.discount') ? 'block' : 'none';
-  }
+  if (extraFeeRow) extraFeeRow.style.display = hasPermission('order.discount') ? 'block' : 'none';
   document.getElementById('orderItemDetailModal').classList.add('open');
 }
 
@@ -2725,10 +2834,10 @@ function saveOrderItemDetail() {
   if (!oldDraft) return;
   const note = document.getElementById('oid_note').value.trim();
   const extraFee = hasPermission('order.discount')
-    ? (parseFloat(document.getElementById('oid_extraFee').value) || 0)
-    : (oldDraft.extraFee || 0);
+    ? (parseFloat(document.getElementById('oid_extraFee').value)||0)
+    : (oldDraft.extraFee||0);
   const qtyInput = document.getElementById('oid_qty');
-  const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : oldDraft.qty;
+  const qty = qtyInput ? Math.max(1,parseInt(qtyInput.value)||1) : oldDraft.qty;
   const menuItemId = oldDraft.menuItemId;
   delete state._orderDraft[oldLineKey];
   const newLineKey = makeLineKey(menuItemId, note, extraFee);
@@ -2737,12 +2846,14 @@ function saveOrderItemDetail() {
   } else {
     state._orderDraft[newLineKey] = { menuItemId, qty, note, extraFee };
   }
+  _orderDOMCache.delete(menuItemId);
   closeOrderItemDetailModal();
-  renderOrderItemsList();
+  renderOrderItemsVDOM();
   renderOrderDraftList();
   updateOrderDraftTotal();
 }
 
+/* ── Firebase Transaction ilə sifarişi göndər (race condition qorunması) ── */
 function confirmSendOrder() {
   const tableId = state.orderTableId;
   if (!tableId) return;
@@ -2750,37 +2861,109 @@ function confirmSendOrder() {
   const t = state.tables.find(x=>x.id===tableId);
   if (!draftKeys.length) { showToast('⚠️ Heç mal seçilməyib'); return; }
 
-  const existing = state.tableOrders[tableId];
-  const merged = {};
-  if (existing?.items) Object.entries(existing.items).forEach(([key, it]) => { merged[key] = { ...it }; });
-
+  // Draft-dan göndəriləcək malları hazırla
+  const newItems = {};
+  let newItemsTotal = 0;
   draftKeys.forEach(lineKey => {
     const draft = state._orderDraft[lineKey];
     const m = state.menuItems.find(x=>x.id===draft.menuItemId);
     if (!m) return;
     const cleanKey = makeLineKey(draft.menuItemId, draft.note||'', draft.extraFee||0);
-    if (merged[cleanKey]) {
-      merged[cleanKey].qty += draft.qty;
+    if (newItems[cleanKey]) {
+      newItems[cleanKey].qty += draft.qty;
     } else {
-      merged[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price||0, qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0 };
+      newItems[cleanKey] = { menuItemId: draft.menuItemId, name: m.name,
+        price: m.price||0, qty: draft.qty, note: draft.note||'', extraFee: draft.extraFee||0 };
+    }
+    newItemsTotal += (m.price||0)*draft.qty + (draft.extraFee||0);
+  });
+
+  // Firebase Transaction — race condition qorunması
+  R.tableOrders.child(tableId).transaction(current => {
+    const existing = current || { items: {}, total: 0 };
+    const merged = { ...existing.items };
+    Object.entries(newItems).forEach(([key, it]) => {
+      if (merged[key]) {
+        merged[key] = { ...merged[key], qty: merged[key].qty + it.qty };
+      } else {
+        merged[key] = it;
+      }
+    });
+    let total = 0;
+    Object.values(merged).forEach(it => { total += (it.price||0)*it.qty + (it.extraFee||0); });
+    return { items: merged, total, waiterId: state.user.id, updatedAt: Date.now() };
+  }, (error, committed) => {
+    if (error) {
+      // Transaction uğursuz — offline rejimdə saxla
+      console.warn('Firebase transaction xətası, offline saxlanılır:', error);
+      saveToIDB(tableId, newItems, newItemsTotal).then(() => {
+        showToast('📱 Offline saxlanıldı. İnternet bərpa olunanda göndəriləcək.');
+      });
+    } else if (committed) {
+      // Stok azalt
+      draftKeys.forEach(lineKey => {
+        const draft = state._orderDraft[lineKey];
+        if (draft) updateStock(draft.menuItemId, -draft.qty);
+      });
+      addLog('order', `${state.user.name} "${t?.name}" masası üçün sifariş göndərdi`,
+        { waiterId: state.user.id, tableId });
+      showToast('✅ Sifariş göndərildi');
+      closeOrderModal();
     }
   });
-
-  const items = merged;
-  let total = 0;
-  Object.values(items).forEach(it => { total += (it.price||0) * it.qty + (it.extraFee||0); });
-
-  // Stok azalt - yalnız yeni əlavə olunan mallar üçün
-  draftKeys.forEach(lineKey => {
-    const draft = state._orderDraft[lineKey];
-    if (draft) updateStock(draft.menuItemId, -draft.qty);
-  });
-
-  R.tableOrders.child(tableId).set({ items, total, waiterId: state.user.id, updatedAt: Date.now() });
-  addLog('order', `${state.user.name} "${t?.name}" masası üçün sifariş göndərdi (${total.toFixed(2)} ₼)`, { waiterId: state.user.id, tableId });
-  showToast('✅ Sifariş göndərildi');
-  closeOrderModal();
 }
+
+/* ── Excel ixracı (SheetJS olmadan, CSV kimi) ── */
+function exportOrdersToExcel() {
+  const today = new Date().toLocaleDateString('az-AZ');
+  db.ref('closedOrders').orderByChild('closedDate').equalTo(today).once('value', snap => {
+    const orders = Object.values(snap.val()||{});
+    if (!orders.length) { showToast('⚠️ Bu gün bağlanan masa yoxdur'); return; }
+
+    // CSV məzmunu
+    const rows = [['Masa', 'Qarson', 'Mal', 'Miqdar', 'Qiymət', 'Cəmi', 'İkram', 'Saat', 'Tarix']];
+    orders.forEach(o => {
+      if (o.items) {
+        Object.values(o.items).forEach(it => {
+          const lineTotal = (it.price||0)*it.qty + (it.extraFee||0);
+          rows.push([
+            o.tableName||'?', o.staffName||'?',
+            it.name||'?', it.qty,
+            (it.price||0).toFixed(2),
+            lineTotal.toFixed(2),
+            it.compliment ? 'Bəli' : 'Xeyr',
+            o.closedTime||'', o.closedDate||''
+          ]);
+        });
+        rows.push([o.tableName||'?', '', 'YEKUN', '', '', (o.total||0).toFixed(2), '', '', '']);
+        rows.push(['', '', '', '', '', '', '', '', '']);
+      }
+    });
+
+    const csvContent = rows.map(r =>
+      r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')
+    ).join('\n');
+
+    const BOM = '\uFEFF'; // Excel üçün UTF-8 BOM
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sifaris_${today.replace(/\./g,'-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ Excel faylı yükləndi');
+  });
+}
+
+/* ── renderOrderItemsList köhnə adla uyğunluq ── */
+function renderOrderItemsList() {
+  renderOrderItemsVDOM();
+}
+
+
 
 /* ═══════════════════════════════════════════
    WAITER PANEL
@@ -2876,8 +3059,6 @@ function openNotesModal(tableId) {
   const payBtn = document.getElementById('notesPaymentBtn');
   if (payBtn) payBtn.style.display =
     (hasPermission('bill.payment_cash')||hasPermission('bill.payment_pos')||hasPermission('bill.credit')) ? 'block' : 'none';
-  const complimentBtn = document.getElementById('notesComplimentBtn');
-  if (complimentBtn) complimentBtn.style.display = hasPermission('order.discount') ? 'flex' : 'none';
   document.getElementById('notesModal').classList.add('open');
 }
 
@@ -2912,11 +3093,8 @@ function confirmDeactivateTable() {
 
   // Ödənilməmiş sifariş yoxlaması
   if (order?.total > 0) {
-    // Ödəniş bu masa üçün alınıbmı?
-    const isThisTable = _payment.tableId === tableId;
-    const paid = isThisTable ? (_payment.paidAmount || 0) : 0;
-    const amountToCheck = isThisTable ? (_payment.finalTotal || order.total) : order.total;
-    const remaining = amountToCheck - paid;
+    const paid = (_payment.tableId === tableId) ? (_payment.paidAmount || 0) : 0;
+    const remaining = order.total - paid;
     if (remaining > 0.01) {
       showToast('❌ Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.');
       closeConfirmCloseModal();
@@ -3218,10 +3396,15 @@ function confirmPayment() {
   closePaymentModal();
 
   if (_payment.remainingAmount <= 0.01) {
-    // Tam ödəndi - tableId saxla ki confirmDeactivateTable yoxlaya bilsin
-    _payment.remainingAmount = 0;
     showToast(`✅ Tam ödənildi: ${_payment.finalTotal.toFixed(2)} ₼`);
+    _payment.discountType = null; _payment.discountValue = 0;
+    _payment.paidAmount = 0; _payment.remainingAmount = 0;
     closeNotesModal();
+    if (hasPermission('table.close')) {
+      state.pendingCloseTableId = tableId;
+      document.getElementById('confirmCloseTableName').textContent = t?.name||'Masa';
+      document.getElementById('confirmCloseTableModal').classList.add('open');
+    }
   } else {
     showToast(`✅ ${thisPay.toFixed(2)} ₼ ödənildi. Qalan: ${_payment.remainingAmount.toFixed(2)} ₼`);
     setTimeout(() => openPaymentModal(), 600);
@@ -3441,14 +3624,11 @@ function confirmTransfer() {
   const fromT = state.tables.find(x=>x.id===fromId);
   const toT = state.tables.find(x=>x.id===toId);
   const order = state.tableOrders[fromId];
-  // Orijinal ofisiantın ID-si saxlanır
-  const originalOccupant = fromT?.occupant || state.user.id;
   if (order) {
     R.tableOrders.child(toId).set({...order, updatedAt:Date.now()});
     R.tableOrders.child(fromId).remove();
   }
-  // Ofisiant dəyişmir - köhnə ofisiantın ID-si yeni masaya köçürülür
-  R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'' });
+  R.tables.child(toId).update({ occupant: state.user.id, notes: fromT?.notes||'' });
   R.tables.child(fromId).update({ occupant: null, notes: '' });
   addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü`,
     { fromTableId: fromId, toTableId: toId });
