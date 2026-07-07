@@ -2623,19 +2623,20 @@ function openOrderModal() {
 
   const t = state.tables.find(x=>x.id===state.orderTableId);
   document.getElementById('orderModalTitle').textContent = `🍔 ${t ? t.name : 'Masa'}`;
+
+  // Əvvəlcə ekranı göstər, sonra render et
+  document.getElementById('notesModal').classList.remove('open');
+  showScreen('orderScreen');
+
   renderOrderCatTabs();
   renderOrderItemsVDOM();
   renderOrderDraftList();
   updateOrderDraftTotal();
-  document.getElementById('notesModal').classList.remove('open');
-  document.getElementById('waiterScreen').classList.remove('active');
-  document.getElementById('orderScreen').classList.add('active');
 }
 
 /* ── Modal bağla ── */
 function closeOrderModal() {
-  document.getElementById('orderScreen').classList.remove('active');
-  document.getElementById('waiterScreen').classList.add('active');
+  showScreen('waiterScreen');
   state.orderTableId = null;
   state._orderDraft = {};
   _orderDOMCache.clear();
