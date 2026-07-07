@@ -3308,6 +3308,82 @@ function openTransferModal() {
 function closeTransferModal() {
   document.getElementById('transferModal').classList.remove('open');
 }
+  function openItemTransferModal() {
+  if (!hasPermission('table.transfer')) { showToast('🚫 İcazəniz yoxdur'); return; }
+  const tableId = state.noteTableId;
+  if (!tableId) return;
+  const order = state.tableOrders[tableId];
+  if (!order?.items) { showToast('⚠️ Bu masada sifariş yoxdur'); return; }
+  const t = state.tables.find(x=>x.id===tableId);
+  document.getElementById('itemTransferInfo').textContent = `"${t?.name}" masasından mal köçürülür`;
+  // Malları doldur
+  const sel = document.getElementById('itemTransferItem');
+  sel.innerHTML = Object.entries(order.items).map(([k,v])=>
+    `<option value="${k}">${esc(v.name)} (${v.qty} ədəd)</option>`).join('');
+  sel.onchange = function() {
+    const it = order.items[sel.value];
+    if (it) document.getElementById('itemTransferQty').max = it.qty;
+  };
+  sel.onchange();
+  // Aktiv masaları doldur (özü xaric)
+  const activeTables = state.tables.filter(x=>x.occupant && x.id!==tableId);
+  document.getElementById('itemTransferToTable').innerHTML =
+    activeTables.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  if (!activeTables.length) { showToast('⚠️ Başqa aktiv masa yoxdur'); return; }
+  document.getElementById('itemTransferModal').classList.add('open');
+}
+
+function closeItemTransferModal() {
+  document.getElementById('itemTransferModal').classList.remove('open');
+}
+
+function confirmItemTransfer() {
+  const fromTableId = state.noteTableId;
+  const itemKey = document.getElementById('itemTransferItem').value;
+  const qty = parseInt(document.getElementById('itemTransferQty').value) || 1;
+  const toTableId = document.getElementById('itemTransferToTable').value;
+  if (!fromTableId || !itemKey || !toTableId) return;
+
+  const fromOrder = state.tableOrders[fromTableId];
+  const it = fromOrder?.items?.[itemKey];
+  if (!it) return;
+
+  const fromT = state.tables.find(x=>x.id===fromTableId);
+  const toT = state.tables.find(x=>x.id===toTableId);
+  const moveQty = Math.min(qty, it.qty);
+
+  // Mənbə masadan azalt
+  if (it.qty - moveQty <= 0) {
+    R.tableOrders.child(fromTableId).child('items').child(itemKey).remove();
+  } else {
+    R.tableOrders.child(fromTableId).child('items').child(itemKey).update({ qty: it.qty - moveQty });
+  }
+  const fromTotal = Object.entries(fromOrder.items)
+    .filter(([k])=>k!==itemKey)
+    .reduce((s,[,v])=>s+(v.price*v.qty)+(v.extraFee||0),0)
+    + (it.qty-moveQty > 0 ? it.price*(it.qty-moveQty)+(it.extraFee||0) : 0);
+  R.tableOrders.child(fromTableId).child('total').set(fromTotal);
+
+  // Hədəf masaya əlavə et
+  const toOrder = state.tableOrders[toTableId];
+  const toItems = toOrder?.items || {};
+  const existKey = Object.keys(toItems).find(k=>toItems[k].menuItemId===it.menuItemId);
+  if (existKey) {
+    R.tableOrders.child(toTableId).child('items').child(existKey).update({ qty: toItems[existKey].qty + moveQty });
+  } else {
+    R.tableOrders.child(toTableId).child('items').push({
+      menuItemId: it.menuItemId, name: it.name, price: it.price,
+      qty: moveQty, note: it.note||'', extraFee: it.extraFee||0
+    });
+  }
+  const toTotal = (toOrder?.total||0) + it.price*moveQty;
+  R.tableOrders.child(toTableId).child('total').set(toTotal);
+
+  addLog('table', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə ${moveQty}x ${it.name} köçürdü`, {});
+  showToast(`✅ ${moveQty}x ${it.name} → "${toT?.name}"`);
+  closeItemTransferModal();
+  renderNoteOrderSummary(fromTableId);
+}
 
 function confirmTransfer() {
   const fromId = _transferFromTableId;
