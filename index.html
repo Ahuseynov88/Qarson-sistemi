@@ -266,11 +266,14 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 
 #customerToast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 22px;font-size:15px;font-weight:600;z-index:8000;white-space:nowrap;box-shadow:0 6px 24px var(--shadow-color);}
 
-.order-item-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 6px;cursor:pointer;transition:.15s;text-align:center;}
+.order-item-card{position:relative;background:var(--card2);border:1px solid var(--border);
+  border-radius:10px;padding:0;cursor:pointer;transition:.15s;text-align:center;overflow:hidden;}
 .order-item-card:active{transform:scale(0.96);}
 .order-item-card.selected{border-color:var(--green);border-width:1px;box-shadow:0 0 0 1px var(--green);}
-.order-item-card img{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;margin-bottom:4px;}
-.order-item-card h4{font-size:11px;font-weight:600;margin-bottom:2px;line-height:1.2;}
+.order-item-card img{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;margin-bottom:0;}
+.order-item-card h4{font-size:11px;font-weight:700;margin:0;line-height:1.2;
+  position:absolute;bottom:22px;left:0;right:0;text-align:center;
+  background:rgba(0,0,0,.55);color:#fff;padding:3px 4px;}
 .order-item-card span{font-size:11px;color:var(--orange);font-weight:700;}
 .order-item-qty-badge{position:absolute;top:4px;right:4px;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;z-index:1;}
 .order-step-btn{width:30px;height:30px;border-radius:8px;border:none;background:var(--border);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -607,9 +610,16 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
       <label>Sifariş Notu</label>
       <textarea id="oid_note" rows="2" placeholder="Məs: az ədviyyatlı, soğansız..."></textarea>
     </div>
+    <div class="form-group">
+  <label>Miqdar</label>
+  <input type="number" id="oid_qty" min="1" max="999" step="1" placeholder="1"
+         style="font-size:20px;text-align:center;width:80px;letter-spacing:4px;">
+</div>
     <div class="form-group" style="text-align:left;">
-      <label>Ekstra Ücret (₼, istəyə görə)</label>
-      <input type="number" id="oid_extraFee" min="0" step="0.01" placeholder="0.00">
+      <div id="oid_extraFee_row">
+  <label>Ekstra Ücret (₼)</label>
+  <input type="number" id="oid_extraFee" min="0" step="0.01" placeholder="0.00">
+</div>
     </div>
     <div style="display:flex;gap:10px;margin-top:6px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeOrderItemDetailModal()">Ləğv</button>
@@ -2652,6 +2662,14 @@ function openOrderItemDetail(lineKey) {
   document.getElementById('oid_price').textContent = Number(m.price||0).toFixed(2);
   document.getElementById('oid_note').value = draft.note || '';
   document.getElementById('oid_extraFee').value = draft.extraFee || '';
+  const qtyInput = document.getElementById('oid_qty');
+  if (qtyInput) qtyInput.value = draft.qty || 1;
+
+  // Ekstra ücret sahəsi — yalnız icazəlilərə açıq
+  const extraFeeRow = document.getElementById('oid_extraFee_row');
+  if (extraFeeRow) {
+    extraFeeRow.style.display = hasPermission('order.discount') ? 'block' : 'none';
+  }
   document.getElementById('orderItemDetailModal').classList.add('open');
 }
 
@@ -2666,9 +2684,12 @@ function saveOrderItemDetail() {
   const oldDraft = state._orderDraft[oldLineKey];
   if (!oldDraft) return;
   const note = document.getElementById('oid_note').value.trim();
-  const extraFee = parseFloat(document.getElementById('oid_extraFee').value) || 0;
+  const extraFee = hasPermission('order.discount')
+    ? (parseFloat(document.getElementById('oid_extraFee').value) || 0)
+    : (oldDraft.extraFee || 0);
+  const qtyInput = document.getElementById('oid_qty');
+  const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : oldDraft.qty;
   const menuItemId = oldDraft.menuItemId;
-  const qty = oldDraft.qty;
   delete state._orderDraft[oldLineKey];
   const newLineKey = makeLineKey(menuItemId, note, extraFee);
   if (state._orderDraft[newLineKey]) {
@@ -2677,7 +2698,9 @@ function saveOrderItemDetail() {
     state._orderDraft[newLineKey] = { menuItemId, qty, note, extraFee };
   }
   closeOrderItemDetailModal();
-  renderOrderItemsList(); renderOrderDraftList(); updateOrderDraftTotal();
+  renderOrderItemsList();
+  renderOrderDraftList();
+  updateOrderDraftTotal();
 }
 
 function confirmSendOrder() {
