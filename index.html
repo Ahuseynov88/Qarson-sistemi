@@ -375,6 +375,7 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
       <button class="admin-tab" onclick="adminTab('settings',this)">⚙️ Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)">💬 Şikayətlər</button>
       <button class="admin-tab" onclick="adminTab('payments',this)">💰 Ödənişlər</button>
+      <button class="admin-tab" onclick="adminTab('closed',this)">🗂️ Arxiv</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -438,6 +439,14 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
       </div>
       <div id="paymentsStatsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
       <div id="paymentsList" class="log-list"></div>
+    </div>
+    <div class="admin-section" id="sec-closed">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <h3 style="color:var(--text2);font-size:14px;text-transform:uppercase;">Bağlanan Masalar Arxivi</h3>
+        <input type="date" id="closedDateFilter" onchange="renderClosedOrders()"
+               style="padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);">
+      </div>
+      <div id="closedOrdersList" class="log-list"></div>
     </div>
     <div class="admin-section" id="sec-feedback">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -1148,6 +1157,7 @@ function renderAdmin() {
   if (state.adminSection==='logs')      renderLogs();
   if (state.adminSection==='feedback')  renderFeedbackSection();
   if (state.adminSection==='payments')  renderPayments();
+  if (state.adminSection==='closed')    renderClosedOrders();
 }
 
 function adminTab(sec, el) {
@@ -2974,21 +2984,51 @@ function printBill(tableId) {
   const timeStr = now.toLocaleTimeString('az-AZ', {hour:'2-digit', minute:'2-digit'});
   const dateStr = now.toLocaleDateString('az-AZ');
   const items = order?.items ? Object.values(order.items) : [];
-  const total = order?.total || 0;
+  const originalTotal = order?.total || 0;
+
+  const hasDiscount = _payment.tableId === tableId && _payment.discountValue > 0;
+  const finalTotal = hasDiscount ? _payment.finalTotal : originalTotal;
+  const discountAmount = hasDiscount ? (_payment.originalTotal - _payment.finalTotal) : 0;
+
   const itemRows = items.length ? items.map(it => {
     const lineTotal = (it.price * it.qty) + (it.extraFee||0);
-    return `<tr><td style="padding:4px 0;">${it.qty}x ${it.name}${it.note?` <em style="font-size:11px;color:#666;">(${it.note})</em>`:''}</td><td style="text-align:right;padding:4px 0;">${lineTotal.toFixed(2)} ₼</td></tr>`;
+    const ikramBadge = it.compliment ? ' <em style="color:green;">(İkram)</em>' : '';
+    return `<tr>
+      <td style="padding:4px 0;">${it.qty}x ${it.name}${it.note?` <em style="font-size:11px;color:#666;">(${it.note})</em>`:''}${ikramBadge}</td>
+      <td style="text-align:right;padding:4px 0;">${it.compliment ? '<em style="color:green;">Pulsuz</em>' : lineTotal.toFixed(2)+' ₼'}</td>
+    </tr>`;
   }).join('') : '<tr><td colspan="2" style="color:#999;font-style:italic;">Sifariş yoxdur</td></tr>';
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>🍽️ Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table><tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik! 🙏</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
+  const totalRows = hasDiscount ? `
+    <tr><td style="color:#e67e22;padding:4px 0;">🏷️ Endirim (${_payment.discountType==='percent'?_payment.discountValue+'%':_payment.discountValue.toFixed(2)+' ₼'}):</td>
+        <td style="text-align:right;color:#e67e22;">-${discountAmount.toFixed(2)} ₼</td></tr>
+    <tr class="total"><td>CƏMİ (endirimli):</td>
+        <td style="text-align:right;">${finalTotal.toFixed(2)} ₼</td></tr>
+  ` : `<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${originalTotal.toFixed(2)} ₼</td></tr>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title>
+    <style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}
+    h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}
+    .line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}
+    .total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head>
+    <body><h2>🍽️ Restoran</h2>
+    <p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p>
+    <div class="line"></div>
+    <p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p>
+    <p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p>
+    <div class="line"></div>
+    <table>${itemRows}</table>
+    <div class="line"></div>
+    <table>${totalRows}</table>
+    <div class="line"></div>
+    <p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik! 🙏</p>
+    <script>window.onload=()=>{window.print();}<\/script></body></html>`;
 
   const w = window.open('', '_blank', 'width=340,height=600');
   if (w) {
     w.document.write(html); w.document.close();
     addLog('order', `${waiterName} "${t?.name}" masası üçün hesab çap etdi`, { tableId, waiterId: state.user?.id });
-  } else {
-    showToast('❌ Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
-  }
+  } else { showToast('❌ Çap pəncərəsi bloklandı.'); }
 }
 
 /* ═══════════════════════════════════════════
@@ -3183,8 +3223,7 @@ function confirmPayment() {
     type: _payment.type,
     originalAmount: _payment.originalTotal,
     finalAmount: _payment.finalTotal,
-    thisPay,
-    paidBefore: _payment.paidAmount,
+    thisPay, paidBefore: _payment.paidAmount,
     discountType: _payment.discountType||null,
     discountValue: _payment.discountValue||0,
     createdAt: Date.now(),
@@ -3208,20 +3247,14 @@ function confirmPayment() {
   db.ref('payments').push(payData);
   _payment.paidAmount += thisPay;
   _payment.remainingAmount = _payment.finalTotal - _payment.paidAmount;
-
   addLog('order', `${state.user.name} "${t?.name}" — ${thisPay.toFixed(2)} ₼ ödəniş (${_payment.type})`, { tableId });
   closePaymentModal();
 
   if (_payment.remainingAmount <= 0.01) {
-    showToast(`✅ Tam ödənildi: ${_payment.finalTotal.toFixed(2)} ₼`);
     _payment.discountType = null; _payment.discountValue = 0;
     _payment.paidAmount = 0; _payment.remainingAmount = 0;
+    showToast(`✅ Tam ödənildi: ${_payment.finalTotal.toFixed(2)} ₼`);
     closeNotesModal();
-    if (hasPermission('table.close')) {
-      state.pendingCloseTableId = tableId;
-      document.getElementById('confirmCloseTableName').textContent = t?.name||'Masa';
-      document.getElementById('confirmCloseTableModal').classList.add('open');
-    }
   } else {
     showToast(`✅ ${thisPay.toFixed(2)} ₼ ödənildi. Qalan: ${_payment.remainingAmount.toFixed(2)} ₼`);
     setTimeout(() => openPaymentModal(), 600);
@@ -3604,6 +3637,68 @@ function clearOldPayments() {
     showToast(`✅ ${n} köhnə ödəniş silindi`);
   });
 }
+function renderClosedOrders() {
+  const el = document.getElementById('closedOrdersList');
+  if (!el) return;
+  const df = document.getElementById('closedDateFilter');
+  if (df && !df.value) df.value = new Date().toISOString().split('T')[0];
+  const dateVal = df ? df.value : new Date().toISOString().split('T')[0];
+  const [y,m,d] = dateVal.split('-');
+  const azDate = `${d}.${m}.${y}`;
+
+  db.ref('closedOrders').orderByChild('closedDate').equalTo(azDate).once('value', snap => {
+    const orders = Object.entries(snap.val()||{}).map(([id,v])=>({id,...v}))
+      .sort((a,b)=>b.closedAt-a.closedAt);
+    if (!orders.length) {
+      el.innerHTML='<p style="color:var(--text3);padding:16px;">Bu tarixdə bağlanan masa yoxdur.</p>';
+      return;
+    }
+    el.innerHTML = orders.map(o => {
+      const itemsList = o.items ? Object.values(o.items).map(it=>
+        `<span style="font-size:11px;background:var(--bg);padding:2px 8px;border-radius:6px;margin:2px;display:inline-block;">
+          ${esc(it.name)} x${it.qty}${it.compliment?' 🎁':''}
+        </span>`).join('') : '';
+      return `<div class="log-item" style="flex-direction:column;align-items:flex-start;gap:8px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+          <div>
+            <strong style="font-size:15px;">${esc(o.tableName||'?')}</strong>
+            <span style="color:var(--text2);font-size:12px;margin-left:8px;">${esc(o.staffName||'?')}</span>
+          </div>
+          <div style="text-align:right;">
+            <strong style="color:var(--green);font-size:15px;">${(o.total||0).toFixed(2)} ₼</strong>
+            <div style="font-size:11px;color:var(--text3);">${o.closedTime||''}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${itemsList}</div>
+        ${o.notes?`<div style="font-size:12px;color:var(--text2);">📝 ${esc(o.notes)}</div>`:''}
+        <button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;"
+                onclick="reopenClosedOrder('${o.id}')">🔓 Yenidən Aç</button>
+      </div>`;
+    }).join('');
+  });
+}
+
+function reopenClosedOrder(closedId) {
+  if (!confirm('Bu masanı yenidən açmaq istəyirsiniz?')) return;
+  db.ref('closedOrders').child(closedId).once('value', snap => {
+    const o = snap.val();
+    if (!o) return;
+    const freeTable = state.tables.find(t=>!t.occupant && t.name===o.tableName)
+                   || state.tables.find(t=>!t.occupant);
+    if (!freeTable) { showToast('❌ Boş masa yoxdur'); return; }
+    R.tableOrders.child(freeTable.id).set({
+      items: o.items, total: o.total,
+      waiterId: state.user.id, updatedAt: Date.now()
+    });
+    R.tables.child(freeTable.id).update({ occupant: state.user.id, notes: o.notes||'' });
+    db.ref('closedOrders').child(closedId).remove();
+    addLog('table', `${state.user?.name} "${o.tableName}" masasını yenidən açdı`, {});
+    showToast(`✅ "${o.tableName}" yenidən açıldı → "${freeTable.name}"`);
+    renderClosedOrders();
+  });
+}
+
+
 
 </script>
 </body>
