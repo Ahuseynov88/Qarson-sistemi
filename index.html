@@ -2856,6 +2856,8 @@ function openNotesModal(tableId) {
   if (discBtn) discBtn.style.display = hasPermission('order.discount') ? 'flex' : 'none';
   const transferBtn = document.getElementById('notesTransferBtn');
   if (transferBtn) transferBtn.style.display = hasPermission('table.transfer') ? 'flex' : 'none';
+  const itemTransferBtn = document.getElementById('notesItemTransferBtn');
+  if (itemTransferBtn) itemTransferBtn.style.display = hasPermission('table.transfer') ? 'flex' : 'none';
   const payBtn = document.getElementById('notesPaymentBtn');
   if (payBtn) payBtn.style.display =
     (hasPermission('bill.payment_cash')||hasPermission('bill.payment_pos')||hasPermission('bill.credit')) ? 'block' : 'none';
