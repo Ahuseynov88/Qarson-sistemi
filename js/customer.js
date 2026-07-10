@@ -242,3 +242,9 @@ window.sendCustomerMsg = sendCustomerMsg;
 window.sendFeedback = sendFeedback;
 window.sendWaiterReply = sendWaiterReply;
 window.closeWaiterChat = closeWaiterChat;
+
+// alarm.js "mesaj" tipli bildirişdə söhbəti açmaq istəyəndə bu hadisəni göndərir
+// (dövri import (alarm.js <-> customer.js) olmasın deyə birbaşa çağırış əvəzinə hadisə istifadə olunur)
+document.addEventListener('alarm:open-chat', (e) => {
+  openWaiterChatForTable(e.detail.tableId, e.detail.requestId);
+});
