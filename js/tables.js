@@ -1,7 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Masa İdarəetmə Paneli (Table Board)
-   - Real vaxt rejimində sinxronizasiya, Responsive Grid və Canlı Taymerlər.
-   - Ofisiant/Kateqoriya filtri, Masa aktivləşdirmə və Bloklama məntiqi.
+   Masa İdarəetmə Paneli (Table Board) - Giriş Təhlükəsizlikli Versiya
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { R, db } from './firebase-service.js';
@@ -9,7 +7,6 @@ import { state } from './state.js';
 import { esc, showToast, addLog } from './utils.js';
 import { hasPermission, staffHasPermission } from './permissions.js';
 
-// Offline-First işləmək üçün daxili yüngül IndexedDB Meneceri
 class TablesOfflineStorage {
   constructor() {
     this.dbName = 'IpekYolu_POS_DB';
@@ -44,10 +41,6 @@ class TablesOfflineStorage {
 const offlineStorage = new TablesOfflineStorage();
 
 export class TableBoard {
-  /**
-   * @param {Object} els - DOM Elementləri: { grid, catTabs, staffFilter, modalContainer }
-   * @param {Object} callbacks - { onTableOpen(tableId) } -> Masa kliklənəndə işə düşür
-   */
   constructor(els, callbacks = {}) {
     this.els = els;
     this.onTableOpen = callbacks.onTableOpen || (() => {});
@@ -55,6 +48,12 @@ export class TableBoard {
   }
 
   _bindEvents() {
+    // TƏHLÜKƏSİZLİK QORUYUCUSU: Əgər elementlər DOM-da yoxdursa xəta vermə, icranı dayandır (Giriş panelini bloklamır)
+    if (!this.els || !this.els.grid || !this.els.catTabs) {
+      console.warn("TableBoard: Masa elementləri tapılmadı. İnstansiya giriş ekranında qorunma rejimindədir.");
+      return;
+    }
+
     this.els.grid.addEventListener('click', (e) => {
       const card = e.target.closest('[data-table-id]');
       if (!card) return;
@@ -81,21 +80,20 @@ export class TableBoard {
     const t = state.tables.find(x => x.id === tableId);
     if (!t) return;
 
-    const isMine = t.occupant === state.user.id;
+    const isMine = t.occupant === state.user?.id;
     const isOther = t.occupant && !isMine;
 
     if (!t.occupant) {
-      // Masa boşdursa təsdiq modali açılır
       this.openActivateConfirm(tableId);
     } else if (isOther && !hasPermission('waiter.view')) {
       showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu masa digər işçiyə aiddir və baxış icazəniz yoxdur!');
     } else {
-      // Masa aktivdirsə Sifariş Ekranına yönləndirilir
       this.onTableOpen(tableId);
     }
   }
 
   getCategories() {
+    if (!state.tables) return ['all', 'Aktiv Masalar'];
     const cats = new Set();
     state.tables.forEach(t => {
       if (t.category) cats.add(t.category);
@@ -104,6 +102,7 @@ export class TableBoard {
   }
 
   renderCatTabs() {
+    if (!this.els || !this.els.catTabs) return;
     const cats = this.getCategories();
     this.els.catTabs.innerHTML = cats.map(c => {
       const isActive = state._waiterCatFilter === c || (!state._waiterCatFilter && c === 'all');
@@ -123,7 +122,7 @@ export class TableBoard {
   }
 
   renderStaffFilter() {
-    if (!this.els.staffFilter) return;
+    if (!this.els || !this.els.staffFilter || !state.staff) return;
     
     if (!hasPermission('waiter.view')) {
       this.els.staffFilter.style.display = 'none';
@@ -151,7 +150,7 @@ export class TableBoard {
   }
 
   render() {
-    if (!state.user) return;
+    if (!state.user || !this.els || !this.els.grid) return;
     
     this.renderCatTabs();
     this.renderStaffFilter();
@@ -161,7 +160,6 @@ export class TableBoard {
       return;
     }
 
-    // Kateqoriyaya görə süzgəc
     let filtered = state.tables;
     if (state._waiterCatFilter && state._waiterCatFilter !== 'all') {
       if (state._waiterCatFilter === 'Aktiv Masalar') {
@@ -171,14 +169,11 @@ export class TableBoard {
       }
     }
 
-    // İşçiyə görə süzgəc
     if (state._waiterStaffFilter) {
       filtered = filtered.filter(t => t.occupant === state._waiterStaffFilter);
     }
 
-    // Məlumatları lokal keşə yazırıq (Offline-First yanaşması üçün)
     offlineStorage.saveTablesLocally(state.tables);
-
     const canViewOthers = hasPermission('waiter.view');
 
     this.els.grid.innerHTML = filtered.map(t => {
@@ -279,7 +274,6 @@ export class TableBoard {
           activatedAt: Date.now()
         });
         
-        // Audit Trail bazasına qeyd yazırıq
         await addLog('table', `${state.user.name} "${t.name}" masasını açdı.`, { tableId, waiterId: state.user.id });
         
         showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${t.name}" uğurla aktivləşdirildi.`);
