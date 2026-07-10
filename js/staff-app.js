@@ -27,8 +27,7 @@ export class StaffApp {
     this.orderCart = new OrderCart(
       {
         screen: $('orderScreen'), title: $('orderModalTitle'), catTabs: $('orderCatTabs'),
-        itemsList: $('orderItemsList'), draftList: $('orderDraftList'), draftTotal: $('orderDraftTotal'),
-        removeSelectedBtn: $('removeSelectedBtn')
+        itemsList: $('orderItemsList'), draftList: $('orderDraftList'), draftTotal: $('orderDraftTotal')
       },
       { onClosed: () => this.tableBoard.render() }
     );
@@ -141,10 +140,38 @@ export class StaffApp {
 
   render() {
     this.tableBoard.render();
+    // Qeydlər modalı açıqdırsa, canlı sinxronizasiya üçün onu da yenilə
+    // (başqa cihazdan gələn dəyişiklik - məs. başqa kassir ödəniş alıbsa - dərhal görünsün)
+    if ($('notesModal').classList.contains('open') && state.noteTableId) {
+      this.confirmedOrder.renderSummary(state.noteTableId);
+      this._updatePaymentTrigger(state.noteTableId);
+    }
   }
 
   stop() {
     this.tableBoard.stopTimers();
+  }
+
+  _updatePaymentTrigger(tableId) {
+    const order = state.tableOrders[tableId];
+    const canPay = hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit');
+    const payBtn = $('notesPaymentBtn');
+    if (canPay && order?.total > 0) {
+      const paid = order.paidAmount || 0;
+      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
+      payBtn.style.display = 'flex';
+      payBtn.classList.toggle('partial', paid > 0);
+      $('notesPaymentAmount').textContent = remaining.toFixed(2) + ' ₼';
+      const subEl = $('notesPaymentSub');
+      if (paid > 0) {
+        subEl.style.display = 'block';
+        subEl.textContent = `${paid.toFixed(2)} ₼ ödənilib, cəmi ${order.total.toFixed(2)} ₼`;
+      } else {
+        subEl.style.display = 'none';
+      }
+    } else {
+      payBtn.style.display = 'none';
+    }
   }
 
   // ── Aktivləşdirmə axını ──
@@ -169,8 +196,9 @@ export class StaffApp {
     setVis('notesDiscountBtn', hasPermission('order.discount'));
     setVis('notesTransferBtn', hasPermission('table.transfer'));
     setVis('notesItemTransferBtn', hasPermission('table.transfer'));
-    setVis('notesPaymentBtn', hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit'));
     setVis('notesComplimentBtn', hasPermission('order.discount'));
+
+    this._updatePaymentTrigger(tableId);
 
     $('notesModal').classList.add('open');
   }
