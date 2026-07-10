@@ -1,119 +1,75 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   Masa İdarəetmə Paneli (Table Board) - Giriş Təhlükəsizlikli Versiya
-   ═══════════════════════════════════════════════════════════════════════════ */
-
+/* ═══════════════════════════════════════════
+   TABLE BOARD
+   Qarson ekranındakı masa grid-i: kateqoriya/işçi filtri,
+   masa aktivləşdirmə/bağlama, canlı taymer.
+   Hadisələr addEventListener ilə bağlanır (inline onclick yoxdur).
+═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog } from './utils.js';
 import { hasPermission, staffHasPermission } from './permissions.js';
 
-class TablesOfflineStorage {
-  constructor() {
-    this.dbName = 'IpekYolu_POS_DB';
-    this.dbVersion = 1;
-    this.initDB();
-  }
-
-  initDB() {
-    const request = indexedDB.open(this.dbName, this.dbVersion);
-    request.onupgradeneeded = (e) => {
-      const dbInstance = e.target.result;
-      if (!dbInstance.objectStoreNames.contains('tables_cache')) {
-        dbInstance.createObjectStore('tables_cache', { keyPath: 'id' });
-      }
-    };
-  }
-
-  async saveTablesLocally(tables) {
-    return new Promise((resolve) => {
-      const request = indexedDB.open(this.dbName, this.dbVersion);
-      request.onsuccess = (e) => {
-        const dbInstance = e.target.result;
-        const tx = dbInstance.transaction('tables_cache', 'readwrite');
-        const store = tx.objectStore('tables_cache');
-        tables.forEach(t => store.put(t));
-        resolve(true);
-      };
-    });
-  }
-}
-
-const offlineStorage = new TablesOfflineStorage();
-
 export class TableBoard {
+  /**
+   * @param {Object} els - { grid, catTabs, staffFilter }  DOM elementləri
+   * @param {Object} callbacks - { onTableOpen(tableId) }  masa üstünə klik ediləndə çağırılır
+   */
   constructor(els, callbacks = {}) {
-    this.els = els;
+    this.el = els.grid;
+    this.catTabsEl = els.catTabs;
+    this.staffFilterEl = els.staffFilter;
     this.onTableOpen = callbacks.onTableOpen || (() => {});
     this._bindEvents();
   }
 
   _bindEvents() {
-    // TƏHLÜKƏSİZLİK QORUYUCUSU: Əgər elementlər DOM-da yoxdursa xəta vermə, icranı dayandır (Giriş panelini bloklamır)
-    if (!this.els || !this.els.grid || !this.els.catTabs) {
-      console.warn("TableBoard: Masa elementləri tapılmadı. İnstansiya giriş ekranında qorunma rejimindədir.");
-      return;
-    }
-
-    this.els.grid.addEventListener('click', (e) => {
+    this.el.addEventListener('click', (e) => {
       const card = e.target.closest('[data-table-id]');
       if (!card) return;
       this._handleCardClick(card.dataset.tableId);
     });
-
-    this.els.catTabs.addEventListener('click', (e) => {
+    this.catTabsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-cat]');
       if (!btn) return;
       this.setCategory(btn.dataset.cat);
     });
-
-    if (this.els.staffFilter) {
-      this.els.staffFilter.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-staff-filter]');
-        if (!btn) return;
-        const val = btn.dataset.staffFilter;
-        this.setStaffFilter(val === '_all' ? null : val);
-      });
-    }
+    this.staffFilterEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-staff-filter]');
+      if (!btn) return;
+      const val = btn.dataset.staffFilter;
+      this.setStaffFilter(val === '_all' ? null : val);
+    });
   }
 
   _handleCardClick(tableId) {
     const t = state.tables.find(x => x.id === tableId);
     if (!t) return;
-
-    const isMine = t.occupant === state.user?.id;
+    const isMine = t.occupant === state.user.id;
     const isOther = t.occupant && !isMine;
-
     if (!t.occupant) {
       this.openActivateConfirm(tableId);
     } else if (isOther && !hasPermission('waiter.view')) {
-      showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu masa digər işçiyə aiddir və baxış icazəniz yoxdur!');
+      showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu masa başqa işçiyə aiddir');
     } else {
+      // Aktiv masa - sifariş/qeydlər hub-unu aç (staff-app.js bunu billing.js ilə əlaqələndirir)
       this.onTableOpen(tableId);
     }
   }
 
   getCategories() {
-    if (!state.tables) return ['all', 'Aktiv Masalar'];
     const cats = new Set();
-    state.tables.forEach(t => {
-      if (t.category) cats.add(t.category);
-    });
-    return ['all', 'Aktiv Masalar', ...Array.from(cats)];
+    state.tables.forEach(t => cats.add(t.category || t.name.replace(/\s+\d+$/, '') || t.name));
+    return Array.from(cats);
   }
 
   renderCatTabs() {
-    if (!this.els || !this.els.catTabs) return;
     const cats = this.getCategories();
-    this.els.catTabs.innerHTML = cats.map(c => {
-      const isActive = state._waiterCatFilter === c || (!state._waiterCatFilter && c === 'all');
-      let title = c;
-      if (c === 'all') title = 'Hamısı';
-      return `
-        <button class="admin-tab ${isActive ? 'active' : ''}" data-cat="${esc(c)}">
-          ${esc(title)}
-        </button>
-      `;
-    }).join('');
+    const tabs = ['all', ...cats];
+    this.catTabsEl.innerHTML = tabs.map(c => `
+      <button class="admin-tab ${state._waiterCatFilter === c ? 'active' : ''}" data-cat="${esc(c)}">
+        ${c === 'all' ? 'Hamısı' : esc(c)}
+      </button>
+    `).join('');
   }
 
   setCategory(cat) {
@@ -122,22 +78,15 @@ export class TableBoard {
   }
 
   renderStaffFilter() {
-    if (!this.els || !this.els.staffFilter || !state.staff) return;
-    
     if (!hasPermission('waiter.view')) {
-      this.els.staffFilter.style.display = 'none';
+      this.staffFilterEl.style.display = 'none';
       state._waiterStaffFilter = null;
       return;
     }
-
     const activeStaffList = state.staff.filter(s => staffHasPermission(s, 'table.view'));
-    if (!activeStaffList.length) {
-      this.els.staffFilter.style.display = 'none';
-      return;
-    }
-
-    this.els.staffFilter.style.display = 'flex';
-    this.els.staffFilter.innerHTML = [
+    if (!activeStaffList.length) { this.staffFilterEl.style.display = 'none'; return; }
+    this.staffFilterEl.style.display = 'flex';
+    this.staffFilterEl.innerHTML = [
       `<button class="log-filter ${!state._waiterStaffFilter ? 'active' : ''}" data-staff-filter="_all">Hamısı</button>`
     ].concat(activeStaffList.map(s =>
       `<button class="log-filter ${state._waiterStaffFilter === s.id ? 'active' : ''}" data-staff-filter="${s.id}">${esc(s.name)}</button>`
@@ -150,141 +99,121 @@ export class TableBoard {
   }
 
   render() {
-    if (!state.user || !this.els || !this.els.grid) return;
-    
+    if (!state.user || state.user.role !== 'staff') return;
     this.renderCatTabs();
     this.renderStaffFilter();
 
-    if (!state.tables || !state.tables.length) {
-      this.els.grid.innerHTML = '<p style="color:var(--text3); padding: 20px;">Sistemdə göstəriləcək masa tapılmadı.</p>';
+    if (!state.tables.length) {
+      this.el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
       return;
     }
 
-    let filtered = state.tables;
-    if (state._waiterCatFilter && state._waiterCatFilter !== 'all') {
-      if (state._waiterCatFilter === 'Aktiv Masalar') {
-        filtered = state.tables.filter(t => t.occupant);
-      } else {
-        filtered = state.tables.filter(t => t.category === state._waiterCatFilter);
-      }
-    }
+    let filtered = state._waiterCatFilter === 'all'
+      ? state.tables
+      : state.tables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._waiterCatFilter);
+    if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>'; return; }
 
     if (state._waiterStaffFilter) {
       filtered = filtered.filter(t => t.occupant === state._waiterStaffFilter);
+      if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu işçinin xidmət etdiyi masa yoxdur.</p>'; return; }
     }
 
-    offlineStorage.saveTablesLocally(state.tables);
     const canViewOthers = hasPermission('waiter.view');
 
-    this.els.grid.innerHTML = filtered.map(t => {
+    this.el.innerHTML = filtered.map(t => {
       const isMine = t.occupant === state.user.id;
       const isOther = t.occupant && !isMine;
-      const waiterInfo = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: 'Naməlum' }) : null;
-      const tableOrder = state.tableOrders ? state.tableOrders[t.id] : null;
-      
-      let statusClass = 'empty';
-      let statusText = 'Boş Masa';
+      const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
+      const tableOrder = state.tableOrders[t.id];
+      let cls = '', statusText = 'Boş masa';
+      if (isMine) { cls = 'mine'; statusText = 'Sizin masanız'; }
+      else if (isOther) {
+        cls = canViewOthers ? 'other-manage' : 'other';
+        statusText = canViewOthers ? esc(otherW.name) : 'Dolu';
+      } else { cls = 'empty'; }
 
-      if (isMine) {
-        statusClass = 'mine';
-        statusText = 'Sizin Masanız';
-      } else if (isOther) {
-        statusClass = canViewOthers ? 'other' : 'other locked';
-        statusText = canViewOthers ? esc(waiterInfo.name) : 'Dolu Masa';
-      }
+      const showTotal = (isMine || (isOther && canViewOthers)) && tableOrder?.total;
+      const showRemaining = showTotal && tableOrder.remainingAmount !== undefined && tableOrder.paidAmount > 0;
 
-      const totalAmount = tableOrder ? (tableOrder.total || 0) : 0;
-      const remainingAmount = tableOrder && tableOrder.remainingAmount !== undefined ? tableOrder.remainingAmount : totalAmount;
-
-      return `
-        <div class="w-table-card ${statusClass}" data-table-id="${t.id}" style="position: relative; overflow: hidden;">
-          <div class="w-table-name" style="font-size: 18px; font-weight: 700;">${esc(t.name)}</div>
-          <div class="w-table-status" style="margin-top: 4px; font-size: 12px; opacity: 0.9;">${statusText}</div>
-          
-          ${t.occupant ? `
-            <div style="font-size: 12px; color: var(--text2); margin-top: 8px; display: flex; align-items: center; gap: 4px; justify-content: center;">
-              <svg class="icon" style="width:1.1em; height:1.1em;"><use href="#i-clock"></use></svg>
-              <span class="w-table-timer" data-since="${t.activatedAt || ''}">--:--</span>
-            </div>
-          ` : ''}
-
-          ${totalAmount > 0 ? `
-            <div style="font-size: 13px; color: var(--orange); font-weight: 700; margin-top: 8px; background: rgba(0,0,0,0.05); padding: 4px; border-radius: 6px;">
-              <svg class="icon" style="width:1em;height:1em; vertical-align:middle;"><use href="#i-food"></use></svg> 
-              Balans: ${totalAmount.toFixed(2)} ₼
-              ${remainingAmount !== totalAmount ? `<br><span style="font-size:10px; color:var(--red);">Qalan: ${remainingAmount.toFixed(2)} ₼</span>` : ''}
-            </div>
-          ` : ''}
-        </div>
-      `;
+      return `<div class="table-card ${cls}" data-table-id="${t.id}">
+        <div class="table-card__name">${esc(t.name)}</div>
+        <div class="table-card__status">${statusText}</div>
+        ${t.occupant ? `<div class="table-card__row"><svg class="icon"><use href="#i-clock"></use></svg><span class="table-card__timer w-table-timer" data-since="${t.activatedAt||''}">--:--</span></div>` : ''}
+        ${showTotal ? `<div class="table-card__total">${showRemaining ? tableOrder.remainingAmount.toFixed(2) : tableOrder.total.toFixed(2)} ₼${showRemaining ? ' <span style="font-size:10px;opacity:.7;">qalıq</span>' : ''}</div>` : ''}
+        ${isMine && t.notes ? `<div class="table-card__note">${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}</div>` : ''}
+      </div>`;
     }).join('');
 
     this.startTimers();
   }
 
+  // ── Canlı taymer (yalnız təyin olunmuş .w-table-timer mətnini yeniləyir, tam render etmir) ──
   startTimers() {
     this.updateTimers();
-    if (this.timerInterval) clearInterval(this.timerInterval);
-    this.timerInterval = setInterval(() => this.updateTimers(), 1000);
+    if (state.tableTimerInterval) return;
+    state.tableTimerInterval = setInterval(() => this.updateTimers(), 1000);
+  }
+
+  stopTimers() {
+    if (state.tableTimerInterval) { clearInterval(state.tableTimerInterval); state.tableTimerInterval = null; }
   }
 
   updateTimers() {
-    document.querySelectorAll('.w-table-timer').forEach(el => {
-      const since = parseInt(el.dataset.since, 10);
-      if (!since) { el.textContent = '--:--'; return; }
-      
-      const diffSec = Math.max(0, Math.floor((Date.now() - since) / 1000));
-      const h = Math.floor(diffSec / 3600);
-      const m = Math.floor((diffSec % 3600) / 60);
-      const s = diffSec % 60;
-
-      el.textContent = h > 0 
-        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-        : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    document.querySelectorAll('.w-table-timer').forEach(elx => {
+      const since = parseInt(elx.dataset.since, 10);
+      if (!since) { elx.textContent = '--:--'; return; }
+      const totalSec = Math.max(0, Math.floor((Date.now() - since) / 1000));
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      elx.textContent = h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
     });
   }
 
+  // ── Aktivləşdirmə / bağlama (çağıran tərəf - staff-app.js - konfirmasiya modal-larını göstərir) ──
   openActivateConfirm(tableId) {
-    const t = state.tables.find(x => x.id === tableId);
-    if (!t) return;
-
-    const modalHtml = `
-      <div class="custom-modal-backdrop" id="activate-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;">
-        <div class="custom-modal-content" style="background:var(--card); padding:24px; border-radius:12px; max-width:400px; width:90%; text-align:center; border:1px solid var(--border);">
-          <h3 style="margin-bottom:12px;">Masanı Aktivləşdir</h3>
-          <p style="color:var(--text2); font-size:14px; margin-bottom:20px;">"${esc(t.name)}" masasını öz adınıza aktivləşdirmək və yeni sifariş açmaq istəyirsiniz?</p>
-          <div style="display:flex; gap:10px; justify-content:center;">
-            <button id="btn-activate-cancel" style="background:var(--border); color:var(--text); padding:10px 16px; border:none; border-radius:8px; cursor:pointer;">İmtina</button>
-            <button id="btn-activate-confirm" style="background:var(--green); color:white; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600;">Təsdiqlə</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-    document.getElementById('btn-activate-cancel').addEventListener('click', () => {
-      document.getElementById('activate-modal').remove();
-    });
-
-    document.getElementById('btn-activate-confirm').addEventListener('click', async () => {
-      try {
-        await R.tables.child(tableId).update({
-          occupant: state.user.id,
-          activatedAt: Date.now()
-        });
-        
-        await addLog('table', `${state.user.name} "${t.name}" masasını açdı.`, { tableId, waiterId: state.user.id });
-        
-        showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${t.name}" uğurla aktivləşdirildi.`);
-        document.getElementById('activate-modal').remove();
-      } catch (err) {
-        showToast('<svg class="icon"><use href="#i-error"></use></svg> Şəbəkə xətası! Masa aktivləşdirilə bilmədi.');
-      }
-    });
+    state.pendingTableId = tableId;
+    document.dispatchEvent(new CustomEvent('table:activate-requested', { detail: { tableId } }));
   }
 
-  destroy() {
-    if (this.timerInterval) clearInterval(this.timerInterval);
+  confirmActivate(tableId) {
+    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now() });
+    const t = state.tables.find(x => x.id === tableId);
+    addLog('table', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, waiterId: state.user.id });
+  }
+
+  openDeactivateConfirm(tableId) {
+    const order = state.tableOrders[tableId];
+    document.dispatchEvent(new CustomEvent('table:close-requested', { detail: { tableId, order } }));
+  }
+
+  /** @returns {boolean} true = bağlandı, false = balans qapatmadı (çağıran tərəf toast göstərməlidir) */
+  confirmDeactivate(tableId) {
+    const order = state.tableOrders[tableId];
+    if (order?.total > 0) {
+      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null)
+        ? order.remainingAmount
+        : order.total;
+      if (remaining > 0.01) return false;
+    }
+    const t = state.tables.find(x => x.id === tableId);
+
+    // Sifarişi arxivə köçür (hesabatlarda görünsün)
+    if (order && order.items) {
+      const archiveData = {
+        tableId, tableName: t?.name || '?',
+        staffId: state.user?.id || null, staffName: state.user?.name || '?',
+        items: order.items, total: order.total || 0, notes: t?.notes || '',
+        closedAt: Date.now(),
+        closedTime: new Date().toLocaleTimeString('az-AZ'),
+        closedDate: new Date().toLocaleDateString('az-AZ')
+      };
+      db.ref('closedOrders').push(archiveData);
+    }
+
+    R.tableOrders.child(tableId).remove();
+    R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null });
+    addLog('table', `${state.user?.name} "${t?.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`, { staffId: state.user?.id, tableId });
+    return true;
   }
 }
