@@ -77,7 +77,7 @@ export function acceptAlarm() {
     window._currentRequestId = null;
   }
   stopAlarm(true);
-  showToast('<svg class="icon"><use href="#i-check"></use></svg> Qəbul edildi!');
+  showToast(' Qəbul edildi!');
   setTimeout(()=>{
     const next = state.orders.filter(o=>o.waiterId===state.user.id&&o.status==='pending');
     if (next.length) triggerOrderAlarm(next[0]);
