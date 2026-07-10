@@ -23,7 +23,7 @@ export class ConfirmedOrder {
     this.els = els;
     this._cancelCtx = null;
     this._discountType = 'percent';
-    this._discountSelectedKeys = [];
+    this._discountSelection = {};
     this._bindEvents();
   }
 
@@ -33,66 +33,105 @@ export class ConfirmedOrder {
       if (qtyBtn) { this.changeQty(state.noteTableId, qtyBtn.dataset.itemKey, parseInt(qtyBtn.dataset.qtyChange, 10)); return; }
       const cancelBtn = e.target.closest('[data-cancel-item]');
       if (cancelBtn) { this.openCancelReasonModal(state.noteTableId, cancelBtn.dataset.cancelItem); return; }
-    });
-    this.els.summaryEl.addEventListener('change', (e) => {
-      const cb = e.target.closest('[data-batch-select]');
-      if (cb) this.toggleBatchSelect(cb.dataset.batchSelect);
+      const batchBtn = e.target.closest('[data-batch-qty]');
+      if (batchBtn) { this.setBatchQty(batchBtn.dataset.itemKey, parseInt(batchBtn.dataset.batchQty, 10)); return; }
     });
   }
 
   clearBatchSelection() { state._batchSelection = {}; }
 
-  toggleBatchSelect(itemKey) {
+  /** Seçilmiş malın miqdarını dəyişir (0..qty aralığında) - qismən seçimə imkan verir */
+  setBatchQty(itemKey, delta) {
+    const order = state.tableOrders[state.noteTableId];
+    const it = order?.items?.[itemKey];
+    if (!it) return;
     if (!state._batchSelection) state._batchSelection = {};
-    state._batchSelection[itemKey] = !state._batchSelection[itemKey];
-    if (!state._batchSelection[itemKey]) delete state._batchSelection[itemKey];
+    const cur = state._batchSelection[itemKey] || 0;
+    const next = Math.max(0, Math.min(it.qty, cur + delta));
+    if (next === 0) delete state._batchSelection[itemKey];
+    else state._batchSelection[itemKey] = next;
     this.renderSummary(state.noteTableId);
+  }
+
+  /**
+   * Firebase transaction daxilində istifadə üçün: qismən seçilmiş sətirləri iki yerə bölür
+   * (seçilmiş miqdar + qalan miqdar), tam seçilmiş sətirlərə toxunmur.
+   * @returns {{items:Object, targetKeys:string[]}}
+   */
+  _splitSelectedItems(items, selectionMap) {
+    const newItems = { ...items };
+    const targetKeys = [];
+    Object.entries(selectionMap).forEach(([itemKey, selQty]) => {
+      const orig = items[itemKey];
+      if (!orig || selQty <= 0) return;
+      const qty = Math.min(selQty, orig.qty);
+      if (qty >= orig.qty) {
+        targetKeys.push(itemKey);
+      } else {
+        const splitKey = `${itemKey}_x${Date.now()}`;
+        newItems[splitKey] = { ...orig, qty };
+        newItems[itemKey] = { ...orig, qty: orig.qty - qty };
+        targetKeys.push(splitKey);
+      }
+    });
+    return { items: newItems, targetKeys };
   }
 
   renderSummary(tableId) {
     const el = this.els.summaryEl;
     const order = state.tableOrders[tableId];
     const items = order?.items ? Object.entries(order.items) : [];
-    if (!items.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Hələ sifariş yoxdur.</p>'; return; }
+    if (!items.length) { el.innerHTML = '<div class="ticket-empty">Hələ sifariş yoxdur.</div>'; return; }
 
     const canEdit = hasPermission('order.cancel_item');
     const canBatch = hasPermission('order.discount') || hasPermission('table.transfer');
     const sel = state._batchSelection || {};
-    const selectedCount = Object.keys(sel).filter(k => sel[k] && order.items[k]).length;
+    const selectedEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
+    const selectedCount = selectedEntries.length;
 
     el.innerHTML = `
-      <div class="order-summary-box">
-        ${items.map(([itemKey, it]) => {
-          const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
-          const isChecked = !!sel[itemKey];
-          return `<div class="order-summary-line" style="flex-direction:column;align-items:flex-start;gap:2px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:6px;">
-              ${canBatch ? `<input type="checkbox" data-batch-select="${itemKey}" ${isChecked?'checked':''} style="width:17px;height:17px;flex-shrink:0;accent-color:var(--gold);cursor:pointer;">` : ''}
-              <span style="flex:1;font-size:13px;">${esc(it.name)}</span>
-              ${canEdit ? `<button data-qty-change="-1" data-item-key="${itemKey}" style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;">−</button>` : ''}
-              <span style="font-weight:700;min-width:22px;text-align:center;">${it.qty}</span>
-              ${canEdit ? `<button data-qty-change="1" data-item-key="${itemKey}" style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;">+</button>` : ''}
-              <span style="font-weight:700;white-space:nowrap;">${lineTotal.toFixed(2)} ₼</span>
-              ${canEdit ? `<button data-cancel-item="${itemKey}" style="background:var(--red);color:white;border:none;border-radius:6px;width:22px;height:22px;font-size:13px;cursor:pointer;font-weight:700;flex-shrink:0;"><svg class="icon"><use href="#i-close"></use></svg></button>` : ''}
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;padding-left:${canBatch?'25px':'0'};">
-              ${it.note ? `<span style="font-size:11px;color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(it.note)}</span>` : ''}
-              ${it.compliment ? `<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>` : ''}
-              ${(it.discountPercent>0) ? `<span class="discount-badge">-${it.discountPercent}%</span>` : ''}
-            </div>
-          </div>`;
-        }).join('')}
-        <div class="order-summary-line" style="border-top:1px solid var(--border);margin-top:6px;padding-top:8px;font-weight:700;color:var(--green);">
-          <span>Cəmi</span><span>${(order.total||0).toFixed(2)} ₼</span>
+      <div class="ticket-panel" style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div class="ticket-body" style="max-height:none;overflow:visible;padding:10px 14px;">
+          ${items.map(([itemKey, it]) => {
+            const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
+            const selQty = sel[itemKey] || 0;
+            const isSelected = selQty > 0;
+            return `<div class="ticket-line ${isSelected?'selected':''}">
+              <div class="ticket-line__main">
+                ${canBatch ? `<div class="qty-stepper batch-select" style="margin-right:2px;">
+                  <button data-batch-qty="-1" data-item-key="${itemKey}">−</button>
+                  <span class="qty-stepper__val">${selQty}</span>
+                  <button data-batch-qty="1" data-item-key="${itemKey}">+</button>
+                </div>` : ''}
+                <span class="ticket-line__name">${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
+                ${canEdit ? `<button data-qty-change="-1" data-item-key="${itemKey}" style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:15px;cursor:pointer;font-weight:700;flex-shrink:0;">−</button>` : ''}
+                ${canEdit ? `<button data-qty-change="1" data-item-key="${itemKey}" style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:15px;cursor:pointer;font-weight:700;flex-shrink:0;">+</button>` : ''}
+                <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
+                ${canEdit ? `<button data-cancel-item="${itemKey}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;flex-shrink:0;"><svg class="icon"><use href="#i-close"></use></svg></button>` : ''}
+              </div>
+              <div class="ticket-line__tags" style="${canBatch?'padding-left:56px;':''}">
+                ${it.note ? `<span class="discount-badge" style="background:transparent;border-color:var(--border);color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(it.note)}</span>` : ''}
+                ${it.compliment ? `<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>` : ''}
+                ${(it.discountPercent>0) ? `<span class="discount-badge">-${it.discountPercent}%</span>` : ''}
+                ${isSelected ? `<span class="discount-badge" style="background:rgba(201,151,63,.15);color:var(--gold-dark);border-color:var(--gold);">${selQty}/${it.qty} seçili</span>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="ticket-footer" style="padding:10px 14px;">
+          <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--green);font-family:var(--font-display);font-size:16px;">
+            <span style="font-family:var(--font-body);font-size:13px;color:var(--text2);font-weight:600;align-self:center;">Cəmi</span>
+            <span>${(order.total||0).toFixed(2)} ₼</span>
+          </div>
         </div>
       </div>
       ${canBatch ? `
-      <div id="batchActionBar" style="display:${selectedCount?'flex':'none'};gap:6px;margin-top:10px;flex-wrap:wrap;">
-        <span style="font-size:12px;color:var(--text2);width:100%;">${selectedCount} mal seçildi:</span>
-        ${hasPermission('order.discount') ? `<button class="btn" data-open-discount style="flex:1;padding:9px;font-size:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.1);"><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>` : ''}
-        ${hasPermission('order.discount') ? `<button class="btn" data-open-compliment style="flex:1;padding:9px;font-size:12px;border:2px solid var(--green);color:var(--green);background:rgba(28,107,53,.1);"><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>` : ''}
-        ${hasPermission('table.transfer') ? `<button class="btn" data-open-item-transfer style="flex:1;padding:9px;font-size:12px;border:2px solid var(--purple);color:var(--purple);background:rgba(142,68,173,.1);"><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>` : ''}
-        <button class="btn btn-ghost" data-clear-selection style="padding:9px 12px;font-size:12px;">Ləğv et</button>
+      <div id="batchActionBar" class="batch-bar" style="display:${selectedCount?'flex':'none'};">
+        <span class="batch-bar__count">${selectedCount} mal seçildi (${selectedEntries.reduce((s,[,q])=>s+q,0)} ədəd)</span>
+        ${hasPermission('order.discount') ? `<button class="batch-chip batch-chip--discount" data-open-discount><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>` : ''}
+        ${hasPermission('order.discount') ? `<button class="batch-chip batch-chip--gift" data-open-compliment><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>` : ''}
+        ${hasPermission('table.transfer') ? `<button class="batch-chip batch-chip--transfer" data-open-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>` : ''}
+        <button class="batch-chip batch-chip--clear" data-clear-selection>Ləğv et</button>
       </div>` : ''}
     `;
 
@@ -191,11 +230,14 @@ export class ConfirmedOrder {
     const t = state.tables.find(x => x.id === tableId);
 
     const sel0 = state._batchSelection || {};
-    this._discountSelectedKeys = Object.keys(sel0).filter(k => sel0[k] && order.items[k]);
+    this._discountSelection = {};
+    Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) this._discountSelection[k] = q; });
+    const selKeys = Object.keys(this._discountSelection);
 
-    if (this._discountSelectedKeys.length) {
-      const subtotal = this._discountSelectedKeys.reduce((s,k)=>{ const it=order.items[k]; return s+(it.price*it.qty)+(it.extraFee||0); },0);
-      this.els.discountTableInfo.innerHTML = `${esc(t?.name||'Masa')} — <strong>${this._discountSelectedKeys.length} seçilmiş mal</strong>, Cəmi: ${subtotal.toFixed(2)} ₼`;
+    if (selKeys.length) {
+      const totalQty = Object.values(this._discountSelection).reduce((s,q)=>s+q,0);
+      const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=this._discountSelection[k]; return s+(it.price*q)+(it.extraFee||0)*(q/it.qty); },0);
+      this.els.discountTableInfo.innerHTML = `${esc(t?.name||'Masa')} — <strong>${totalQty} ədəd seçilib</strong>, Cəmi: ${subtotal.toFixed(2)} ₼`;
     } else {
       this.els.discountTableInfo.textContent = `${t?.name||'Masa'} — Bütün hesab, Cəmi: ${order.total.toFixed(2)} ₼`;
     }
@@ -223,8 +265,9 @@ export class ConfirmedOrder {
     const val = parseFloat(this.els.discountValue.value) || 0;
     const order = state.tableOrders[this._discountTableId];
     if (!order || !val) { this.els.discountPreview.innerHTML = ''; return; }
-    const orig = this._discountSelectedKeys.length
-      ? this._discountSelectedKeys.reduce((s,k)=>{ const it=order.items[k]; return it ? s+(it.price*it.qty)+(it.extraFee||0) : s; },0)
+    const selKeys = Object.keys(this._discountSelection);
+    const orig = selKeys.length
+      ? selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=this._discountSelection[k]; return it ? s+(it.price*q)+(it.extraFee||0)*(q/it.qty) : s; },0)
       : order.total;
     const final = this._discountType==='percent' ? orig*(1-val/100) : Math.max(0,orig-val);
     this.els.discountPreview.innerHTML = `
@@ -245,27 +288,31 @@ export class ConfirmedOrder {
     const t = state.tables.find(x => x.id === tableId);
     if (!order) return;
 
-    if (this._discountSelectedKeys.length) {
-      const keys = this._discountSelectedKeys.slice();
-      const subtotal = keys.reduce((s,k)=>{ const it=order.items[k]; return it ? s+(it.price*it.qty)+(it.extraFee||0) : s; },0);
+    const selection = this._discountSelection;
+    const selKeys = Object.keys(selection);
+
+    if (selKeys.length) {
+      const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=selection[k]; return it ? s+(it.price*q)+(it.extraFee||0)*(q/it.qty) : s; },0);
       if (this._discountType==='percent' && val>100) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Faiz 100-dən çox ola bilməz'); return; }
       if (this._discountType==='fixed' && val>=subtotal) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim seçilmiş malların cəmindən çox ola bilməz'); return; }
       const equivPercent = this._discountType==='percent' ? val : (val/subtotal*100);
+      let appliedQty = 0;
 
       R.tableOrders.child(tableId).transaction(current => {
         if (!current || !current.items) return current;
-        const items = { ...current.items };
-        keys.forEach(k => { if (items[k]) items[k] = { ...items[k], discountPercent: Math.round(equivPercent*100)/100 }; });
+        const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
+        targetKeys.forEach(k => { if (items[k]) items[k] = { ...items[k], discountPercent: Math.round(equivPercent*100)/100 }; });
         let total = 0;
         Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
         const paidAmount = current.paidAmount || 0;
+        appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
         return { ...current, items, total, remainingAmount: total - paidAmount };
       }, (error, committed) => {
         if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
         if (!committed) return;
         const discStr = this._discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
-        addLog('order', `${state.user.name} "${t?.name}" masasında ${keys.length} mala ${discStr} endirim verdi`, { tableId });
-        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${keys.length} mala endirim tətbiq edildi`);
+        addLog('order', `${state.user.name} "${t?.name}" masasında ${appliedQty} ədədə ${discStr} endirim verdi`, { tableId });
+        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${appliedQty} ədədə endirim tətbiq edildi`);
         this.clearBatchSelection();
         this.renderSummary(tableId);
       });
@@ -297,12 +344,16 @@ export class ConfirmedOrder {
     if (!order?.items) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Sifariş yoxdur'); return; }
 
     const sel0 = state._batchSelection || {};
-    const selectedKeys = Object.keys(sel0).filter(k => sel0[k] && order.items[k]);
+    const selection = {};
+    Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) selection[k] = q; });
+    this._complimentSelection = selection;
+    const selKeys = Object.keys(selection);
 
-    if (selectedKeys.length) {
+    if (selKeys.length) {
       this.els.complimentPickWrap.style.display = 'none';
       this.els.complimentBatchInfo.style.display = 'block';
-      this.els.complimentBatchInfo.textContent = `${selectedKeys.length} seçilmiş mal ikram ediləcək`;
+      const totalQty = Object.values(selection).reduce((s,q)=>s+q,0);
+      this.els.complimentBatchInfo.textContent = `${totalQty} ədəd (${selKeys.length} növ mal) ikram ediləcək`;
     } else {
       this.els.complimentPickWrap.style.display = 'block';
       this.els.complimentBatchInfo.style.display = 'none';
@@ -320,28 +371,29 @@ export class ConfirmedOrder {
     if (!order?.items) return;
     const t = state.tables.find(x => x.id === tableId);
 
-    const sel0 = state._batchSelection || {};
-    let keys = Object.keys(sel0).filter(k => sel0[k] && order.items[k]);
-    if (!keys.length) {
+    let selection = this._complimentSelection || {};
+    if (!Object.keys(selection).length) {
       const single = this.els.complimentItem.value;
       if (!single || !order.items[single]) return;
-      keys = [single];
+      selection = { [single]: order.items[single].qty };
     }
-    const names = keys.map(k => order.items[k].name);
+    const names = Object.keys(selection).map(k => order.items[k]?.name).filter(Boolean);
+    let appliedQty = 0;
 
     R.tableOrders.child(tableId).transaction(current => {
       if (!current || !current.items) return current;
-      const items = { ...current.items };
-      keys.forEach(k => { if (items[k]) items[k] = { ...items[k], price: 0, extraFee: 0, compliment: true }; });
+      const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
+      targetKeys.forEach(k => { if (items[k]) items[k] = { ...items[k], price: 0, extraFee: 0, compliment: true }; });
       let total = 0;
       Object.values(items).forEach(v => { total += (v.price||0) * v.qty * (1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
       const paidAmount = current.paidAmount || 0;
+      appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
       return { ...current, items, total, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
-      addLog('order', `${state.user?.name} "${t?.name}" masasında ${names.join(', ')} ikram etdi`, { tableId });
-      showToast(`<svg class="icon"><use href="#i-gift"></use></svg> ${names.length>1?names.length+' mal':names[0]} ikram edildi`);
+      addLog('order', `${state.user?.name} "${t?.name}" masasında ${appliedQty} ədəd (${names.join(', ')}) ikram etdi`, { tableId });
+      showToast(`<svg class="icon"><use href="#i-gift"></use></svg> ${appliedQty} ədəd ikram edildi`);
       this.clearBatchSelection();
       this.renderSummary(tableId);
     });
@@ -359,13 +411,17 @@ export class ConfirmedOrder {
     this.els.itemTransferInfo.textContent = `"${t?.name}" masasından mal köçürülür`;
 
     const sel0 = state._batchSelection || {};
-    const selectedKeys = Object.keys(sel0).filter(k => sel0[k] && order.items[k]);
+    const selection = {};
+    Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) selection[k] = q; });
+    this._transferSelection = selection;
+    const selKeys = Object.keys(selection);
 
-    if (selectedKeys.length) {
+    if (selKeys.length) {
       this.els.itemTransferPickWrap.style.display = 'none';
       this.els.itemTransferQtyWrap.style.display = 'none';
       this.els.itemTransferBatchInfo.style.display = 'block';
-      this.els.itemTransferBatchInfo.textContent = `${selectedKeys.length} seçilmiş mal (tam miqdarda) köçürüləcək`;
+      const totalQty = Object.values(selection).reduce((s,q)=>s+q,0);
+      this.els.itemTransferBatchInfo.textContent = `${totalQty} ədəd (${selKeys.length} növ mal) köçürüləcək`;
     } else {
       this.els.itemTransferPickWrap.style.display = 'block';
       this.els.itemTransferQtyWrap.style.display = 'block';
@@ -426,20 +482,21 @@ export class ConfirmedOrder {
     const fromT = state.tables.find(x => x.id === fromTableId);
     const toT = state.tables.find(x => x.id === toTableId);
 
-    const selMap = state._batchSelection || {};
-    const selectedKeys = Object.keys(selMap).filter(k => selMap[k] && fromOrderCheck?.items?.[k]);
+    const selection = this._transferSelection || {};
+    const selKeys = Object.keys(selection).filter(k => fromOrderCheck?.items?.[k]);
 
-    if (selectedKeys.length) {
+    if (selKeys.length) {
       const names = [];
-      selectedKeys.forEach(itemKey => {
+      selKeys.forEach(itemKey => {
         const it = fromOrderCheck.items[itemKey];
         if (!it) return;
-        names.push(`${it.qty}x ${it.name}`);
+        const moveQty = Math.min(selection[itemKey], it.qty);
+        names.push(`${moveQty}x ${it.name}`);
         const moved = { menuItemId: it.menuItemId, name: it.name, price: it.price, note: it.note||'', extraFee: it.extraFee||0 };
-        this._transferSingleItem(fromTableId, toTableId, itemKey, it.qty, moved);
+        this._transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved);
       });
       addLog('table', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə köçürdü: ${names.join(', ')}`, { tableId: fromTableId, toTableId });
-      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${selectedKeys.length} mal → "${toT?.name}"`);
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${names.length} növ mal → "${toT?.name}"`);
       this.clearBatchSelection();
       this.closeItemTransferModal();
       return;
