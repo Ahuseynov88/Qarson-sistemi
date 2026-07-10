@@ -166,16 +166,97 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
 .waiter-body{flex:1;padding:16px;overflow:hidden;display:flex;flex-direction:column;}
 .waiter-body h3{font-size:15px;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;}
-.tables-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.w-table-card{border-radius:12px;padding:14px 8px;border:2px solid var(--border);background:var(--card);cursor:pointer;transition:.2s;text-align:center;min-height:78px;display:flex;flex-direction:column;justify-content:center;}
-.w-table-card.mine{background:var(--brand-gradient);border-color:transparent;}
-.w-table-card.other{background:rgba(52,152,219,.05);border-color:rgba(52,152,219,.3);cursor:default;opacity:.7;}
-.w-table-card.other-manage{background:rgba(243,156,18,.08);border-color:rgba(243,156,18,.4);cursor:pointer;}
-.w-table-card.other-manage:active{transform:scale(0.97);}
-.w-table-name{font-size:15px;font-weight:700;margin-bottom:4px;}
-.w-table-status{font-size:11px;color:var(--text2);}
-.w-table-card.mine .w-table-status,.w-table-card.mine .w-table-name{color:#fff;}
-.w-table-card.other .w-table-status{color:var(--blue);}
+/* ── MASA LÖVHƏSİ (TABLE BOARD) — peşəkar kart dizaynı ── */
+.table-board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.table-card{position:relative;background:var(--card);border-radius:12px;padding:16px 16px 14px 20px;cursor:pointer;
+  box-shadow:0 1px 3px var(--shadow-color),0 1px 2px var(--shadow-color);transition:transform .15s,box-shadow .15s;
+  border:1px solid var(--border);overflow:hidden;min-height:92px;display:flex;flex-direction:column;justify-content:center;}
+.table-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--border);}
+.table-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px var(--shadow-color);}
+.table-card:active{transform:translateY(0);}
+.table-card.empty::before{background:var(--green);}
+.table-card.mine{background:var(--brand-gradient);border-color:transparent;}
+.table-card.mine::before{background:var(--gold);width:5px;}
+.table-card.other::before{background:var(--blue);}
+.table-card.other{cursor:default;opacity:.75;}
+.table-card.other-manage{cursor:pointer;opacity:1;}
+.table-card.other-manage::before{background:var(--orange);}
+.table-card__name{font-family:var(--font-display);font-size:16px;font-weight:600;letter-spacing:.01em;color:var(--text);}
+.table-card.mine .table-card__name{color:#fff;}
+.table-card__status{font-size:11px;color:var(--text2);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.table-card.mine .table-card__status{color:rgba(255,255,255,.75);}
+.table-card__row{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text2);margin-top:8px;}
+.table-card.mine .table-card__row{color:rgba(255,255,255,.85);}
+.table-card__row .icon{width:.95em;height:.95em;opacity:.8;}
+.table-card__timer{font-variant-numeric:tabular-nums;font-weight:600;}
+.table-card__total{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--gold);margin-top:2px;}
+.table-card.mine .table-card__total{color:#fff;}
+.table-card__note{font-size:11px;color:var(--text3);margin-top:6px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ── KATEQORİYA REYLİ (dikey tab paneli) ── */
+.category-rail{display:flex;flex-direction:column;gap:3px;}
+.category-rail__tab{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:9px;border:none;background:transparent;
+  color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;transition:.15s;text-align:left;width:100%;font-family:var(--font-body);}
+.category-rail__tab:hover{background:var(--overlay-soft);}
+.category-rail__tab.active{background:var(--gold);color:#1f0a12;box-shadow:0 2px 8px rgba(201,151,63,.35);}
+
+/* ── ÜRÜN (PRODUCT) KARTLARI (konteyner: .order-items-grid, artıq responsiv qaydalarla təyin olunub) ── */
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;
+  cursor:pointer;transition:.13s;box-shadow:0 1px 2px var(--shadow-color);}
+.product-card:hover{border-color:var(--gold);box-shadow:0 4px 14px var(--shadow-color);transform:translateY(-1px);}
+.product-card:active{transform:scale(.97);}
+.product-card__name{font-size:13px;font-weight:600;color:var(--text);line-height:1.3;min-height:2.6em;display:flex;align-items:center;justify-content:center;}
+.product-card__price{font-family:var(--font-display);color:var(--gold-dark);font-weight:600;margin-top:8px;font-size:14.5px;}
+.product-card.out-of-stock{opacity:.4;pointer-events:none;}
+.product-card__oos{font-size:10.5px;color:var(--red);margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+
+/* ── TİCKET (SƏBƏT) PANELİ — kağız qəbz motivi ── */
+.ticket-panel{background:var(--card);display:flex;flex-direction:column;height:100%;}
+.ticket-header{padding:14px 16px 10px;border-bottom:1px dashed var(--border);flex-shrink:0;}
+.ticket-header__title{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;}
+.ticket-body{flex:1;overflow-y:auto;padding:8px 14px;}
+.ticket-empty{text-align:center;color:var(--text3);padding:30px 10px;font-size:13px;}
+.ticket-line{padding:11px 0;border-bottom:1px dashed var(--border);}
+.ticket-line:last-child{border-bottom:none;}
+.ticket-line.selected{background:linear-gradient(90deg,rgba(201,151,63,.1),transparent);margin:0 -14px;padding:11px 14px;border-radius:8px;}
+.ticket-line__main{display:flex;align-items:center;gap:8px;}
+.ticket-line__name{flex:1;font-size:13.5px;font-weight:600;color:var(--text);}
+.ticket-line__price{font-family:var(--font-display);font-weight:600;font-size:14px;white-space:nowrap;}
+.ticket-line__tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;}
+.ticket-line__note-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:3px;display:flex;align-items:center;flex-shrink:0;}
+.ticket-line__note-btn:hover{color:var(--gold-dark);}
+.ticket-line__note-btn.has-note{color:var(--gold-dark);}
+.ticket-note-input{width:100%;margin-top:7px;font-size:12px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+.ticket-footer{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--card2);}
+.ticket-total-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.ticket-total-row__label{font-size:13px;color:var(--text2);font-weight:600;}
+.ticket-total-row__value{font-family:var(--font-display);font-size:26px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums;}
+
+/* ── MİQDAR STEPPER (draft +/- və qismən seçim üçün ortaq) ── */
+.qty-stepper{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0;}
+.qty-stepper button{width:26px;height:26px;border:none;background:var(--card2);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.12s;}
+.qty-stepper button:hover{background:var(--gold);color:#1f0a12;}
+.qty-stepper__val{min-width:24px;text-align:center;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;}
+.qty-stepper.batch-select .qty-stepper__val{color:var(--gold-dark);}
+
+/* ── TOPLU ƏMƏLİYYAT PANELİ ── */
+.batch-bar{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);align-items:center;}
+.batch-bar__count{font-size:12px;color:var(--text2);width:100%;font-weight:600;}
+.batch-chip{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;transition:.15s;background:transparent;}
+.batch-chip:hover{filter:brightness(1.08);}
+.batch-chip--discount{border-color:var(--orange);color:var(--orange);}
+.batch-chip--gift{border-color:var(--green);color:var(--green);}
+.batch-chip--transfer{border-color:var(--purple);color:var(--purple);}
+.batch-chip--clear{border-color:var(--border);color:var(--text2);}
+
+/* ── ÖDƏNİŞ TETİKLƏYİCİSİ (canlı cəm/qalıq) ── */
+.pay-trigger{width:100%;border:none;border-radius:12px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  background:var(--brand-gradient);color:#fff;transition:.15s;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.pay-trigger:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.3);}
+.pay-trigger__label{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;}
+.pay-trigger__amount{font-family:var(--font-display);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;}
+.pay-trigger.partial{background:linear-gradient(135deg,var(--orange-dark),#8a6a1f);}
+.pay-trigger__sub{font-size:10.5px;opacity:.8;font-weight:500;display:block;margin-top:1px;}
 .notes-area{width:100%;margin-top:10px;padding:8px;background:var(--overlay-soft);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:none;min-height:60px;}
 
 /* ── ALARM ── */
