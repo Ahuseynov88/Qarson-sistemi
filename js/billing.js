@@ -143,6 +143,7 @@ export class ConfirmedOrder {
         ${hasPermission('order.discount') ? `<button class="batch-chip batch-chip--discount" data-open-discount><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>` : ''}
         ${hasPermission('order.discount') ? `<button class="batch-chip batch-chip--gift" data-open-compliment><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>` : ''}
         ${hasPermission('table.transfer') ? `<button class="batch-chip batch-chip--transfer" data-open-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>` : ''}
+        ${hasPermission('bill.credit') ? `<button class="batch-chip" style="border-color:var(--blue);color:var(--blue);" data-open-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Nisyə</button>` : ''}
         <button class="batch-chip batch-chip--clear" data-clear-selection>Ləğv et</button>
       </div>` : ''}
     `;
@@ -151,6 +152,7 @@ export class ConfirmedOrder {
     el.querySelector('[data-open-discount]')?.addEventListener('click', () => this.openDiscountModal());
     el.querySelector('[data-open-compliment]')?.addEventListener('click', () => this.openComplimentModal());
     el.querySelector('[data-open-item-transfer]')?.addEventListener('click', () => this.openItemTransferModal());
+    el.querySelector('[data-open-customer-charge]')?.addEventListener('click', () => this.openCustomerChargeModal());
     el.querySelector('[data-clear-selection]')?.addEventListener('click', () => { this.clearBatchSelection(); this.renderSummary(tableId); });
   }
 
@@ -345,6 +347,94 @@ export class ConfirmedOrder {
     addLog('order', `${state.user.name} "${t?.name}" masasına ${discStr} endirim verdi (bütün hesab)`, { tableId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> Endirim tətbiq edildi: ${discStr}`);
     this.closeDiscountModal();
+  }
+
+  // ── Nisyəyə köçürmə (seçilmiş mallar və ya bütün masa) ──
+  openCustomerChargeModal() {
+    if (!hasPermission('bill.credit')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Nisyə icazəniz yoxdur'); return; }
+    const tableId = state.noteTableId;
+    if (!tableId) return;
+    const order = state.tableOrders[tableId];
+    if (!order?.items || !order.total) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Sifariş yoxdur'); return; }
+    if (!state.customers || !state.customers.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Əvvəlcə admin paneldə müştəri qeydə alın'); return; }
+
+    const t = state.tables.find(x => x.id === tableId);
+    const sel0 = state._batchSelection || {};
+    const selection = {};
+    Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) selection[k] = q; });
+    this._chargeSelection = selection;
+    const selKeys = Object.keys(selection);
+
+    if (selKeys.length) {
+      const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=selection[k]; return s+(it.price*q)+(it.extraFee||0)*(q/it.qty); },0);
+      document.getElementById('customerChargeInfo').textContent = `${t?.name||'Masa'} — seçilmiş mallar`;
+      document.getElementById('customerChargeAmount').textContent = subtotal.toFixed(2) + ' ₼';
+    } else {
+      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
+      if (remaining <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); return; }
+      document.getElementById('customerChargeInfo').textContent = `${t?.name||'Masa'} — bütün hesab`;
+      document.getElementById('customerChargeAmount').textContent = remaining.toFixed(2) + ' ₼';
+    }
+
+    document.getElementById('customerChargeSelect').innerHTML = state.customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    document.getElementById('customerChargeModal').classList.add('open');
+  }
+
+  closeCustomerChargeModal() { document.getElementById('customerChargeModal').classList.remove('open'); }
+
+  confirmCustomerCharge() {
+    const tableId = state.noteTableId;
+    const order = state.tableOrders[tableId];
+    if (!order) return;
+    const t = state.tables.find(x => x.id === tableId);
+    const customerId = document.getElementById('customerChargeSelect').value;
+    const customer = state.customers.find(c => c.id === customerId);
+    if (!customer) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Müştəri seçin'); return; }
+
+    const selection = this._chargeSelection || {};
+    const selKeys = Object.keys(selection).filter(k => order.items?.[k]);
+
+    if (selKeys.length) {
+      let chargedAmount = 0;
+      R.tableOrders.child(tableId).transaction(current => {
+        if (!current || !current.items) return current;
+        const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
+        chargedAmount = targetKeys.reduce((s,k)=>{ const it=items[k]; return it ? s+(it.price*it.qty*(1-((it.discountPercent||0)/100)))+(it.extraFee||0) : s; },0);
+        targetKeys.forEach(k => delete items[k]);
+        if (!Object.keys(items).length) return null;
+        let total = 0;
+        Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+        const paidAmount = current.paidAmount || 0;
+        return { ...current, items, total, remainingAmount: Math.max(0, total - paidAmount) };
+      }, (error, committed) => {
+        if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
+        if (!committed) return;
+        R.customers.child(customerId).child('balance').transaction(bal => (bal||0) + chargedAmount);
+        addLog('order', `${state.user.name} "${t?.name}" masasından ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
+        this.clearBatchSelection();
+        this.renderSummary(tableId);
+      });
+      this.closeCustomerChargeModal();
+      return;
+    }
+
+    const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
+    if (remaining <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); this.closeCustomerChargeModal(); return; }
+
+    R.tableOrders.child(tableId).transaction(current => {
+      if (!current) return current;
+      const paidAmount = (current.paidAmount||0) + remaining;
+      return { ...current, paidAmount, remainingAmount: 0 };
+    }, (error, committed) => {
+      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
+      if (!committed) return;
+      R.customers.child(customerId).child('balance').transaction(bal => (bal||0) + remaining);
+      addLog('order', `${state.user.name} "${t?.name}" masasının ${remaining.toFixed(2)} ₼ hesabını "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${remaining.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
+      this.renderSummary(tableId);
+    });
+    this.closeCustomerChargeModal();
   }
 
   // ── İkram (seçilmişlərə və ya tək mala) ──
@@ -554,8 +644,8 @@ export class ConfirmedOrder {
 export class PaymentProcessor {
   /**
    * @param {Object} els - { modal, tableName, totalAmount, discountInfo, finalAmount, discountRow,
-   *                          cashSection, splitSection, creditSection, cashGiven, changeRow, change, changeLabel,
-   *                          splitCash, splitPos, splitStatus, creditName, pt_cash, pt_pos, pt_credit, pt_split }
+   *                          cashSection, splitSection, cashGiven, changeRow, change, changeLabel,
+   *                          splitCash, splitPos, splitStatus, pt_cash, pt_pos, pt_split, customMethodsEl }
    */
   constructor(els) {
     this.els = els;
@@ -563,7 +653,7 @@ export class PaymentProcessor {
   }
 
   open(tableId) {
-    if (!hasPermission('bill.payment_cash') && !hasPermission('bill.payment_pos') && !hasPermission('bill.credit')) {
+    if (!hasPermission('bill.payment_cash') && !hasPermission('bill.payment_pos')) {
       showToast('<svg class="icon"><use href="#i-ban"></use></svg> Ödəniş qəbul etmək icazəniz yoxdur'); return;
     }
     const t = state.tables.find(x => x.id === tableId);
@@ -599,14 +689,24 @@ export class PaymentProcessor {
 
     this.els.cashSection.style.display = 'none';
     this.els.splitSection.style.display = 'none';
-    this.els.creditSection.style.display = 'none';
     this.els.cashGiven.value = '';
     this.els.changeRow.style.display = 'none';
+    document.querySelectorAll('.payment-type-btn').forEach(b => b.classList.remove('selected'));
 
     this.els.pt_cash.style.display = hasPermission('bill.payment_cash') ? '' : 'none';
     this.els.pt_pos.style.display = hasPermission('bill.payment_pos') ? '' : 'none';
-    this.els.pt_credit.style.display = hasPermission('bill.credit') ? '' : 'none';
     this.els.pt_split.style.display = (hasPermission('bill.payment_cash') && hasPermission('bill.payment_pos')) ? '' : 'none';
+
+    // Admin panelində yaradılmış əlavə ödəniş növləri (adi POS kimi - tam məbləğ, xüsusi sahə yoxdur)
+    if (this.els.customMethodsEl) {
+      const canCustom = hasPermission('bill.payment_pos');
+      this.els.customMethodsEl.innerHTML = (canCustom ? (state.paymentMethods||[]) : []).map(pm =>
+        `<button class="payment-type-btn" data-payment-type="${pm.id}"><svg class="icon"><use href="#i-card"></use></svg> ${esc(pm.name)}</button>`
+      ).join('');
+      this.els.customMethodsEl.querySelectorAll('[data-payment-type]').forEach(btn => {
+        btn.addEventListener('click', () => this.selectType(btn.dataset.paymentType));
+      });
+    }
 
     this.els.modal.classList.add('open');
   }
@@ -615,9 +715,9 @@ export class PaymentProcessor {
 
   selectType(type) {
     this.payment.type = type;
+    document.querySelectorAll('.payment-type-btn').forEach(b => b.classList.toggle('selected', b.dataset.paymentType === type));
     this.els.cashSection.style.display = type==='cash' ? 'block' : 'none';
     this.els.splitSection.style.display = type==='split' ? 'block' : 'none';
-    this.els.creditSection.style.display = type==='credit' ? 'block' : 'none';
   }
 
   calcChange() {
@@ -660,14 +760,18 @@ export class PaymentProcessor {
       thisPay = cash + pos;
       if (thisPay <= 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Məbləğ daxil edin'); return; }
       thisPay = Math.min(thisPay, remaining);
-    } else if (p.type === 'pos' || p.type === 'credit') {
+    } else {
+      // 'pos' və ya admin tərəfindən yaradılmış əlavə ödəniş növü - tam məbləğ
       thisPay = remaining;
     }
+
+    const customMethod = state.paymentMethods?.find(pm => pm.id === p.type);
+    const typeLabel = p.type === 'cash' ? 'Nağd' : p.type === 'pos' ? 'POS' : p.type === 'split' ? 'Bölünmüş' : (customMethod?.name || p.type);
 
     const payData = {
       tableId, tableName: t?.name || '?',
       staffId: state.user.id, staffName: state.user.name,
-      type: p.type,
+      type: p.type, typeLabel,
       originalAmount: p.originalTotal, finalAmount: p.finalTotal, thisPay,
       paidBefore: p.paidAmount,
       discountType: p.discountType || null, discountValue: p.discountValue || 0,
@@ -675,7 +779,6 @@ export class PaymentProcessor {
     };
     if (p.type === 'cash') { const given = parseFloat(this.els.cashGiven.value)||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }
     if (p.type === 'split') { payData.splitCash = parseFloat(this.els.splitCash.value)||0; payData.splitPos = parseFloat(this.els.splitPos.value)||0; }
-    if (p.type === 'credit') { payData.creditName = this.els.creditName.value.trim() || 'Naməlum'; }
 
     R.payments.push(payData);
 
@@ -690,7 +793,7 @@ export class PaymentProcessor {
       p.paidAmount = finalData ? (finalData.paidAmount||0) : (p.paidAmount + thisPay);
       p.remainingAmount = finalData ? (finalData.remainingAmount||0) : Math.max(0, finalTotalForCalc - p.paidAmount);
 
-      addLog('order', `${state.user.name} "${t?.name}" — ${thisPay.toFixed(2)} ₼ ödəniş (${p.type})`, { tableId });
+      addLog('order', `${state.user.name} "${t?.name}" — ${thisPay.toFixed(2)} ₼ ödəniş (${typeLabel})`, { tableId });
       this.close();
 
       const fullyPaid = p.remainingAmount <= 0.01;
