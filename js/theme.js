@@ -13,7 +13,7 @@ export function applyTheme(isDark) {
   const icon = isDark ? '<svg class="icon"><use href="#i-sun"></use></svg>' : '<svg class="icon"><use href="#i-moon"></use></svg>';
   ['themeToggleBtn', 'themeToggleBtnWaiter', 'themeToggleBtnKitchen', 'themeToggleBtnCustomer'].forEach(id => {
     const btn = document.getElementById(id);
-    if (btn) btn.textContent = icon;
+    if (btn) btn.innerHTML = icon;
   });
 }
 
