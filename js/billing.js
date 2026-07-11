@@ -58,7 +58,7 @@ export class ConfirmedOrder {
   /**
    * Firebase transaction daxilində istifadə üçün: qismən seçilmiş sətirləri iki yerə bölür
    * (seçilmiş miqdar + qalan miqdar), tam seçilmiş sətirlərə toxunmur.
-   * @returns {{items:Object, targetKeys:string[]}}
+   * Qaytarır: items (yenilənmiş obyekt) və targetKeys (təsir olunacaq açarların siyahısı)
    */
   _splitSelectedItems(items, selectionMap) {
     const newItems = { ...items };
