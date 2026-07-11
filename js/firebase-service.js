@@ -23,5 +23,7 @@ export const R = {
   menuItems:   db.ref('menuItems'),
   tableOrders: db.ref('tableOrders'),
   customers:      db.ref('customers'),
-  paymentMethods: db.ref('paymentMethods')
+  paymentMethods: db.ref('paymentMethods'),
+  closedOrders:   db.ref('closedOrders'),
+  customerCharges: db.ref('customerCharges')
 };
