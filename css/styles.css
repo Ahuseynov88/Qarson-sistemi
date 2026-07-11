@@ -193,14 +193,24 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .category-rail__tab.active{background:var(--blue);color:#fff;}
 
 /* ── ÜRÜN (PRODUCT) KARTLARI (konteyner: .order-items-grid, artıq responsiv qaydalarla təyin olunub) ── */
-.product-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 10px;text-align:center;
-  cursor:pointer;transition:.12s;}
-.product-card:hover{border-color:var(--blue);background:var(--overlay-soft);}
+.product-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:10px;
+  cursor:pointer;transition:.12s;overflow:hidden;aspect-ratio:1/1;display:flex;align-items:flex-end;}
+.product-card:hover{border-color:var(--blue);}
 .product-card:active{transform:scale(.97);}
-.product-card__name{font-size:13px;font-weight:600;color:var(--text);line-height:1.3;min-height:2.6em;display:flex;align-items:center;justify-content:center;}
-.product-card__price{color:var(--blue);font-weight:700;margin-top:8px;font-size:14.5px;font-variant-numeric:tabular-nums;}
-.product-card.out-of-stock{opacity:.4;pointer-events:none;}
-.product-card__oos{font-size:10.5px;color:var(--red);margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.product-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.product-card__overlay{position:relative;z-index:1;width:100%;background:linear-gradient(transparent,rgba(0,0,0,.72) 60%);
+  padding:18px 7px 6px;}
+.product-card__name{font-size:12px;font-weight:700;color:#fff;line-height:1.25;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.product-card__price{color:#fff;font-weight:700;margin-top:3px;font-size:12.5px;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.product-card.out-of-stock{opacity:.45;pointer-events:none;}
+.product-card__oos{font-size:9.5px;color:#ffb4b0;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+/* Şəkli olmayan mallar üçün sadə mətn kartı */
+.product-card.no-photo{align-items:center;justify-content:center;background:var(--card);aspect-ratio:auto;padding:14px 8px;}
+.product-card.no-photo:hover{background:var(--overlay-soft);}
+.product-card.no-photo .product-card__overlay{position:static;background:none;padding:0;width:100%;}
+.product-card.no-photo .product-card__name{color:var(--text);text-shadow:none;min-height:2.4em;display:flex;align-items:center;justify-content:center;}
+.product-card.no-photo .product-card__price{color:var(--blue);text-shadow:none;}
+.product-card.no-photo .product-card__oos{color:var(--red);}
 
 /* ── TİCKET (SƏBƏT) PANELİ — təmiz, işıqlı ── */
 .ticket-panel{background:var(--card);display:flex;flex-direction:column;height:100%;}
@@ -411,9 +421,11 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
 
 /* Telefonda daha kompakt mal kartları və bilet sətirləri */
 @media (max-width:899px){
-  .product-card{padding:8px 5px;border-radius:8px;}
-  .product-card__name{font-size:11px;min-height:2.2em;}
-  .product-card__price{font-size:12px;margin-top:4px;}
+  .product-card.no-photo{padding:10px 5px;}
+  .product-card__overlay{padding:14px 6px 5px;}
+  .product-card__name{font-size:11px;}
+  .product-card.no-photo .product-card__name{min-height:2.2em;}
+  .product-card__price{font-size:11px;margin-top:2px;}
   .ticket-line{padding:8px 0;}
   .ticket-line__name{font-size:12.5px;}
   .ticket-line__price{font-size:12.5px;}
