@@ -65,6 +65,11 @@ export class StaffApp {
       $('confirmTableName').textContent = t?.name || '';
       $('confirmTableModal').classList.add('open');
     });
+    // OrderCart-da draft (göndərilməmiş) siyahı dəyişəndə bileti yenilə
+    // (göndərilmiş mallar bölməsi avtomatik yığılsın/açılsın deyə)
+    document.addEventListener('order:draft-changed', () => {
+      if (state.noteTableId) this.confirmedOrder.renderSummary(state.noteTableId);
+    });
   }
 
   _bindStaticButtons() {
@@ -93,9 +98,6 @@ export class StaffApp {
     $('orderScreen').querySelector('[data-open-audit]')?.addEventListener('click', () => this.audit.open(state.noteTableId));
     $('orderScreen').querySelector('[data-close-order]')?.addEventListener('click', () => this.closeTableDetail());
     $('orderScreen').querySelector('[data-send-order]')?.addEventListener('click', () => this.orderCart.send());
-    $('mobileOrderTabs').querySelectorAll('[data-mobile-tab]').forEach(btn => {
-      btn.addEventListener('click', () => this.orderCart.setMobileTab(btn.dataset.mobileTab));
-    });
     $('noteText').addEventListener('change', () => this.saveNote());
 
     // İptal səbəbi modalı
