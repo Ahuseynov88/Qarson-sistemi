@@ -74,6 +74,8 @@
       <button class="admin-tab" onclick="adminTab('settings',this)"><svg class="icon"><use href="#i-settings"></use></svg> Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)"><svg class="icon"><use href="#i-chat"></use></svg> Şikayətlər</button>
       <button class="admin-tab" onclick="adminTab('payments',this)"><svg class="icon"><use href="#i-money"></use></svg> Ödənişlər</button>
+      <button class="admin-tab" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
+      <button class="admin-tab" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -137,6 +139,14 @@
       </div>
       <div id="paymentsStatsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
       <div id="paymentsList" class="log-list"></div>
+    </div>
+    <div class="admin-section" id="sec-customers">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Nisyə (kredit hesabı) ilə xidmət etdiyiniz müştərilər. Qarson masadan mal seçib bu müştərilərin adına köçürə bilər.</p>
+      <div class="grid-2" id="customersGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-paymentMethods">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Burada yaratdığınız ödəniş növləri qarsonun "Ödəniş Al" ekranında avtomatik görünəcək (Nağd və Bölünmüş ödəniş hər zaman mövcuddur, əlavəyə ehtiyac yoxdur).</p>
+      <div class="grid-2" id="paymentMethodsGrid"></div>
     </div>
     <div class="admin-section" id="sec-feedback">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -297,6 +307,9 @@
           <button id="notesComplimentBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--green);color:var(--green-dark);" data-open-compliment-hub><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>
           <button id="notesItemTransferBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--purple);color:var(--purple);" data-open-item-transfer-hub><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
         </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+          <button id="notesCustomerChargeBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Yaz</button>
+        </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:12px;" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
           <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;flex:1;padding:8px;font-size:12px;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
@@ -436,11 +449,11 @@
     </div>
     <div class="form-group">
       <label>Ödəniş Növü *</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="paymentTypeGrid">
         <button class="payment-type-btn" data-payment-type="cash" id="pt_cash"><svg class="icon"><use href="#i-cash"></use></svg> Nağd</button>
         <button class="payment-type-btn" data-payment-type="pos" id="pt_pos"><svg class="icon"><use href="#i-card"></use></svg> POS Terminal</button>
-        <button class="payment-type-btn" data-payment-type="credit" id="pt_credit"><svg class="icon"><use href="#i-clipboard"></use></svg> Nisyə</button>
         <button class="payment-type-btn" data-payment-type="split" id="pt_split"><svg class="icon"><use href="#i-scissors"></use></svg> Bölünmüş</button>
+        <div id="paymentCustomMethods" style="display:contents;"></div>
       </div>
     </div>
     <div id="paymentCashSection" style="display:none;">
@@ -464,12 +477,6 @@
         <input type="number" id="splitPos" min="0" step="0.01" placeholder="0.00" >
       </div>
       <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:-8px;"></div>
-    </div>
-    <div id="paymentCreditSection" style="display:none;">
-      <div class="form-group">
-        <label>Müştəri adı / Qeyd</label>
-        <input type="text" id="creditName" placeholder="Müştəri adı...">
-      </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button class="btn btn-ghost" style="flex:1;padding:14px;" data-cancel>Ləğv</button>
@@ -543,6 +550,23 @@
     </div>
   </div>
 </div>
+<!-- ═══ NİSYƏ (MÜŞTƏRİYƏ KÖÇÜRMƏ) MODALI ═══ -->
+<div class="modal-bg" id="customerChargeModal">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Köçür</h2>
+    <p id="customerChargeInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
+    <p id="customerChargeAmount" style="font-size:22px;font-weight:800;color:var(--blue);margin-bottom:14px;"></p>
+    <div class="form-group" style="text-align:left;">
+      <label>Müştəri</label>
+      <select id="customerChargeSelect" style="font-size:14px;"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Köçür</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ İKRAM MODALI ═══ -->
 <div class="modal-bg" id="complimentModal">
   <div class="modal" style="max-width:360px;text-align:center;">
