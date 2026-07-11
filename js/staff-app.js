@@ -27,7 +27,8 @@ export class StaffApp {
     this.orderCart = new OrderCart(
       {
         screen: $('orderScreen'), title: $('orderModalTitle'), catTabs: $('orderCatTabs'),
-        itemsList: $('orderItemsList'), draftList: $('orderDraftList'), draftTotal: $('orderDraftTotal')
+        itemsList: $('orderItemsList'), draftList: $('orderDraftList'), draftTotal: $('orderDraftTotal'),
+        searchInput: $('orderSearchInput')
       },
       { onClosed: () => this.tableBoard.render() }
     );
