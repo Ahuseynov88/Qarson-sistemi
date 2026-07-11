@@ -24,6 +24,7 @@ export class ConfirmedOrder {
     this._cancelCtx = null;
     this._discountType = 'percent';
     this._discountSelection = {};
+    this._sentExpanded = false;
     this._bindEvents();
   }
 
@@ -35,10 +36,11 @@ export class ConfirmedOrder {
       if (cancelBtn) { this.openCancelReasonModal(state.noteTableId, cancelBtn.dataset.cancelItem); return; }
       const batchBtn = e.target.closest('[data-batch-qty]');
       if (batchBtn) { this.setBatchQty(batchBtn.dataset.itemKey, parseInt(batchBtn.dataset.batchQty, 10)); return; }
+      if (e.target.closest('#sentCollapseBar')) { this._sentExpanded = false; this.renderSummary(state.noteTableId); return; }
     });
   }
 
-  clearBatchSelection() { state._batchSelection = {}; }
+  clearBatchSelection() { state._batchSelection = {}; this._sentExpanded = false; }
 
   /** Seçilmiş malın miqdarını dəyişir (0..qty aralığında) - qismən seçimə imkan verir */
   setBatchQty(itemKey, delta) {
@@ -83,6 +85,20 @@ export class ConfirmedOrder {
     const items = order?.items ? Object.entries(order.items) : [];
     if (!items.length) { el.innerHTML = ''; return; }
 
+    const hasDraft = Object.keys(state._orderDraft || {}).length > 0;
+    if (hasDraft && !this._sentExpanded) {
+      const totalQty = items.reduce((s,[,it])=>s+it.qty,0);
+      el.innerHTML = `<button id="sentCollapsedBar" style="width:100%;display:flex;justify-content:space-between;align-items:center;
+        background:var(--overlay-soft);border:1px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer;margin-bottom:4px;">
+        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;">
+          <svg class="icon"><use href="#i-check"></use></svg> ${totalQty} mal mətbəxdə — göstər
+        </span>
+        <span style="font-size:12.5px;font-weight:700;">${(order.total||0).toFixed(2)} ₼</span>
+      </button>`;
+      el.querySelector('#sentCollapsedBar')?.addEventListener('click', () => { this._sentExpanded = true; this.renderSummary(tableId); });
+      return;
+    }
+
     const canEdit = hasPermission('order.cancel_item');
     const canBatch = hasPermission('order.discount') || hasPermission('table.transfer');
     const sel = state._batchSelection || {};
@@ -90,8 +106,11 @@ export class ConfirmedOrder {
     const selectedCount = selectedEntries.length;
 
     el.innerHTML = `
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">
-        <svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Mətbəxə göndərilib
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">
+          <svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Mətbəxə göndərilib
+        </div>
+        ${hasDraft ? `<button id="sentCollapseBar" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;">Gizlət</button>` : ''}
       </div>
       ${items.map(([itemKey, it]) => {
         const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
