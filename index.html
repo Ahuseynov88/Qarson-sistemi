@@ -170,7 +170,7 @@
       <img id="wAvatar" src="" alt="">
       <div>
         <div style="font-weight:700;" id="wName">Qarson</div>
-        <div style="font-size:12px;color:var(--green);">● Aktiv &nbsp;<span id="wRoleBadge" style="color:rgba(255,255,255,.7);"></span></div>
+        <div style="font-size:12px;color:var(--green);">● Aktiv &nbsp;<span id="wRoleBadge" style="color:var(--text2);"></span></div>
       </div>
     </div>
     <button class="theme-toggle-btn" id="themeToggleBtnWaiter" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
@@ -251,65 +251,52 @@
   </div>
 </div>
 
-<div class="modal-bg" id="notesModal">
-  <div class="modal">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <h2 id="noteTitle" style="margin:0;">Qeydlər</h2>
-      <button data-open-audit style="background:none;border:1px solid var(--border);border-radius:8px;width:34px;height:34px;flex-shrink:0;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;"><svg class="icon"><use href="#i-clipboard"></use></svg></button>
-    </div>
-    <div id="noteOrderSummary" style="margin-bottom:14px;"></div>
-    <button class="btn btn-blue" style="width:100%;padding:13px;margin-bottom:14px;" data-open-order><svg class="icon"><use href="#i-food"></use></svg> Sifariş Et / Əlavə Et</button>
-    <div class="form-group">
-      <label>Qeyd yazın</label>
-      <textarea id="noteText" class="notes-area" rows="2" placeholder="Xüsusi sifarişlər, qeydlər..."></textarea>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-      <button id="notesDiscountBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.1);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
-      <button id="notesTransferBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--blue);color:var(--blue);background:rgba(52,152,219,.1);" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Köçür</button>
-      <button id="notesItemTransferBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--purple);color:var(--purple);background:rgba(142,68,173,.1);" data-open-item-transfer-hub><svg class="icon"><use href="#i-shuffle"></use></svg> Mal Köçür</button>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-close-notes>Geri</button>
-      <button class="btn btn-blue" style="flex:1;padding:13px;" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
-      <button class="btn btn-green" style="flex:1;padding:13px;" data-save-note>Yadda Saxla</button>
-      <button id="notesComplimentBtn" class="btn" style="display:none;flex:1;padding:10px;font-size:13px;border:2px solid var(--green);color:var(--green);background:rgba(28,107,53,.1);" data-open-compliment-hub><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>
-    </div>
-    <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-top:10px;" data-open-payment-hub>
-      <span class="pay-trigger__label"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Al</span>
-      <span style="text-align:right;">
-        <span id="notesPaymentAmount" class="pay-trigger__amount">0.00 ₼</span>
-        <span id="notesPaymentSub" class="pay-trigger__sub" style="display:none;"></span>
-      </span>
-    </button>
-    <button id="notesCloseTableBtn" class="btn btn-red" style="display:none;width:100%;padding:13px;margin-top:10px;" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Masanı bağla</button>
-  </div>
-</div>
-
-<!-- Qarson sifariş modalı -->
+<!-- Qarson masa detalı — TƏK daimi ekran (kateqoriya + mallar + bilet, ayrı modal yoxdur) -->
 <div class="screen" id="orderScreen">
   <div class="topbar">
-    <h2 id="orderModalTitle"><svg class="icon"><use href="#i-food"></use></svg> Sifariş</h2>
-    <button class="btn btn-ghost" data-close-order><svg class="icon"><use href="#i-close"></use></svg> Bağla</button>
+    <h2 id="orderModalTitle"><svg class="icon"><use href="#i-food"></use></svg> Masa</h2>
+    <button class="btn btn-ghost" data-close-order><svg class="icon"><use href="#i-close"></use></svg> Masalara qayıt</button>
   </div>
   <div class="order-layout" style="display:flex;flex:1;overflow:hidden;">
-    <div class="order-main-col" style="flex:1;overflow:hidden;">
-      <div id="orderItemsList" class="order-items-grid" style="overflow-y:auto;padding:10px;gap:6px;align-content:start;"></div>
-      <div class="order-cart-panel ticket-panel" style="overflow:hidden;">
-        <div class="ticket-header">
-          <span class="ticket-header__title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-note"></use></svg> Cari Sifariş</span>
-        </div>
-        <div id="orderDraftList" class="ticket-body"></div>
-        <div class="ticket-footer">
-          <div class="ticket-total-row">
-            <span class="ticket-total-row__label">Cəmi</span>
-            <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
-          </div>
-          <button class="btn btn-green" style="width:100%;padding:14px;font-size:15px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Sifarişi Təsdiq Et</button>
-        </div>
+    <div id="orderCatTabs" class="order-cat-rail category-rail" style="flex-shrink:0;overflow-y:auto;padding:12px 8px;border-right:1px solid var(--border);"></div>
+    <div id="orderItemsList" class="order-items-grid" style="overflow-y:auto;padding:14px;gap:10px;align-content:start;"></div>
+    <div class="ticket-panel" id="ticketPanelCol">
+      <div class="ticket-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="ticket-header__title" id="ticketTableName">Bilet</span>
+        <button data-open-audit style="background:none;border:1px solid var(--border);border-radius:8px;width:30px;height:30px;flex-shrink:0;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;"><svg class="icon" style="width:15px;height:15px;"><use href="#i-clipboard"></use></svg></button>
       </div>
+      <div class="ticket-body">
+        <div id="noteOrderSummary"></div>
+        <div id="orderDraftList"></div>
+      </div>
+      <div class="ticket-footer">
+        <div class="ticket-total-row">
+          <span class="ticket-total-row__label">Cəmi</span>
+          <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
+        </div>
+        <button class="btn btn-green" style="width:100%;padding:13px;font-size:14px;margin-bottom:8px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə Göndər</button>
 
+        <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-bottom:10px;" data-open-payment-hub>
+          <span class="pay-trigger__label"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Al</span>
+          <span style="text-align:right;">
+            <span id="notesPaymentAmount" class="pay-trigger__amount">0.00 ₼</span>
+            <span id="notesPaymentSub" class="pay-trigger__sub" style="display:none;"></span>
+          </span>
+        </button>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+          <button id="notesDiscountBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
+          <button id="notesComplimentBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--green);color:var(--green-dark);" data-open-compliment-hub><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>
+          <button id="notesItemTransferBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--purple);color:var(--purple);" data-open-item-transfer-hub><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:12px;" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
+          <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;flex:1;padding:8px;font-size:12px;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
+          <button id="notesCloseTableBtn" class="btn btn-ghost" style="display:none;flex:1;padding:8px;font-size:12px;color:var(--red);" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Bağla</button>
+        </div>
+        <textarea id="noteText" class="notes-area" rows="1" placeholder="Masa qeydi (məs: doğum günü)..." style="min-height:34px;font-size:12px;margin-top:8px;"></textarea>
+      </div>
     </div>
-    <div id="orderCatTabs" class="order-cat-rail category-rail" style="flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto;padding:12px 8px;"></div>
   </div>
 </div>
 
