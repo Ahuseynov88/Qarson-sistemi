@@ -396,14 +396,33 @@ body.dark-mode #custWaiterCard .cw-name{color:var(--text);}
   border:1px solid var(--orange);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;}
 
 /* ── SİFARİŞ EKRANI - RESPONSİV LAYOUT (3 zona: kateqoriya | mallar | bilet) ── */
-.order-layout{flex-direction:column;}
+.order-layout{flex-direction:column;padding-bottom:56px;} /* alt tab paneli üçün yer */
 .order-cat-rail.category-rail{flex-direction:row;overflow-x:auto;overflow-y:hidden;width:auto;gap:6px;border-right:none!important;border-bottom:1px solid var(--border);}
 .order-cat-rail.category-rail .category-rail__tab{white-space:nowrap;}
 .order-items-grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(30%,120px),1fr));min-height:160px;}
 .ticket-panel{flex-shrink:0;max-height:46vh;border-top:2px solid var(--border);}
 
+/* Telefonda: menyu və bilet AYRI tam-hündürlüklü görünüşlərdir, alt tab ilə keçilir
+   (Menulux-un mobil garson tətbiqi kimi - masa seçiləndən sonra hər addım öz ekranını tutur) */
+.mobile-order-tabs{display:none;position:fixed;left:0;right:0;bottom:0;z-index:502;background:var(--card);border-top:1px solid var(--border);
+  padding:6px 10px calc(6px + env(safe-area-inset-bottom));gap:8px;}
+.mobile-order-tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 4px;border:none;background:none;
+  color:var(--text2);font-size:10.5px;font-weight:600;cursor:pointer;border-radius:8px;position:relative;}
+.mobile-order-tabs button.active{color:var(--blue);background:var(--overlay-soft);}
+.mobile-order-tabs button .icon{width:19px;height:19px;}
+.mobile-order-tabs__badge{position:absolute;top:2px;right:calc(50% - 22px);background:var(--red);color:#fff;font-size:9px;font-weight:700;
+  min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+
+@media (max-width:899px){
+  .mobile-order-tabs{display:flex;}
+  .order-layout:not(.show-ticket) .ticket-panel{display:none;}
+  .order-layout.show-ticket .order-cat-rail.category-rail,
+  .order-layout.show-ticket .order-items-grid{display:none;}
+  .order-layout.show-ticket .ticket-panel{max-height:none;flex:1;border-top:none;}
+}
+
 @media (min-width:900px){
-  .order-layout{flex-direction:row;}
+  .order-layout{flex-direction:row;padding-bottom:0;}
   .order-cat-rail.category-rail{flex-direction:column;overflow-x:hidden;overflow-y:auto;width:170px;gap:3px;border-right:1px solid var(--border)!important;border-bottom:none;}
   .order-cat-rail.category-rail .category-rail__tab{white-space:normal;}
   .order-items-grid{flex:1;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));min-height:0;}
