@@ -47,10 +47,10 @@ export class StaffApp {
     this.payment = new PaymentProcessor({
       modal: $('paymentModal'), tableName: $('paymentTableName'), totalAmount: $('paymentTotalAmount'),
       discountInfo: $('paymentDiscountInfo'), finalAmount: $('paymentFinalAmount'), discountRow: $('paymentDiscountRow'),
-      cashSection: $('paymentCashSection'), splitSection: $('paymentSplitSection'), creditSection: $('paymentCreditSection'),
+      cashSection: $('paymentCashSection'), splitSection: $('paymentSplitSection'),
       cashGiven: $('paymentCashGiven'), changeRow: $('paymentChangeRow'), change: $('paymentChange'), changeLabel: $('changeLabel'),
-      splitCash: $('splitCash'), splitPos: $('splitPos'), splitStatus: $('splitStatus'), creditName: $('creditName'),
-      pt_cash: $('pt_cash'), pt_pos: $('pt_pos'), pt_credit: $('pt_credit'), pt_split: $('pt_split')
+      splitCash: $('splitCash'), splitPos: $('splitPos'), splitStatus: $('splitStatus'),
+      pt_cash: $('pt_cash'), pt_pos: $('pt_pos'), pt_split: $('pt_split'), customMethodsEl: $('paymentCustomMethods')
     });
 
     this.audit = new AuditTrail({ modal: $('tableAuditModal'), title: $('tableAuditTitle'), list: $('tableAuditList') });
@@ -93,6 +93,7 @@ export class StaffApp {
     $('orderScreen').querySelector('[data-open-transfer-hub]')?.addEventListener('click', () => this.openTableTransferModal());
     $('orderScreen').querySelector('[data-open-item-transfer-hub]')?.addEventListener('click', () => this.confirmedOrder.openItemTransferModal());
     $('orderScreen').querySelector('[data-open-compliment-hub]')?.addEventListener('click', () => this.confirmedOrder.openComplimentModal());
+    $('orderScreen').querySelector('[data-open-customer-charge-hub]')?.addEventListener('click', () => this.confirmedOrder.openCustomerChargeModal());
     $('orderScreen').querySelector('[data-open-payment-hub]')?.addEventListener('click', () => this.payment.open(state.noteTableId));
     $('orderScreen').querySelector('[data-close-table-hub]')?.addEventListener('click', () => this.requestCloseTable());
     $('orderScreen').querySelector('[data-print-bill]')?.addEventListener('click', () => this.printBill(state.noteTableId));
@@ -115,6 +116,10 @@ export class StaffApp {
     // İkram modalı
     $('complimentModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeComplimentModal());
     $('complimentModal').querySelector('[data-confirm-compliment]')?.addEventListener('click', () => this.confirmedOrder.confirmCompliment());
+
+    // Nisyə (müştəriyə köçürmə) modalı
+    $('customerChargeModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeCustomerChargeModal());
+    $('customerChargeModal').querySelector('[data-confirm-customer-charge]')?.addEventListener('click', () => this.confirmedOrder.confirmCustomerCharge());
 
     // Mal köçürmə modalı
     $('itemTransferModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeItemTransferModal());
@@ -201,6 +206,7 @@ export class StaffApp {
     setVis('notesDiscountBtn', hasPermission('order.discount'));
     setVis('notesTransferBtn', hasPermission('table.transfer'));
     setVis('notesItemTransferBtn', hasPermission('table.transfer'));
+    setVis('notesCustomerChargeBtn', hasPermission('bill.credit'));
     setVis('notesComplimentBtn', hasPermission('order.discount'));
 
     this._updatePaymentTrigger(tableId);
