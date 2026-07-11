@@ -48,6 +48,8 @@ export function renderAdmin() {
   if (state.adminSection==='logs')      renderLogs();
   if (state.adminSection==='feedback')  renderFeedbackSection();
   if (state.adminSection==='payments')  renderPayments();
+  if (state.adminSection==='customers') renderCustomers();
+  if (state.adminSection==='paymentMethods') renderPaymentMethods();
 }
 
 export function adminTab(sec, el) {
@@ -57,7 +59,7 @@ export function adminTab(sec, el) {
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+sec).classList.add('active');
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff') ? 'flex':'none';
+  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -337,6 +339,12 @@ export function openAddModal() {
     document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Mal';
     document.getElementById('addModalBody').innerHTML = menuItemForm({});
     onMenuCategorySelectChange();
+  } else if (state.adminSection === 'customers') {
+    document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Müştəri';
+    document.getElementById('addModalBody').innerHTML = customerForm({});
+  } else if (state.adminSection === 'paymentMethods') {
+    document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Ödəniş Növü';
+    document.getElementById('addModalBody').innerHTML = paymentMethodForm({});
   } else {
     document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Kateqoriya və Masalar';
     document.getElementById('addModalBody').innerHTML = tableForm('', false);
@@ -356,9 +364,11 @@ export function closeAddModal() {
 export function saveItem() {
   const sec = state.editTarget
     ? state.editTarget.type
-    : (state.adminSection === 'menu' ? 'menuItem' : state.adminSection === 'staff' ? 'staff' : 'table');
+    : (state.adminSection === 'menu' ? 'menuItem' : state.adminSection === 'staff' ? 'staff' : state.adminSection === 'customers' ? 'customer' : state.adminSection === 'paymentMethods' ? 'paymentMethod' : 'table');
 
   if (sec === 'staff') { saveStaff(); return; }
+  if (sec === 'customer') { saveCustomer(); return; }
+  if (sec === 'paymentMethod') { savePaymentMethod(); return; }
 
   if (sec === 'menuItem') {
     const name = (document.getElementById('fm_name')?.value||'').trim();
@@ -577,15 +587,10 @@ export function staffForm(s = {}) {
       <div class="form-group"><label>FİN nömrəsi</label><input type="text" id="fs_fin" value="${esc(s.fin||'')}" placeholder="1234ABC"></div>
       <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
     </div>
-    <div class="modal-section-title" style="margin-top:8px;"><svg class="icon"><use href="#i-bolt"></use></svg> Sürətli Seçim</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
-      <button type="button" onclick="applyPermissionPreset('waiter')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;"><svg class="icon"><use href="#i-bowtie"></use></svg> Adi Qarson kimi</button>
-      <button type="button" onclick="applyPermissionPreset('head_waiter')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;"><svg class="icon"><use href="#i-star"></use></svg> Baş Qarson kimi</button>
-      <button type="button" onclick="applyPermissionPreset('cashier')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;"><svg class="icon"><use href="#i-money"></use></svg> Kassir kimi</button>
-      <button type="button" onclick="applyPermissionPreset('manager')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;"><svg class="icon"><use href="#i-staff"></use></svg> Müdir kimi</button>
-      <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:12px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
+    <div class="modal-section-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span><svg class="icon"><use href="#i-key"></use></svg> İcazələr</span>
+      <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
     </div>
-    <div class="modal-section-title"><svg class="icon"><use href="#i-key"></use></svg> İcazələr</div>
     ${renderPermissionCheckboxes(existingPerms)}
   `;
 }
@@ -836,8 +841,9 @@ export function renderPayments() {
     const payHtml = payments.slice(0,30).map(p=>{
       const disc = p.discountValue ?
         `<span class="discount-badge">${p.discountType==='percent'?p.discountValue+'%':p.discountValue.toFixed(2)+'₼'}</span> ` : '';
+      const typeDisplay = typeNames[p.type] || (p.typeLabel ? `<svg class="icon"><use href="#i-card"></use></svg> ${esc(p.typeLabel)}` : esc(p.type||'?'));
       return `<div class="log-item">
-        <span class="log-badge" style="background:${typeColors[p.type]||'#666'}22;color:${typeColors[p.type]||'#aaa'}">${typeNames[p.type]||p.type}</span>
+        <span class="log-badge" style="background:${typeColors[p.type]||'var(--blue)'}22;color:${typeColors[p.type]||'var(--blue)'}">${typeDisplay}</span>
         <span class="log-text">${esc(p.tableName||'?')} ${disc}— ${esc(p.staffName||'?')}</span>
         <span class="log-time" style="text-align:right;">
           <strong style="color:var(--green);font-size:14px;">${(p.finalAmount||0).toFixed(2)} ₼</strong><br>
@@ -874,6 +880,141 @@ export function clearOldPayments() {
 }
 
 // Mövcud HTML-də onclick="..."/onchange="..." istifadə olunan funksiyalar qlobal əlçatan olmalıdır
+/* ═══════════════════════════════════════════
+   MÜŞTƏRİLƏR (NİSYƏ HESABI)
+═══════════════════════════════════════════ */
+export function renderCustomers() {
+  const el = document.getElementById('customersGrid');
+  if (!el) return;
+  if (!state.customers || !state.customers.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Hələ müştəri qeydə alınmayıb.</p>';
+    return;
+  }
+  el.innerHTML = state.customers.slice().sort((a,b)=>(b.balance||0)-(a.balance||0)).map(c => `
+    <div class="item-card">
+      <div class="item-card-header">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg class="icon" style="width:24px;height:24px;color:var(--text2);"><use href="#i-user"></use></svg>
+        </div>
+        <div class="item-info">
+          <h3>${esc(c.name)}</h3>
+          ${c.phone ? `<small style="color:var(--text3);display:block;"><svg class="icon"><use href="#i-phone"></use></svg> ${esc(c.phone)}</small>` : ''}
+        </div>
+      </div>
+      <span class="status-badge ${(c.balance>0)?'badge-red':'badge-green'}">${(c.balance||0).toFixed(2)} ₼ borc</span>
+      <div class="item-actions">
+        <button class="btn btn-blue" onclick="editCustomer('${c.id}')"><svg class="icon"><use href="#i-edit"></use></svg> Redaktə</button>
+        <button class="btn btn-red" onclick="deleteCustomer('${c.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+export function customerForm(c = {}) {
+  return `
+    <div class="form-group"><label>Ad Soyad *</label><input type="text" id="cu_name" value="${esc(c.name||'')}" placeholder="Məs: Vüqar Əliyev"></div>
+    <div class="form-group"><label>Telefon</label><input type="text" id="cu_phone" value="${esc(c.phone||'')}" placeholder="+994 XX XXX XX XX"></div>
+    <input type="hidden" id="cu_balance" value="${c.balance||0}">
+  `;
+}
+
+export function saveCustomer() {
+  const name = (document.getElementById('cu_name')?.value||'').trim();
+  const phone = (document.getElementById('cu_phone')?.value||'').trim();
+  if (!name) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ad mütləqdir'); return; }
+  const balance = parseFloat(document.getElementById('cu_balance')?.value) || 0;
+
+  if (state.editTarget?.type === 'customer') {
+    R.customers.child(state.editTarget.id).update({ name, phone });
+    addLog('admin', `Müştəri redaktə edildi: ${name}`, {});
+  } else {
+    R.customers.push({ name, phone, balance, createdAt: Date.now() });
+    addLog('admin', `Yeni müştəri qeydə alındı: ${name}`, {});
+  }
+  closeAddModal();
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Müştəri saxlanıldı');
+}
+
+export function editCustomer(id) {
+  const c = state.customers.find(x=>x.id===id);
+  if (!c) return;
+  state.editTarget = { type: 'customer', id };
+  document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-user"></use></svg> Müştərini Redaktə Et';
+  document.getElementById('addModalBody').innerHTML = customerForm(c);
+  document.getElementById('addModal').classList.add('open');
+}
+
+export function deleteCustomer(id) {
+  const c = state.customers.find(x=>x.id===id);
+  if (c?.balance > 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu müştərinin ödənilməmiş borcu var, əvvəlcə sıfırlayın.'); return; }
+  if (!confirm(`"${c?.name}" müştərisi silinsin?`)) return;
+  R.customers.child(id).remove();
+  addLog('admin', `Müştəri silindi: ${c?.name}`, {});
+  showToast('<svg class="icon"><use href="#i-trash"></use></svg> Müştəri silindi');
+}
+
+/* ═══════════════════════════════════════════
+   ÖDƏNİŞ NÖVLƏRİ (ADMİN TƏRƏFİNDƏN TƏNZİMLƏNİR)
+═══════════════════════════════════════════ */
+export function renderPaymentMethods() {
+  const el = document.getElementById('paymentMethodsGrid');
+  if (!el) return;
+  if (!state.paymentMethods || !state.paymentMethods.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Hələ əlavə ödəniş növü yaradılmayıb. Nağd və Bölünmüş ödəniş hər zaman mövcuddur.</p>';
+    return;
+  }
+  el.innerHTML = state.paymentMethods.map(p => `
+    <div class="item-card">
+      <div class="item-card-header">
+        <div style="width:44px;height:44px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg class="icon" style="width:20px;height:20px;color:var(--blue);"><use href="#i-card"></use></svg>
+        </div>
+        <div class="item-info"><h3>${esc(p.name)}</h3></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-blue" onclick="editPaymentMethod('${p.id}')"><svg class="icon"><use href="#i-edit"></use></svg> Redaktə</button>
+        <button class="btn btn-red" onclick="deletePaymentMethod('${p.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+export function paymentMethodForm(p = {}) {
+  return `<div class="form-group"><label>Ödəniş növünün adı *</label><input type="text" id="pm_name" value="${esc(p.name||'')}" placeholder="Məs: Bank Köçürməsi"></div>`;
+}
+
+export function savePaymentMethod() {
+  const name = (document.getElementById('pm_name')?.value||'').trim();
+  if (!name) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ad mütləqdir'); return; }
+
+  if (state.editTarget?.type === 'paymentMethod') {
+    R.paymentMethods.child(state.editTarget.id).update({ name });
+    addLog('admin', `Ödəniş növü redaktə edildi: ${name}`, {});
+  } else {
+    R.paymentMethods.push({ name, createdAt: Date.now() });
+    addLog('admin', `Yeni ödəniş növü yaradıldı: ${name}`, {});
+  }
+  closeAddModal();
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Ödəniş növü saxlanıldı');
+}
+
+export function editPaymentMethod(id) {
+  const p = state.paymentMethods.find(x=>x.id===id);
+  if (!p) return;
+  state.editTarget = { type: 'paymentMethod', id };
+  document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növünü Redaktə Et';
+  document.getElementById('addModalBody').innerHTML = paymentMethodForm(p);
+  document.getElementById('addModal').classList.add('open');
+}
+
+export function deletePaymentMethod(id) {
+  const p = state.paymentMethods.find(x=>x.id===id);
+  if (!confirm(`"${p?.name}" ödəniş növü silinsin?`)) return;
+  R.paymentMethods.child(id).remove();
+  addLog('admin', `Ödəniş növü silindi: ${p?.name}`, {});
+  showToast('<svg class="icon"><use href="#i-trash"></use></svg> Ödəniş növü silindi');
+}
+
 window.adminTab = adminTab;
 window.applyPermissionPreset = applyPermissionPreset;
 window.clearOldFeedbacks = clearOldFeedbacks;
@@ -909,3 +1050,7 @@ window.setTableCat = setTableCat;
 window.showQR = showQR;
 window.toggleMenuItemAvailability = toggleMenuItemAvailability;
 window.toggleStaff = toggleStaff;
+window.editCustomer = editCustomer;
+window.deleteCustomer = deleteCustomer;
+window.editPaymentMethod = editPaymentMethod;
+window.deletePaymentMethod = deletePaymentMethod;
