@@ -2,8 +2,9 @@
    ALARM SİSTEMİ
    Yeni sifariş / müştəri çağırışı bildirişləri (staff + kitchen + admin ortaq istifadə edir).
 ═══════════════════════════════════════════ */
+import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { hasPermission } from './permissions.js';
+import { addLog, showToast } from './utils.js';
 
 export const ALARM_THEMES = {
   order:     { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-utensils"></use></svg>', title:'Sifariş Hazırdır!', btnColor:'#e74c3c' },
@@ -20,7 +21,7 @@ export function showAlarmOverlay(type, subText) {
   const theme = ALARM_THEMES[type] || ALARM_THEMES.default;
   const overlay = document.getElementById('alarmOverlay');
   overlay.style.background = theme.bg;
-  document.getElementById('alarmIcon').textContent = theme.icon;
+  document.getElementById('alarmIcon').innerHTML = theme.icon;
   document.getElementById('alarmTitle').textContent = theme.title;
   document.getElementById('alarmSub').textContent = subText;
   document.getElementById('alarmAcceptBtn').style.color = theme.btnColor;
@@ -60,7 +61,7 @@ export function triggerCustomerAlarm(request) {
   playBeep();
   state.alarmInterval = setInterval(playBeep, 700);
   if ('vibrate' in navigator) navigator.vibrate([600,200,600,200,600]);
-  if (request.type === 'message') openWaiterChatForTable(request.tableId, request.id);
+  if (request.type === 'message') document.dispatchEvent(new CustomEvent('alarm:open-chat', { detail: { tableId: request.tableId, requestId: request.id } }));
 }
 
 export function acceptAlarm() {
