@@ -22,6 +22,9 @@ export class OrderCart {
   }
 
   _bindEvents() {
+    if (this.els.searchInput) {
+      this.els.searchInput.addEventListener('input', (e) => this.setSearchQuery(e.target.value));
+    }
     this.els.catTabs.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-cat]');
       if (!btn) return;
@@ -55,6 +58,8 @@ export class OrderCart {
     state.orderTableId = tableId;
     state._orderDraft = {};
     state._orderCatFilter = 'all';
+    state._orderSearchQuery = '';
+    if (this.els.searchInput) this.els.searchInput.value = '';
     const t = state.tables.find(x => x.id === tableId);
     this.els.title.innerHTML = `<svg class="icon"><use href="#i-food"></use></svg> ${esc(t?.name || 'Sifariş')}`;
     this.renderCatTabs();
@@ -92,20 +97,30 @@ export class OrderCart {
   }
 
   renderItemsList() {
+    const q = (state._orderSearchQuery || '').trim().toLowerCase();
     const items = state.menuItems.filter(m => {
       if (m.available === false) return false;
+      if (q) return m.name.toLowerCase().includes(q);
       if (state._orderCatFilter === 'all') return true;
       return (m.category || 'Digər') === state._orderCatFilter;
     });
-    if (!items.length) { this.els.itemsList.innerHTML = '<p style="color:var(--text3);grid-column:1/-1;">Bu kateqoriyada mal yoxdur.</p>'; return; }
+    if (!items.length) { this.els.itemsList.innerHTML = `<p style="color:var(--text3);grid-column:1/-1;">${q ? 'Axtarışa uyğun mal tapılmadı.' : 'Bu kateqoriyada mal yoxdur.'}</p>`; return; }
     this.els.itemsList.innerHTML = items.map(m => {
       const outOfStock = (m.stock !== undefined && m.stock !== null && m.stock <= 0);
-      return `<div class="product-card ${outOfStock?'out-of-stock':''}" data-menu-item-id="${m.id}">
-        <div class="product-card__name">${esc(m.name)}</div>
-        <div class="product-card__price">${(m.price||0).toFixed(2)} ₼</div>
-        ${outOfStock ? '<div class="product-card__oos">Bitib</div>' : ''}
+      return `<div class="product-card ${m.photo?'':'no-photo'} ${outOfStock?'out-of-stock':''}" data-menu-item-id="${m.id}">
+        ${m.photo ? `<img src="${esc(m.photo)}" alt="" loading="lazy">` : ''}
+        <div class="product-card__overlay">
+          <div class="product-card__name">${esc(m.name)}</div>
+          <div class="product-card__price">${(m.price||0).toFixed(2)} ₼</div>
+          ${outOfStock ? '<div class="product-card__oos">Bitib</div>' : ''}
+        </div>
       </div>`;
     }).join('');
+  }
+
+  setSearchQuery(q) {
+    state._orderSearchQuery = q;
+    this.renderItemsList();
   }
 
   addItemDirect(menuItemId) {
@@ -140,6 +155,7 @@ export class OrderCart {
       return;
     }
     let draftTotal = 0;
+    const canFee = hasPermission('order.discount');
     const rows = lines.map(([lineKey, line]) => {
       const m = state.menuItems.find(x => x.id === line.menuItemId);
       if (!m) return '';
@@ -147,10 +163,11 @@ export class OrderCart {
       draftTotal += lineTotal;
       const noteOpen = this._noteOpenKeys.has(lineKey);
       const hasNote = !!(line.note && line.note.trim());
+      const hasFee = !!(line.extraFee);
       return `<div class="ticket-line">
         <div class="ticket-line__main">
           <span class="ticket-line__name">${esc(m.name)}</span>
-          <button class="ticket-line__note-btn ${hasNote?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd əlavə et">
+          <button class="ticket-line__note-btn ${(hasNote||hasFee)?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd / əlavə ödəniş">
             <svg class="icon"><use href="#i-edit"></use></svg>
           </button>
           <div class="qty-stepper">
@@ -163,13 +180,18 @@ export class OrderCart {
             <svg class="icon"><use href="#i-close"></use></svg>
           </button>
         </div>
-        ${hasNote && !noteOpen ? `<div class="ticket-line__tags"><span style="font-size:11px;color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(line.note)}</span></div>` : ''}
-        ${noteOpen ? `<input type="text" class="ticket-note-input" data-note-line="${lineKey}" value="${esc(line.note||'')}" placeholder="Qeyd (məs: soğansız, çox bişmiş)" autofocus>` : ''}
-        ${hasPermission('order.discount') ? `<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">
-          <label style="font-size:10.5px;color:var(--text3);white-space:nowrap;">Əlavə ödəniş:</label>
-          <input type="number" data-fee-line="${lineKey}" value="${line.extraFee||''}" placeholder="0.00" step="0.01"
-                 style="width:70px;font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
-          <span style="font-size:10.5px;color:var(--text3);">₼</span>
+        ${(hasNote||hasFee) && !noteOpen ? `<div class="ticket-line__tags">
+          ${hasNote ? `<span style="font-size:11px;color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(line.note)}</span>` : ''}
+          ${hasFee ? `<span class="discount-badge" style="background:transparent;border-color:var(--border);color:var(--text3);">+${line.extraFee.toFixed(2)} ₼</span>` : ''}
+        </div>` : ''}
+        ${noteOpen ? `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+          <input type="text" class="ticket-note-input" style="margin-top:0;" data-note-line="${lineKey}" value="${esc(line.note||'')}" placeholder="Qeyd (məs: soğansız, çox bişmiş)" autofocus>
+          ${canFee ? `<div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:10.5px;color:var(--text3);white-space:nowrap;">Əlavə ödəniş:</label>
+            <input type="number" data-fee-line="${lineKey}" value="${line.extraFee||''}" placeholder="0.00" step="0.01"
+                   style="width:70px;font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
+            <span style="font-size:10.5px;color:var(--text3);">₼</span>
+          </div>` : ''}
         </div>` : ''}
       </div>`;
     }).join('');
