@@ -50,6 +50,7 @@ export function renderAdmin() {
   if (state.adminSection==='payments')  renderPayments();
   if (state.adminSection==='customers') renderCustomers();
   if (state.adminSection==='paymentMethods') renderPaymentMethods();
+  if (state.adminSection==='closedOrders') renderClosedOrders();
 }
 
 export function adminTab(sec, el) {
@@ -903,6 +904,7 @@ export function renderCustomers() {
       </div>
       <span class="status-badge ${(c.balance>0)?'badge-red':'badge-green'}">${(c.balance||0).toFixed(2)} ₼ borc</span>
       <div class="item-actions">
+        <button class="btn" style="border:1px solid var(--blue);color:var(--blue);" onclick="openCustomerHistoryModal('${c.id}')"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
         <button class="btn btn-blue" onclick="editCustomer('${c.id}')"><svg class="icon"><use href="#i-edit"></use></svg> Redaktə</button>
         <button class="btn btn-red" onclick="deleteCustomer('${c.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
       </div>
@@ -951,6 +953,36 @@ export function deleteCustomer(id) {
   R.customers.child(id).remove();
   addLog('admin', `Müştəri silindi: ${c?.name}`, {});
   showToast('<svg class="icon"><use href="#i-trash"></use></svg> Müştəri silindi');
+}
+
+export function openCustomerHistoryModal(customerId) {
+  const c = state.customers.find(x=>x.id===customerId);
+  if (!c) return;
+  document.getElementById('customerHistoryTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(c.name)} — Alış Tarixçəsi`;
+  document.getElementById('customerHistoryBalance').textContent = `Cari borc: ${(c.balance||0).toFixed(2)} ₼`;
+
+  const charges = (state.customerCharges||[]).filter(ch => ch.customerId === customerId);
+  const el = document.getElementById('customerHistoryList');
+  if (!charges.length) {
+    el.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Hələ heç bir alış qeydə alınmayıb.</p>';
+  } else {
+    el.innerHTML = charges.map(ch => {
+      const itemsStr = (ch.items||[]).map(it => `${it.qty}x ${it.name}`).join(', ');
+      return `<div class="audit-timeline-item">
+        <div class="audit-timeline-text">
+          <strong>${esc(ch.tableName)}</strong> — <strong style="color:var(--red);">${(ch.amount||0).toFixed(2)} ₼</strong><br>
+          <span style="color:var(--text2);font-size:12px;">${esc(itemsStr)}</span><br>
+          <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
+        </div>
+        <div class="audit-timeline-time">${ch.time||''} — ${ch.date||''}</div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('customerHistoryModal').classList.add('open');
+}
+
+export function closeCustomerHistoryModal() {
+  document.getElementById('customerHistoryModal').classList.remove('open');
 }
 
 /* ═══════════════════════════════════════════
@@ -1015,6 +1047,57 @@ export function deletePaymentMethod(id) {
   showToast('<svg class="icon"><use href="#i-trash"></use></svg> Ödəniş növü silindi');
 }
 
+/* ═══════════════════════════════════════════
+   BAĞLANAN MASALAR (TARİXÇƏ + BƏRPA)
+═══════════════════════════════════════════ */
+export function renderClosedOrders() {
+  const el = document.getElementById('closedOrdersList');
+  if (!el) return;
+  if (!state.closedOrders || !state.closedOrders.length) {
+    el.innerHTML = '<p style="color:var(--text3);padding:16px;">Hələ bağlanan masa qeydə alınmayıb.</p>';
+    return;
+  }
+  const isAdmin = state.user?.role === 'admin';
+  el.innerHTML = state.closedOrders.slice(0,100).map(o => {
+    const itemsSummary = Object.values(o.items||{}).map(it=>`${it.qty}x ${it.name}`).join(', ');
+    const t = state.tables.find(x=>x.id===o.tableId);
+    const canRestore = isAdmin && t && !t.occupant;
+    return `<div class="log-item" style="align-items:flex-start;">
+      <span class="log-badge" style="background:#3498db22;color:#3498db;">MASA</span>
+      <span class="log-text">
+        <strong>${esc(o.tableName)}</strong> — ${esc(o.staffName)} bağladı — <strong style="color:var(--green);">${(o.total||0).toFixed(2)} ₼</strong>
+        ${itemsSummary ? `<br><small style="color:var(--text3);">${esc(itemsSummary)}</small>` : ''}
+      </span>
+      <span class="log-time" style="text-align:right;">
+        ${o.closedTime||''} ${o.closedDate||''}<br>
+        ${canRestore
+          ? `<button class="btn btn-blue" style="padding:4px 10px;font-size:11px;margin-top:4px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>`
+          : (isAdmin ? `<small style="color:var(--text3);">${t?.occupant ? 'Masa dolu' : ''}</small>` : '')}
+      </span>
+    </div>`;
+  }).join('');
+}
+
+export function restoreClosedOrder(id) {
+  if (state.user?.role !== 'admin') { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Yalnız admin bərpa edə bilər'); return; }
+  const o = state.closedOrders.find(x=>x.id===id);
+  if (!o) return;
+  const t = state.tables.find(x=>x.id===o.tableId);
+  if (!t) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Masa artıq mövcud deyil'); return; }
+  if (t.occupant) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu masa hazırda doludur, əvvəlcə boşaldın'); return; }
+  if (!confirm(`"${o.tableName}" masası bərpa edilsin? Sifariş yenidən aktiv olacaq.`)) return;
+
+  R.tableOrders.child(o.tableId).set({
+    items: o.items, total: o.total || 0,
+    waiterId: o.staffId, paidAmount: 0, remainingAmount: o.total || 0,
+    updatedAt: Date.now()
+  });
+  R.tables.child(o.tableId).update({ occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now() });
+  R.closedOrders.child(id).remove();
+  addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi (${(o.total||0).toFixed(2)} ₼)`, { tableId: o.tableId });
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa bərpa edildi');
+}
+
 window.adminTab = adminTab;
 window.applyPermissionPreset = applyPermissionPreset;
 window.clearOldFeedbacks = clearOldFeedbacks;
@@ -1054,3 +1137,6 @@ window.editCustomer = editCustomer;
 window.deleteCustomer = deleteCustomer;
 window.editPaymentMethod = editPaymentMethod;
 window.deletePaymentMethod = deletePaymentMethod;
+window.restoreClosedOrder = restoreClosedOrder;
+window.openCustomerHistoryModal = openCustomerHistoryModal;
+window.closeCustomerHistoryModal = closeCustomerHistoryModal;
