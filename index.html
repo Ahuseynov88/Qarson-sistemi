@@ -257,6 +257,13 @@
     <h2 id="orderModalTitle"><svg class="icon"><use href="#i-food"></use></svg> Masa</h2>
     <button class="btn btn-ghost" data-close-order><svg class="icon"><use href="#i-close"></use></svg> Masalara qayıt</button>
   </div>
+  <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div style="position:relative;">
+      <svg class="icon" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);width:15px;height:15px;"><use href="#i-search"></use></svg>
+      <input type="text" id="orderSearchInput" placeholder="Mal axtar..."
+             style="width:100%;padding:9px 12px 9px 32px;border-radius:9px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:13px;">
+    </div>
+  </div>
   <div class="order-layout" style="display:flex;flex:1;overflow:hidden;">
     <div id="orderCatTabs" class="order-cat-rail category-rail" style="flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);"></div>
     <div class="order-content-wrap" id="orderContentWrap">
