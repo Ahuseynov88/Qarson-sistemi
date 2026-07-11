@@ -396,10 +396,12 @@ export class ConfirmedOrder {
 
     if (selKeys.length) {
       let chargedAmount = 0;
+      let chargedItems = [];
       R.tableOrders.child(tableId).transaction(current => {
         if (!current || !current.items) return current;
         const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
         chargedAmount = targetKeys.reduce((s,k)=>{ const it=items[k]; return it ? s+(it.price*it.qty*(1-((it.discountPercent||0)/100)))+(it.extraFee||0) : s; },0);
+        chargedItems = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
         targetKeys.forEach(k => delete items[k]);
         if (!Object.keys(items).length) return null;
         let total = 0;
@@ -410,6 +412,12 @@ export class ConfirmedOrder {
         if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
         if (!committed) return;
         R.customers.child(customerId).child('balance').transaction(bal => (bal||0) + chargedAmount);
+        R.customerCharges.push({
+          customerId, customerName: customer.name, tableId, tableName: t?.name||'?',
+          items: chargedItems, amount: chargedAmount,
+          staffId: state.user.id, staffName: state.user.name,
+          createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
+        });
         addLog('order', `${state.user.name} "${t?.name}" masasından ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
         showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
         this.clearBatchSelection();
@@ -421,6 +429,7 @@ export class ConfirmedOrder {
 
     const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
     if (remaining <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); this.closeCustomerChargeModal(); return; }
+    const wholeTableItems = Object.values(order.items||{}).map(it => ({ name: it.name, qty: it.qty, price: it.price }));
 
     R.tableOrders.child(tableId).transaction(current => {
       if (!current) return current;
@@ -430,6 +439,12 @@ export class ConfirmedOrder {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
       R.customers.child(customerId).child('balance').transaction(bal => (bal||0) + remaining);
+      R.customerCharges.push({
+        customerId, customerName: customer.name, tableId, tableName: t?.name||'?',
+        items: wholeTableItems, amount: remaining,
+        staffId: state.user.id, staffName: state.user.name,
+        createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
+      });
       addLog('order', `${state.user.name} "${t?.name}" masasının ${remaining.toFixed(2)} ₼ hesabını "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${remaining.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
       this.renderSummary(tableId);
