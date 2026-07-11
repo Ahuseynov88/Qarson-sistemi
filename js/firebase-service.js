@@ -21,5 +21,7 @@ export const R = {
   orders:      db.ref('orders'),
   logs:        db.ref('logs'),
   menuItems:   db.ref('menuItems'),
-  tableOrders: db.ref('tableOrders')
+  tableOrders: db.ref('tableOrders'),
+  customers:      db.ref('customers'),
+  paymentMethods: db.ref('paymentMethods')
 };
