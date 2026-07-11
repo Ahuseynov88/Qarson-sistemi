@@ -60,6 +60,7 @@ export class OrderCart {
     this.renderCatTabs();
     this.renderItemsList();
     this.renderDraftList();
+    this.setMobileTab('menu');
     showScreen('orderScreen');
   }
 
@@ -131,6 +132,7 @@ export class OrderCart {
   }
 
   renderDraftList() {
+    this._updateMobileBadge();
     const lines = Object.entries(state._orderDraft);
     if (!lines.length) {
       this.els.draftList.innerHTML = '';
@@ -225,5 +227,25 @@ export class OrderCart {
     });
 
     this.close();
+  }
+
+  // ── Mobil tab keçidi (telefonda menyu/bilet ayrı tam-ekran görünüşlərdir) ──
+  _updateMobileBadge() {
+    const badge = document.getElementById('mobileTicketBadge');
+    if (!badge) return;
+    const sentItems = state.tableOrders[state.orderTableId]?.items || {};
+    const sentQty = Object.values(sentItems).reduce((s, it) => s + (it.qty||0), 0);
+    const draftQty = Object.values(state._orderDraft).reduce((s, it) => s + (it.qty||0), 0);
+    const total = sentQty + draftQty;
+    badge.style.display = total > 0 ? 'flex' : 'none';
+    badge.textContent = total > 99 ? '99+' : String(total);
+  }
+
+  setMobileTab(tab) {
+    const layout = document.querySelector('#orderScreen .order-layout');
+    if (layout) layout.classList.toggle('show-ticket', tab === 'ticket');
+    document.querySelectorAll('#mobileOrderTabs [data-mobile-tab]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mobileTab === tab);
+    });
   }
 }
