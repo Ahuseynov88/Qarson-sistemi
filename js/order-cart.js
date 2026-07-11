@@ -7,6 +7,7 @@ import { R } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog, makeLineKey, updateStock } from './utils.js';
 import { hasPermission } from './permissions.js';
+import { showScreen } from './theme.js';
 
 export class OrderCart {
   /**
@@ -59,11 +60,11 @@ export class OrderCart {
     this.renderCatTabs();
     this.renderItemsList();
     this.renderDraftList();
-    this.els.screen.classList.add('active');
+    showScreen('orderScreen');
   }
 
   close() {
-    this.els.screen.classList.remove('active');
+    showScreen('waiterScreen');
     state.orderTableId = null;
     this.onClosed();
   }
