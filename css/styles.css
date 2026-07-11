@@ -57,6 +57,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 
 /* ── TOPBAR ── */
 .topbar{background:var(--brand-gradient);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:relative;overflow:hidden;}
+#orderScreen{position:fixed;inset:0;z-index:501;background:var(--bg);}
 #orderScreen .topbar{background:var(--card);overflow:visible;}
 #orderScreen .topbar h2{color:var(--text);}
 .topbar::before{content:'';position:absolute;top:0;right:0;width:200px;height:100%;background:var(--brand-glow);pointer-events:none;}
