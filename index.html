@@ -76,6 +76,7 @@
       <button class="admin-tab" onclick="adminTab('payments',this)"><svg class="icon"><use href="#i-money"></use></svg> Ödənişlər</button>
       <button class="admin-tab" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
       <button class="admin-tab" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
+      <button class="admin-tab" onclick="adminTab('closedOrders',this)"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -147,6 +148,10 @@
     <div class="admin-section" id="sec-paymentMethods">
       <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Burada yaratdığınız ödəniş növləri qarsonun "Ödəniş Al" ekranında avtomatik görünəcək (Nağd və Bölünmüş ödəniş hər zaman mövcuddur, əlavəyə ehtiyac yoxdur).</p>
       <div class="grid-2" id="paymentMethodsGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-closedOrders">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Bağlanan masaların tarixçəsi. Yanlışlıqla bağlanmış masanı bərpa edə bilərsiniz (yalnız hazırda boş olan masalar üçün).</p>
+      <div id="closedOrdersList" class="log-list"></div>
     </div>
     <div class="admin-section" id="sec-feedback">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -607,6 +612,14 @@
     <h2 id="tableAuditTitle"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</h2>
     <div id="tableAuditList" class="audit-timeline" style="max-height:50vh;overflow-y:auto;margin-top:12px;"></div>
     <button class="btn btn-ghost" style="width:100%;padding:12px;margin-top:16px;" data-close-audit>Bağla</button>
+  </div>
+</div>
+<div class="modal-bg" id="customerHistoryModal">
+  <div class="modal" style="max-width:440px;">
+    <h2 id="customerHistoryTitle"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</h2>
+    <p id="customerHistoryBalance" style="color:var(--text2);font-size:13px;font-weight:600;margin-bottom:8px;"></p>
+    <div id="customerHistoryList" class="audit-timeline" style="max-height:50vh;overflow-y:auto;margin-top:12px;"></div>
+    <button class="btn btn-ghost" style="width:100%;padding:12px;margin-top:16px;" onclick="closeCustomerHistoryModal()">Bağla</button>
   </div>
 </div>
 <!-- ═══ HESABAT MODALI ═══ -->
