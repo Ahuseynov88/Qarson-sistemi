@@ -66,10 +66,13 @@ export class TableBoard {
     const cats = this.getCategories();
     const tabs = ['all', ...cats];
     this.catTabsEl.innerHTML = tabs.map(c => `
-      <button class="admin-tab ${state._waiterCatFilter === c ? 'active' : ''}" data-cat="${esc(c)}">
+      <button class="category-rail__tab" style="white-space:nowrap;width:auto;${state._waiterCatFilter === c ? '' : ''}" data-cat="${esc(c)}">
         ${c === 'all' ? 'Hamısı' : esc(c)}
       </button>
     `).join('');
+    this.catTabsEl.querySelectorAll('[data-cat]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.cat === state._waiterCatFilter);
+    });
   }
 
   setCategory(cat) {
@@ -135,12 +138,12 @@ export class TableBoard {
       const showTotal = (isMine || (isOther && canViewOthers)) && tableOrder?.total;
       const showRemaining = showTotal && tableOrder.remainingAmount !== undefined && tableOrder.paidAmount > 0;
 
-      return `<div class="table-card ${cls}" data-table-id="${t.id}">
-        <div class="table-card__name">${esc(t.name)}</div>
-        <div class="table-card__status">${statusText}</div>
-        ${t.occupant ? `<div class="table-card__row"><svg class="icon"><use href="#i-clock"></use></svg><span class="table-card__timer w-table-timer" data-since="${t.activatedAt||''}">--:--</span></div>` : ''}
-        ${showTotal ? `<div class="table-card__total">${showRemaining ? tableOrder.remainingAmount.toFixed(2) : tableOrder.total.toFixed(2)} ₼${showRemaining ? ' <span style="font-size:10px;opacity:.7;">qalıq</span>' : ''}</div>` : ''}
-        ${isMine && t.notes ? `<div class="table-card__note">${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}</div>` : ''}
+      return `<div class="floor-card ${cls}" data-table-id="${t.id}">
+        <div class="floor-card__name">${esc(t.name)}</div>
+        <div class="floor-card__status">${statusText}</div>
+        ${t.occupant ? `<div class="floor-card__row"><svg class="icon"><use href="#i-clock"></use></svg><span class="floor-card__timer w-table-timer" data-since="${t.activatedAt||''}">--:--</span></div>` : ''}
+        ${showTotal ? `<div class="floor-card__total">${showRemaining ? tableOrder.remainingAmount.toFixed(2) : tableOrder.total.toFixed(2)} ₼${showRemaining ? ' <span style="font-size:10px;opacity:.7;">qalıq</span>' : ''}</div>` : ''}
+        ${isMine && t.notes ? `<div class="floor-card__note">${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}</div>` : ''}
       </div>`;
     }).join('');
 
