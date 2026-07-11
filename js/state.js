@@ -16,6 +16,8 @@ export const state = {
   orders: [],
   logs: [],
   menuItems: [],
+  customers: [],
+  paymentMethods: [],
   tableOrders: {},
   logFilter: 'all',
   adminSection: 'dashboard',
