@@ -18,6 +18,8 @@ export const state = {
   menuItems: [],
   customers: [],
   paymentMethods: [],
+  closedOrders: [],
+  customerCharges: [],
   tableOrders: {},
   logFilter: 'all',
   adminSection: 'dashboard',
