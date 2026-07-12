@@ -180,9 +180,10 @@ export class TableBoard {
   }
 
   confirmActivate(tableId) {
-    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now() });
+    const sessionId = `${tableId}_${Date.now()}`;
+    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId });
     const t = state.tables.find(x => x.id === tableId);
-    addLog('table', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, waiterId: state.user.id });
+    addLog('table', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, sessionId, waiterId: state.user.id });
   }
 
   openDeactivateConfirm(tableId) {
@@ -200,23 +201,31 @@ export class TableBoard {
       if (remaining > 0.01) return false;
     }
     const t = state.tables.find(x => x.id === tableId);
+    const sessionId = t?.sessionId || null;
+    const closeMsg = `${state.user?.name} "${t?.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`;
 
-    // Sifarişi arxivə köçür (hesabatlarda görünsün)
-    if (order && order.items) {
-      const archiveData = {
-        tableId, tableName: t?.name || '?',
-        staffId: state.user?.id || null, staffName: state.user?.name || '?',
-        items: order.items, total: order.total || 0, notes: t?.notes || '',
-        closedAt: Date.now(),
-        closedTime: new Date().toLocaleTimeString('az-AZ'),
-        closedDate: new Date().toLocaleDateString('az-AZ')
-      };
-      db.ref('closedOrders').push(archiveData);
-    }
+    // Bu sessiyaya aid bütün tarixçəni topla (aktivləşmədən bağlanmaya qədər) və arxivə bük -
+    // masa bağlandıqdan sonra da bu qeydlər itmir, bağlanmış masa qeydi ilə birlikdə qalır.
+    const sessionLog = sessionId
+      ? state.logs.filter(l => l.details?.sessionId === sessionId).slice().reverse()
+          .map(l => ({ message: l.message, time: l.time, date: l.date, timestamp: l.timestamp }))
+      : [];
+    sessionLog.push({ message: closeMsg, time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'), timestamp: Date.now() });
 
-    R.tableOrders.child(tableId).remove();
-    R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null });
-    addLog('table', `${state.user?.name} "${t?.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`, { staffId: state.user?.id, tableId });
+    const archiveData = {
+      tableId, tableName: t?.name || '?',
+      staffId: state.user?.id || null, staffName: state.user?.name || '?',
+      items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
+      sessionLog,
+      closedAt: Date.now(),
+      closedTime: new Date().toLocaleTimeString('az-AZ'),
+      closedDate: new Date().toLocaleDateString('az-AZ')
+    };
+    db.ref('closedOrders').push(archiveData);
+
+    if (order) R.tableOrders.child(tableId).remove();
+    R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null });
+    addLog('table', closeMsg, { tableId, sessionId, staffId: state.user?.id });
     return true;
   }
 }
