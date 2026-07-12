@@ -9,6 +9,12 @@ export function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Log mesajları üçün mal siyahısını qısa formatda birləşdirir: "2x Kabab, 1x Salat"
+export function formatItemsList(items) {
+  const arr = Array.isArray(items) ? items : Object.values(items || {});
+  return arr.map(it => `${it.qty}x ${it.name}`).join(', ');
+}
+
 export function toArr(obj) {
   if (!obj) return [];
   return Object.keys(obj).map(k => ({ id: k, ...obj[k] }));
