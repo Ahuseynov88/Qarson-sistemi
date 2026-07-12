@@ -8,7 +8,7 @@ import { addLog, showToast } from './utils.js';
 
 export const ALARM_THEMES = {
   order:     { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-utensils"></use></svg>', title:'Sifariş Hazırdır!', btnColor:'#e74c3c' },
-  call:      { bg:'rgba(241,196,15,.97)', icon:'<svg class="icon"><use href="#i-bell"></use></svg>', title:'Müştəri Sizi Çağırır!', btnColor:'#f39c12' },
+  call:      { bg:'rgba(241,196,15,.97)', title:'Müştəri Sizi Çağırır!', btnColor:'#f39c12' },
   bill_cash: { bg:'rgba(46,204,113,.97)', icon:'<svg class="icon"><use href="#i-cash"></use></svg>', title:'Hesab İstəyi (Nağd)', btnColor:'#27ae60' },
   bill_pos:  { bg:'rgba(52,152,219,.97)', icon:'<svg class="icon"><use href="#i-card"></use></svg>', title:'Hesab İstəyi (POS)', btnColor:'#2980b9' },
   message:   { bg:'rgba(243,156,18,.97)', icon:'<svg class="icon"><use href="#i-chat"></use></svg>', title:'Yeni Mesaj!', btnColor:'#e67e22' },
