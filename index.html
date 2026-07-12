@@ -532,42 +532,55 @@
 
 <!-- ═══ MAL KÖÇÜRMƏ MODALI ═══ -->
 <div class="modal-bg" id="itemTransferModal">
-  <div class="modal" style="max-width:380px;">
-    <h2><svg class="icon"><use href="#i-shuffle"></use></svg> Mal Köçürmə</h2>
-    <p id="itemTransferInfo" style="color:var(--text2);font-size:13px;margin-bottom:12px;"></p>
-    <div id="itemTransferPickWrap" class="form-group">
-      <label>Hansı mal?</label>
-      <select id="itemTransferItem" style="font-size:14px;"></select>
+  <div class="modal" style="max-width:400px;">
+    <div id="itemTransferStage1">
+      <h2><svg class="icon"><use href="#i-shuffle"></use></svg> Mal Köçürmə</h2>
+      <p id="itemTransferInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
+      <p id="itemTransferBatchInfo" style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:18px;line-height:1.5;"></p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-pick-transfer-table><svg class="icon"><use href="#i-chair"></use></svg> Masa Seç</button>
+      </div>
     </div>
-    <p id="itemTransferBatchInfo" style="display:none;color:var(--text2);font-size:13px;margin-bottom:10px;font-weight:600;"></p>
-    <div id="itemTransferQtyWrap" class="form-group">
-      <label>Miqdar</label>
-      <input type="number" id="itemTransferQty" min="1" value="1"
-             style="font-size:18px;text-align:center;">
+    <div id="itemTransferStage2" style="display:none;">
+      <h2><svg class="icon"><use href="#i-chair"></use></svg> Hansı Masaya?</h2>
+      <div id="itemTransferTableGrid" class="table-board-grid" style="max-height:50vh;overflow-y:auto;margin:14px 0;"></div>
+      <button class="btn btn-ghost" style="width:100%;padding:12px;" data-back-transfer-stage1>Geri</button>
     </div>
-    <div class="form-group">
-      <label>Hara köçürülsün?</label>
-      <select id="itemTransferToTable" style="font-size:14px;"></select>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
-      <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
+    <div id="itemTransferStage3" style="display:none;text-align:center;">
+      <h2><svg class="icon"><use href="#i-check"></use></svg> Təsdiq</h2>
+      <p id="itemTransferConfirmText" style="font-size:14px;color:var(--text);line-height:1.6;margin:18px 0;"></p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-back-transfer-stage2>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
+      </div>
     </div>
   </div>
+
 </div>
 <!-- ═══ NİSYƏ (MÜŞTƏRİYƏ KÖÇÜRMƏ) MODALI ═══ -->
 <div class="modal-bg" id="customerChargeModal">
   <div class="modal" style="max-width:380px;text-align:center;">
-    <h2><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Köçür</h2>
-    <p id="customerChargeInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
-    <p id="customerChargeAmount" style="font-size:22px;font-weight:800;color:var(--blue);margin-bottom:14px;"></p>
-    <div class="form-group" style="text-align:left;">
-      <label>Müştəri</label>
-      <select id="customerChargeSelect" style="font-size:14px;"></select>
+    <div id="customerChargeStage1">
+      <h2><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Köçür</h2>
+      <p id="customerChargeInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
+      <p id="customerChargeAmount" style="font-size:22px;font-weight:800;color:var(--blue);margin-bottom:14px;"></p>
+      <div class="form-group" style="text-align:left;">
+        <label>Müştəri</label>
+        <select id="customerChargeSelect" style="font-size:14px;"></select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-pick-charge-customer><svg class="icon"><use href="#i-check"></use></svg> Davam Et</button>
+      </div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
-      <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Köçür</button>
+    <div id="customerChargeStage2" style="display:none;">
+      <h2><svg class="icon"><use href="#i-check"></use></svg> Təsdiq</h2>
+      <p id="customerChargeConfirmText" style="font-size:14px;color:var(--text);line-height:1.6;margin:18px 0;"></p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-back-charge-stage1>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Köçür</button>
+      </div>
     </div>
   </div>
 </div>
