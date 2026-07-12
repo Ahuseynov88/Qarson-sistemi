@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, toArr, showToast, addLog } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 
 export function renderPermissionCheckboxes(existingPerms = []) {
@@ -1114,7 +1114,7 @@ export function restoreClosedOrder(id) {
   });
   R.tables.child(o.tableId).update({ occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now() });
   R.closedOrders.child(id).remove();
-  addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi (${(o.total||0).toFixed(2)} ₼)`, { tableId: o.tableId });
+  addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: o.tableId });
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa bərpa edildi');
 }
 
