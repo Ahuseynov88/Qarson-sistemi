@@ -1070,12 +1070,32 @@ export function renderClosedOrders() {
       </span>
       <span class="log-time" style="text-align:right;">
         ${o.closedTime||''} ${o.closedDate||''}<br>
+        <button class="btn" style="padding:4px 10px;font-size:11px;margin-top:4px;border:1px solid var(--border);color:var(--text2);" onclick="viewClosedOrderHistory('${o.id}')"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
         ${canRestore
           ? `<button class="btn btn-blue" style="padding:4px 10px;font-size:11px;margin-top:4px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>`
-          : (isAdmin ? `<small style="color:var(--text3);">${t?.occupant ? 'Masa dolu' : ''}</small>` : '')}
+          : (isAdmin ? `<small style="color:var(--text3);display:block;margin-top:2px;">${t?.occupant ? 'Masa dolu' : ''}</small>` : '')}
       </span>
     </div>`;
   }).join('');
+}
+
+export function viewClosedOrderHistory(id) {
+  const o = state.closedOrders.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('tableAuditTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)} — Bağlanmış Sessiya (${o.closedDate})`;
+  const list = document.getElementById('tableAuditList');
+  const sessionLog = o.sessionLog || [];
+  if (!sessionLog.length) {
+    list.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Bu sessiya üçün tarixçə qeydi yoxdur.</p>';
+  } else {
+    list.innerHTML = sessionLog.map(l => `
+      <div class="audit-timeline-item">
+        <div class="audit-timeline-text">${esc(l.message)}</div>
+        <div class="audit-timeline-time">${l.time} — ${l.date}</div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('tableAuditModal').classList.add('open');
 }
 
 export function restoreClosedOrder(id) {
@@ -1138,5 +1158,6 @@ window.deleteCustomer = deleteCustomer;
 window.editPaymentMethod = editPaymentMethod;
 window.deletePaymentMethod = deletePaymentMethod;
 window.restoreClosedOrder = restoreClosedOrder;
+window.viewClosedOrderHistory = viewClosedOrderHistory;
 window.openCustomerHistoryModal = openCustomerHistoryModal;
 window.closeCustomerHistoryModal = closeCustomerHistoryModal;
