@@ -3,6 +3,7 @@
    Bütün modullarda istifadə olunan köməkçi funksiyalar.
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
+import { state } from './state.js';
 
 export function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -41,6 +42,12 @@ export function makeLineKey(menuItemId, note, extraFee) {
 }
 
 export function addLog(type, message, details = {}) {
+  // Masaya aid qeydsə və sessionId göstərilməyibsə, masanın CARİ sessiyasını avtomatik tap.
+  // Bu, "Tarixçə" düyməsinin yalnız hazırkı aktivləşmədən sonrakı əməliyyatları göstərməsini təmin edir.
+  if (details.tableId && !details.sessionId) {
+    const t = state.tables.find(x => x.id === details.tableId);
+    if (t?.sessionId) details = { ...details, sessionId: t.sessionId };
+  }
   R.logs.push({
     type, message, details,
     timestamp: Date.now(),
