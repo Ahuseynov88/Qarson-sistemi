@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog } from './utils.js';
+import { esc, showToast, addLog, formatItemsList } from './utils.js';
 import { hasPermission, requirePermission } from './permissions.js';
 import { TableBoard } from './tables.js';
 import { OrderCart } from './order-cart.js';
@@ -39,9 +39,9 @@ export class StaffApp {
       discountModal: $('discountModal'), discountTableInfo: $('discountTableInfo'), discountValue: $('discountValue'),
       discountPreview: $('discountPreview'), discPctBtn: $('disc_pct_btn'), discFixBtn: $('disc_fix_btn'), discountValueLabel: $('discountValueLabel'),
       complimentModal: $('complimentModal'), complimentPickWrap: $('complimentPickWrap'), complimentItem: $('complimentItem'), complimentBatchInfo: $('complimentBatchInfo'),
-      itemTransferModal: $('itemTransferModal'), itemTransferInfo: $('itemTransferInfo'), itemTransferPickWrap: $('itemTransferPickWrap'),
-      itemTransferItem: $('itemTransferItem'), itemTransferBatchInfo: $('itemTransferBatchInfo'), itemTransferQtyWrap: $('itemTransferQtyWrap'),
-      itemTransferQty: $('itemTransferQty'), itemTransferToTable: $('itemTransferToTable')
+      itemTransferModal: $('itemTransferModal'), itemTransferInfo: $('itemTransferInfo'), itemTransferBatchInfo: $('itemTransferBatchInfo'),
+      itemTransferStage1: $('itemTransferStage1'), itemTransferStage2: $('itemTransferStage2'), itemTransferStage3: $('itemTransferStage3'),
+      itemTransferTableGrid: $('itemTransferTableGrid'), itemTransferConfirmText: $('itemTransferConfirmText')
     });
 
     this.payment = new PaymentProcessor({
@@ -120,10 +120,15 @@ export class StaffApp {
     // Nisyə (müştəriyə köçürmə) modalı
     $('customerChargeModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeCustomerChargeModal());
     $('customerChargeModal').querySelector('[data-confirm-customer-charge]')?.addEventListener('click', () => this.confirmedOrder.confirmCustomerCharge());
+    $('customerChargeModal').querySelector('[data-pick-charge-customer]')?.addEventListener('click', () => this.confirmedOrder.pickChargeCustomer());
+    $('customerChargeModal').querySelector('[data-back-charge-stage1]')?.addEventListener('click', () => this.confirmedOrder._showChargeStage(1));
 
     // Mal köçürmə modalı
     $('itemTransferModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeItemTransferModal());
     $('itemTransferModal').querySelector('[data-confirm-item-transfer]')?.addEventListener('click', () => this.confirmedOrder.confirmItemTransfer());
+    $('itemTransferModal').querySelector('[data-pick-transfer-table]')?.addEventListener('click', () => this.confirmedOrder.openTransferTableGrid());
+    $('itemTransferModal').querySelector('[data-back-transfer-stage1]')?.addEventListener('click', () => this.confirmedOrder._showTransferStage(1));
+    $('itemTransferModal').querySelector('[data-back-transfer-stage2]')?.addEventListener('click', () => this.confirmedOrder._showTransferStage(2));
 
     // Masa köçürmə modalı
     $('transferModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.closeTableTransferModal());
@@ -312,7 +317,7 @@ export class StaffApp {
     const w = window.open('', '_blank', 'width=340,height=600');
     if (w) {
       w.document.write(html); w.document.close();
-      addLog('order', `${waiterName} "${t?.name}" masası üçün hesab çap etdi`, { tableId, waiterId: state.user?.id });
+      addLog('order', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
     } else {
       showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
     }
