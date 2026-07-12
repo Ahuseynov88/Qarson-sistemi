@@ -113,9 +113,9 @@ export function customerAction(type) {
   const currentTable = state.tables.find(x=>x.id===tableId);
   const occupantId = currentTable?.occupant || t.occupant;
   const messages = {
-    call: { text:`${t.name} sizi çağırır! <svg class="icon"><use href="#i-bell"></use></svg>`, type:'call' },
-    bill_cash: { text:`${t.name} nağd hesab istəyir <svg class="icon"><use href="#i-cash"></use></svg>`, type:'bill_cash' },
-    bill_pos: { text:`${t.name} POS hesab istəyir <svg class="icon"><use href="#i-card"></use></svg>`, type:'bill_pos' }
+    call: { text:`${t.name} sizi çağırır!`, type:'call' },
+    bill_cash: { text:`${t.name} nağd hesab istəyir`, type:'bill_cash' },
+    bill_pos: { text:`${t.name} POS hesab istəyir`, type:'bill_pos' }
   };
   const m = messages[type];
   if (!m) return;
@@ -242,3 +242,9 @@ window.sendCustomerMsg = sendCustomerMsg;
 window.sendFeedback = sendFeedback;
 window.sendWaiterReply = sendWaiterReply;
 window.closeWaiterChat = closeWaiterChat;
+
+// alarm.js "mesaj" tipli bildirişdə söhbəti açmaq istəyəndə bu hadisəni göndərir
+// (dövri import (alarm.js <-> customer.js) olmasın deyə birbaşa çağırış əvəzinə hadisə istifadə olunur)
+document.addEventListener('alarm:open-chat', (e) => {
+  openWaiterChatForTable(e.detail.tableId, e.detail.requestId);
+});
