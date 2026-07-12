@@ -84,11 +84,11 @@ export const PERMISSION_PRESETS = {
   },
   head_waiter: {
     label: '<svg class="icon"><use href="#i-star"></use></svg> Baş Qarson',
-    perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','bill.print','bill.credit','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
+    perms: ['table.view','table.open','table.transfer','order.create','order.view','order.add_item','bill.print','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
   },
   cashier: {
     label: '<svg class="icon"><use href="#i-money"></use></svg> Kassir',
-    perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','bill.print','bill.credit','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
+    perms: ['table.view','table.close','table.transfer','order.view','bill.print','bill.credit','bill.payment_cash','bill.payment_pos','bill.payment_credit','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
   },
   manager: {
     label: '<svg class="icon"><use href="#i-staff"></use></svg> Müdir',
