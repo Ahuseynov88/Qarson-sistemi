@@ -5,7 +5,7 @@
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, makeLineKey, updateStock } from './utils.js';
+import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList } from './utils.js';
 import { hasPermission } from './permissions.js';
 import { showScreen } from './theme.js';
 
@@ -244,7 +244,12 @@ export class OrderCart {
         if (draft) updateStock(draft.menuItemId, -draft.qty, state.menuItems);
       });
       const finalTotal = (snapshot.val() && snapshot.val().total) || 0;
-      addLog('order', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
+      const sentItemsSummary = draftKeys.map(lineKey => {
+        const draft = draftSnapshot[lineKey];
+        const m = state.menuItems.find(x => x.id === draft?.menuItemId);
+        return m ? { name: m.name, qty: draft.qty } : null;
+      }).filter(Boolean);
+      addLog('order', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi: ${formatItemsList(sentItemsSummary)} (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Sifariş göndərildi');
     });
 
