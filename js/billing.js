@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, makeLineKey, updateStock } from './utils.js';
+import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList } from './utils.js';
 import { hasPermission } from './permissions.js';
 
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
@@ -37,6 +37,10 @@ export class ConfirmedOrder {
       const batchBtn = e.target.closest('[data-batch-qty]');
       if (batchBtn) { this.setBatchQty(batchBtn.dataset.itemKey, parseInt(batchBtn.dataset.batchQty, 10)); return; }
       if (e.target.closest('#sentCollapseBar')) { this._sentExpanded = false; this.renderSummary(state.noteTableId); return; }
+    });
+    this.els.itemTransferTableGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-transfer-target]');
+      if (card) this.selectTransferTarget(card.dataset.transferTarget);
     });
   }
 
@@ -311,6 +315,7 @@ export class ConfirmedOrder {
       if (this._discountType==='fixed' && val>=subtotal) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim seçilmiş malların cəmindən çox ola bilməz'); return; }
       const equivPercent = this._discountType==='percent' ? val : (val/subtotal*100);
       let appliedQty = 0;
+      let appliedItemsList = [];
 
       R.tableOrders.child(tableId).transaction(current => {
         if (!current || !current.items) return current;
@@ -320,12 +325,13 @@ export class ConfirmedOrder {
         Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
         const paidAmount = current.paidAmount || 0;
         appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
+        appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
         return { ...current, items, total, remainingAmount: total - paidAmount };
       }, (error, committed) => {
         if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
         if (!committed) return;
         const discStr = this._discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
-        addLog('order', `${state.user.name} "${t?.name}" masasında ${appliedQty} ədədə ${discStr} endirim verdi`, { tableId });
+        addLog('order', `${state.user.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} mallarına ${discStr} endirim verdi`, { tableId });
         showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${appliedQty} ədədə endirim tətbiq edildi`);
         this.clearBatchSelection();
         this.renderSummary(tableId);
@@ -367,20 +373,49 @@ export class ConfirmedOrder {
 
     if (selKeys.length) {
       const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=selection[k]; return s+(it.price*q)+(it.extraFee||0)*(q/it.qty); },0);
-      document.getElementById('customerChargeInfo').textContent = `${t?.name||'Masa'} — seçilmiş mallar`;
+      document.getElementById('customerChargeInfo').textContent = `${t?.name||'Masa'} — ${formatItemsList(selKeys.map(k=>({name:order.items[k]?.name, qty:selection[k]})))}`;
       document.getElementById('customerChargeAmount').textContent = subtotal.toFixed(2) + ' ₼';
     } else {
       const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
       if (remaining <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); return; }
-      document.getElementById('customerChargeInfo').textContent = `${t?.name||'Masa'} — bütün hesab`;
+      document.getElementById('customerChargeInfo').textContent = `${t?.name||'Masa'} — bütün hesab (${formatItemsList(order.items)})`;
       document.getElementById('customerChargeAmount').textContent = remaining.toFixed(2) + ' ₼';
     }
 
     document.getElementById('customerChargeSelect').innerHTML = state.customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    this._showChargeStage(1);
     document.getElementById('customerChargeModal').classList.add('open');
   }
 
-  closeCustomerChargeModal() { document.getElementById('customerChargeModal').classList.remove('open'); }
+  _showChargeStage(n) {
+    document.getElementById('customerChargeStage1').style.display = n===1 ? 'block' : 'none';
+    document.getElementById('customerChargeStage2').style.display = n===2 ? 'block' : 'none';
+  }
+
+  pickChargeCustomer() {
+    const tableId = state.noteTableId;
+    const t = state.tables.find(x => x.id === tableId);
+    const order = state.tableOrders[tableId];
+    const customerId = document.getElementById('customerChargeSelect').value;
+    const customer = state.customers.find(c => c.id === customerId);
+    if (!customer) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Müştəri seçin'); return; }
+
+    const selection = this._chargeSelection || {};
+    const selKeys = Object.keys(selection).filter(k => order?.items?.[k]);
+    const itemsStr = selKeys.length
+      ? formatItemsList(selKeys.map(k=>({name:order.items[k]?.name, qty:selection[k]})))
+      : formatItemsList(order?.items || {});
+    const amount = document.getElementById('customerChargeAmount').textContent;
+
+    document.getElementById('customerChargeConfirmText').innerHTML =
+      `<strong>${esc(itemsStr)}</strong> (${amount})<br>"${esc(t?.name||'')}" masasından<br><strong>${esc(customer.name)}</strong> adlı müştəriyə nisyə yazılır.<br>Təsdiqləyirsiniz?`;
+    this._showChargeStage(2);
+  }
+
+  closeCustomerChargeModal() {
+    document.getElementById('customerChargeModal').classList.remove('open');
+    this._showChargeStage(1);
+  }
 
   confirmCustomerCharge() {
     const tableId = state.noteTableId;
@@ -418,7 +453,7 @@ export class ConfirmedOrder {
           staffId: state.user.id, staffName: state.user.name,
           createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
         });
-        addLog('order', `${state.user.name} "${t?.name}" masasından ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+        addLog('order', `${state.user.name} "${t?.name}" masasından ${formatItemsList(chargedItems)} (${chargedAmount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
         showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
         this.clearBatchSelection();
         this.renderSummary(tableId);
@@ -445,7 +480,7 @@ export class ConfirmedOrder {
         staffId: state.user.id, staffName: state.user.name,
         createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
       });
-      addLog('order', `${state.user.name} "${t?.name}" masasının ${remaining.toFixed(2)} ₼ hesabını "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+      addLog('order', `${state.user.name} "${t?.name}" masasının hesabı: ${formatItemsList(wholeTableItems)} (${remaining.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${remaining.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
       this.renderSummary(tableId);
     });
@@ -524,38 +559,60 @@ export class ConfirmedOrder {
     if (!tableId) return;
     const order = state.tableOrders[tableId];
     if (!order?.items) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu masada sifariş yoxdur'); return; }
-    const t = state.tables.find(x => x.id === tableId);
-    this.els.itemTransferInfo.textContent = `"${t?.name}" masasından mal köçürülür`;
 
     const sel0 = state._batchSelection || {};
     const selection = {};
     Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) selection[k] = q; });
+    if (!Object.keys(selection).length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Əvvəlcə köçürüləcək malları işarələyin'); return; }
     this._transferSelection = selection;
-    const selKeys = Object.keys(selection);
+    this._transferTarget = null;
 
-    if (selKeys.length) {
-      this.els.itemTransferPickWrap.style.display = 'none';
-      this.els.itemTransferQtyWrap.style.display = 'none';
-      this.els.itemTransferBatchInfo.style.display = 'block';
-      const totalQty = Object.values(selection).reduce((s,q)=>s+q,0);
-      this.els.itemTransferBatchInfo.textContent = `${totalQty} ədəd (${selKeys.length} növ mal) köçürüləcək`;
-    } else {
-      this.els.itemTransferPickWrap.style.display = 'block';
-      this.els.itemTransferQtyWrap.style.display = 'block';
-      this.els.itemTransferBatchInfo.style.display = 'none';
-      const sel = this.els.itemTransferItem;
-      sel.innerHTML = Object.entries(order.items).map(([k,v]) => `<option value="${k}">${esc(v.name)} (${v.qty} ədəd)</option>`).join('');
-      sel.onchange = () => { const it = order.items[sel.value]; if (it) this.els.itemTransferQty.max = it.qty; };
-      sel.onchange();
-    }
+    const t = state.tables.find(x => x.id === tableId);
+    this.els.itemTransferInfo.textContent = `"${t?.name}" masasından köçürülür:`;
+    const itemsStr = formatItemsList(Object.keys(selection).map(k => ({ name: order.items[k]?.name, qty: selection[k] })));
+    this.els.itemTransferBatchInfo.textContent = itemsStr;
 
-    const activeTables = state.tables.filter(x => x.occupant && x.id !== tableId);
-    this.els.itemTransferToTable.innerHTML = activeTables.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
-    if (!activeTables.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Başqa aktiv masa yoxdur'); return; }
+    this._showTransferStage(1);
     this.els.itemTransferModal.classList.add('open');
   }
 
-  closeItemTransferModal() { this.els.itemTransferModal.classList.remove('open'); }
+  _showTransferStage(n) {
+    this.els.itemTransferStage1.style.display = n===1 ? 'block' : 'none';
+    this.els.itemTransferStage2.style.display = n===2 ? 'block' : 'none';
+    this.els.itemTransferStage3.style.display = n===3 ? 'block' : 'none';
+  }
+
+  openTransferTableGrid() {
+    const tableId = state.noteTableId;
+    const otherTables = state.tables.filter(x => x.id !== tableId);
+    if (!otherTables.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Başqa masa yoxdur'); return; }
+    this.els.itemTransferTableGrid.innerHTML = otherTables.map(m => {
+      const isEmpty = !m.occupant;
+      const occupantName = isEmpty ? '' : (state.staff.find(s=>s.id===m.occupant)?.name || '?');
+      return `<div class="floor-card ${isEmpty?'empty':'other-manage'}" style="cursor:pointer;min-height:64px;" data-transfer-target="${m.id}">
+        <div class="floor-card__name">${esc(m.name)}</div>
+        <div class="floor-card__status">${isEmpty ? 'Boş' : esc(occupantName)}</div>
+      </div>`;
+    }).join('');
+    this._showTransferStage(2);
+  }
+
+  selectTransferTarget(toTableId) {
+    const fromTableId = state.noteTableId;
+    const fromT = state.tables.find(x => x.id === fromTableId);
+    const toT = state.tables.find(x => x.id === toTableId);
+    this._transferTarget = toTableId;
+    const order = state.tableOrders[fromTableId];
+    const selection = this._transferSelection || {};
+    const itemsStr = formatItemsList(Object.keys(selection).map(k => ({ name: order?.items?.[k]?.name||'?', qty: selection[k] })));
+    this.els.itemTransferConfirmText.innerHTML = `<strong>${esc(itemsStr)}</strong><br>"${esc(fromT?.name||'')}" → "${esc(toT?.name||'')}"<br>köçürülür. Təsdiqləyirsiniz?`;
+    this._showTransferStage(3);
+  }
+
+  closeItemTransferModal() {
+    this.els.itemTransferModal.classList.remove('open');
+    this._showTransferStage(1);
+  }
 
   _transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved) {
     // Qeyd: Firebase JS SDK transaction-ları tək node üzərində işləyir; iki masa arasında
@@ -576,6 +633,12 @@ export class ConfirmedOrder {
       if (committed) this.renderSummary(fromTableId);
     });
 
+    // Hədəf masa hazırda boşdursa, mal köçürüldükdə həmin masa da aktivləşir (yeni sessiya başlayır)
+    const toTable = state.tables.find(x => x.id === toTableId);
+    if (toTable && !toTable.occupant) {
+      R.tables.child(toTableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId: `${toTableId}_${Date.now()}` });
+    }
+
     R.tableOrders.child(toTableId).transaction(current => {
       const items = (current && current.items) ? { ...current.items } : {};
       const key = makeLineKey(moved.menuItemId, moved.note, moved.extraFee);
@@ -584,7 +647,7 @@ export class ConfirmedOrder {
       let total = 0;
       Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
       const paidAmount = (current && current.paidAmount) || 0;
-      return { items, total, waiterId: (current && current.waiterId) || state.tables.find(x=>x.id===toTableId)?.occupant || state.user.id, paidAmount, remainingAmount: total - paidAmount, updatedAt: Date.now() };
+      return { items, total, waiterId: (current && current.waiterId) || toTable?.occupant || state.user.id, paidAmount, remainingAmount: total - paidAmount, updatedAt: Date.now() };
     }, (error) => {
       if (error) showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta: hədəf masa yenilənmədi');
     });
@@ -592,7 +655,7 @@ export class ConfirmedOrder {
 
   confirmItemTransfer() {
     const fromTableId = state.noteTableId;
-    const toTableId = this.els.itemTransferToTable.value;
+    const toTableId = this._transferTarget;
     if (!fromTableId || !toTableId) return;
 
     const fromOrderCheck = state.tableOrders[fromTableId];
@@ -601,35 +664,21 @@ export class ConfirmedOrder {
 
     const selection = this._transferSelection || {};
     const selKeys = Object.keys(selection).filter(k => fromOrderCheck?.items?.[k]);
+    if (!selKeys.length) { this.closeItemTransferModal(); return; }
 
-    if (selKeys.length) {
-      const names = [];
-      selKeys.forEach(itemKey => {
-        const it = fromOrderCheck.items[itemKey];
-        if (!it) return;
-        const moveQty = Math.min(selection[itemKey], it.qty);
-        names.push(`${moveQty}x ${it.name}`);
-        const moved = { menuItemId: it.menuItemId, name: it.name, price: it.price, note: it.note||'', extraFee: it.extraFee||0 };
-        this._transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved);
-      });
-      addLog('table', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə köçürdü: ${names.join(', ')}`, { tableId: fromTableId, toTableId });
-      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${names.length} növ mal → "${toT?.name}"`);
-      this.clearBatchSelection();
-      this.closeItemTransferModal();
-      return;
-    }
+    const movedList = [];
+    selKeys.forEach(itemKey => {
+      const it = fromOrderCheck.items[itemKey];
+      if (!it) return;
+      const moveQty = Math.min(selection[itemKey], it.qty);
+      movedList.push({ name: it.name, qty: moveQty });
+      const moved = { menuItemId: it.menuItemId, name: it.name, price: it.price, note: it.note||'', extraFee: it.extraFee||0 };
+      this._transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved);
+    });
 
-    const itemKey = this.els.itemTransferItem.value;
-    const qty = parseInt(this.els.itemTransferQty.value) || 1;
-    if (!itemKey) return;
-    const itCheck = fromOrderCheck?.items?.[itemKey];
-    if (!itCheck) return;
-    const moveQty = Math.min(qty, itCheck.qty);
-    const moved = { menuItemId: itCheck.menuItemId, name: itCheck.name, price: itCheck.price, note: itCheck.note||'', extraFee: itCheck.extraFee||0 };
-    this._transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved);
-
-    addLog('table', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə ${moveQty}x ${moved.name} köçürdü`, { tableId: fromTableId, toTableId });
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${moveQty}x ${moved.name} → "${toT?.name}"`);
+    addLog('table', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə köçürdü: ${formatItemsList(movedList)}`, { tableId: fromTableId, toTableId });
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${formatItemsList(movedList)} → "${toT?.name}"`);
+    this.clearBatchSelection();
     this.closeItemTransferModal();
   }
 
@@ -650,7 +699,7 @@ export class ConfirmedOrder {
     }
     R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now(), sessionId });
     R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null });
-    addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
+    addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü: ${formatItemsList(order?.items||{})}`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
 }
