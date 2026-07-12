@@ -14,14 +14,18 @@ export class AuditTrail {
   open(tableId) {
     if (!tableId) return;
     const t = state.tables.find(x => x.id === tableId);
-    this.els.title.innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(t?.name || 'Masa')} — Tarixçə`;
+    this.els.title.innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(t?.name || 'Masa')} — Cari Sessiya Tarixçəsi`;
 
-    // state.logs yenidən-köhnəyə sıralanıb; timeline üçün xronoloji (köhnədən-yeniyə) tərtib edirik.
-    // Qeyd: qlobal log yalnız son 300 qeydi saxlayır - çox işlək günlərdə köhnə tarixçə qısala bilər.
-    const relevant = state.logs.filter(l => l.details && l.details.tableId === tableId).slice().reverse();
+    // Yalnız CARİ aktivləşmədən (sessiyadan) bəri olan qeydlər göstərilir - əvvəlki
+    // (artıq bağlanmış) ziyarətlərin tarixçəsi qarışmır. Köhnə ziyarətlərin tarixçəsi
+    // "Bağlanan Masalar" bölməsində, həmin ziyarətin öz arxiv qeydi ilə birlikdə saxlanılır.
+    const sessionId = t?.sessionId || null;
+    const relevant = sessionId
+      ? state.logs.filter(l => l.details && l.details.sessionId === sessionId).slice().reverse()
+      : [];
 
     if (!relevant.length) {
-      this.els.list.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Bu masa üçün qeyd tapılmadı.</p>';
+      this.els.list.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Bu sessiyada hələ qeyd yoxdur.</p>';
     } else {
       this.els.list.innerHTML = relevant.map(l => `
         <div class="audit-timeline-item">
