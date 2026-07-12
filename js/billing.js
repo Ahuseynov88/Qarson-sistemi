@@ -640,6 +640,7 @@ export class ConfirmedOrder {
     const toT = state.tables.find(x => x.id === toId);
     const order = state.tableOrders[fromId];
     const originalOccupant = fromT?.occupant || state.user.id;
+    const sessionId = fromT?.sessionId || `${fromId}_${Date.now()}`;
     if (order) {
       R.tableOrders.child(toId).transaction(current => {
         if (current && current.items && Object.keys(current.items).length) return; // hədəf artıq boş deyil - abort
@@ -647,9 +648,9 @@ export class ConfirmedOrder {
       });
       R.tableOrders.child(fromId).remove();
     }
-    R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now() });
-    R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null });
-    addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü`, { fromTableId: fromId, toTableId: toId });
+    R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now(), sessionId });
+    R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null });
+    addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
 }
