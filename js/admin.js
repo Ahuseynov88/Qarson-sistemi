@@ -497,6 +497,8 @@ export function editStaff(id) {
 
 export function deleteStaff(id) {
   const s = state.staff.find(x=>x.id===id);
+  const activeTable = state.tables.find(t => t.occupant === id);
+  if (activeTable) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${s?.name}" adlı işçinin "${activeTable.name}" masası aktivdir! Əvvəlcə masanı bağlayın.`); return; }
   if (!confirm(`"${s?.name}" adlı işçi silinsin?`)) return;
   db.ref('staff').child(id).remove();
   addLog('admin', `İşçi silindi: ${s?.name}`, { staffId: id });
