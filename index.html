@@ -308,9 +308,7 @@
         </button>
 
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-          <button id="notesDiscountBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
-          <button id="notesComplimentBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--green);color:var(--green-dark);" data-open-compliment-hub><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>
-          <button id="notesItemTransferBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--purple);color:var(--purple);" data-open-item-transfer-hub><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
+          <button id="notesDiscountBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim (bütün hesab)</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
           <button id="notesCustomerChargeBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Yaz</button>
@@ -398,6 +396,13 @@
     <button class="menu-btn" onclick="openMenu()">
       <span class="menu-icon"><svg class="icon"><use href="#i-clipboard"></use></svg></span> Menyuya Bax
     </button>
+    <div class="cust-order-section" id="custOrderSection" style="display:none;">
+      <div class="cust-order-section__head">
+        <h3><svg class="icon"><use href="#i-food"></use></svg> Sifarişiniz</h3>
+        <span class="cust-order-live"><span class="cust-order-live__dot"></span> Canlı</span>
+      </div>
+      <div id="custOrderList"></div>
+    </div>
     <div class="cust-actions">
       <button class="cust-btn call-btn" onclick="customerAction('call')">
         <span class="cust-icon"><svg class="icon"><use href="#i-bell"></use></svg></span> Ofisiantı Çağır
@@ -590,11 +595,7 @@
   <div class="modal" style="max-width:360px;text-align:center;">
     <h2><svg class="icon"><use href="#i-gift"></use></svg> İkram Et</h2>
     <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Seçilən mal(lar) pulsuz olacaq</p>
-    <div id="complimentPickWrap" class="form-group" style="text-align:left;">
-      <label>Hansı mal ikram edilsin?</label>
-      <select id="complimentItem" style="font-size:14px;"></select>
-    </div>
-    <p id="complimentBatchInfo" style="display:none;color:var(--text2);font-size:13px;margin-bottom:12px;font-weight:600;"></p>
+    <p id="complimentBatchInfo" style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:14px;"></p>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" data-confirm-compliment><svg class="icon"><use href="#i-gift"></use></svg> İkram Et</button>
