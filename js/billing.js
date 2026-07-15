@@ -31,7 +31,7 @@ export class ConfirmedOrder {
   _bindEvents() {
     this.els.summaryEl.addEventListener('click', (e) => {
       const qtyBtn = e.target.closest('[data-qty-change]');
-      if (qtyBtn) { this.changeQty(state.noteTableId, qtyBtn.dataset.itemKey, parseInt(qtyBtn.dataset.qtyChange, 10)); return; }
+      if (qtyBtn) { return; } // göndərilmiş mallarda artıq +/- düyməsi yoxdur (yalnız iptal, səbəblə)
       const cancelBtn = e.target.closest('[data-cancel-item]');
       if (cancelBtn) { this.openCancelReasonModal(state.noteTableId, cancelBtn.dataset.cancelItem); return; }
       const batchBtn = e.target.closest('[data-batch-qty]');
@@ -128,8 +128,6 @@ export class ConfirmedOrder {
               <button data-batch-qty="1" data-item-key="${itemKey}">+</button>
             </div>` : ''}
             <span class="ticket-line__name">${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
-            ${canEdit ? `<button data-qty-change="-1" data-item-key="${itemKey}" style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:15px;cursor:pointer;font-weight:700;flex-shrink:0;">−</button>` : ''}
-            ${canEdit ? `<button data-qty-change="1" data-item-key="${itemKey}" style="background:var(--border);border:none;border-radius:6px;width:24px;height:24px;font-size:15px;cursor:pointer;font-weight:700;flex-shrink:0;">+</button>` : ''}
             <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
             ${canEdit ? `<button data-cancel-item="${itemKey}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;flex-shrink:0;"><svg class="icon"><use href="#i-close"></use></svg></button>` : ''}
           </div>
@@ -158,28 +156,6 @@ export class ConfirmedOrder {
     el.querySelector('[data-open-item-transfer]')?.addEventListener('click', () => this.openItemTransferModal());
     el.querySelector('[data-open-customer-charge]')?.addEventListener('click', () => this.openCustomerChargeModal());
     el.querySelector('[data-clear-selection]')?.addEventListener('click', () => { this.clearBatchSelection(); this.renderSummary(tableId); });
-  }
-
-  // ── Miqdar dəyişmə (transaction) ──
-  changeQty(tableId, itemKey, delta) {
-    if (!hasPermission('order.cancel_item')) return;
-    const order = state.tableOrders[tableId];
-    const itCheck = order?.items?.[itemKey];
-    if (!itCheck) return;
-    if (itCheck.qty + delta <= 0) { this.openCancelReasonModal(tableId, itemKey); return; }
-
-    R.tableOrders.child(tableId).transaction(current => {
-      if (!current || !current.items || !current.items[itemKey]) return current;
-      const items = { ...current.items };
-      items[itemKey] = { ...items[itemKey], qty: items[itemKey].qty + delta };
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0) * v.qty * (1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
-      const paidAmount = current.paidAmount || 0;
-      return { ...current, items, total, remainingAmount: total - paidAmount };
-    }, (error, committed) => {
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
-      if (committed) { updateStock(itCheck.menuItemId, -delta, state.menuItems); this.renderSummary(tableId); }
-    });
   }
 
   // ── İptal (səbəblə) ──
@@ -498,20 +474,10 @@ export class ConfirmedOrder {
     const sel0 = state._batchSelection || {};
     const selection = {};
     Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) selection[k] = q; });
+    if (!Object.keys(selection).length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Əvvəlcə ikram ediləcək malları işarələyin'); return; }
     this._complimentSelection = selection;
-    const selKeys = Object.keys(selection);
 
-    if (selKeys.length) {
-      this.els.complimentPickWrap.style.display = 'none';
-      this.els.complimentBatchInfo.style.display = 'block';
-      const totalQty = Object.values(selection).reduce((s,q)=>s+q,0);
-      this.els.complimentBatchInfo.textContent = `${totalQty} ədəd (${selKeys.length} növ mal) ikram ediləcək`;
-    } else {
-      this.els.complimentPickWrap.style.display = 'block';
-      this.els.complimentBatchInfo.style.display = 'none';
-      this.els.complimentItem.innerHTML = Object.entries(order.items).map(([k,v]) =>
-        `<option value="${k}">${esc(v.name)} — ${(v.price*v.qty).toFixed(2)} ₼</option>`).join('');
-    }
+    this.els.complimentBatchInfo.textContent = formatItemsList(Object.keys(selection).map(k=>({name:order.items[k]?.name, qty:selection[k]})));
     this.els.complimentModal.classList.add('open');
   }
 
@@ -523,14 +489,9 @@ export class ConfirmedOrder {
     if (!order?.items) return;
     const t = state.tables.find(x => x.id === tableId);
 
-    let selection = this._complimentSelection || {};
-    if (!Object.keys(selection).length) {
-      const single = this.els.complimentItem.value;
-      if (!single || !order.items[single]) return;
-      selection = { [single]: order.items[single].qty };
-    }
-    const names = Object.keys(selection).map(k => order.items[k]?.name).filter(Boolean);
-    let appliedQty = 0;
+    const selection = this._complimentSelection || {};
+    if (!Object.keys(selection).length) { this.closeComplimentModal(); return; }
+    let appliedItemsList = [];
 
     R.tableOrders.child(tableId).transaction(current => {
       if (!current || !current.items) return current;
@@ -539,13 +500,13 @@ export class ConfirmedOrder {
       let total = 0;
       Object.values(items).forEach(v => { total += (v.price||0) * v.qty * (1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
       const paidAmount = current.paidAmount || 0;
-      appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
+      appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
       return { ...current, items, total, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
-      addLog('order', `${state.user?.name} "${t?.name}" masasında ${appliedQty} ədəd (${names.join(', ')}) ikram etdi`, { tableId });
-      showToast(`<svg class="icon"><use href="#i-gift"></use></svg> ${appliedQty} ədəd ikram edildi`);
+      addLog('order', `${state.user?.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} ikram etdi`, { tableId });
+      showToast(`<svg class="icon"><use href="#i-gift"></use></svg> ${formatItemsList(appliedItemsList)} ikram edildi`);
       this.clearBatchSelection();
       this.renderSummary(tableId);
     });
@@ -724,6 +685,8 @@ export class PaymentProcessor {
     const t = state.tables.find(x => x.id === tableId);
     const order = state.tableOrders[tableId];
     if (!order || !order.total) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu masada aktiv sifariş yoxdur'); return; }
+    const remainingCheck = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
+    if (remainingCheck <= 0.01) { showToast('<svg class="icon"><use href="#i-check"></use></svg> Bu hesab artıq tam ödənilib'); return; }
 
     const p = this.payment;
     p.tableId = tableId;
