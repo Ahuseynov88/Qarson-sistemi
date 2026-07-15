@@ -49,6 +49,7 @@ export function checkCustomerMode() {
         window._customerTableId = tableId;
         window._customerTableData = t;
         initCustomerChat(tableId);
+        R.tableOrders.child(tableId).on('value', s => renderCustomerOrder(s.val()));
       }
       return;
     }
@@ -58,9 +59,43 @@ export function checkCustomerMode() {
       window._customerTableId = null;
       window._customerTableData = null;
       db.ref('chats/' + tableId).off();
+      R.tableOrders.child(tableId).off();
       showCustomerClosedScreen('<svg class="icon"><use href="#i-thanks"></use></svg> Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
     }
   });
+}
+
+export function renderCustomerOrder(order) {
+  const section = document.getElementById('custOrderSection');
+  const list = document.getElementById('custOrderList');
+  if (!section || !list) return;
+
+  const items = order?.items ? Object.values(order.items) : [];
+  if (!items.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  list.innerHTML = items.map(it => {
+    const lineTotal = (it.price||0) * it.qty * (1-((it.discountPercent||0)/100)) + (it.extraFee||0);
+    return `<div class="cust-order-line">
+      <div class="cust-order-line__row">
+        <span class="cust-order-line__name">${esc(it.name)} <span class="cust-order-line__qty">×${it.qty}</span></span>
+        <span class="cust-order-line__price">${lineTotal.toFixed(2)} ₼</span>
+      </div>
+      ${(it.note || it.compliment || it.discountPercent>0) ? `<div class="cust-order-line__tags">
+        ${it.note ? `<span class="discount-badge" style="background:transparent;border-color:var(--border);color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(it.note)}</span>` : ''}
+        ${it.compliment ? `<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>` : ''}
+        ${(it.discountPercent>0) ? `<span class="discount-badge">-${it.discountPercent}%</span>` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  const total = order.total || 0;
+  const paid = order.paidAmount || 0;
+  list.innerHTML += `<div class="cust-order-total">
+    <span class="cust-order-total__label">Cəmi</span>
+    <span class="cust-order-total__value">${total.toFixed(2)} ₼</span>
+  </div>
+  ${paid > 0 ? `<div class="cust-order-paid-row"><span>Ödənilib: ${paid.toFixed(2)} ₼</span><span>Qalıq: ${Math.max(0,total-paid).toFixed(2)} ₼</span></div>` : ''}`;
 }
 
 export function showCustomerWaiterCard(waiterId) {
@@ -101,7 +136,7 @@ export function showCustomerClosedScreen(msg) {
 export function openMenu() {
   db.ref('settings/menuUrl').once('value', snap => {
     const url = snap.val();
-    if (!url) { showCustomerToast('ℹ️ Menyu hələ əlavə edilməyib'); return; }
+    if (!url) { showCustomerToast('<svg class="icon"><use href="#i-warning"></use></svg> Menyu hələ əlavə edilməyib'); return; }
     window.open(url, '_blank');
   });
 }
