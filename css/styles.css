@@ -339,6 +339,26 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .cust-feedback{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--border);}
 .cust-feedback h3{font-size:15px;margin-bottom:12px;color:var(--text2);}
 .cust-feedback textarea{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;min-height:80px;}
+
+/* ── MÜŞTƏRİ: CANLI SİFARİŞ GÖRÜNÜŞÜ ── */
+.cust-order-section{background:var(--card);border-radius:16px;padding:18px;border:1px solid var(--border);margin-bottom:20px;}
+.cust-order-section__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cust-order-section__head h3{font-size:15px;color:var(--text2);display:flex;align-items:center;gap:8px;margin:0;}
+.cust-order-live{display:flex;align-items:center;gap:6px;font-size:11px;color:#2ecc71;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.cust-order-live__dot{width:7px;height:7px;border-radius:50%;background:#2ecc71;box-shadow:0 0 0 0 rgba(46,204,113,.6);animation:custLivePulse 1.7s infinite;}
+@keyframes custLivePulse{0%{box-shadow:0 0 0 0 rgba(46,204,113,.55);}70%{box-shadow:0 0 0 6px rgba(46,204,113,0);}100%{box-shadow:0 0 0 0 rgba(46,204,113,0);}}
+.cust-order-line{padding:10px 0;border-bottom:1px dashed var(--border);}
+.cust-order-line:last-child{border-bottom:none;}
+.cust-order-line__row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.cust-order-line__name{font-size:14.5px;color:var(--text);font-weight:600;}
+.cust-order-line__qty{color:var(--text3);font-weight:500;}
+.cust-order-line__price{font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.cust-order-line__tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;}
+.cust-order-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:14px;margin-top:8px;border-top:1px solid var(--border);}
+.cust-order-total__label{font-size:13.5px;color:var(--text2);font-weight:600;}
+.cust-order-total__value{font-size:24px;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums;}
+.cust-order-paid-row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--orange);margin-top:6px;font-weight:600;}
+.cust-order-empty{text-align:center;color:var(--text3);padding:22px 10px;font-size:13.5px;line-height:1.6;}
 .cust-feedback button{width:100%;margin-top:8px;padding:13px;background:var(--green);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-size:16px;}
 
 #custWaiterCard{position:fixed;top:16px;right:16px;z-index:1;display:none;flex-direction:column;align-items:center;gap:6px;z-index:200;}
