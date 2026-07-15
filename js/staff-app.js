@@ -38,7 +38,7 @@ export class StaffApp {
       cancelReasonModal: $('cancelReasonModal'), cancelReasonItemName: $('cancelReasonItemName'), cancelReasonSelect: $('cancelReasonSelect'),
       discountModal: $('discountModal'), discountTableInfo: $('discountTableInfo'), discountValue: $('discountValue'),
       discountPreview: $('discountPreview'), discPctBtn: $('disc_pct_btn'), discFixBtn: $('disc_fix_btn'), discountValueLabel: $('discountValueLabel'),
-      complimentModal: $('complimentModal'), complimentPickWrap: $('complimentPickWrap'), complimentItem: $('complimentItem'), complimentBatchInfo: $('complimentBatchInfo'),
+      complimentModal: $('complimentModal'), complimentBatchInfo: $('complimentBatchInfo'),
       itemTransferModal: $('itemTransferModal'), itemTransferInfo: $('itemTransferInfo'), itemTransferBatchInfo: $('itemTransferBatchInfo'),
       itemTransferStage1: $('itemTransferStage1'), itemTransferStage2: $('itemTransferStage2'), itemTransferStage3: $('itemTransferStage3'),
       itemTransferTableGrid: $('itemTransferTableGrid'), itemTransferConfirmText: $('itemTransferConfirmText')
@@ -91,8 +91,6 @@ export class StaffApp {
     // Masa detalı ekranı (kateqoriya+mallar+bilet+idarəetmə - hamısı bir yerdə)
     $('orderScreen').querySelector('[data-open-discount-hub]')?.addEventListener('click', () => this.confirmedOrder.openDiscountModal());
     $('orderScreen').querySelector('[data-open-transfer-hub]')?.addEventListener('click', () => this.openTableTransferModal());
-    $('orderScreen').querySelector('[data-open-item-transfer-hub]')?.addEventListener('click', () => this.confirmedOrder.openItemTransferModal());
-    $('orderScreen').querySelector('[data-open-compliment-hub]')?.addEventListener('click', () => this.confirmedOrder.openComplimentModal());
     $('orderScreen').querySelector('[data-open-customer-charge-hub]')?.addEventListener('click', () => this.confirmedOrder.openCustomerChargeModal());
     $('orderScreen').querySelector('[data-open-payment-hub]')?.addEventListener('click', () => this.payment.open(state.noteTableId));
     $('orderScreen').querySelector('[data-close-table-hub]')?.addEventListener('click', () => this.requestCloseTable());
@@ -169,9 +167,11 @@ export class StaffApp {
     const order = state.tableOrders[tableId];
     const canPay = hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit');
     const payBtn = $('notesPaymentBtn');
-    if (canPay && order?.total > 0) {
-      const paid = order.paidAmount || 0;
-      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
+    const paid = order?.paidAmount || 0;
+    const remaining = order?.total
+      ? ((order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total)
+      : 0;
+    if (canPay && order?.total > 0 && remaining > 0.01) {
       payBtn.style.display = 'flex';
       payBtn.classList.toggle('partial', paid > 0);
       $('notesPaymentAmount').textContent = remaining.toFixed(2) + ' ₼';
@@ -183,6 +183,7 @@ export class StaffApp {
         subEl.style.display = 'none';
       }
     } else {
+      // Hesab artıq tam ödənilibsə (qalıq 0) - təkrar ödəniş almağın qarşısı alınır
       payBtn.style.display = 'none';
     }
   }
@@ -210,9 +211,7 @@ export class StaffApp {
     setVis('notesCloseTableBtn', hasPermission('table.close'));
     setVis('notesDiscountBtn', hasPermission('order.discount'));
     setVis('notesTransferBtn', hasPermission('table.transfer'));
-    setVis('notesItemTransferBtn', hasPermission('table.transfer'));
     setVis('notesCustomerChargeBtn', hasPermission('bill.credit'));
-    setVis('notesComplimentBtn', hasPermission('order.discount'));
 
     this._updatePaymentTrigger(tableId);
   }
