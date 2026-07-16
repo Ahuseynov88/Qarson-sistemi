@@ -49,7 +49,7 @@ export class StaffApp {
       discountInfo: $('paymentDiscountInfo'), finalAmount: $('paymentFinalAmount'), discountRow: $('paymentDiscountRow'),
       cashSection: $('paymentCashSection'), splitSection: $('paymentSplitSection'),
       cashGiven: $('paymentCashGiven'), changeRow: $('paymentChangeRow'), change: $('paymentChange'), changeLabel: $('changeLabel'),
-      splitCash: $('splitCash'), splitPos: $('splitPos'), splitStatus: $('splitStatus'),
+      splitStatus: $('splitStatus'), splitInputsWrap: $('splitInputsWrap'),
       pt_cash: $('pt_cash'), pt_pos: $('pt_pos'), pt_split: $('pt_split'), customMethodsEl: $('paymentCustomMethods')
     });
 
@@ -70,6 +70,22 @@ export class StaffApp {
     // (göndərilmiş mallar bölməsi avtomatik yığılsın/açılsın deyə)
     document.addEventListener('order:draft-changed', () => {
       if (state.noteTableId) this.confirmedOrder.renderSummary(state.noteTableId);
+    });
+    // ESC: açıq modal varsa onu bağla (Ləğv düyməsini simulyasiya edərək - düzgün
+    // təmizləmə məntiqi işə düşsün deyə); heç nə açıq deyilsə, sifariş ekranından geri qayıt
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const openModal = document.querySelector('.modal-bg.open');
+      if (openModal) {
+        const closeCtrl = openModal.querySelector('[data-cancel], [data-close-audit], [data-close]')
+          || openModal.querySelector('button[onclick*="close" i]');
+        if (closeCtrl) closeCtrl.click();
+        else openModal.classList.remove('open');
+        return;
+      }
+      if ($('orderScreen')?.classList.contains('active')) {
+        $('orderScreen').querySelector('[data-close-order]')?.click();
+      }
     });
   }
 
@@ -140,8 +156,6 @@ export class StaffApp {
       btn.addEventListener('click', () => this.payment.selectType(btn.dataset.paymentType));
     });
     $('paymentCashGiven').addEventListener('input', () => this.payment.calcChange());
-    $('splitCash').addEventListener('input', () => this.payment.calcSplit());
-    $('splitPos').addEventListener('input', () => this.payment.calcSplit());
     $('paymentModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.payment.close());
     $('paymentModal').querySelector('[data-confirm-payment]')?.addEventListener('click', () => {
       this.payment.confirm((fullyPaid) => { if (fullyPaid) this.closeTableDetail(); });
@@ -171,19 +185,26 @@ export class StaffApp {
     const remaining = order?.total
       ? ((order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total)
       : 0;
-    if (canPay && order?.total > 0 && remaining > 0.01) {
+    if (canPay && order?.total > 0) {
       payBtn.style.display = 'flex';
-      payBtn.classList.toggle('partial', paid > 0);
-      $('notesPaymentAmount').textContent = remaining.toFixed(2) + ' ₼';
       const subEl = $('notesPaymentSub');
-      if (paid > 0) {
-        subEl.style.display = 'block';
-        subEl.textContent = `${paid.toFixed(2)} ₼ ödənilib, cəmi ${order.total.toFixed(2)} ₼`;
-      } else {
+      if (remaining <= 0.01) {
+        payBtn.classList.remove('partial');
+        payBtn.classList.add('paid');
+        $('notesPaymentAmount').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Ödənilib';
         subEl.style.display = 'none';
+      } else {
+        payBtn.classList.remove('paid');
+        payBtn.classList.toggle('partial', paid > 0);
+        $('notesPaymentAmount').textContent = remaining.toFixed(2) + ' ₼';
+        if (paid > 0) {
+          subEl.style.display = 'block';
+          subEl.textContent = `${paid.toFixed(2)} ₼ ödənilib, cəmi ${order.total.toFixed(2)} ₼`;
+        } else {
+          subEl.style.display = 'none';
+        }
       }
     } else {
-      // Hesab artıq tam ödənilibsə (qalıq 0) - təkrar ödəniş almağın qarşısı alınır
       payBtn.style.display = 'none';
     }
   }
@@ -251,10 +272,9 @@ export class StaffApp {
       this._closeCloseModal();
       return;
     }
-    // Müştəri tələblərini və söhbəti təmizlə (chat/customerRequests bu nüvənin hissəsi deyil,
-    // amma orfan məlumat qalmasın deyə burada təmizlənir)
-    db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).once('value', snap => { snap.forEach(child => child.ref.remove()); });
-    db.ref('chats/' + tableId).remove();
+    // Qeyd: masa bağlananda HEÇ BİR qeyd (müştəri tələbləri, söhbət tarixçəsi) silinmir -
+    // hamısı tarixi məlumat kimi qalır. Aktiv "gözləyən" siqnallar artıq status dəyişdirilərək
+    // (accept/resolve) söndürülür, ona görə köhnə masa açılanda yenidən görünmür.
     if (this.payment.payment.tableId === tableId) {
       this.payment.payment.paidAmount = 0;
       this.payment.payment.remainingAmount = 0;
