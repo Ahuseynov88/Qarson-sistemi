@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, toArr, showToast, addLog, formatItemsList } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList, stripTableName } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 
 export function renderPermissionCheckboxes(existingPerms = []) {
@@ -47,7 +47,6 @@ export function renderAdmin() {
   if (state.adminSection==='menu')      renderMenuItems();
   if (state.adminSection==='logs')      renderLogs();
   if (state.adminSection==='feedback')  renderFeedbackSection();
-  if (state.adminSection==='payments')  renderPayments();
   if (state.adminSection==='customers') renderCustomers();
   if (state.adminSection==='paymentMethods') renderPaymentMethods();
   if (state.adminSection==='closedOrders') renderClosedOrders();
@@ -811,77 +810,6 @@ export function printReport() {
   w.document.close();
 }
 
-export function renderPayments() {
-  const el = document.getElementById('paymentsList');
-  const statsEl = document.getElementById('paymentsStatsRow');
-  if (!el) return;
-
-  Promise.all([
-    new Promise(res => db.ref('payments').limitToLast(100).once('value', snap => res(snap.val()||{}))),
-    new Promise(res => db.ref('closedOrders').limitToLast(100).once('value', snap => res(snap.val()||{})))
-  ]).then(([paymentsData, closedData]) => {
-    const payments = Object.entries(paymentsData).map(([id,v])=>({id,...v,_type:'payment'}))
-      .sort((a,b)=>b.createdAt-a.createdAt);
-    const closed = Object.entries(closedData).map(([id,v])=>({id,...v,_type:'closed'}))
-      .sort((a,b)=>b.closedAt-a.closedAt);
-
-    const today = new Date().toLocaleDateString('az-AZ');
-    const todayP = payments.filter(p=>p.date===today);
-    const todayC = closed.filter(c=>c.closedDate===today);
-    const todayTotal = todayP.reduce((s,p)=>s+(p.finalAmount||0),0);
-    const todayTableTotal = todayC.reduce((s,c)=>s+(c.total||0),0);
-    const totalAll = payments.reduce((s,p)=>s+(p.finalAmount||0),0);
-
-    if (statsEl) statsEl.innerHTML = `
-      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${todayTotal.toFixed(0)}₼</div><div class="stat-label">Bu gün ödəniş</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${todayC.length}</div><div class="stat-label">Bağlanan masa</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${todayTableTotal.toFixed(0)}₼</div><div class="stat-label">Masa cəmi</div></div>
-      <div class="stat-card"><div class="stat-num" style="font-size:20px;">${totalAll.toFixed(0)}₼</div><div class="stat-label">Ümumi</div></div>`;
-
-    const typeNames={cash:'<svg class="icon"><use href="#i-cash"></use></svg> Nağd',pos:'<svg class="icon"><use href="#i-card"></use></svg> POS',credit:'<svg class="icon"><use href="#i-clipboard"></use></svg> Nisyə',split:'<svg class="icon"><use href="#i-scissors"></use></svg> Bölünmüş'};
-    const typeColors={cash:'var(--green)',pos:'var(--blue)',credit:'var(--orange)',split:'var(--purple)'};
-
-    const payHtml = payments.slice(0,30).map(p=>{
-      const disc = p.discountValue ?
-        `<span class="discount-badge">${p.discountType==='percent'?p.discountValue+'%':p.discountValue.toFixed(2)+'₼'}</span> ` : '';
-      const typeDisplay = typeNames[p.type] || (p.typeLabel ? `<svg class="icon"><use href="#i-card"></use></svg> ${esc(p.typeLabel)}` : esc(p.type||'?'));
-      return `<div class="log-item">
-        <span class="log-badge" style="background:${typeColors[p.type]||'var(--blue)'}22;color:${typeColors[p.type]||'var(--blue)'}">${typeDisplay}</span>
-        <span class="log-text">${esc(p.tableName||'?')} ${disc}— ${esc(p.staffName||'?')}</span>
-        <span class="log-time" style="text-align:right;">
-          <strong style="color:var(--green);font-size:14px;">${(p.finalAmount||0).toFixed(2)} ₼</strong><br>
-          <small>${p.time||''} ${p.date||''}</small>
-        </span>
-      </div>`;
-    }).join('');
-
-    const closedHtml = closed.slice(0,30).map(c=>`
-      <div class="log-item">
-        <span class="log-badge" style="background:rgba(142,68,173,.15);color:var(--purple)"><svg class="icon"><use href="#i-chair"></use></svg> MASA</span>
-        <span class="log-text">${esc(c.tableName||'?')} — ${esc(c.staffName||'?')}</span>
-        <span class="log-time" style="text-align:right;">
-          <strong style="color:var(--purple);font-size:14px;">${(c.total||0).toFixed(2)} ₼</strong><br>
-          <small>${c.closedTime||''} ${c.closedDate||''}</small>
-        </span>
-      </div>`).join('');
-
-    el.innerHTML = `
-      ${payments.length ? `<h4 style="font-size:12px;text-transform:uppercase;color:var(--text2);margin:0 0 10px;"><svg class="icon"><use href="#i-money"></use></svg> Ödənişlər</h4>${payHtml}` : ''}
-      ${closed.length ? `<h4 style="font-size:12px;text-transform:uppercase;color:var(--text2);margin:16px 0 10px;"><svg class="icon"><use href="#i-chair"></use></svg> Bağlanan Masalar</h4>${closedHtml}` : ''}
-      ${!payments.length && !closed.length ? '<p style="color:var(--text3);padding:16px;">Hələ heç bir qeyd yoxdur.</p>' : ''}`;
-  });
-}
-
-export function clearOldPayments() {
-  if (!confirm('30 gündən köhnə ödəniş qeydləri silinsin?')) return;
-  const cutoff = Date.now()-30*24*60*60*1000;
-  db.ref('payments').once('value', snap=>{
-    let n=0;
-    snap.forEach(child=>{ if((child.val().createdAt||0)<cutoff){child.ref.remove();n++;} });
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${n} köhnə ödəniş silindi`);
-  });
-}
-
 // Mövcud HTML-də onclick="..."/onchange="..." istifadə olunan funksiyalar qlobal əlçatan olmalıdır
 /* ═══════════════════════════════════════════
    MÜŞTƏRİLƏR (NİSYƏ HESABI)
@@ -1084,18 +1012,33 @@ export function renderClosedOrders() {
 export function viewClosedOrderHistory(id) {
   const o = state.closedOrders.find(x => x.id === id);
   if (!o) return;
-  document.getElementById('tableAuditTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)} — Bağlanmış Sessiya (${o.closedDate})`;
+  document.getElementById('tableAuditTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)} — Bağlanmış Sessiya`;
   const list = document.getElementById('tableAuditList');
   const sessionLog = o.sessionLog || [];
+
+  const summaryHtml = `<div class="audit-summary-header">
+    <div class="audit-summary-header__block">
+      <span class="audit-summary-header__label">Bağlanma tarixi</span>
+      <span class="audit-summary-header__value">${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</span>
+    </div>
+    <div class="audit-summary-header__block" style="align-items:flex-end;">
+      <span class="audit-summary-header__label">Cəmi</span>
+      <span class="audit-summary-header__value total">${(o.total||0).toFixed(2)} ₼</span>
+    </div>
+  </div>`;
+
   if (!sessionLog.length) {
-    list.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Bu sessiya üçün tarixçə qeydi yoxdur.</p>';
+    list.innerHTML = summaryHtml + '<p style="color:var(--text3);padding:16px 0;text-align:center;">Bu sessiya üçün tarixçə qeydi yoxdur.</p>';
   } else {
-    list.innerHTML = sessionLog.map(l => `
+    const rows = sessionLog.map(l => `
       <div class="audit-timeline-item">
-        <div class="audit-timeline-text">${esc(l.message)}</div>
-        <div class="audit-timeline-time">${l.time} — ${l.date}</div>
+        <div class="audit-timeline-time">${esc(l.time||'')}</div>
+        <div class="audit-timeline-text">${esc(stripTableName(l.message, o.tableName))}</div>
       </div>
     `).join('');
+    list.innerHTML = summaryHtml +
+      `<div class="audit-table-head"><span class="audit-table-head__time">Saat</span><span>Əməliyyat</span></div>` +
+      rows;
   }
   document.getElementById('tableAuditModal').classList.add('open');
 }
@@ -1124,7 +1067,6 @@ window.adminTab = adminTab;
 window.applyPermissionPreset = applyPermissionPreset;
 window.clearOldFeedbacks = clearOldFeedbacks;
 window.clearOldLogs = clearOldLogs;
-window.clearOldPayments = clearOldPayments;
 window.closeAddModal = closeAddModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
 window.closeKitchenPinModal = closeKitchenPinModal;
