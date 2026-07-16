@@ -15,6 +15,25 @@ export function formatItemsList(items) {
   return arr.map(it => `${it.qty}x ${it.name}`).join(', ');
 }
 
+// Masaya aid tarixçə görünüşündə eyni masanın adının təkrarlanmasının qarşısını alır
+// (məs. "Admin Əli "Kabinet 2" masası üçün hesab çap etdi" → "Admin Əli hesab çap etdi",
+// çünki artıq "Kabinet 2"-nin öz tarixçəsinə baxırıq, təkrar yazmağa ehtiyac yoxdur).
+export function stripTableName(message, tableName) {
+  if (!tableName) return message;
+  const q = `"${tableName}"`;
+  const patterns = [
+    `${q} masası üçün `, `${q} masasında `, `${q} masasından `, `${q} masasının `,
+    `${q} masasını açdı`, `${q} masasını bağladı`,
+  ];
+  for (const p of patterns) {
+    if (message.includes(p)) {
+      const verb = p.endsWith('açdı') ? 'açdı' : p.endsWith('bağladı') ? 'bağladı' : null;
+      return (verb ? message.replace(p, verb) : message.replace(p, '')).trim();
+    }
+  }
+  return message;
+}
+
 export function toArr(obj) {
   if (!obj) return [];
   return Object.keys(obj).map(k => ({ id: k, ...obj[k] }));
