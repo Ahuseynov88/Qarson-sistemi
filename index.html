@@ -73,7 +73,6 @@
       <button class="admin-tab" onclick="adminTab('logs',this)"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
       <button class="admin-tab" onclick="adminTab('settings',this)"><svg class="icon"><use href="#i-settings"></use></svg> Ayarlar</button>
       <button class="admin-tab" onclick="adminTab('feedback',this)"><svg class="icon"><use href="#i-chat"></use></svg> Şikayətlər</button>
-      <button class="admin-tab" onclick="adminTab('payments',this)"><svg class="icon"><use href="#i-money"></use></svg> Ödənişlər</button>
       <button class="admin-tab" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
       <button class="admin-tab" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
       <button class="admin-tab" onclick="adminTab('closedOrders',this)"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</button>
@@ -130,17 +129,6 @@
         </div>
       </div>
     </div>
-    <div class="admin-section" id="sec-payments">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-        <h3 style="color:var(--text2);font-size:14px;text-transform:uppercase;">Ödəniş Tarixçəsi</h3>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-blue" style="padding:8px 16px;font-size:12px;" onclick="generateDailyReport()"><svg class="icon"><use href="#i-chart"></use></svg> Gün Hesabatı</button>
-          <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldPayments()"><svg class="icon"><use href="#i-trash"></use></svg> Köhnəni Sil</button>
-        </div>
-      </div>
-      <div id="paymentsStatsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
-      <div id="paymentsList" class="log-list"></div>
-    </div>
     <div class="admin-section" id="sec-customers">
       <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Nisyə (kredit hesabı) ilə xidmət etdiyiniz müştərilər. Qarson masadan mal seçib bu müştərilərin adına köçürə bilər.</p>
       <div class="grid-2" id="customersGrid"></div>
@@ -150,7 +138,10 @@
       <div class="grid-2" id="paymentMethodsGrid"></div>
     </div>
     <div class="admin-section" id="sec-closedOrders">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Bağlanan masaların tarixçəsi. Yanlışlıqla bağlanmış masanı bərpa edə bilərsiniz (yalnız hazırda boş olan masalar üçün).</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <p style="font-size:13px;color:var(--text2);margin:0;max-width:480px;">Bağlanan masaların ətraflı tarixçəsi (ödəniş, endirim, ikram və s. daxil). Yanlışlıqla bağlanmış masanı bərpa edə bilərsiniz.</p>
+        <button class="btn btn-blue" style="padding:8px 16px;font-size:12px;flex-shrink:0;" onclick="generateDailyReport()"><svg class="icon"><use href="#i-chart"></use></svg> Gün Hesabatı</button>
+      </div>
       <div id="closedOrdersList" class="log-list"></div>
     </div>
     <div class="admin-section" id="sec-feedback">
@@ -246,7 +237,7 @@
   <div class="modal" style="max-width:320px;text-align:center;">
     <div style="font-size:48px;margin-bottom:12px;"><svg class="icon"><use href="#i-lock"></use></svg></div>
     <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Qeydlər silinəcək.</p>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Bütün tarixçə arxivə köçürüləcək.</p>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-close><svg class="icon"><use href="#i-lock"></use></svg> Masanı Bağla</button>
@@ -286,7 +277,6 @@
       <div class="ticket-panel" id="ticketPanelCol">
       <div class="ticket-header" style="display:flex;justify-content:space-between;align-items:center;">
         <span class="ticket-header__title" id="ticketTableName">Bilet</span>
-        <button data-open-audit style="background:none;border:1px solid var(--border);border-radius:8px;width:30px;height:30px;flex-shrink:0;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;"><svg class="icon" style="width:15px;height:15px;"><use href="#i-clipboard"></use></svg></button>
       </div>
       <div class="ticket-body">
         <div id="noteOrderSummary"></div>
@@ -307,16 +297,13 @@
           </span>
         </button>
 
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-          <button id="notesDiscountBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim (bütün hesab)</button>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-          <button id="notesCustomerChargeBtn" class="btn" style="display:none;flex:1;padding:8px;font-size:12px;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Yaz</button>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:12px;" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
-          <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;flex:1;padding:8px;font-size:12px;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
-          <button id="notesCloseTableBtn" class="btn btn-ghost" style="display:none;flex:1;padding:8px;font-size:12px;color:var(--red);" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Bağla</button>
+        <div class="ticket-action-grid">
+          <button id="notesDiscountBtn" class="btn" style="display:none;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
+          <button id="notesCustomerChargeBtn" class="btn" style="display:none;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Yaz</button>
+          <button class="btn" style="border:1px solid var(--border);color:var(--text2);" data-open-audit><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
+          <button class="btn btn-ghost" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
+          <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
+          <button id="notesCloseTableBtn" class="btn btn-ghost" style="display:none;color:var(--red);" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Bağla</button>
         </div>
         <textarea id="noteText" class="notes-area" rows="1" placeholder="Masa qeydi (məs: doğum günü)..." style="min-height:34px;font-size:12px;margin-top:8px;"></textarea>
       </div>
@@ -478,15 +465,9 @@
       </div>
     </div>
     <div id="paymentSplitSection" style="display:none;">
-      <div class="form-group">
-        <label>Nağd hissə (₼)</label>
-        <input type="number" id="splitCash" min="0" step="0.01" placeholder="0.00" >
-      </div>
-      <div class="form-group">
-        <label>POS hissə (₼)</label>
-        <input type="number" id="splitPos" min="0" step="0.01" placeholder="0.00" >
-      </div>
-      <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:-8px;"></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Məbləği ödəniş növləri arasında bölün:</p>
+      <div id="splitInputsWrap"></div>
+      <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:6px;"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button class="btn btn-ghost" style="flex:1;padding:14px;" data-cancel>Ləğv</button>
