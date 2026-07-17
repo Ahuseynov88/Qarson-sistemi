@@ -122,7 +122,7 @@ export class StaffApp {
 
     // Endirim modalı
     $('discountModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeDiscountModal());
-    $('discountModal').querySelector('[data-apply-discount]')?.addEventListener('click', () => this.confirmedOrder.applyDiscount(this.payment.payment));
+    $('discountModal').querySelector('[data-apply-discount]')?.addEventListener('click', () => this.confirmedOrder.applyDiscount());
     $('disc_pct_btn').addEventListener('click', () => this.confirmedOrder.setDiscountType('percent'));
     $('disc_fix_btn').addEventListener('click', () => this.confirmedOrder.setDiscountType('fixed'));
     $('discountValue').addEventListener('input', () => this.confirmedOrder.previewDiscount());
