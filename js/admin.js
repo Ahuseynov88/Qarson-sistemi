@@ -980,67 +980,178 @@ export function deletePaymentMethod(id) {
 /* ═══════════════════════════════════════════
    BAĞLANAN MASALAR (TARİXÇƏ + BƏRPA)
 ═══════════════════════════════════════════ */
-export function renderClosedOrders() {
-  const el = document.getElementById('closedOrdersList');
-  if (!el) return;
-  if (!state.closedOrders || !state.closedOrders.length) {
-    el.innerHTML = '<p style="color:var(--text3);padding:16px;">Hələ bağlanan masa qeydə alınmayıb.</p>';
-    return;
-  }
-  const isAdmin = state.user?.role === 'admin';
-  el.innerHTML = state.closedOrders.slice(0,100).map(o => {
-    const itemsSummary = Object.values(o.items||{}).map(it=>`${it.qty}x ${it.name}`).join(', ');
-    const t = state.tables.find(x=>x.id===o.tableId);
-    const canRestore = isAdmin && t && !t.occupant;
-    return `<div class="log-item" style="align-items:flex-start;">
-      <span class="log-badge" style="background:#3498db22;color:#3498db;">MASA</span>
-      <span class="log-text">
-        <strong>${esc(o.tableName)}</strong> — ${esc(o.staffName)} bağladı — <strong style="color:var(--green);">${(o.total||0).toFixed(2)} ₼</strong>
-        ${itemsSummary ? `<br><small style="color:var(--text3);">${esc(itemsSummary)}</small>` : ''}
-      </span>
-      <span class="log-time" style="text-align:right;">
-        ${o.closedTime||''} ${o.closedDate||''}<br>
-        <button class="btn" style="padding:4px 10px;font-size:11px;margin-top:4px;border:1px solid var(--border);color:var(--text2);" onclick="viewClosedOrderHistory('${o.id}')"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
-        ${canRestore
-          ? `<button class="btn btn-blue" style="padding:4px 10px;font-size:11px;margin-top:4px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>`
-          : (isAdmin ? `<small style="color:var(--text3);display:block;margin-top:2px;">${t?.occupant ? 'Masa dolu' : ''}</small>` : '')}
-      </span>
-    </div>`;
-  }).join('');
+// Bağlanmış masaya aid ödəniş qeydlərini tapır (sessionId ilə dəqiq uyğunlaşdırma)
+function getOrderPayments(o) {
+  if (!o.sessionId) return [];
+  return (state.payments || []).filter(p => p.sessionId === o.sessionId);
 }
 
-export function viewClosedOrderHistory(id) {
-  const o = state.closedOrders.find(x => x.id === id);
-  if (!o) return;
-  document.getElementById('tableAuditTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)} — Bağlanmış Sessiya`;
-  const list = document.getElementById('tableAuditList');
-  const sessionLog = o.sessionLog || [];
+export function renderClosedOrders() {
+  const listEl = document.getElementById('closedOrdersList');
+  const detailEl = document.getElementById('ctDetailPanel');
+  const reportEl = document.getElementById('ctReportSummary');
+  if (!listEl || !detailEl) return;
+  const all = state.closedOrders || [];
 
-  const summaryHtml = `<div class="audit-summary-header">
-    <div class="audit-summary-header__block">
-      <span class="audit-summary-header__label">Bağlanma tarixi</span>
-      <span class="audit-summary-header__value">${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</span>
-    </div>
-    <div class="audit-summary-header__block" style="align-items:flex-end;">
-      <span class="audit-summary-header__label">Cəmi</span>
-      <span class="audit-summary-header__value total">${(o.total||0).toFixed(2)} ₼</span>
-    </div>
-  </div>`;
-
-  if (!sessionLog.length) {
-    list.innerHTML = summaryHtml + '<p style="color:var(--text3);padding:16px 0;text-align:center;">Bu sessiya üçün tarixçə qeydi yoxdur.</p>';
-  } else {
-    const rows = sessionLog.map(l => `
-      <div class="audit-timeline-item">
-        <div class="audit-timeline-time">${esc(l.time||'')}</div>
-        <div class="audit-timeline-text">${esc(stripTableName(l.message, o.tableName))}</div>
-      </div>
-    `).join('');
-    list.innerHTML = summaryHtml +
-      `<div class="audit-table-head"><span class="audit-table-head__time">Saat</span><span>Əməliyyat</span></div>` +
-      rows;
+  // Filtr seçimlərini bir dəfə doldur (seçim itməsin deyə)
+  const staffSel = document.getElementById('ctStaffFilter');
+  const openedSel = document.getElementById('ctOpenedByFilter');
+  const payTypeSel = document.getElementById('ctPaymentTypeFilter');
+  if (staffSel && staffSel.dataset.filled !== 'true') {
+    const names = Array.from(new Set(all.map(o => o.staffName).filter(Boolean))).sort();
+    staffSel.innerHTML = '<option value="">Hamısı</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    staffSel.dataset.filled = 'true';
   }
-  document.getElementById('tableAuditModal').classList.add('open');
+  if (openedSel && openedSel.dataset.filled !== 'true') {
+    const names = Array.from(new Set(all.map(o => o.openedByName).filter(Boolean))).sort();
+    openedSel.innerHTML = '<option value="">Hamısı</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    openedSel.dataset.filled = 'true';
+  }
+  if (payTypeSel && payTypeSel.dataset.filled !== 'true') {
+    const built = [['cash','Nağd'],['pos','POS'],['split','Bölünmüş']];
+    const custom = (state.paymentMethods||[]).map(pm => [pm.id, pm.name]);
+    payTypeSel.innerHTML = '<option value="">Hamısı</option>' + built.concat(custom).map(([id,name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('');
+    payTypeSel.dataset.filled = 'true';
+  }
+
+  const q = (document.getElementById('ctSearchInput')?.value || '').trim().toLowerCase();
+  const dateFrom = document.getElementById('ctDateFrom')?.value || '';
+  const dateTo = document.getElementById('ctDateTo')?.value || '';
+  const staffFilter = document.getElementById('ctStaffFilter')?.value || '';
+  const openedFilter = document.getElementById('ctOpenedByFilter')?.value || '';
+  const payTypeFilter = document.getElementById('ctPaymentTypeFilter')?.value || '';
+  const sortMode = document.getElementById('ctSortSelect')?.value || 'newest';
+
+  let filtered = all.filter(o => {
+    if (q) {
+      const nameMatch = (o.tableName||'').toLowerCase().includes(q);
+      const itemMatch = Object.values(o.items||{}).some(it => (it.name||'').toLowerCase().includes(q));
+      if (!nameMatch && !itemMatch) return false;
+    }
+    if (staffFilter && o.staffName !== staffFilter) return false;
+    if (openedFilter && o.openedByName !== openedFilter) return false;
+    if (dateFrom && o.closedAt < new Date(dateFrom).setHours(0,0,0,0)) return false;
+    if (dateTo && o.closedAt > new Date(dateTo).setHours(23,59,59,999)) return false;
+    if (payTypeFilter) {
+      const pays = getOrderPayments(o);
+      if (!pays.some(p => p.type === payTypeFilter)) return false;
+    }
+    return true;
+  });
+  filtered.sort((a,b) => {
+    if (sortMode === 'oldest') return (a.closedAt||0) - (b.closedAt||0);
+    if (sortMode === 'amount_desc') return (b.total||0) - (a.total||0);
+    if (sortMode === 'amount_asc') return (a.total||0) - (b.total||0);
+    return (b.closedAt||0) - (a.closedAt||0);
+  });
+
+  // ── Hesabat xülasəsi (filtrlənmiş nəticələr üçün) ──
+  if (reportEl) {
+    const totalRevenue = filtered.reduce((s,o)=>s+(o.total||0),0);
+    const typeBreakdown = {};
+    filtered.forEach(o => {
+      getOrderPayments(o).forEach(p => {
+        const key = p.typeLabel || p.type;
+        typeBreakdown[key] = (typeBreakdown[key]||0) + (p.thisPay||0);
+      });
+    });
+    const breakdownEntries = Object.entries(typeBreakdown);
+    reportEl.innerHTML = `<div class="ct-report">
+      <div class="ct-report__stats">
+        <div><div class="ct-report__stat-label">Bağlanan masa</div><div class="ct-report__stat-value">${filtered.length}</div></div>
+        <div><div class="ct-report__stat-label">Ümumi məbləğ</div><div class="ct-report__stat-value" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div></div>
+        <div><div class="ct-report__stat-label">Orta çek</div><div class="ct-report__stat-value">${(filtered.length?totalRevenue/filtered.length:0).toFixed(2)} ₼</div></div>
+      </div>
+      ${breakdownEntries.length ? `<div class="ct-report__breakdown">
+        ${breakdownEntries.map(([label,amount]) => `<div class="ct-report__type-chip"><b>${esc(label)}</b> ${amount.toFixed(2)} ₼</div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }
+
+  if (!filtered.length) {
+    listEl.innerHTML = '<p class="ct-list-empty">Filtrə uyğun bağlanan masa tapılmadı.</p>';
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-clipboard"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
+    return;
+  }
+
+  // Seçili qeyd filtrdən sonra da mövcuddursa saxlanılır, əks halda ilk nəticə seçilir
+  if (!filtered.find(o => o.id === state._selectedClosedOrderId)) {
+    state._selectedClosedOrderId = filtered[0].id;
+  }
+
+  listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.slice(0,150).map(o => `
+    <div class="ct-list-item ${o.id===state._selectedClosedOrderId?'active':''}" onclick="selectClosedOrder('${o.id}')">
+      <div class="ct-list-item__top">
+        <span class="ct-list-item__name">${esc(o.tableName)}</span>
+        <span class="ct-list-item__amount">${(o.total||0).toFixed(2)} ₼</span>
+      </div>
+      <div class="ct-list-item__meta">${esc(o.staffName||'')} · ${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</div>
+    </div>
+  `).join('');
+
+  const selected = filtered.find(o => o.id === state._selectedClosedOrderId);
+  renderClosedOrderDetail(selected);
+}
+
+export function selectClosedOrder(id) {
+  state._selectedClosedOrderId = id;
+  renderClosedOrders();
+}
+
+function renderClosedOrderDetail(o) {
+  const detailEl = document.getElementById('ctDetailPanel');
+  if (!detailEl || !o) return;
+  const isAdmin = state.user?.role === 'admin';
+  const t = state.tables.find(x => x.id === o.tableId);
+  const canRestore = isAdmin && t && !t.occupant;
+  const sessionLog = o.sessionLog || [];
+  const firstEntry = sessionLog[0];
+  const payments = getOrderPayments(o);
+
+  const itemsHtml = Object.values(o.items||{}).map(it => `
+    <div class="ct-detail-item-row">
+      <span>${it.qty}x ${esc(it.name)}${it.compliment?' <span style="color:var(--green);font-size:11px;">(İKRAM)</span>':''}</span>
+      <span style="font-weight:600;">${((it.price||0)*it.qty*(1-((it.discountPercent||0)/100))+(it.extraFee||0)).toFixed(2)} ₼</span>
+    </div>
+  `).join('') || '<p style="color:var(--text3);font-size:13px;">Mal qeydi yoxdur.</p>';
+
+  const paymentsHtml = payments.length ? payments.map(p => `
+    <div class="ct-detail-item-row">
+      <span><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-card"></use></svg> ${esc(p.typeLabel||p.type)} — ${esc(p.staffName||'')}</span>
+      <span style="font-weight:600;color:var(--green);">${(p.thisPay||0).toFixed(2)} ₼</span>
+    </div>
+  `).join('') : '<p style="color:var(--text3);font-size:13px;">Ödəniş qeydi tapılmadı (köhnə sessiya ola bilər).</p>';
+
+  const historyHtml = sessionLog.length ? sessionLog.map(l => `
+    <div class="audit-timeline-item">
+      <div class="audit-timeline-time">${esc(l.time||'')}</div>
+      <div class="audit-timeline-text">${esc(stripTableName(l.message, o.tableName))}</div>
+    </div>
+  `).join('') : '<p style="color:var(--text3);font-size:13px;">Tarixçə qeydi yoxdur.</p>';
+
+  detailEl.innerHTML = `
+    <div class="ct-detail-header">
+      <span><svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)}</span>
+      <span style="font-size:22px;font-weight:800;color:var(--green);">${(o.total||0).toFixed(2)} ₼</span>
+    </div>
+    <div class="ct-detail-info-grid">
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Açılış</div><div class="ct-detail-info-block__value">${esc(firstEntry?`${firstEntry.date} ${firstEntry.time}`:'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Bağlanış</div><div class="ct-detail-info-block__value">${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Açan</div><div class="ct-detail-info-block__value">${esc(o.openedByName||'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Bağlayan</div><div class="ct-detail-info-block__value">${esc(o.staffName||'—')}</div></div>
+    </div>
+    <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-food"></use></svg> Sifariş Edilən Mallar</div>
+    ${itemsHtml}
+    <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-money"></use></svg> Ödəmələr</div>
+    ${paymentsHtml}
+    <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Sessiya Tarixçəsi</div>
+    <div class="audit-timeline">${historyHtml}</div>
+    <div class="ct-detail-actions">
+      ${canRestore
+        ? `<button class="btn btn-blue" style="flex:1;padding:11px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>`
+        : (isAdmin && t?.occupant ? `<span style="font-size:12px;color:var(--text3);padding:11px 0;">Masa hazırda dolu olduğu üçün bərpa edilə bilməz</span>` : '')}
+    </div>
+  `;
 }
 
 export function restoreClosedOrder(id) {
@@ -1102,6 +1213,7 @@ window.deleteCustomer = deleteCustomer;
 window.editPaymentMethod = editPaymentMethod;
 window.deletePaymentMethod = deletePaymentMethod;
 window.restoreClosedOrder = restoreClosedOrder;
-window.viewClosedOrderHistory = viewClosedOrderHistory;
+window.selectClosedOrder = selectClosedOrder;
+window.renderClosedOrders = renderClosedOrders;
 window.openCustomerHistoryModal = openCustomerHistoryModal;
 window.closeCustomerHistoryModal = closeCustomerHistoryModal;
