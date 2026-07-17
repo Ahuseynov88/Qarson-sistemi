@@ -274,60 +274,52 @@ export class ConfirmedOrder {
       </div>`;
   }
 
-  applyDiscount(paymentState) {
+  applyDiscount() {
     const val = parseFloat(this.els.discountValue.value) || 0;
     if (!val) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Endirim dəyəri daxil edin'); return; }
     const tableId = this._discountTableId;
     const order = state.tableOrders[tableId];
     const t = state.tables.find(x => x.id === tableId);
-    if (!order) return;
+    if (!order || !order.items) return;
 
-    const selection = this._discountSelection;
+    // Seçim yoxdursa - BÜTÜN mallar seçilmiş kimi qəbul olunur, eyni etibarlı (Firebase transaction)
+    // yolla tətbiq edilir ki, endirim REAL olaraq hesabı azaltsın, sadəcə ödəniş pəncərəsində görünməsin.
+    const selKeys0 = Object.keys(this._discountSelection);
+    const isWholeTable = !selKeys0.length;
+    const selection = isWholeTable
+      ? Object.fromEntries(Object.entries(order.items).map(([k, it]) => [k, it.qty]))
+      : this._discountSelection;
     const selKeys = Object.keys(selection);
+    if (!selKeys.length) return;
 
-    if (selKeys.length) {
-      const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=selection[k]; return it ? s+(it.price*q)+(it.extraFee||0)*(q/it.qty) : s; },0);
-      if (this._discountType==='percent' && val>100) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Faiz 100-dən çox ola bilməz'); return; }
-      if (this._discountType==='fixed' && val>=subtotal) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim seçilmiş malların cəmindən çox ola bilməz'); return; }
-      const equivPercent = this._discountType==='percent' ? val : (val/subtotal*100);
-      let appliedQty = 0;
-      let appliedItemsList = [];
-
-      R.tableOrders.child(tableId).transaction(current => {
-        if (!current || !current.items) return current;
-        const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
-        targetKeys.forEach(k => { if (items[k]) items[k] = { ...items[k], discountPercent: Math.round(equivPercent*100)/100 }; });
-        let total = 0;
-        Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
-        const paidAmount = current.paidAmount || 0;
-        appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
-        appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
-        return { ...current, items, total, remainingAmount: total - paidAmount };
-      }, (error, committed) => {
-        if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
-        if (!committed) return;
-        const discStr = this._discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
-        addLog('order', `${state.user.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} mallarına ${discStr} endirim verdi`, { tableId });
-        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${appliedQty} ədədə endirim tətbiq edildi`);
-        this.clearBatchSelection();
-        this.renderSummary(tableId);
-      });
-      this.closeDiscountModal();
-      return;
-    }
-
-    // Seçim yoxdursa - bütün hesaba, ödəniş anında tətbiq olunur
+    const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=selection[k]; return it ? s+(it.price*q)+(it.extraFee||0)*(q/it.qty) : s; },0);
     if (this._discountType==='percent' && val>100) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Faiz 100-dən çox ola bilməz'); return; }
-    if (this._discountType==='fixed' && val>=order.total) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim məbləğdən çox ola bilməz'); return; }
-    const final = this._discountType==='percent' ? order.total*(1-val/100) : order.total-val;
-    paymentState.discountType = this._discountType;
-    paymentState.discountValue = val;
-    paymentState.originalTotal = order.total;
-    paymentState.finalTotal = final;
-    paymentState.tableId = tableId;
-    const discStr = this._discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
-    addLog('order', `${state.user.name} "${t?.name}" masasına ${discStr} endirim verdi (bütün hesab)`, { tableId });
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> Endirim tətbiq edildi: ${discStr}`);
+    if (this._discountType==='fixed' && val>=subtotal) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim məbləğdən çox ola bilməz'); return; }
+    const equivPercent = this._discountType==='percent' ? val : (val/subtotal*100);
+    let appliedQty = 0;
+    let appliedItemsList = [];
+
+    R.tableOrders.child(tableId).transaction(current => {
+      if (!current || !current.items) return current;
+      const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
+      targetKeys.forEach(k => { if (items[k]) items[k] = { ...items[k], discountPercent: Math.round(equivPercent*100)/100 }; });
+      let total = 0;
+      Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const paidAmount = current.paidAmount || 0;
+      appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
+      appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
+      return { ...current, items, total, remainingAmount: total - paidAmount };
+    }, (error, committed) => {
+      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
+      if (!committed) return;
+      const discStr = this._discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
+      addLog('order', isWholeTable
+        ? `${state.user.name} "${t?.name}" masasına ${discStr} endirim verdi (bütün hesab)`
+        : `${state.user.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} mallarına ${discStr} endirim verdi`, { tableId });
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> Endirim tətbiq edildi: ${discStr}`);
+      this.clearBatchSelection();
+      this.renderSummary(tableId);
+    });
     this.closeDiscountModal();
   }
 
@@ -658,8 +650,8 @@ export class ConfirmedOrder {
       });
       R.tableOrders.child(fromId).remove();
     }
-    R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now(), sessionId });
-    R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null });
+    R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now(), sessionId, openedById: fromT?.openedById||null, openedByName: fromT?.openedByName||null });
+    R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
     addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü: ${formatItemsList(order?.items||{})}`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
@@ -723,7 +715,24 @@ export class PaymentProcessor {
 
     this.els.pt_cash.style.display = hasPermission('bill.payment_cash') ? '' : 'none';
     this.els.pt_pos.style.display = hasPermission('bill.payment_pos') ? '' : 'none';
-    this.els.pt_split.style.display = (hasPermission('bill.payment_cash') && hasPermission('bill.payment_pos')) ? '' : 'none';
+    this.els.pt_split.style.display = (hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos')) ? '' : 'none';
+
+    // Bölünmüş ödəniş üçün mövcud BÜTÜN ödəniş növləri (Nağd + POS + admin tərəfindən yaradılmış əlavələr)
+    this._splitMethods = [];
+    if (hasPermission('bill.payment_cash')) this._splitMethods.push({ id: 'cash', name: 'Nağd' });
+    if (hasPermission('bill.payment_pos')) {
+      this._splitMethods.push({ id: 'pos', name: 'POS' });
+      (state.paymentMethods||[]).forEach(pm => this._splitMethods.push({ id: pm.id, name: pm.name }));
+    }
+    this.els.splitInputsWrap.innerHTML = this._splitMethods.map(m => `
+      <div class="form-group">
+        <label>${esc(m.name)} (₼)</label>
+        <input type="number" class="split-method-input" data-split-method="${m.id}" min="0" step="0.01" placeholder="0.00">
+      </div>
+    `).join('');
+    this.els.splitInputsWrap.querySelectorAll('.split-method-input').forEach(inp => {
+      inp.addEventListener('input', () => this.calcSplit());
+    });
 
     // Admin panelində yaradılmış əlavə ödəniş növləri (adi POS kimi - tam məbləğ, xüsusi sahə yoxdur)
     if (this.els.customMethodsEl) {
@@ -746,6 +755,7 @@ export class PaymentProcessor {
     document.querySelectorAll('.payment-type-btn').forEach(b => b.classList.toggle('selected', b.dataset.paymentType === type));
     this.els.cashSection.style.display = type==='cash' ? 'block' : 'none';
     this.els.splitSection.style.display = type==='split' ? 'block' : 'none';
+    if (type === 'split') this.calcSplit();
   }
 
   calcChange() {
@@ -761,13 +771,19 @@ export class PaymentProcessor {
     }
   }
 
+  _splitTotal() {
+    let sum = 0;
+    this.els.splitInputsWrap.querySelectorAll('.split-method-input').forEach(inp => { sum += parseFloat(inp.value) || 0; });
+    return Math.round(sum * 100) / 100;
+  }
+
   calcSplit() {
-    const cash = parseFloat(this.els.splitCash.value) || 0;
-    const pos = parseFloat(this.els.splitPos.value) || 0;
-    const diff = cash + pos - this.payment.finalTotal;
+    const sum = this._splitTotal();
+    const remaining = this.payment.remainingAmount > 0 ? this.payment.remainingAmount : this.payment.finalTotal;
+    const diff = sum - remaining;
     if (Math.abs(diff) < 0.01) { this.els.splitStatus.innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Düzgündür'; this.els.splitStatus.style.color = 'var(--green)'; }
-    else if (diff > 0) { this.els.splitStatus.innerHTML = `<svg class="icon"><use href="#i-warning"></use></svg> ${diff.toFixed(2)} ₼ artıqdır`; this.els.splitStatus.style.color = 'var(--orange)'; }
-    else { this.els.splitStatus.innerHTML = `<svg class="icon"><use href="#i-error"></use></svg> ${Math.abs(diff).toFixed(2)} ₼ çatışmır`; this.els.splitStatus.style.color = 'var(--red)'; }
+    else if (diff > 0) { this.els.splitStatus.innerHTML = `<svg class="icon"><use href="#i-warning"></use></svg> ${diff.toFixed(2)} ₼ artıqdır (qalıqdan çoxdur)`; this.els.splitStatus.style.color = 'var(--red)'; }
+    else { this.els.splitStatus.innerHTML = `<svg class="icon"><use href="#i-warning"></use></svg> ${Math.abs(diff).toFixed(2)} ₼ çatışmır`; this.els.splitStatus.style.color = 'var(--orange)'; }
   }
 
   confirm(onSettled) {
@@ -778,16 +794,21 @@ export class PaymentProcessor {
     const remaining = p.remainingAmount > 0 ? p.remainingAmount : p.finalTotal;
 
     let thisPay = 0;
+    let splitBreakdown = null;
     if (p.type === 'cash') {
       const given = parseFloat(this.els.cashGiven.value) || 0;
       if (given <= 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Məbləğ daxil edin'); return; }
-      thisPay = Math.min(given, remaining);
+      thisPay = Math.min(given, remaining); // nağdda artıq məbləğ normaldır - qalıq geri qaytarılır (bax: calcChange)
     } else if (p.type === 'split') {
-      const cash = parseFloat(this.els.splitCash.value) || 0;
-      const pos = parseFloat(this.els.splitPos.value) || 0;
-      thisPay = cash + pos;
-      if (thisPay <= 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Məbləğ daxil edin'); return; }
-      thisPay = Math.min(thisPay, remaining);
+      const sum = this._splitTotal();
+      if (sum <= 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Məbləğ daxil edin'); return; }
+      if (sum - remaining > 0.01) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> Ödəyəcəyiniz məbləğ (${sum.toFixed(2)} ₼) qalıq məbləğdən (${remaining.toFixed(2)} ₼) çoxdur!`); return; }
+      thisPay = sum;
+      splitBreakdown = {};
+      this.els.splitInputsWrap.querySelectorAll('.split-method-input').forEach(inp => {
+        const v = parseFloat(inp.value) || 0;
+        if (v > 0) splitBreakdown[inp.dataset.splitMethod] = v;
+      });
     } else {
       // 'pos' və ya admin tərəfindən yaradılmış əlavə ödəniş növü - tam məbləğ
       thisPay = remaining;
@@ -795,9 +816,10 @@ export class PaymentProcessor {
 
     const customMethod = state.paymentMethods?.find(pm => pm.id === p.type);
     const typeLabel = p.type === 'cash' ? 'Nağd' : p.type === 'pos' ? 'POS' : p.type === 'split' ? 'Bölünmüş' : (customMethod?.name || p.type);
+    const sessionId = t?.sessionId || null;
 
     const payData = {
-      tableId, tableName: t?.name || '?',
+      tableId, tableName: t?.name || '?', sessionId,
       staffId: state.user.id, staffName: state.user.name,
       type: p.type, typeLabel,
       originalAmount: p.originalTotal, finalAmount: p.finalTotal, thisPay,
@@ -806,7 +828,14 @@ export class PaymentProcessor {
       createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
     };
     if (p.type === 'cash') { const given = parseFloat(this.els.cashGiven.value)||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }
-    if (p.type === 'split') { payData.splitCash = parseFloat(this.els.splitCash.value)||0; payData.splitPos = parseFloat(this.els.splitPos.value)||0; }
+    if (p.type === 'split' && splitBreakdown) {
+      payData.splitBreakdown = splitBreakdown;
+      const methodNames = this._splitMethods || [];
+      payData.splitLabel = Object.entries(splitBreakdown).map(([id,v]) => {
+        const name = id==='cash'?'Nağd':id==='pos'?'POS':(methodNames.find(m=>m.id===id)?.name||id);
+        return `${name}: ${v.toFixed(2)} ₼`;
+      }).join(', ');
+    }
 
     R.payments.push(payData);
 
@@ -821,7 +850,8 @@ export class PaymentProcessor {
       p.paidAmount = finalData ? (finalData.paidAmount||0) : (p.paidAmount + thisPay);
       p.remainingAmount = finalData ? (finalData.remainingAmount||0) : Math.max(0, finalTotalForCalc - p.paidAmount);
 
-      addLog('order', `${state.user.name} "${t?.name}" — ${thisPay.toFixed(2)} ₼ ödəniş (${typeLabel})`, { tableId });
+      const logTypeLabel = payData.splitLabel ? `${typeLabel}: ${payData.splitLabel}` : typeLabel;
+      addLog('order', `${state.user.name} ${thisPay.toFixed(2)} ₼ ödəniş aldı (${logTypeLabel})`, { tableId });
       this.close();
 
       const fullyPaid = p.remainingAmount <= 0.01;
