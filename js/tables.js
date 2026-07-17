@@ -181,7 +181,7 @@ export class TableBoard {
 
   confirmActivate(tableId) {
     const sessionId = `${tableId}_${Date.now()}`;
-    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId });
+    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId, openedById: state.user.id, openedByName: state.user.name });
     const t = state.tables.find(x => x.id === tableId);
     addLog('table', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, sessionId, waiterId: state.user.id });
   }
@@ -215,7 +215,9 @@ export class TableBoard {
     const archiveData = {
       tableId, tableName: t?.name || '?',
       staffId: state.user?.id || null, staffName: state.user?.name || '?',
+      openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
       items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
+      sessionId,
       sessionLog,
       closedAt: Date.now(),
       closedTime: new Date().toLocaleTimeString('az-AZ'),
@@ -224,7 +226,7 @@ export class TableBoard {
     db.ref('closedOrders').push(archiveData);
 
     if (order) R.tableOrders.child(tableId).remove();
-    R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null });
+    R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
     addLog('table', closeMsg, { tableId, sessionId, staffId: state.user?.id });
     return true;
   }
