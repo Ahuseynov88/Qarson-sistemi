@@ -102,6 +102,44 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 /* ── LOG ── */
 .log-list{display:flex;flex-direction:column;gap:6px;}
 .log-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+
+/* ── BAĞLANAN MASALAR: axtarış/filtr + siyahı + detal paneli ── */
+.closed-tables-layout{display:flex;gap:16px;align-items:flex-start;}
+.closed-tables-list-col{flex:1;min-width:0;max-width:420px;}
+.closed-tables-filters{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px;}
+.closed-tables-filters input,.closed-tables-filters select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;}
+.closed-tables-filters__row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.closed-tables-filters__label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:3px;display:block;}
+.ct-list-empty{color:var(--text3);padding:16px;text-align:center;font-size:13px;}
+.ct-list-count{font-size:11.5px;color:var(--text3);margin-bottom:8px;font-weight:600;}
+.ct-list-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;margin-bottom:6px;transition:.12s;}
+.ct-list-item:hover{border-color:var(--blue);}
+.ct-list-item.active{border-color:var(--blue);background:var(--overlay-soft);}
+.ct-list-item__top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.ct-list-item__name{font-weight:700;font-size:14px;color:var(--text);}
+.ct-list-item__amount{font-weight:700;font-size:14px;color:var(--green);white-space:nowrap;}
+.ct-list-item__meta{font-size:11.5px;color:var(--text3);margin-top:3px;}
+.closed-tables-detail-col{flex:1.3;min-width:0;position:sticky;top:12px;}
+.ct-detail-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.ct-detail-empty{text-align:center;color:var(--text3);padding:70px 20px;}
+.ct-detail-header{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.ct-detail-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px;}
+.ct-detail-info-block{background:var(--card2);border-radius:10px;padding:10px 12px;}
+.ct-detail-info-block__label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:4px;}
+.ct-detail-info-block__value{font-size:13px;font-weight:600;color:var(--text);}
+.ct-detail-section-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:16px 0 8px;}
+.ct-detail-item-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border);font-size:13px;}
+.ct-detail-item-row:last-child{border-bottom:none;}
+.ct-detail-actions{display:flex;gap:8px;margin-top:18px;}
+
+/* ── HESABAT XÜLASƏSİ (filtrlənmiş nəticələr üçün) ── */
+.ct-report{background:#1a1d24;color:#fff;border-radius:14px;padding:18px 20px;}
+.ct-report__stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px;margin-bottom:14px;}
+.ct-report__stat-label{font-size:10px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:4px;}
+.ct-report__stat-value{font-size:20px;font-weight:800;}
+.ct-report__breakdown{border-top:1px solid rgba(255,255,255,.12);padding-top:12px;display:flex;flex-wrap:wrap;gap:10px;}
+.ct-report__type-chip{background:rgba(255,255,255,.08);border-radius:8px;padding:7px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;}
+.ct-report__type-chip b{color:var(--blue);}
 .log-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
 .log-text{font-size:13px;color:var(--text2);flex:1;}
 .log-time{font-size:11px;color:var(--text3);white-space:nowrap;}
