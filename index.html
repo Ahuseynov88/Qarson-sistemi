@@ -138,11 +138,40 @@
       <div class="grid-2" id="paymentMethodsGrid"></div>
     </div>
     <div class="admin-section" id="sec-closedOrders">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-        <p style="font-size:13px;color:var(--text2);margin:0;max-width:480px;">Bağlanan masaların ətraflı tarixçəsi (ödəniş, endirim, ikram və s. daxil). Yanlışlıqla bağlanmış masanı bərpa edə bilərsiniz.</p>
-        <button class="btn btn-blue" style="padding:8px 16px;font-size:12px;flex-shrink:0;" onclick="generateDailyReport()"><svg class="icon"><use href="#i-chart"></use></svg> Gün Hesabatı</button>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+        <button class="btn btn-blue" style="padding:8px 16px;font-size:12px;" onclick="generateDailyReport()"><svg class="icon"><use href="#i-chart"></use></svg> Gün Hesabatı</button>
       </div>
-      <div id="closedOrdersList" class="log-list"></div>
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="ctSearchInput" placeholder="Masa adı və ya mal adı ilə axtar..." oninput="renderClosedOrders()">
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Ödəniş növü</span><select id="ctPaymentTypeFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+          <div><span class="closed-tables-filters__label">Sırala</span>
+            <select id="ctSortSelect" onchange="renderClosedOrders()">
+              <option value="newest">Ən yeni</option>
+              <option value="oldest">Ən köhnə</option>
+              <option value="amount_desc">Məbləğ (çox→az)</option>
+              <option value="amount_asc">Məbləğ (az→çox)</option>
+            </select>
+          </div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Masanı açan işçi</span><select id="ctOpenedByFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+          <div><span class="closed-tables-filters__label">Masanı bağlayan işçi</span><select id="ctStaffFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+        </div>
+      </div>
+      <div id="ctReportSummary" style="margin-bottom:14px;"></div>
+      <div class="closed-tables-layout">
+        <div class="closed-tables-list-col">
+          <div id="closedOrdersList"></div>
+        </div>
+        <div class="closed-tables-detail-col">
+          <div class="ct-detail-panel" id="ctDetailPanel"></div>
+        </div>
+      </div>
     </div>
     <div class="admin-section" id="sec-feedback">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
