@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, formatItemsList } from './utils.js';
+import { esc, showToast, addLog, formatItemsList, closeConfirmAction } from './utils.js';
 import { hasPermission, requirePermission } from './permissions.js';
 import { TableBoard } from './tables.js';
 import { OrderCart } from './order-cart.js';
@@ -61,6 +61,7 @@ export class StaffApp {
 
   // ── TableBoard-dan gələn "aktivləşdirmə/bağlama" tələbləri ──
   _bindGlobalEvents() {
+    document.getElementById('confirmActionModal')?.querySelector('[data-confirm-action-cancel]')?.addEventListener('click', () => closeConfirmAction());
     document.addEventListener('table:activate-requested', (e) => {
       const t = state.tables.find(x => x.id === e.detail.tableId);
       $('confirmTableName').textContent = t?.name || '';
