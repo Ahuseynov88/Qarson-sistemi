@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, toArr, showToast, addLog, formatItemsList, stripTableName } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete3x } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 
 export function renderPermissionCheckboxes(existingPerms = []) {
@@ -138,10 +138,15 @@ export function renderFeedbackSection() {
     }
 
     const feedbacks = state._feedbacks || [];
+    state._selectedFeedbackIds = (state._selectedFeedbackIds||[]).filter(id => feedbacks.some(f=>f.id===id));
     if (feedbacks.length) {
-      html += `<p style="color:var(--text2);font-size:12px;font-weight:700;margin:14px 0 8px;text-transform:uppercase;"><svg class="icon"><use href="#i-note"></use></svg> Şikayət / Təkliflər</p>`;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;">
+        <p style="color:var(--text2);font-size:12px;font-weight:700;text-transform:uppercase;margin:0;"><svg class="icon"><use href="#i-note"></use></svg> Şikayət / Təkliflər</p>
+        <button id="feedbackDeleteSelectedBtn" class="btn btn-red" style="display:${state._selectedFeedbackIds.length?'inline-flex':'none'};padding:5px 12px;font-size:11px;" onclick="deleteSelectedFeedbacks()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedFeedbackIds.length})</button>
+      </div>`;
       html += feedbacks.map(f=>`
         <div class="log-item" style="margin-bottom:6px;">
+          <input type="checkbox" onchange="toggleFeedbackSelect('${f.id}')" ${state._selectedFeedbackIds.includes(f.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
           <span class="log-badge" style="background:#2ecc7122;color:#2ecc71"><svg class="icon"><use href="#i-note"></use></svg> ${esc(f.tableName||'')}</span>
           <span class="log-text">${esc(f.message)}</span>
           <span class="log-time">${f.time} ${f.date||''}</span>
@@ -154,20 +159,44 @@ export function renderFeedbackSection() {
   });
 }
 
+export function toggleFeedbackSelect(id) {
+  state._selectedFeedbackIds = state._selectedFeedbackIds || [];
+  const i = state._selectedFeedbackIds.indexOf(id);
+  if (i === -1) state._selectedFeedbackIds.push(id); else state._selectedFeedbackIds.splice(i,1);
+  const btn = document.getElementById('feedbackDeleteSelectedBtn');
+  if (btn) {
+    btn.style.display = state._selectedFeedbackIds.length ? 'inline-flex' : 'none';
+    btn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedFeedbackIds.length})`;
+  }
+}
+
+export function deleteSelectedFeedbacks() {
+  const ids = state._selectedFeedbackIds || [];
+  if (!ids.length) return;
+  confirmDelete3x(ids.length, 'şikayət', () => {
+    ids.forEach(id => db.ref('feedbacks/' + id).remove());
+    addLog('admin', `Admin ${ids.length} şikayəti seçib sildi`, {});
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} şikayət silindi`);
+    state._selectedFeedbackIds = [];
+    renderFeedbackSection();
+  });
+}
+
 export function clearOldFeedbacks() {
-  if (!confirm('30 gündən köhnə bütün şikayətlər silinsin?')) return;
-  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-  db.ref('feedbacks').once('value', snap => {
-    const data = snap.val() || {};
-    let deletedCount = 0;
-    Object.keys(data).forEach(key => {
-      if (data[key].createdAt < cutoff) {
-        db.ref('feedbacks/' + key).remove();
-        deletedCount++;
-      }
+  confirmAction('30 gündən köhnə bütün şikayətlər silinsin?', () => {
+    const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    db.ref('feedbacks').once('value', snap => {
+      const data = snap.val() || {};
+      let deletedCount = 0;
+      Object.keys(data).forEach(key => {
+        if (data[key].createdAt < cutoff) {
+          db.ref('feedbacks/' + key).remove();
+          deletedCount++;
+        }
+      });
+      addLog('admin', `${deletedCount} köhnə şikayət silindi`, {});
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${deletedCount} şikayət silindi`);
     });
-    addLog('admin', `${deletedCount} köhnə şikayət silindi`, {});
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${deletedCount} şikayət silindi`);
   });
 }
 
@@ -249,10 +278,11 @@ export function editMenuItem(id) {
 
 export function deleteMenuItem(id) {
   const m = state.menuItems.find(x=>x.id===id);
-  if (!confirm(`"${m?.name}" silinsin?`)) return;
-  R.menuItems.child(id).remove();
-  addLog('admin', `Mal silindi: ${m?.name}`, { menuItemId:id });
-  showToast('<svg class="icon"><use href="#i-trash"></use></svg> Mal silindi');
+  confirmAction(`"${esc(m?.name)}" silinsin?`, () => {
+    R.menuItems.child(id).remove();
+    addLog('admin', `Mal silindi: ${m?.name}`, { menuItemId:id });
+    showToast('<svg class="icon"><use href="#i-trash"></use></svg> Mal silindi');
+  });
 }
 
 export function menuItemForm(m={}) {
@@ -498,10 +528,11 @@ export function deleteStaff(id) {
   const s = state.staff.find(x=>x.id===id);
   const activeTable = state.tables.find(t => t.occupant === id);
   if (activeTable) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${s?.name}" adlı işçinin "${activeTable.name}" masası aktivdir! Əvvəlcə masanı bağlayın.`); return; }
-  if (!confirm(`"${s?.name}" adlı işçi silinsin?`)) return;
-  db.ref('staff').child(id).remove();
-  addLog('admin', `İşçi silindi: ${s?.name}`, { staffId: id });
-  showToast('<svg class="icon"><use href="#i-trash"></use></svg> İşçi silindi');
+  confirmAction(`"${esc(s?.name)}" adlı işçi silinsin?`, () => {
+    db.ref('staff').child(id).remove();
+    addLog('admin', `İşçi silindi: ${s?.name}`, { staffId: id });
+    showToast('<svg class="icon"><use href="#i-trash"></use></svg> İşçi silindi');
+  });
 }
 
 export function openAddStaffModal() {
@@ -658,10 +689,11 @@ export function editTable(id) {
 export function deleteTable(id) {
   const t = state.tables.find(x=>x.id===id);
   if (t?.occupant) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${t?.name}" masası aktivdir! Əvvəlcə bağlayın.`); return; }
-  if (!confirm(`"${t?.name}" masası silinsin?`)) return;
-  R.tables.child(id).remove();
-  addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
-  showToast('<svg class="icon"><use href="#i-trash"></use></svg> Masa silindi');
+  confirmAction(`"${esc(t?.name)}" masası silinsin?`, () => {
+    R.tables.child(id).remove();
+    addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
+    showToast('<svg class="icon"><use href="#i-trash"></use></svg> Masa silindi');
+  });
 }
 
 export function tableForm(name='', isEdit=false) {
@@ -687,13 +719,40 @@ export function renderLogs() {
   if (!list.length) { el.innerHTML='<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
   const colors = { login:'#2ecc71', logout:'#95a5a6', order:'#f39c12', table:'#3498db', admin:'#8e44ad', chat:'#e67e22', customer:'#e74c3c' };
   const labels = { login:'GİRİŞ', logout:'ÇIXIŞ', order:'SİFARİŞ', table:'MASA', admin:'ADMİN', chat:'MESAJ', customer:'MÜŞTƏRİ' };
-  el.innerHTML = list.slice(0,150).map(l=>`
+  const visible = list.slice(0,150);
+  state._selectedLogIds = (state._selectedLogIds||[]).filter(id => visible.some(l=>l.id===id));
+  const barHtml = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <button id="logDeleteSelectedBtn" class="btn btn-red" style="display:${state._selectedLogIds.length?'inline-flex':'none'};padding:5px 12px;font-size:11px;" onclick="deleteSelectedLogs()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedLogIds.length})</button>
+  </div>`;
+  el.innerHTML = barHtml + visible.map(l=>`
     <div class="log-item">
+      <input type="checkbox" onchange="toggleLogSelect('${l.id}')" ${state._selectedLogIds.includes(l.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
       <span class="log-badge" style="background:${colors[l.type]||'#666'}22;color:${colors[l.type]||'#aaa'}">${labels[l.type]||'LOG'}</span>
       <span class="log-text">${esc(l.message)}</span>
       <span class="log-time">${l.time} ${l.date}</span>
     </div>
   `).join('');
+}
+
+export function toggleLogSelect(id) {
+  state._selectedLogIds = state._selectedLogIds || [];
+  const i = state._selectedLogIds.indexOf(id);
+  if (i === -1) state._selectedLogIds.push(id); else state._selectedLogIds.splice(i,1);
+  const btn = document.getElementById('logDeleteSelectedBtn');
+  if (btn) {
+    btn.style.display = state._selectedLogIds.length ? 'inline-flex' : 'none';
+    btn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedLogIds.length})`;
+  }
+}
+
+export function deleteSelectedLogs() {
+  const ids = state._selectedLogIds || [];
+  if (!ids.length) return;
+  confirmDelete3x(ids.length, 'tarixçə qeydi', () => {
+    ids.forEach(id => R.logs.child(id).remove());
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
+    state._selectedLogIds = [];
+  });
 }
 
 export function setLogFilter(f, el) {
@@ -704,13 +763,14 @@ export function setLogFilter(f, el) {
 }
 
 export function clearOldLogs() {
-  if (!confirm('30 gündən köhnə bütün tarixçə qeydləri silinsin?')) return;
-  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-  R.logs.once('value', snap => {
-    const data = snap.val() || {};
-    let deletedCount = 0;
-    Object.keys(data).forEach(key => { if (data[key].timestamp < cutoff) { R.logs.child(key).remove(); deletedCount++; } });
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${deletedCount} köhnə qeyd silindi`);
+  confirmAction('30 gündən köhnə bütün tarixçə qeydləri silinsin?', () => {
+    const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    R.logs.once('value', snap => {
+      const data = snap.val() || {};
+      let deletedCount = 0;
+      Object.keys(data).forEach(key => { if (data[key].timestamp < cutoff) { R.logs.child(key).remove(); deletedCount++; } });
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${deletedCount} köhnə qeyd silindi`);
+    });
   });
 }
 
@@ -879,10 +939,11 @@ export function editCustomer(id) {
 export function deleteCustomer(id) {
   const c = state.customers.find(x=>x.id===id);
   if (c?.balance > 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu müştərinin ödənilməmiş borcu var, əvvəlcə sıfırlayın.'); return; }
-  if (!confirm(`"${c?.name}" müştərisi silinsin?`)) return;
-  R.customers.child(id).remove();
-  addLog('admin', `Müştəri silindi: ${c?.name}`, {});
-  showToast('<svg class="icon"><use href="#i-trash"></use></svg> Müştəri silindi');
+  confirmAction(`"${esc(c?.name)}" müştərisi silinsin?`, () => {
+    R.customers.child(id).remove();
+    addLog('admin', `Müştəri silindi: ${c?.name}`, {});
+    showToast('<svg class="icon"><use href="#i-trash"></use></svg> Müştəri silindi');
+  });
 }
 
 export function openCustomerHistoryModal(customerId) {
@@ -971,10 +1032,11 @@ export function editPaymentMethod(id) {
 
 export function deletePaymentMethod(id) {
   const p = state.paymentMethods.find(x=>x.id===id);
-  if (!confirm(`"${p?.name}" ödəniş növü silinsin?`)) return;
-  R.paymentMethods.child(id).remove();
-  addLog('admin', `Ödəniş növü silindi: ${p?.name}`, {});
-  showToast('<svg class="icon"><use href="#i-trash"></use></svg> Ödəniş növü silindi');
+  confirmAction(`"${esc(p?.name)}" ödəniş növü silinsin?`, () => {
+    R.paymentMethods.child(id).remove();
+    addLog('admin', `Ödəniş növü silindi: ${p?.name}`, {});
+    showToast('<svg class="icon"><use href="#i-trash"></use></svg> Ödəniş növü silindi');
+  });
 }
 
 /* ═══════════════════════════════════════════
@@ -1017,6 +1079,8 @@ export function renderClosedOrders() {
   const q = (document.getElementById('ctSearchInput')?.value || '').trim().toLowerCase();
   const dateFrom = document.getElementById('ctDateFrom')?.value || '';
   const dateTo = document.getElementById('ctDateTo')?.value || '';
+  const timeFrom = document.getElementById('ctTimeFrom')?.value || '';
+  const timeTo = document.getElementById('ctTimeTo')?.value || '';
   const staffFilter = document.getElementById('ctStaffFilter')?.value || '';
   const openedFilter = document.getElementById('ctOpenedByFilter')?.value || '';
   const payTypeFilter = document.getElementById('ctPaymentTypeFilter')?.value || '';
@@ -1030,8 +1094,16 @@ export function renderClosedOrders() {
     }
     if (staffFilter && o.staffName !== staffFilter) return false;
     if (openedFilter && o.openedByName !== openedFilter) return false;
-    if (dateFrom && o.closedAt < new Date(dateFrom).setHours(0,0,0,0)) return false;
-    if (dateTo && o.closedAt > new Date(dateTo).setHours(23,59,59,999)) return false;
+    if (dateFrom) {
+      const b = new Date(dateFrom);
+      if (timeFrom) { const [h,m] = timeFrom.split(':'); b.setHours(+h,+m,0,0); } else { b.setHours(0,0,0,0); }
+      if (o.closedAt < b.getTime()) return false;
+    }
+    if (dateTo) {
+      const b = new Date(dateTo);
+      if (timeTo) { const [h,m] = timeTo.split(':'); b.setHours(+h,+m,59,999); } else { b.setHours(23,59,59,999); }
+      if (o.closedAt > b.getTime()) return false;
+    }
     if (payTypeFilter) {
       const pays = getOrderPayments(o);
       if (!pays.some(p => p.type === payTypeFilter)) return false;
@@ -1078,29 +1150,66 @@ export function renderClosedOrders() {
     </div>`;
   }
 
+  state._selectedClosedOrderIds = (state._selectedClosedOrderIds||[]).filter(id => filtered.some(o=>o.id===id));
+  const delBtn = document.getElementById('ctDeleteSelectedBtn');
+  if (delBtn) {
+    delBtn.style.display = state._selectedClosedOrderIds.length ? 'inline-flex' : 'none';
+    delBtn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedClosedOrderIds.length})`;
+  }
+
   if (!filtered.length) {
     listEl.innerHTML = '<p class="ct-list-empty">Filtrə uyğun bağlanan masa tapılmadı.</p>';
     detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-clipboard"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
     return;
   }
 
-  // Seçili qeyd filtrdən sonra da mövcuddursa saxlanılır, əks halda ilk nəticə seçilir
-  if (!filtered.find(o => o.id === state._selectedClosedOrderId)) {
-    state._selectedClosedOrderId = filtered[0].id;
+  // Seçili detal qeydi filtrdən sonra da mövcuddursa saxlanılır; YOXSA sıfırlanır -
+  // avtomatik olaraq ilk nəticə seçilmir, yalnız üzərinə vuranda açılır.
+  if (state._selectedClosedOrderId && !filtered.find(o => o.id === state._selectedClosedOrderId)) {
+    state._selectedClosedOrderId = null;
   }
 
   listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.slice(0,150).map(o => `
     <div class="ct-list-item ${o.id===state._selectedClosedOrderId?'active':''}" onclick="selectClosedOrder('${o.id}')">
       <div class="ct-list-item__top">
-        <span class="ct-list-item__name">${esc(o.tableName)}</span>
+        <label style="display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
+          <input type="checkbox" onchange="toggleClosedOrderSelect('${o.id}')" ${state._selectedClosedOrderIds.includes(o.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+          <span class="ct-list-item__name">${esc(o.tableName)}</span>
+        </label>
         <span class="ct-list-item__amount">${(o.total||0).toFixed(2)} ₼</span>
       </div>
       <div class="ct-list-item__meta">${esc(o.staffName||'')} · ${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</div>
     </div>
   `).join('');
 
-  const selected = filtered.find(o => o.id === state._selectedClosedOrderId);
-  renderClosedOrderDetail(selected);
+  if (state._selectedClosedOrderId) {
+    renderClosedOrderDetail(filtered.find(o => o.id === state._selectedClosedOrderId));
+  } else {
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-clipboard"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
+  }
+}
+
+export function toggleClosedOrderSelect(id) {
+  state._selectedClosedOrderIds = state._selectedClosedOrderIds || [];
+  const i = state._selectedClosedOrderIds.indexOf(id);
+  if (i === -1) state._selectedClosedOrderIds.push(id); else state._selectedClosedOrderIds.splice(i,1);
+  const btn = document.getElementById('ctDeleteSelectedBtn');
+  if (btn) {
+    btn.style.display = state._selectedClosedOrderIds.length ? 'inline-flex' : 'none';
+    btn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedClosedOrderIds.length})`;
+  }
+}
+
+export function deleteSelectedClosedOrders() {
+  const ids = state._selectedClosedOrderIds || [];
+  if (!ids.length) return;
+  confirmDelete3x(ids.length, 'bağlanmış masa qeydi', () => {
+    ids.forEach(id => db.ref('closedOrders/' + id).remove());
+    addLog('admin', `Admin ${ids.length} bağlanmış masa qeydini seçib sildi`, {});
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
+    state._selectedClosedOrderIds = [];
+    if (ids.includes(state._selectedClosedOrderId)) state._selectedClosedOrderId = null;
+  });
 }
 
 export function selectClosedOrder(id) {
@@ -1171,23 +1280,28 @@ export function restoreClosedOrder(id) {
   const t = state.tables.find(x=>x.id===o.tableId);
   if (!t) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Masa artıq mövcud deyil'); return; }
   if (t.occupant) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu masa hazırda doludur, əvvəlcə boşaldın'); return; }
-  if (!confirm(`"${o.tableName}" masası bərpa edilsin? Sifariş yenidən aktiv olacaq.`)) return;
 
-  R.tableOrders.child(o.tableId).set({
-    items: o.items, total: o.total || 0,
-    waiterId: o.staffId, paidAmount: 0, remainingAmount: o.total || 0,
-    updatedAt: Date.now()
-  });
-  R.tables.child(o.tableId).update({ occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now() });
-  R.closedOrders.child(id).remove();
-  addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: o.tableId });
-  showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa bərpa edildi');
+  confirmAction(`"${esc(o.tableName)}" masası bərpa edilsin? Sifariş yenidən aktiv olacaq.`, () => {
+    R.tableOrders.child(o.tableId).set({
+      items: o.items, total: o.total || 0,
+      waiterId: o.staffId, paidAmount: 0, remainingAmount: o.total || 0,
+      updatedAt: Date.now()
+    });
+    R.tables.child(o.tableId).update({ occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now() });
+    R.closedOrders.child(id).remove();
+    addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: o.tableId });
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa bərpa edildi');
+  }, { title: 'Masanı bərpa et', okLabel: '<svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et', okClass: 'btn-blue' });
 }
 
 window.adminTab = adminTab;
 window.applyPermissionPreset = applyPermissionPreset;
 window.clearOldFeedbacks = clearOldFeedbacks;
+window.toggleFeedbackSelect = toggleFeedbackSelect;
+window.deleteSelectedFeedbacks = deleteSelectedFeedbacks;
 window.clearOldLogs = clearOldLogs;
+window.toggleLogSelect = toggleLogSelect;
+window.deleteSelectedLogs = deleteSelectedLogs;
 window.closeAddModal = closeAddModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
 window.closeKitchenPinModal = closeKitchenPinModal;
@@ -1224,6 +1338,8 @@ window.editPaymentMethod = editPaymentMethod;
 window.deletePaymentMethod = deletePaymentMethod;
 window.restoreClosedOrder = restoreClosedOrder;
 window.selectClosedOrder = selectClosedOrder;
+window.toggleClosedOrderSelect = toggleClosedOrderSelect;
+window.deleteSelectedClosedOrders = deleteSelectedClosedOrders;
 window.renderClosedOrders = renderClosedOrders;
 window.openCustomerHistoryModal = openCustomerHistoryModal;
 window.closeCustomerHistoryModal = closeCustomerHistoryModal;
