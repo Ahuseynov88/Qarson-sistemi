@@ -50,6 +50,42 @@ export function showToast(msg) {
   el._t = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
+// Brauzerin çirkin confirm() pəncərəsi əvəzinə proqramın öz dizaynında təsdiq pəncərəsi.
+// İstifadə: confirmAction('Silinsin?', () => { ...əməliyyat... });
+export function confirmAction(message, onConfirm, options = {}) {
+  const modal = document.getElementById('confirmActionModal');
+  if (!modal) { if (onConfirm) onConfirm(); return; }
+  document.getElementById('confirmActionTitle').textContent = options.title || 'Əminsiniz?';
+  document.getElementById('confirmActionMessage').innerHTML = message;
+  const okBtn = document.getElementById('confirmActionOkBtn');
+  okBtn.innerHTML = options.okLabel || 'Təsdiqlə';
+  okBtn.className = 'btn ' + (options.okClass || 'btn-red');
+  // Köhnə listener-lər yığılmasın deyə düyməni klonlayıb təzədən qururuq
+  const freshBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(freshBtn, okBtn);
+  freshBtn.addEventListener('click', () => {
+    modal.classList.remove('open');
+    if (onConfirm) onConfirm();
+  }, { once: true });
+  modal.classList.add('open');
+}
+
+export function closeConfirmAction() {
+  document.getElementById('confirmActionModal')?.classList.remove('open');
+}
+
+// Təhlükəli (geri qaytarıla bilməyən) toplu silmə əməliyyatları üçün 3 dəfə ardıcıl xəbərdarlıq.
+// Səhvən silinmənin qarşısını almaq üçün hər addımda mesaj daha ciddiləşir.
+export function confirmDelete3x(count, itemLabel, onFinalConfirm) {
+  confirmAction(`${count} ${itemLabel} silmək istədiyinizə əminsiniz?`, () => {
+    confirmAction(`Diqqət! Bu əməliyyat <strong>GERİ QAYTARILA BİLMƏZ</strong>. Davam etmək istəyirsiniz?`, () => {
+      confirmAction(`Son dəfə soruşuram: <strong>${count} ${itemLabel} həmişəlik silinəcək.</strong> Tam əminsinizmi?`, () => {
+        onFinalConfirm();
+      }, { title: 'Son xəbərdarlıq!', okLabel: '<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Həmişəlik Sil', okClass: 'btn-red' });
+    }, { title: 'Diqqət!', okLabel: 'Davam Et', okClass: 'btn-red' });
+  }, { title: 'Silmək istəyirsiniz?', okLabel: 'Bəli, davam et', okClass: 'btn-red' });
+}
+
 export function showCustomerToast(msg) {
   const el = document.getElementById('customerToast');
   if (!el) return;
