@@ -137,14 +137,15 @@
       <div class="grid-2" id="paymentMethodsGrid"></div>
     </div>
     <div class="admin-section" id="sec-closedOrders">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-        <button class="btn btn-blue" style="padding:8px 16px;font-size:12px;" onclick="generateDailyReport()"><svg class="icon"><use href="#i-chart"></use></svg> Gün Hesabatı</button>
-      </div>
       <div class="closed-tables-filters" style="margin-bottom:14px;">
         <input type="text" id="ctSearchInput" placeholder="Masa adı və ya mal adı ilə axtar..." oninput="renderClosedOrders()">
         <div class="closed-tables-filters__row">
-          <div><span class="closed-tables-filters__label">Başlanğıc</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()"></div>
-          <div><span class="closed-tables-filters__label">Bitiş</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()"></div>
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="ctTimeFrom" onchange="renderClosedOrders()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="ctTimeTo" onchange="renderClosedOrders()"></div>
         </div>
         <div class="closed-tables-filters__row">
           <div><span class="closed-tables-filters__label">Ödəniş növü</span><select id="ctPaymentTypeFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
@@ -165,6 +166,9 @@
       <div id="ctReportSummary" style="margin-bottom:14px;"></div>
       <div class="closed-tables-layout">
         <div class="closed-tables-list-col">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+            <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+          </div>
           <div id="closedOrdersList"></div>
         </div>
         <div class="closed-tables-detail-col">
@@ -646,6 +650,20 @@
   </div>
 </div>
 <!-- ═══ HESABAT MODALI ═══ -->
+<!-- ═══ ÜMUMİ TƏSDİQ PƏNCƏRƏSİ (brauzer confirm() əvəzinə) ═══ -->
+<div class="modal-bg" id="confirmActionModal">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div id="confirmActionIcon" style="width:52px;height:52px;border-radius:50%;background:rgba(163,42,36,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+      <svg class="icon" style="width:26px;height:26px;color:var(--red);"><use href="#i-warning"></use></svg>
+    </div>
+    <h2 id="confirmActionTitle" style="margin-bottom:8px;">Əminsiniz?</h2>
+    <p id="confirmActionMessage" style="color:var(--text2);font-size:14px;line-height:1.5;margin-bottom:20px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-confirm-action-cancel>Ləğv</button>
+      <button class="btn btn-red" id="confirmActionOkBtn" style="flex:1;padding:13px;" data-confirm-action-ok>Təsdiqlə</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="reportModal">
   <div class="modal" style="max-width:500px;">
     <h2><svg class="icon"><use href="#i-chart"></use></svg> Gün Sonu Hesabat</h2>
