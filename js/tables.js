@@ -171,6 +171,25 @@ export class TableBoard {
       const s = totalSec % 60;
       elx.textContent = h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
     });
+    this.updateColors();
+  }
+
+  // Dolu masaların rəngini son sifariş əməliyyatından keçən vaxta görə yeniləyir:
+  // <30 dəq yaşıl, 30-60 dəq narıncı, 60+ dəq qırmızı; hesab çap olunubsa tünd göy (üstün gəlir).
+  updateColors() {
+    document.querySelectorAll('.floor-card[data-table-id]').forEach(card => {
+      const tableId = card.dataset.tableId;
+      const t = state.tables.find(x => x.id === tableId);
+      card.classList.remove('floor-card--fresh','floor-card--warning','floor-card--danger','floor-card--billed');
+      if (!t || !t.occupant) return;
+      const order = state.tableOrders[tableId];
+      if (order?.billPrintedAt) { card.classList.add('floor-card--billed'); return; }
+      const ref = order?.updatedAt || t.activatedAt || Date.now();
+      const mins = (Date.now() - ref) / 60000;
+      if (mins < 30) card.classList.add('floor-card--fresh');
+      else if (mins < 60) card.classList.add('floor-card--warning');
+      else card.classList.add('floor-card--danger');
+    });
   }
 
   // ── Aktivləşdirmə / bağlama (çağıran tərəf - staff-app.js - konfirmasiya modal-larını göstərir) ──
@@ -219,6 +238,7 @@ export class TableBoard {
       items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
       sessionId,
       sessionLog,
+      restoreCount: t?.restoreCount || 0,
       closedAt: Date.now(),
       closedTime: new Date().toLocaleTimeString('az-AZ'),
       closedDate: new Date().toLocaleDateString('az-AZ')
