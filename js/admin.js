@@ -1145,6 +1145,7 @@ export function renderClosedOrders() {
   const staffFilter = document.getElementById('ctStaffFilter')?.value || '';
   const openedFilter = document.getElementById('ctOpenedByFilter')?.value || '';
   const payTypeFilter = document.getElementById('ctPaymentTypeFilter')?.value || '';
+  const restoredOnly = document.getElementById('ctRestoredOnlyFilter')?.checked || false;
   const sortMode = document.getElementById('ctSortSelect')?.value || 'newest';
 
   let filtered = all.filter(o => {
@@ -1169,6 +1170,7 @@ export function renderClosedOrders() {
       const pays = getOrderPayments(o);
       if (!pays.some(p => p.type === payTypeFilter)) return false;
     }
+    if (restoredOnly && !(o.restoreCount > 0)) return false;
     return true;
   });
   filtered.sort((a,b) => {
@@ -1242,6 +1244,7 @@ export function renderClosedOrders() {
         <label style="display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
           <input type="checkbox" onchange="toggleClosedOrderSelect('${o.id}')" ${state._selectedClosedOrderIds.includes(o.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
           <span class="ct-list-item__name">${esc(o.tableName)}</span>
+          ${o.restoreCount ? `<span style="font-size:10px;font-weight:700;color:var(--orange);background:rgba(243,156,18,.15);border-radius:6px;padding:1px 6px;" title="${o.restoreCount} dəfə bərpa edilib">${o.restoreCount}× bərpa</span>` : ''}
         </label>
         <span class="ct-list-item__amount">${(o.total||0).toFixed(2)} ₼</span>
       </div>
@@ -1294,7 +1297,7 @@ function renderClosedOrderDetail(o) {
   if (!detailEl || !o) return;
   const isAdmin = state.user?.role === 'admin';
   const t = state.tables.find(x => x.id === o.tableId);
-  const canRestore = isAdmin && t && !t.occupant;
+  const originalBusy = t && t.occupant;
   const sessionLog = o.sessionLog || [];
   const firstEntry = sessionLog[0];
   const payments = getOrderPayments(o);
@@ -1322,7 +1325,7 @@ function renderClosedOrderDetail(o) {
 
   detailEl.innerHTML = `
     <div class="ct-detail-header">
-      <span><svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)}</span>
+      <span><svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)} ${o.restoreCount ? `<span style="font-size:12px;color:var(--orange);font-weight:700;" title="${o.restoreCount} dəfə bərpa edilib">(${o.restoreCount}× bərpa)</span>` : ''}</span>
       <span style="font-size:22px;font-weight:800;color:var(--green);">${(o.total||0).toFixed(2)} ₼</span>
     </div>
     <div class="ct-detail-info-grid">
@@ -1337,10 +1340,9 @@ function renderClosedOrderDetail(o) {
     ${paymentsHtml}
     <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Sessiya Tarixçəsi</div>
     <div class="audit-timeline">${historyHtml}</div>
-    <div class="ct-detail-actions">
-      ${canRestore
-        ? `<button class="btn btn-blue" style="flex:1;padding:11px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>`
-        : (isAdmin && t?.occupant ? `<span style="font-size:12px;color:var(--text3);padding:11px 0;">Masa hazırda dolu olduğu üçün bərpa edilə bilməz</span>` : '')}
+    <div class="ct-detail-actions" style="flex-direction:column;align-items:stretch;">
+      ${isAdmin ? `<button class="btn btn-blue" style="padding:11px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>` : ''}
+      ${originalBusy ? `<small style="color:var(--text3);text-align:center;margin-top:6px;">Orijinal masa məşğuldur — bərpa etsəniz "${esc((o.tableName||'').replace(/\s*\*+$/,''))} ${'*'.repeat((o.restoreCount||0)+1)}" adı ilə yeni masa yaradılacaq</small>` : ''}
     </div>
   `;
 }
@@ -1350,19 +1352,43 @@ export function restoreClosedOrder(id) {
   const o = state.closedOrders.find(x=>x.id===id);
   if (!o) return;
   const t = state.tables.find(x=>x.id===o.tableId);
-  if (!t) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Masa artıq mövcud deyil'); return; }
-  if (t.occupant) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu masa hazırda doludur, əvvəlcə boşaldın'); return; }
 
-  confirmAction(`"${esc(o.tableName)}" masası bərpa edilsin? Sifariş yenidən aktiv olacaq.`, () => {
-    R.tableOrders.child(o.tableId).set({
-      items: o.items, total: o.total || 0,
-      waiterId: o.staffId, paidAmount: 0, remainingAmount: o.total || 0,
-      updatedAt: Date.now()
-    });
-    R.tables.child(o.tableId).update({ occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now() });
-    R.closedOrders.child(id).remove();
-    addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: o.tableId });
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa bərpa edildi');
+  // Masa adında əvvəldən "*" varsa təmizləyib əsl adı tapırıq, sonra YENİ bərpa sayına görə
+  // düzgün sayda "*" əlavə edirik (məs. 2-ci dəfə bərpa = **)
+  const baseName = (o.tableName || '').replace(/\s*\*+$/, '');
+  const newRestoreCount = (o.restoreCount || 0) + 1;
+  const newName = `${baseName} ${'*'.repeat(newRestoreCount)}`;
+  const originalIsFree = t && !t.occupant;
+
+  const msg = originalIsFree
+    ? `"${esc(o.tableName)}" masası bərpa edilsin? Sifariş yenidən aktiv olacaq.`
+    : `"${esc(o.tableName)}" masası hazırda doludur. Buna görə "${esc(newName)}" adı ilə YENİ masa yaradılıb sifariş ora bərpa ediləcək. Davam edilsin?`;
+
+  confirmAction(msg, () => {
+    const sessionId = originalIsFree ? `${o.tableId}_${Date.now()}` : null; // yeni masa üçün ID push-dan sonra bilinəcək
+    const applyRestore = (targetTableId, sid) => {
+      R.tableOrders.child(targetTableId).set({
+        items: o.items, total: o.total || 0,
+        waiterId: o.staffId, paidAmount: 0, remainingAmount: o.total || 0,
+        updatedAt: Date.now(), billPrintedAt: null
+      });
+      R.tables.child(targetTableId).update({
+        occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now(),
+        sessionId: sid, openedById: o.openedById || o.staffId, openedByName: o.openedByName || o.staffName,
+        name: newName, restoreCount: newRestoreCount
+      });
+      R.closedOrders.child(id).remove();
+      addLog('admin', `Admin "${o.tableName}" masasını bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: targetTableId, sessionId: sid });
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${newName}" olaraq bərpa edildi`);
+    };
+
+    if (originalIsFree) {
+      applyRestore(o.tableId, sessionId);
+    } else {
+      const newRef = R.tables.push({ name: newName, capacity: 4, occupant: null, notes: '', createdAt: Date.now(), restoreCount: newRestoreCount });
+      const newTableId = newRef.key;
+      applyRestore(newTableId, `${newTableId}_${Date.now()}`);
+    }
   }, { title: 'Masanı bərpa et', okLabel: '<svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et', okClass: 'btn-blue' });
 }
 
