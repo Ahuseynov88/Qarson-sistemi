@@ -68,6 +68,59 @@ export function adminTab(sec, el) {
   }
 }
 
+// ── Kateqoriya (tab) sırasını sürükləyib dəyişmək (məs. "Ayarlar"ı birinci etmək) ──
+// Sıra brauzerin öz yaddaşında (localStorage) saxlanılır, hər admin öz sırasını seçə bilər.
+const TAB_ORDER_KEY = 'qarson_adminTabOrder';
+
+export function initAdminTabDragDrop() {
+  const container = document.getElementById('adminTabsContainer');
+  if (!container) return;
+  let dragged = null;
+
+  container.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.setAttribute('draggable', 'true');
+    tab.addEventListener('dragstart', () => { dragged = tab; tab.classList.add('dragging'); });
+    tab.addEventListener('dragend', () => {
+      tab.classList.remove('dragging');
+      container.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('drag-over'));
+      dragged = null;
+      saveAdminTabOrder();
+    });
+    tab.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dragged || dragged === tab) return;
+      container.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('drag-over'));
+      tab.classList.add('drag-over');
+      const rect = tab.getBoundingClientRect();
+      const before = e.clientX < rect.left + rect.width / 2;
+      container.insertBefore(dragged, before ? tab : tab.nextSibling);
+    });
+  });
+
+  applySavedAdminTabOrder();
+}
+
+function saveAdminTabOrder() {
+  const container = document.getElementById('adminTabsContainer');
+  if (!container) return;
+  const order = Array.from(container.querySelectorAll('.admin-tab')).map(t => t.dataset.section).filter(Boolean);
+  try { localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(order)); } catch(e) {}
+}
+
+function applySavedAdminTabOrder() {
+  const container = document.getElementById('adminTabsContainer');
+  if (!container) return;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || 'null'); } catch(e) { saved = null; }
+  if (!saved || !Array.isArray(saved)) return;
+  const tabs = Array.from(container.querySelectorAll('.admin-tab'));
+  const bySection = {};
+  tabs.forEach(t => { if (t.dataset.section) bySection[t.dataset.section] = t; });
+  saved.forEach(sectionId => { if (bySection[sectionId]) container.appendChild(bySection[sectionId]); });
+  // Yadda saxlanmış sırada olmayan (yeni əlavə olunan) tablar sona əlavə olunur
+  tabs.forEach(t => { if (t.dataset.section && !saved.includes(t.dataset.section)) container.appendChild(t); });
+}
+
 export function renderDashboard() {
   const activeStaff = state.staff.filter(s=>s.status!=='offline').length;
   const activeTbl = state.tables.filter(t=>t.occupant).length;
@@ -1133,11 +1186,18 @@ export function renderClosedOrders() {
     openedSel.innerHTML = '<option value="">Hamısı</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     openedSel.dataset.filled = 'true';
   }
-  if (payTypeSel && payTypeSel.dataset.filled !== 'true') {
-    const built = [['cash','Nağd'],['pos','POS']];
+  if (payTypeSel) {
+    // Ödəniş növləri əlavə/silinəndə seçim siyahısı yenilənsin (köhnə, silinmiş növ seçili qalmasın)
     const custom = (state.paymentMethods||[]).map(pm => [pm.id, pm.name]);
-    payTypeSel.innerHTML = '<option value="">Hamısı</option>' + built.concat(custom).map(([id,name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('');
-    payTypeSel.dataset.filled = 'true';
+    const signature = custom.map(([id]) => id).join(',');
+    if (payTypeSel.dataset.signature !== signature) {
+      const built = [['cash','Nağd'],['pos','POS']];
+      const currentVal = payTypeSel.value;
+      payTypeSel.innerHTML = '<option value="">Hamısı</option>' + built.concat(custom).map(([id,name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('');
+      // Seçim hələ mövcuddursa saxlanılır, silinibsə "Hamısı"na qayıdır
+      if (built.concat(custom).some(([id]) => id === currentVal)) payTypeSel.value = currentVal;
+      payTypeSel.dataset.signature = signature;
+    }
   }
 
   const q = (document.getElementById('ctSearchInput')?.value || '').trim().toLowerCase();
@@ -1189,14 +1249,17 @@ export function renderClosedOrders() {
   // ── Hesabat xülasəsi (filtrlənmiş nəticələr üçün) ──
   if (reportEl) {
     const typeBreakdown = {};
-    const resolveMethodName = (id) => id==='cash'?'Nağd':id==='pos'?'POS':(state.paymentMethods||[]).find(m=>m.id===id)?.name||id;
+    // Canlı siyahıdan tapmağa çalışır, tapılmasa (növ silinibsə) "Silinmiş növ" yazır -
+    // heç vaxt xam Firebase ID-si göstərilmir.
+    const resolveMethodName = (id) => id==='cash'?'Nağd':id==='pos'?'POS':((state.paymentMethods||[]).find(m=>m.id===id)?.name || 'Silinmiş növ');
     filtered.forEach(o => {
       getOrderPayments(o).forEach(p => {
         // Bölünmüş ödəniş öz komponentlərinə (Nağd/POS/...) ayrılaraq hesabata yazılır,
-        // "Bölünmüş" adı altında tək məbləğ kimi yox
+        // "Bölünmüş" adı altında tək məbləğ kimi yox. Ödənişin öz üzərində "dondurulmuş"
+        // adı varsa (splitMethodNames) ONU üstün tuturuq - növ sonradan silinsə belə düzgün görünsün.
         if (p.type === 'split' && p.splitBreakdown) {
           Object.entries(p.splitBreakdown).forEach(([methodId, amount]) => {
-            const key = resolveMethodName(methodId);
+            const key = p.splitMethodNames?.[methodId] || resolveMethodName(methodId);
             typeBreakdown[key] = (typeBreakdown[key]||0) + (amount||0);
           });
         } else {
