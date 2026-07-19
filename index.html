@@ -166,7 +166,11 @@
       <div id="ctReportSummary" style="margin-bottom:14px;"></div>
       <div class="closed-tables-layout">
         <div class="closed-tables-list-col">
-          <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+              <input type="checkbox" id="ctSelectAllCheckbox" onchange="toggleSelectAllClosedOrders(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+              Hamısını seç
+            </label>
             <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
           </div>
           <div id="closedOrdersList"></div>
