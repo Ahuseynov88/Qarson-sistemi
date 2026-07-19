@@ -1188,7 +1188,6 @@ export function renderClosedOrders() {
 
   // ── Hesabat xülasəsi (filtrlənmiş nəticələr üçün) ──
   if (reportEl) {
-    const totalRevenue = filtered.reduce((s,o)=>s+(o.total||0),0);
     const typeBreakdown = {};
     const resolveMethodName = (id) => id==='cash'?'Nağd':id==='pos'?'POS':(state.paymentMethods||[]).find(m=>m.id===id)?.name||id;
     filtered.forEach(o => {
@@ -1206,12 +1205,17 @@ export function renderClosedOrders() {
         }
       });
     });
+    // Ödəniş növü filtrlənibsə, yekun məbləğ MASALARIN TAM cəmi yox, YALNIZ o növün payı olur
+    // (məs. "Nağd" filtrində, kart+nağd bölünmüş ödənişi olan masanın yalnız nağd hissəsi sayılır)
+    const totalRevenue = payTypeFilter
+      ? (typeBreakdown[resolveMethodName(payTypeFilter)] || 0)
+      : filtered.reduce((s,o)=>s+(o.total||0),0);
     const breakdownEntries = Object.entries(typeBreakdown)
       .filter(([label]) => !payTypeFilter || label === resolveMethodName(payTypeFilter));
     reportEl.innerHTML = `<div class="ct-report">
       <div class="ct-report__stats">
         <div><div class="ct-report__stat-label">Bağlanan masa</div><div class="ct-report__stat-value">${filtered.length}</div></div>
-        <div><div class="ct-report__stat-label">${payTypeFilter ? esc(resolveMethodName(payTypeFilter)) + ' ilə ödənilmiş hesablar' : 'Ümumi məbləğ'}</div><div class="ct-report__stat-value" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div></div>
+        <div><div class="ct-report__stat-label">${payTypeFilter ? esc(resolveMethodName(payTypeFilter)) + ' ilə ödənilmiş məbləğ' : 'Ümumi məbləğ'}</div><div class="ct-report__stat-value" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div></div>
         <div><div class="ct-report__stat-label">Orta çek</div><div class="ct-report__stat-value">${(filtered.length?totalRevenue/filtered.length:0).toFixed(2)} ₼</div></div>
       </div>
       ${breakdownEntries.length ? `<div class="ct-report__breakdown">
