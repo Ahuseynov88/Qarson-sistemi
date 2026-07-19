@@ -74,15 +74,13 @@ export function closeConfirmAction() {
   document.getElementById('confirmActionModal')?.classList.remove('open');
 }
 
-// Təhlükəli (geri qaytarıla bilməyən) toplu silmə əməliyyatları üçün 3 dəfə ardıcıl xəbərdarlıq.
-// Səhvən silinmənin qarşısını almaq üçün hər addımda mesaj daha ciddiləşir.
-export function confirmDelete3x(count, itemLabel, onFinalConfirm) {
+// Təhlükəli (geri qaytarıla bilməyən) toplu silmə əməliyyatları üçün 2 dəfə ardıcıl xəbərdarlıq.
+// Səhvən silinmənin qarşısını almaq üçün ikinci addımda mesaj ciddiləşir.
+export function confirmDelete2x(count, itemLabel, onFinalConfirm) {
   confirmAction(`${count} ${itemLabel} silmək istədiyinizə əminsiniz?`, () => {
-    confirmAction(`Diqqət! Bu əməliyyat <strong>GERİ QAYTARILA BİLMƏZ</strong>. Davam etmək istəyirsiniz?`, () => {
-      confirmAction(`Son dəfə soruşuram: <strong>${count} ${itemLabel} həmişəlik silinəcək.</strong> Tam əminsinizmi?`, () => {
-        onFinalConfirm();
-      }, { title: 'Son xəbərdarlıq!', okLabel: '<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Həmişəlik Sil', okClass: 'btn-red' });
-    }, { title: 'Diqqət!', okLabel: 'Davam Et', okClass: 'btn-red' });
+    confirmAction(`Son dəfə soruşuram: <strong>${count} ${itemLabel} həmişəlik silinəcək və geri qaytarıla bilməz.</strong> Tam əminsinizmi?`, () => {
+      onFinalConfirm();
+    }, { title: 'Son xəbərdarlıq!', okLabel: '<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Həmişəlik Sil', okClass: 'btn-red' });
   }, { title: 'Silmək istəyirsiniz?', okLabel: 'Bəli, davam et', okClass: 'btn-red' });
 }
 
