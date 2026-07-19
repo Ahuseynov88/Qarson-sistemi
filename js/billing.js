@@ -862,7 +862,7 @@ export class PaymentProcessor {
     }
 
     const customMethod = state.paymentMethods?.find(pm => pm.id === p.type);
-    const typeLabel = p.type === 'cash' ? 'Nağd' : p.type === 'pos' ? 'POS' : p.type === 'split' ? 'Bölünmüş' : (customMethod?.name || p.type);
+    const typeLabel = p.type === 'cash' ? 'Nağd' : p.type === 'pos' ? 'POS' : p.type === 'split' ? 'Bölünmüş' : (customMethod?.name || 'Silinmiş növ');
     const sessionId = t?.sessionId || null;
 
     const payData = {
@@ -878,10 +878,13 @@ export class PaymentProcessor {
     if (p.type === 'split' && splitBreakdown) {
       payData.splitBreakdown = splitBreakdown;
       const methodNames = this._splitMethods || [];
-      payData.splitLabel = Object.entries(splitBreakdown).map(([id,v]) => {
-        const name = id==='cash'?'Nağd':id==='pos'?'POS':(methodNames.find(m=>m.id===id)?.name||id);
-        return `${name}: ${v.toFixed(2)} ₼`;
-      }).join(', ');
+      // Növ adlarını HƏMİN AN üçün "dondurub" saxlayırıq - admin sonradan bu ödəniş növünü
+      // silsə belə, köhnə hesabatlar xam ID yox, düzgün adı göstərməyə davam etsin
+      payData.splitMethodNames = {};
+      Object.keys(splitBreakdown).forEach(id => {
+        payData.splitMethodNames[id] = id==='cash'?'Nağd':id==='pos'?'POS':(methodNames.find(m=>m.id===id)?.name||'Silinmiş növ');
+      });
+      payData.splitLabel = Object.entries(splitBreakdown).map(([id,v]) => `${payData.splitMethodNames[id]}: ${v.toFixed(2)} ₼`).join(', ');
     }
 
     R.payments.push(payData);
