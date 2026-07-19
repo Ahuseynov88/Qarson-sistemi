@@ -158,7 +158,8 @@ export function customerAction(type) {
     tableId, tableName: t.name, type: m.type, message: m.text, waiterId: occupantId || null,
     status: 'pending', time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now()
   });
-  addLog('customer',`"${t.name}" masasından "${type}" tələbi`,{ tableId, type });
+  const typeLabels = { call: 'çağırış', bill_cash: 'nağd ödəniş istəyi', bill_pos: 'POS ilə ödəniş istəyi' };
+  addLog('customer',`"${t.name}" masasından ${typeLabels[type]||type} tələbi`,{ tableId, type });
   const icons = { call:'<svg class="icon"><use href="#i-bell"></use></svg>', bill_cash:'<svg class="icon"><use href="#i-cash"></use></svg>', bill_pos:'<svg class="icon"><use href="#i-card"></use></svg>' };
   showCustomerToast(`${icons[type]||'<svg class="icon"><use href="#i-megaphone"></use></svg>'} Bildiriş göndərildi!`);
 }
@@ -168,7 +169,10 @@ export function initCustomerChat(tableId) {
 }
 
 export function renderCustomerChatMsgs(msgsObj) {
-  const msgs = toArr(msgsObj).sort((a,b)=>a.createdAt-b.createdAt);
+  const currentSessionId = window._customerTableData?.sessionId || null;
+  // Yalnız CARİ sessiyaya aid mesajlar göstərilir - masa bağlanıb yeni müştəri
+  // oturanda köhnə söhbət görünməsin deyə (qeyd Firebase-də qalır, sadəcə gizlədilir)
+  const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
   const el = document.getElementById('custMsgList');
   el.innerHTML = msgs.map(m=>`
     <div class="cust-bubble ${m.sender}">
@@ -185,7 +189,7 @@ export function sendCustomerMsg() {
   const t = window._customerTableData;
   if (!text || !tableId) return;
   const ref = db.ref(`chats/${tableId}/messages`).push();
-  ref.set({ sender: 'customer', text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now(), readByWaiter: false });
+  ref.set({ sender: 'customer', text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now(), readByWaiter: false, sessionId: t.sessionId || null });
   const currentTable = state.tables.find(x=>x.id===tableId);
   db.ref('customerRequests').push({
     tableId, tableName: t.name, type: 'message', message: `${t.name}: ${text}`,
@@ -250,7 +254,9 @@ export function closeWaiterChat() {
 }
 
 export function renderWaiterChatMsgs(msgsObj) {
-  const msgs = toArr(msgsObj).sort((a,b)=>a.createdAt-b.createdAt);
+  const t = state.tables.find(x=>x.id===state.activeChatTableId);
+  const currentSessionId = t?.sessionId || null;
+  const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
   const el = document.getElementById('waiterChatMsgList');
   el.innerHTML = msgs.map(m=>`<div class="chat-bubble ${m.sender}">${esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span></div>`).join('');
   el.scrollTop = el.scrollHeight;
@@ -263,9 +269,9 @@ export function sendWaiterReply() {
   const text = document.getElementById('waiterChatInput').value.trim();
   if (!text || !state.activeChatTableId) return;
   const w = state.user;
-  const ref = db.ref(`chats/${state.activeChatTableId}/messages`).push();
-  ref.set({ sender: 'waiter', senderName: w.name, text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now() });
   const t = state.tables.find(x=>x.id===state.activeChatTableId);
+  const ref = db.ref(`chats/${state.activeChatTableId}/messages`).push();
+  ref.set({ sender: 'waiter', senderName: w.name, text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now(), sessionId: t?.sessionId || null });
   addLog('chat',`${w.name} "${t?t.name:'masa'}" müştərisinə cavab verdi: ${text}`,{ waiterId:w.id, tableId:state.activeChatTableId });
   document.getElementById('waiterChatInput').value = '';
 }
