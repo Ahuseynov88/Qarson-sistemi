@@ -12,7 +12,7 @@ import { showScreen, loadSavedTheme } from './theme.js';
 import { setRole, numPress, clearPin, showErr } from './auth.js';
 import { stopAlarm, checkIncomingOrders } from './alarm.js';
 import { StaffApp } from './staff-app.js';
-import { renderAdmin, renderLogs } from './admin.js';
+import { renderAdmin, renderLogs, initAdminTabDragDrop } from './admin.js';
 import { renderKitchen } from './kitchen.js';
 import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener, closeWaiterChat } from './customer.js';
 
@@ -224,6 +224,7 @@ function seedDemoData() {
 
 function bootstrap() {
   injectIconSprite();
+  initAdminTabDragDrop();
 
   staffApp = new StaffApp();
   window.staffApp = staffApp; // debug/konsol üçün əlçatan
