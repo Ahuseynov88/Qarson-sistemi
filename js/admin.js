@@ -1206,11 +1206,12 @@ export function renderClosedOrders() {
         }
       });
     });
-    const breakdownEntries = Object.entries(typeBreakdown);
+    const breakdownEntries = Object.entries(typeBreakdown)
+      .filter(([label]) => !payTypeFilter || label === resolveMethodName(payTypeFilter));
     reportEl.innerHTML = `<div class="ct-report">
       <div class="ct-report__stats">
         <div><div class="ct-report__stat-label">Bağlanan masa</div><div class="ct-report__stat-value">${filtered.length}</div></div>
-        <div><div class="ct-report__stat-label">Ümumi məbləğ</div><div class="ct-report__stat-value" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div></div>
+        <div><div class="ct-report__stat-label">${payTypeFilter ? esc(resolveMethodName(payTypeFilter)) + ' ilə ödənilmiş hesablar' : 'Ümumi məbləğ'}</div><div class="ct-report__stat-value" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div></div>
         <div><div class="ct-report__stat-label">Orta çek</div><div class="ct-report__stat-value">${(filtered.length?totalRevenue/filtered.length:0).toFixed(2)} ₼</div></div>
       </div>
       ${breakdownEntries.length ? `<div class="ct-report__breakdown">
