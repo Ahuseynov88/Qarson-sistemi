@@ -15,7 +15,7 @@ export function renderPermissionCheckboxes(existingPerms = []) {
       <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">
         ${group.icon} ${group.group}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div class="perm-checkbox-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         ${group.items.map(item => `
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);padding:6px 8px;border-radius:8px;background:var(--bg);border:1px solid var(--border);">
             <input type="checkbox" name="staff_perm" value="${item.key}" ${existingPerms.includes(item.key) ? 'checked' : ''} style="accent-color:var(--green);width:16px;height:16px;flex-shrink:0;">
