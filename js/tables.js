@@ -246,7 +246,13 @@ export class TableBoard {
     db.ref('closedOrders').push(archiveData);
 
     if (order) R.tableOrders.child(tableId).remove();
-    R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
+    if (t?.isRestoredTemp) {
+      // Müvəqqəti bərpa masası: bağlananda tamamilə silinir - "Masalar" panelində
+      // boş xəyal masa kimi qalmasın. Tarixçəsi artıq yuxarıda arxivə köçürülüb.
+      R.tables.child(tableId).remove();
+    } else {
+      R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
+    }
     addLog('table', closeMsg, { tableId, sessionId, staffId: state.user?.id });
     return true;
   }
