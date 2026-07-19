@@ -140,12 +140,12 @@
       <div class="closed-tables-filters" style="margin-bottom:14px;">
         <input type="text" id="ctSearchInput" placeholder="Masa adı və ya mal adı ilə axtar..." oninput="renderClosedOrders()">
         <div class="closed-tables-filters__row">
-          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()"></div>
-          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()"></div>
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
         </div>
         <div class="closed-tables-filters__row">
-          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="ctTimeFrom" onchange="renderClosedOrders()"></div>
-          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="ctTimeTo" onchange="renderClosedOrders()"></div>
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="ctTimeFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="ctTimeTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
         </div>
         <div class="closed-tables-filters__row">
           <div><span class="closed-tables-filters__label">Ödəniş növü</span><select id="ctPaymentTypeFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
