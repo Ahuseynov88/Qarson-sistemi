@@ -234,7 +234,8 @@ export class OrderCart {
         waiterId: (current && current.waiterId) || waiterId,
         paidAmount,
         remainingAmount: total - paidAmount,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        billPrintedAt: null
       };
     }, (error, committed, snapshot) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
