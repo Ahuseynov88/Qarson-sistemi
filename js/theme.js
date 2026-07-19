@@ -11,7 +11,7 @@ export function showScreen(id) {
 export function applyTheme(isDark) {
   document.body.classList.toggle('dark-mode', isDark);
   const icon = isDark ? '<svg class="icon"><use href="#i-sun"></use></svg>' : '<svg class="icon"><use href="#i-moon"></use></svg>';
-  ['themeToggleBtn', 'themeToggleBtnWaiter', 'themeToggleBtnKitchen', 'themeToggleBtnCustomer'].forEach(id => {
+  ['themeToggleBtn', 'themeToggleBtnWaiter', 'themeToggleBtnKitchen'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.innerHTML = icon;
   });
