@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete3x } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 
 export function renderPermissionCheckboxes(existingPerms = []) {
@@ -126,10 +126,19 @@ export function renderFeedbackSection() {
     const reqIcons  = { call:'<svg class="icon"><use href="#i-bell"></use></svg>', bill_cash:'<svg class="icon"><use href="#i-cash"></use></svg>', bill_pos:'<svg class="icon"><use href="#i-card"></use></svg>', message:'<svg class="icon"><use href="#i-chat"></use></svg>' };
 
     let html = '';
+    state._selectedRequestIds = (state._selectedRequestIds||[]).filter(id => reqs.some(r=>r.id===id));
     if (reqs.length) {
-      html += `<p style="color:var(--orange);font-size:12px;font-weight:700;margin-bottom:8px;text-transform:uppercase;"><svg class="icon"><use href="#i-bolt"></use></svg> Aktiv Tələblər</p>`;
+      const allReqChecked = reqs.length>0 && reqs.every(r=>state._selectedRequestIds.includes(r.id));
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;color:var(--orange);font-size:12px;font-weight:700;text-transform:uppercase;cursor:pointer;">
+          <input type="checkbox" onchange="toggleSelectAllRequests(this.checked)" ${allReqChecked?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+          <svg class="icon"><use href="#i-bolt"></use></svg> Aktiv Tələblər
+        </label>
+        <button id="requestDeleteSelectedBtn" class="btn btn-red" style="display:${state._selectedRequestIds.length?'inline-flex':'none'};padding:5px 12px;font-size:11px;" onclick="deleteSelectedRequests()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedRequestIds.length})</button>
+      </div>`;
       html += reqs.map(r=>`
         <div class="log-item" style="border-left:3px solid ${reqColors[r.type]||'#aaa'};margin-bottom:6px;">
+          <input type="checkbox" onchange="toggleRequestSelect('${r.id}')" ${state._selectedRequestIds.includes(r.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
           <span class="log-badge" style="background:${reqColors[r.type]||'#aaa'}22;color:${reqColors[r.type]||'#aaa'}">${reqIcons[r.type]||'<svg class="icon"><use href="#i-clipboard"></use></svg>'} ${esc(r.tableName||'')}</span>
           <span class="log-text">${esc(r.message||'')}</span>
           <span class="log-time">${r.time||''}</span>
@@ -140,8 +149,12 @@ export function renderFeedbackSection() {
     const feedbacks = state._feedbacks || [];
     state._selectedFeedbackIds = (state._selectedFeedbackIds||[]).filter(id => feedbacks.some(f=>f.id===id));
     if (feedbacks.length) {
+      const allFbChecked = feedbacks.length>0 && feedbacks.every(f=>state._selectedFeedbackIds.includes(f.id));
       html += `<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;">
-        <p style="color:var(--text2);font-size:12px;font-weight:700;text-transform:uppercase;margin:0;"><svg class="icon"><use href="#i-note"></use></svg> Şikayət / Təkliflər</p>
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px;font-weight:700;text-transform:uppercase;cursor:pointer;margin:0;">
+          <input type="checkbox" onchange="toggleSelectAllFeedbacks(this.checked)" ${allFbChecked?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+          <svg class="icon"><use href="#i-note"></use></svg> Şikayət / Təkliflər
+        </label>
         <button id="feedbackDeleteSelectedBtn" class="btn btn-red" style="display:${state._selectedFeedbackIds.length?'inline-flex':'none'};padding:5px 12px;font-size:11px;" onclick="deleteSelectedFeedbacks()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedFeedbackIds.length})</button>
       </div>`;
       html += feedbacks.map(f=>`
@@ -159,6 +172,42 @@ export function renderFeedbackSection() {
   });
 }
 
+export function toggleRequestSelect(id) {
+  state._selectedRequestIds = state._selectedRequestIds || [];
+  const i = state._selectedRequestIds.indexOf(id);
+  if (i === -1) state._selectedRequestIds.push(id); else state._selectedRequestIds.splice(i,1);
+  const btn = document.getElementById('requestDeleteSelectedBtn');
+  if (btn) {
+    btn.style.display = state._selectedRequestIds.length ? 'inline-flex' : 'none';
+    btn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedRequestIds.length})`;
+  }
+}
+
+export function toggleSelectAllRequests(checked) {
+  db.ref('customerRequests').orderByChild('status').equalTo('pending').once('value', snap => {
+    const ids = Object.keys(snap.val() || {});
+    state._selectedRequestIds = checked ? ids : [];
+    renderFeedbackSection();
+  });
+}
+
+export function deleteSelectedRequests() {
+  const ids = state._selectedRequestIds || [];
+  if (!ids.length) return;
+  confirmDelete2x(ids.length, 'tələb', () => {
+    ids.forEach(id => db.ref('customerRequests/' + id).remove());
+    addLog('admin', `Admin ${ids.length} müştəri tələbini seçib sildi`, {});
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} tələb silindi`);
+    state._selectedRequestIds = [];
+    renderFeedbackSection();
+  });
+}
+
+export function toggleSelectAllFeedbacks(checked) {
+  state._selectedFeedbackIds = checked ? (state._feedbacks||[]).map(f=>f.id) : [];
+  renderFeedbackSection();
+}
+
 export function toggleFeedbackSelect(id) {
   state._selectedFeedbackIds = state._selectedFeedbackIds || [];
   const i = state._selectedFeedbackIds.indexOf(id);
@@ -173,7 +222,7 @@ export function toggleFeedbackSelect(id) {
 export function deleteSelectedFeedbacks() {
   const ids = state._selectedFeedbackIds || [];
   if (!ids.length) return;
-  confirmDelete3x(ids.length, 'şikayət', () => {
+  confirmDelete2x(ids.length, 'şikayət', () => {
     ids.forEach(id => db.ref('feedbacks/' + id).remove());
     addLog('admin', `Admin ${ids.length} şikayəti seçib sildi`, {});
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} şikayət silindi`);
@@ -721,7 +770,12 @@ export function renderLogs() {
   const labels = { login:'GİRİŞ', logout:'ÇIXIŞ', order:'SİFARİŞ', table:'MASA', admin:'ADMİN', chat:'MESAJ', customer:'MÜŞTƏRİ' };
   const visible = list.slice(0,150);
   state._selectedLogIds = (state._selectedLogIds||[]).filter(id => visible.some(l=>l.id===id));
-  const barHtml = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+  const allChecked = visible.length>0 && visible.every(l=>state._selectedLogIds.includes(l.id));
+  const barHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+      <input type="checkbox" onchange="toggleSelectAllLogs(this.checked)" ${allChecked?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+      Hamısını seç (${visible.length})
+    </label>
     <button id="logDeleteSelectedBtn" class="btn btn-red" style="display:${state._selectedLogIds.length?'inline-flex':'none'};padding:5px 12px;font-size:11px;" onclick="deleteSelectedLogs()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedLogIds.length})</button>
   </div>`;
   el.innerHTML = barHtml + visible.map(l=>`
@@ -745,10 +799,17 @@ export function toggleLogSelect(id) {
   }
 }
 
+export function toggleSelectAllLogs(checked) {
+  let list = state.logs;
+  if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
+  state._selectedLogIds = checked ? list.slice(0,150).map(l=>l.id) : [];
+  renderLogs();
+}
+
 export function deleteSelectedLogs() {
   const ids = state._selectedLogIds || [];
   if (!ids.length) return;
-  confirmDelete3x(ids.length, 'tarixçə qeydi', () => {
+  confirmDelete2x(ids.length, 'tarixçə qeydi', () => {
     ids.forEach(id => R.logs.child(id).remove());
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
     state._selectedLogIds = [];
@@ -1150,12 +1211,18 @@ export function renderClosedOrders() {
     </div>`;
   }
 
+  if (state._ctSelectAllPending !== undefined) {
+    state._selectedClosedOrderIds = state._ctSelectAllPending ? filtered.map(o=>o.id) : [];
+    state._ctSelectAllPending = undefined;
+  }
   state._selectedClosedOrderIds = (state._selectedClosedOrderIds||[]).filter(id => filtered.some(o=>o.id===id));
   const delBtn = document.getElementById('ctDeleteSelectedBtn');
   if (delBtn) {
     delBtn.style.display = state._selectedClosedOrderIds.length ? 'inline-flex' : 'none';
     delBtn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedClosedOrderIds.length})`;
   }
+  const selectAllCb = document.getElementById('ctSelectAllCheckbox');
+  if (selectAllCb) selectAllCb.checked = filtered.length>0 && filtered.every(o=>state._selectedClosedOrderIds.includes(o.id));
 
   if (!filtered.length) {
     listEl.innerHTML = '<p class="ct-list-empty">Filtrə uyğun bağlanan masa tapılmadı.</p>';
@@ -1200,10 +1267,15 @@ export function toggleClosedOrderSelect(id) {
   }
 }
 
+export function toggleSelectAllClosedOrders(checked) {
+  state._ctSelectAllPending = checked;
+  renderClosedOrders();
+}
+
 export function deleteSelectedClosedOrders() {
   const ids = state._selectedClosedOrderIds || [];
   if (!ids.length) return;
-  confirmDelete3x(ids.length, 'bağlanmış masa qeydi', () => {
+  confirmDelete2x(ids.length, 'bağlanmış masa qeydi', () => {
     ids.forEach(id => db.ref('closedOrders/' + id).remove());
     addLog('admin', `Admin ${ids.length} bağlanmış masa qeydini seçib sildi`, {});
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
@@ -1299,9 +1371,14 @@ window.applyPermissionPreset = applyPermissionPreset;
 window.clearOldFeedbacks = clearOldFeedbacks;
 window.toggleFeedbackSelect = toggleFeedbackSelect;
 window.deleteSelectedFeedbacks = deleteSelectedFeedbacks;
+window.toggleSelectAllFeedbacks = toggleSelectAllFeedbacks;
+window.toggleRequestSelect = toggleRequestSelect;
+window.toggleSelectAllRequests = toggleSelectAllRequests;
+window.deleteSelectedRequests = deleteSelectedRequests;
 window.clearOldLogs = clearOldLogs;
 window.toggleLogSelect = toggleLogSelect;
 window.deleteSelectedLogs = deleteSelectedLogs;
+window.toggleSelectAllLogs = toggleSelectAllLogs;
 window.closeAddModal = closeAddModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
 window.closeKitchenPinModal = closeKitchenPinModal;
@@ -1339,6 +1416,7 @@ window.deletePaymentMethod = deletePaymentMethod;
 window.restoreClosedOrder = restoreClosedOrder;
 window.selectClosedOrder = selectClosedOrder;
 window.toggleClosedOrderSelect = toggleClosedOrderSelect;
+window.toggleSelectAllClosedOrders = toggleSelectAllClosedOrders;
 window.deleteSelectedClosedOrders = deleteSelectedClosedOrders;
 window.renderClosedOrders = renderClosedOrders;
 window.openCustomerHistoryModal = openCustomerHistoryModal;
