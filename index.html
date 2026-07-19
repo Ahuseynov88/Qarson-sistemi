@@ -162,6 +162,10 @@
           <div><span class="closed-tables-filters__label">Masanı açan işçi</span><select id="ctOpenedByFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
           <div><span class="closed-tables-filters__label">Masanı bağlayan işçi</span><select id="ctStaffFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ctRestoredOnlyFilter" onchange="renderClosedOrders()" style="width:16px;height:16px;cursor:pointer;">
+          Yalnız bərpa edilmiş masalar (<span style="color:var(--orange);">*</span> işarəli)
+        </label>
       </div>
       <div id="ctReportSummary" style="margin-bottom:14px;"></div>
       <div class="closed-tables-layout">
