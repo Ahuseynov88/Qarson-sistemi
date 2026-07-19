@@ -90,9 +90,10 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
 .item-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;box-shadow:0 2px 10px var(--shadow-color);}
 .item-card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
-.item-info h3{font-size:16px;margin-bottom:3px;}
-.item-info small{color:var(--text2);font-size:13px;}
+.avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;}
+.item-info{min-width:0;flex:1;}
+.item-info h3{font-size:16px;margin-bottom:3px;overflow-wrap:break-word;word-break:break-word;}
+.item-info small{color:var(--text2);font-size:13px;overflow-wrap:break-word;word-break:break-word;}
 .status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
 .badge-green{background:rgba(46,204,113,.15);color:var(--green);}
 .badge-red{background:rgba(231,76,60,.15);color:var(--red);}
@@ -144,8 +145,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .ct-report__type-chip{background:rgba(255,255,255,.08);border-radius:8px;padding:7px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;}
 .ct-report__type-chip b{color:var(--blue);}
 .log-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
-.log-text{font-size:13px;color:var(--text2);flex:1;}
-.log-time{font-size:11px;color:var(--text3);white-space:nowrap;}
+.log-text{font-size:13px;color:var(--text2);flex:1;min-width:0;overflow-wrap:break-word;word-break:break-word;}
+.log-time{font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;}
 .log-filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .log-filter{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
 .log-filter.active{background:var(--blue);color:#fff;font-weight:700;}
@@ -208,7 +209,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 #waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
 .waiter-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:relative;}
 .waiter-info{display:flex;align-items:center;gap:12px;}
-.waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);}
+.waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;}
 .waiter-body{flex:1;padding:16px;overflow:hidden;display:flex;flex-direction:column;}
 .waiter-body h3{font-size:15px;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;}
 /* ── MASA LÖVHƏSİ (FLOOR VIEW) — təmiz, işıqlı POS kart dizaynı ── */
@@ -532,4 +533,94 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
   .order-content-wrap{flex-direction:row;overflow-y:visible;}
   .order-items-grid{flex:1;overflow-y:auto;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));padding:14px;gap:10px;}
   .ticket-panel{width:360px;border-top:none;border-left:1px solid var(--border);overflow-y:auto;}
+}
+
+/* ═══════════════════════════════════════════
+   TELEFON/PLANŞET/KOMPÜTER ÜÇÜN ÜMUMİ UYĞUNLAŞMA
+   Bütün ekranlarda: mətn/rəqəmlər qutudan çıxmasın, iki-sütunlu
+   panellər dar ekranda alt-alta düzülsün, düymələr/formalar sıxılmasın.
+═══════════════════════════════════════════ */
+
+/* Hər ölçüdə tətbiq olunan təhlükəsizlik qaydaları - uzun mətn/rəqəm
+   heç vaxt öz qutusundan kənara çıxmasın */
+.stat-card,.ct-report__stats>div,.ct-detail-info-block,.ct-list-item__amount,
+.ct-report__stat-value,.audit-summary-header__value,.ticket-total-row__value,
+.cust-order-total__value,.pay-trigger__amount,.item-card,.log-item,.modal,
+.topbar h2,.form-group,.ct-report__type-chip{
+  min-width:0;overflow-wrap:break-word;word-break:break-word;
+}
+.topbar h2{display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+img,svg.icon{max-width:100%;}
+
+/* ── PLANŞET (≤1024px): geniş 2-sütunlu panellər bir az sıxılır, tam sıxılmır ── */
+@media (max-width:1024px){
+  .closed-tables-layout{gap:12px;}
+  .closed-tables-list-col{max-width:340px;}
+  .admin-body{padding:16px;}
+  .modal{padding:22px;}
+}
+
+/* ── TELEFON (≤680px): əsas struktur dəyişiklikləri ── */
+@media (max-width:680px){
+  /* Admin: iki sütunlu "Bağlanan Masalar" (siyahı + detal) alt-alta düzülür */
+  .closed-tables-layout{flex-direction:column;}
+  .closed-tables-list-col{max-width:none;}
+  .closed-tables-detail-col{position:static;}
+
+  /* Admin: filtr sətirləri (tarix aralığı, ödəniş növü və s.) tək sütuna düşür */
+  .closed-tables-filters__row{grid-template-columns:1fr;}
+
+  /* Admin tabları: üfüqi sürüşmə əvəzinə daha yığcam, sıxılmış görünüş */
+  .admin-tabs{gap:6px;padding-bottom:12px;margin-bottom:14px;}
+  .admin-tab{padding:8px 13px;font-size:12.5px;}
+
+  .admin-body{padding:12px;}
+  .topbar{padding:12px 14px;}
+  .topbar h2{font-size:16px;}
+
+  /* Hesabat/statistika qutuları: az sütun, kiçik şrift ki rəqəm daşmasın */
+  .stat-card{padding:12px;}
+  .stat-num{font-size:22px;}
+  .ct-report{padding:14px;}
+  .ct-report__stats{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .ct-report__stat-value{font-size:17px;}
+  .ct-detail-info-grid{grid-template-columns:repeat(2,1fr);}
+  .ct-detail-panel{padding:14px;}
+  .ct-detail-header{font-size:15px;}
+  .ct-detail-header span:last-child{font-size:18px!important;}
+
+  /* Modallar: telefonda tam ekrana yaxın, az padding */
+  .modal-bg{padding:10px;}
+  .modal{padding:18px;border-radius:16px;max-height:94vh;}
+  .modal h2{font-size:18px;}
+
+  /* Bilet alt hərəkət düymələri: 3 sütun çox sıx olur, 2-yə düşür */
+  .ticket-action-grid{grid-template-columns:repeat(2,1fr);}
+
+  /* Ödəniş növü seçimi və digər 2-sütunlu ümumi qutular tələb olunanda 1 sütuna keçir */
+  #paymentTypeGrid{grid-template-columns:1fr!important;}
+  .perm-checkbox-grid{grid-template-columns:1fr!important;}
+
+  /* Login qutusu: kənar boşluq azalır, PIN klaviaturası sığır */
+  .login-box{padding:26px 20px;}
+
+  /* Masa lövhəsi kartları: telefon üçün bir az kiçilir ki, sıra pozulmasın */
+  .table-board-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;}
+  .kitchen-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+  .grid-2{grid-template-columns:1fr;}
+
+  /* Toplu-əməliyyat zolağı (checkbox seçimi) telefonda alt-alta düzülür */
+  .batch-bar{flex-wrap:wrap;}
+
+  /* İdarəetmə formalarındakı geniş sətirlər (2 sahə yan-yana) telefonda alt-alta keçir */
+  .item-card-header{flex-wrap:wrap;}
+}
+
+/* ── ÇOX DAR TELEFON (≤380px): son sıxlaşdırma ── */
+@media (max-width:380px){
+  .ct-report__stats{grid-template-columns:1fr 1fr;}
+  .ct-report__stat-value{font-size:15px;}
+  .admin-tab{padding:7px 10px;font-size:11.5px;}
+  .ticket-action-grid{grid-template-columns:1fr 1fr;}
+  .table-board-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
 }
