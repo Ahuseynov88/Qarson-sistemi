@@ -77,6 +77,9 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .admin-body{flex:1;overflow-y:auto;padding:20px;}
 .admin-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
 .admin-tab{padding:9px 20px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text2);cursor:pointer;font-weight:600;font-size:14px;transition:.2s;}
+.admin-tab{cursor:grab;}
+.admin-tab.dragging{opacity:.35;cursor:grabbing;}
+.admin-tab.drag-over{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue) inset;}
 .admin-tab.active{background:var(--gold);color:#1f0a12;border-color:var(--gold);font-weight:700;}
 .admin-section{display:none;}
 .admin-section.active{display:block;}
