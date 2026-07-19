@@ -64,17 +64,17 @@
     </div>
   </div>
   <div class="admin-body">
-    <div class="admin-tabs">
-      <button class="admin-tab active" onclick="adminTab('dashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> İcmal</button>
-      <button class="admin-tab" onclick="adminTab('staff',this)"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</button>
-      <button class="admin-tab" onclick="adminTab('tables',this)"><svg class="icon"><use href="#i-chair"></use></svg> Masalar</button>
-      <button class="admin-tab" onclick="adminTab('menu',this)"><svg class="icon"><use href="#i-food"></use></svg> Menyu</button>
-      <button class="admin-tab" onclick="adminTab('logs',this)"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
-      <button class="admin-tab" onclick="adminTab('settings',this)"><svg class="icon"><use href="#i-settings"></use></svg> Ayarlar</button>
-      <button class="admin-tab" onclick="adminTab('feedback',this)"><svg class="icon"><use href="#i-chat"></use></svg> Şikayətlər</button>
-      <button class="admin-tab" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
-      <button class="admin-tab" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
-      <button class="admin-tab" onclick="adminTab('closedOrders',this)"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</button>
+    <div class="admin-tabs" id="adminTabsContainer">
+      <button class="admin-tab active" data-section="dashboard" onclick="adminTab('dashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> İcmal</button>
+      <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</button>
+      <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)"><svg class="icon"><use href="#i-chair"></use></svg> Masalar</button>
+      <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)"><svg class="icon"><use href="#i-food"></use></svg> Menyu</button>
+      <button class="admin-tab" data-section="logs" onclick="adminTab('logs',this)"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
+      <button class="admin-tab" data-section="settings" onclick="adminTab('settings',this)"><svg class="icon"><use href="#i-settings"></use></svg> Ayarlar</button>
+      <button class="admin-tab" data-section="feedback" onclick="adminTab('feedback',this)"><svg class="icon"><use href="#i-chat"></use></svg> Şikayətlər</button>
+      <button class="admin-tab" data-section="customers" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
+      <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
+      <button class="admin-tab" data-section="closedOrders" onclick="adminTab('closedOrders',this)"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
