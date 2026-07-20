@@ -647,6 +647,12 @@ img,svg.icon{max-width:100%;}
 
   /* İdarəetmə formalarındakı geniş sətirlər (2 sahə yan-yana) telefonda alt-alta keçir */
   .item-card-header{flex-wrap:wrap;}
+
+  /* Kart üzərindəki əməliyyat düymələri (Deaktiv/Düzənlə/Sil və s.): yan-yana
+     sıxılıb yazı bölünmək əvəzinə alt-alta, incə formada düzülür */
+  .item-actions{flex-direction:column;gap:6px;}
+  .item-actions .btn{width:100%;padding:8px 10px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;justify-content:center;gap:5px;}
+  .item-actions .btn .icon{flex-shrink:0;}
 }
 
 /* ── ÇOX DAR TELEFON (≤380px): son sıxlaşdırma ── */
