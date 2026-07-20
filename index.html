@@ -65,7 +65,7 @@
   </div>
   <div class="admin-body">
     <div class="admin-tabs" id="adminTabsContainer">
-      <button class="admin-tab active" data-section="dashboard" onclick="adminTab('dashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> İcmal</button>
+      <button class="admin-tab active" data-section="dashboard" onclick="adminTab('dashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> Hesabatlar</button>
       <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</button>
       <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)"><svg class="icon"><use href="#i-chair"></use></svg> Masalar</button>
       <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)"><svg class="icon"><use href="#i-food"></use></svg> Menyu</button>
@@ -78,7 +78,42 @@
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
-      
+
+      <div class="report-quick-filters">
+        <button class="report-quick-btn" onclick="setReportQuickRange('today')">Bu gün</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('yesterday')">Dünən</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('week')">Bu həftə</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('month')">Bu ay</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('lastMonth')">Keçən ay</button>
+        <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('dayEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Gün Sonu</button>
+        <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('monthEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Ay Sonu</button>
+      </div>
+
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="repDateFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="repDateTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="repTimeFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="repTimeTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">İş günü başlama saatı <small style="font-weight:400;">(Gün/Ay Sonu üçün)</small></span><input type="time" id="repBizDayHour" value="05:00" onchange="saveBizDayHour()"></div>
+          <div style="display:flex;align-items:flex-end;"><span id="reportRangeSummary" style="font-size:12.5px;color:var(--text2);padding-bottom:9px;"></span></div>
+        </div>
+      </div>
+
+      <div class="report-subtabs" id="reportSubtabs">
+        <button class="report-subtab active" data-view="summary" onclick="setReportView('summary')"><svg class="icon"><use href="#i-chart"></use></svg> Xülasə</button>
+        <button class="report-subtab" data-view="payments" onclick="setReportView('payments')"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Növləri</button>
+        <button class="report-subtab" data-view="staff" onclick="setReportView('staff')"><svg class="icon"><use href="#i-staff"></use></svg> İşçi Performansı</button>
+        <button class="report-subtab" data-view="items" onclick="setReportView('items')"><svg class="icon"><use href="#i-food"></use></svg> Mal / Kateqoriya</button>
+        <button class="report-subtab" data-view="tables" onclick="setReportView('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Masalara Görə</button>
+        <button class="report-subtab" data-view="days" onclick="setReportView('days')"><svg class="icon"><use href="#i-clipboard"></use></svg> Günlərə Görə</button>
+        <button class="report-subtab" data-view="hours" onclick="setReportView('hours')"><svg class="icon"><use href="#i-clock"></use></svg> Saatlara Görə</button>
+      </div>
+      <div id="reportContent"></div>
     </div>
     <div class="admin-section" id="sec-staff">
       <div class="grid-2" id="staffGrid"></div>
