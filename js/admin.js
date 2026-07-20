@@ -132,6 +132,285 @@ export function renderDashboard() {
     <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--red)">${pendingO}</div><div class="stat-label">Gözləyən Sifariş</div></div>
   `;
+  const bizHourEl = document.getElementById('repBizDayHour');
+  if (bizHourEl && !bizHourEl.value) bizHourEl.value = String(state._bizDayStartHour||5).padStart(2,'0') + ':00';
+  renderReports();
+}
+
+/* ═══════════════════════════════════════════
+   HESABATLAR
+═══════════════════════════════════════════ */
+
+function localDateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function hhmm(h) { return String(h).padStart(2,'0') + ':00'; }
+
+export function setReportQuickRange(type) {
+  const now = new Date();
+  const bizHour = state._bizDayStartHour || 5;
+  let dFrom, dTo, tFrom = '', tTo = '';
+
+  if (type === 'today') { dFrom = new Date(now); dTo = new Date(now); }
+  else if (type === 'yesterday') { dFrom = new Date(now); dFrom.setDate(dFrom.getDate()-1); dTo = new Date(dFrom); }
+  else if (type === 'week') { dTo = new Date(now); dFrom = new Date(now); const day=(dFrom.getDay()+6)%7; dFrom.setDate(dFrom.getDate()-day); }
+  else if (type === 'month') { dTo = new Date(now); dFrom = new Date(now.getFullYear(), now.getMonth(), 1); }
+  else if (type === 'lastMonth') { dFrom = new Date(now.getFullYear(), now.getMonth()-1, 1); dTo = new Date(now.getFullYear(), now.getMonth(), 0); }
+  else if (type === 'dayEnd') {
+    // Cari an hələ bu günkü "iş günü başlama saatı"na çatmayıbsa, iş günü DÜNƏNDƏN başlayır
+    dFrom = new Date(now);
+    if (now.getHours() < bizHour) dFrom.setDate(dFrom.getDate()-1);
+    dTo = new Date(dFrom); dTo.setDate(dTo.getDate()+1);
+    tFrom = hhmm(bizHour); tTo = hhmm(bizHour);
+  } else if (type === 'monthEnd') {
+    dFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    dTo = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    tFrom = hhmm(bizHour); tTo = hhmm(bizHour);
+  } else return;
+
+  document.getElementById('repDateFrom').value = localDateStr(dFrom);
+  document.getElementById('repDateTo').value = localDateStr(dTo);
+  document.getElementById('repTimeFrom').value = tFrom;
+  document.getElementById('repTimeTo').value = tTo;
+  renderReports();
+}
+
+export function saveBizDayHour() {
+  const val = document.getElementById('repBizDayHour')?.value || '05:00';
+  const hour = parseInt(val.split(':')[0], 10) || 0;
+  db.ref('settings/bizDayStartHour').set(hour);
+  state._bizDayStartHour = hour;
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> İş günü başlama saatı yadda saxlanıldı');
+}
+
+export function setReportView(view) {
+  state._reportView = view;
+  document.querySelectorAll('.report-subtab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  renderReports();
+}
+
+function getReportFilteredOrders() {
+  const dateFrom = document.getElementById('repDateFrom')?.value || '';
+  const dateTo = document.getElementById('repDateTo')?.value || '';
+  const timeFrom = document.getElementById('repTimeFrom')?.value || '';
+  const timeTo = document.getElementById('repTimeTo')?.value || '';
+  return (state.closedOrders || []).filter(o => {
+    if (dateFrom) {
+      const b = new Date(dateFrom);
+      if (timeFrom) { const [h,m] = timeFrom.split(':'); b.setHours(+h,+m,0,0); } else { b.setHours(0,0,0,0); }
+      if (o.closedAt < b.getTime()) return false;
+    }
+    if (dateTo) {
+      const b = new Date(dateTo);
+      if (timeTo) { const [h,m] = timeTo.split(':'); b.setHours(+h,+m,59,999); } else { b.setHours(23,59,59,999); }
+      if (o.closedAt > b.getTime()) return false;
+    }
+    return true;
+  });
+}
+
+const resolvePaymentMethodName = (id) => id==='cash'?'Nağd':id==='pos'?'POS':((state.paymentMethods||[]).find(m=>m.id===id)?.name || 'Silinmiş növ');
+
+function buildPaymentTypeBreakdown(orders) {
+  const breakdown = {}; // label -> {amount, count}
+  orders.forEach(o => {
+    getOrderPayments(o).forEach(p => {
+      if (p.type === 'split' && p.splitBreakdown) {
+        Object.entries(p.splitBreakdown).forEach(([mid, amt]) => {
+          const key = p.splitMethodNames?.[mid] || resolvePaymentMethodName(mid);
+          if (!breakdown[key]) breakdown[key] = { amount: 0, count: 0 };
+          breakdown[key].amount += amt || 0; breakdown[key].count++;
+        });
+      } else {
+        const key = p.typeLabel || p.type;
+        if (!breakdown[key]) breakdown[key] = { amount: 0, count: 0 };
+        breakdown[key].amount += p.thisPay || 0; breakdown[key].count++;
+      }
+    });
+  });
+  return breakdown;
+}
+
+export function renderReports() {
+  const el = document.getElementById('reportContent');
+  if (!el) return;
+  const orders = getReportFilteredOrders();
+  const summaryEl = document.getElementById('reportRangeSummary');
+  if (summaryEl) summaryEl.textContent = `${orders.length} əməliyyat tapıldı`;
+
+  if (!orders.length) { el.innerHTML = '<p class="report-empty"><svg class="icon" style="width:28px;height:28px;"><use href="#i-clipboard"></use></svg><br>Seçilmiş tarix/saat aralığında əməliyyat tapılmadı.</p>'; return; }
+
+  const view = state._reportView || 'summary';
+  if (view === 'summary') renderReportSummaryView(orders, el);
+  else if (view === 'payments') renderReportPaymentsView(orders, el);
+  else if (view === 'staff') renderReportStaffView(orders, el);
+  else if (view === 'items') renderReportItemsView(orders, el);
+  else if (view === 'tables') renderReportTablesView(orders, el);
+  else if (view === 'days') renderReportDaysView(orders, el);
+  else if (view === 'hours') renderReportHoursView(orders, el);
+  else renderReportSummaryView(orders, el);
+}
+
+function renderReportSummaryView(orders, el) {
+  const totalRevenue = orders.reduce((s,o)=>s+(o.total||0),0);
+  let totalDiscount = 0, totalCompliment = 0, itemCount = 0;
+  orders.forEach(o => {
+    Object.values(o.items||{}).forEach(it => {
+      itemCount += it.qty || 0;
+      if (it.compliment) totalCompliment += (it.originalPrice||0)*it.qty + (it.originalExtraFee||0);
+      else if (it.discountPercent > 0) totalDiscount += (it.price||0)*it.qty*(it.discountPercent/100);
+    });
+  });
+  const avgCheck = orders.length ? totalRevenue/orders.length : 0;
+  const breakdown = buildPaymentTypeBreakdown(orders);
+  const entries = Object.entries(breakdown).sort((a,b)=>b[1].amount-a[1].amount);
+
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:22px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div><div class="stat-label">Ümumi dövriyyə</div></div>
+      <div class="stat-card"><div class="stat-num">${orders.length}</div><div class="stat-label">Bağlanan masa</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${avgCheck.toFixed(2)} ₼</div><div class="stat-label">Orta çek</div></div>
+      <div class="stat-card"><div class="stat-num">${itemCount}</div><div class="stat-label">Satılan mal (ədəd)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${totalDiscount.toFixed(2)} ₼</div><div class="stat-label">Verilən endirim</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--purple);">${totalCompliment.toFixed(2)} ₼</div><div class="stat-label">İkram dəyəri</div></div>
+    </div>
+    <div class="report-section-title"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş növünə görə bölgü</div>
+    <table class="report-table">
+      <thead><tr><th>Növ</th><th class="num">Məbləğ</th><th class="num">Pay</th></tr></thead>
+      <tbody>
+        ${entries.length ? entries.map(([label,v]) => `<tr><td>${esc(label)}</td><td class="num">${v.amount.toFixed(2)} ₼</td><td class="num">${totalRevenue?((v.amount/totalRevenue)*100).toFixed(1):0}%</td></tr>`).join('')
+          : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Ödəniş qeydi yoxdur</td></tr>'}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderReportPaymentsView(orders, el) {
+  const breakdown = buildPaymentTypeBreakdown(orders);
+  const entries = Object.entries(breakdown).sort((a,b)=>b[1].amount-a[1].amount);
+  if (!entries.length) { el.innerHTML = '<p class="report-empty">Bu aralıqda ödəniş qeydi tapılmadı.</p>'; return; }
+  const total = entries.reduce((s,[,v])=>s+v.amount,0);
+  const maxAmt = Math.max(...entries.map(([,v])=>v.amount), 1);
+  el.innerHTML = `
+    <div class="report-bar-chart">
+      ${entries.map(([label,v]) => `
+        <div class="report-bar-chart__col">
+          <span class="report-bar-chart__val">${v.amount.toFixed(0)}₼</span>
+          <div class="report-bar-chart__bar" style="height:${Math.max(4,(v.amount/maxAmt)*130)}px;"></div>
+          <span class="report-bar-chart__label">${esc(label)}</span>
+        </div>`).join('')}
+    </div>
+    <table class="report-table" style="margin-top:18px;">
+      <thead><tr><th>Ödəniş növü</th><th class="num">Sayı</th><th class="num">Məbləğ</th><th class="num">Pay</th></tr></thead>
+      <tbody>${entries.map(([label,v]) => `<tr><td>${esc(label)}</td><td class="num">${v.count}</td><td class="num">${v.amount.toFixed(2)} ₼</td><td class="num">${total?((v.amount/total)*100).toFixed(1):0}%</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportStaffView(orders, el) {
+  const byStaff = {};
+  orders.forEach(o => {
+    const name = o.staffName || 'Naməlum';
+    if (!byStaff[name]) byStaff[name] = { count: 0, revenue: 0 };
+    byStaff[name].count++; byStaff[name].revenue += o.total || 0;
+  });
+  const entries = Object.entries(byStaff).sort((a,b)=>b[1].revenue-a[1].revenue);
+  el.innerHTML = `
+    <div class="report-section-title"><svg class="icon"><use href="#i-staff"></use></svg> Masanı bağlayan işçiyə görə (satış performansı)</div>
+    <table class="report-table">
+      <thead><tr><th>İşçi</th><th class="num">Bağlanan masa</th><th class="num">Dövriyyə</th><th class="num">Orta çek</th></tr></thead>
+      <tbody>${entries.map(([name,v],i) => `<tr class="${i===0?'report-table__top':''}"><td>${esc(name)}</td><td class="num">${v.count}</td><td class="num">${v.revenue.toFixed(2)} ₼</td><td class="num">${(v.revenue/v.count).toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportItemsView(orders, el) {
+  const byItem = {};
+  orders.forEach(o => {
+    Object.values(o.items||{}).forEach(it => {
+      if (!byItem[it.name]) byItem[it.name] = { qty: 0, revenue: 0 };
+      byItem[it.name].qty += it.qty || 0;
+      byItem[it.name].revenue += (it.price||0)*it.qty*(1-((it.discountPercent||0)/100)) + (it.extraFee||0);
+    });
+  });
+  const itemEntries = Object.entries(byItem).sort((a,b)=>b[1].revenue-a[1].revenue);
+  const byCategory = {};
+  itemEntries.forEach(([name,v]) => {
+    const cat = state.menuItems.find(m=>m.name===name)?.category || 'Digər';
+    if (!byCategory[cat]) byCategory[cat] = { qty: 0, revenue: 0 };
+    byCategory[cat].qty += v.qty; byCategory[cat].revenue += v.revenue;
+  });
+  const catEntries = Object.entries(byCategory).sort((a,b)=>b[1].revenue-a[1].revenue);
+
+  el.innerHTML = `
+    <div class="report-section-title"><svg class="icon"><use href="#i-tag"></use></svg> Kateqoriyaya görə satış</div>
+    <table class="report-table">
+      <thead><tr><th>Kateqoriya</th><th class="num">Ədəd</th><th class="num">Dövriyyə</th></tr></thead>
+      <tbody>${catEntries.map(([c,v]) => `<tr><td>${esc(c)}</td><td class="num">${v.qty}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="report-section-title"><svg class="icon"><use href="#i-food"></use></svg> Ən çox satılan mallar</div>
+    <table class="report-table">
+      <thead><tr><th>Mal</th><th class="num">Ədəd</th><th class="num">Dövriyyə</th></tr></thead>
+      <tbody>${itemEntries.map(([name,v],i) => `<tr class="${i<3?'report-table__top':''}"><td>${esc(name)}</td><td class="num">${v.qty}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportTablesView(orders, el) {
+  const byTable = {};
+  orders.forEach(o => {
+    const name = (o.tableName || '?').replace(/\s*\*+$/, '');
+    if (!byTable[name]) byTable[name] = { count: 0, revenue: 0 };
+    byTable[name].count++; byTable[name].revenue += o.total || 0;
+  });
+  const entries = Object.entries(byTable).sort((a,b)=>b[1].revenue-a[1].revenue);
+  el.innerHTML = `
+    <div class="report-section-title"><svg class="icon"><use href="#i-chair"></use></svg> Masalara görə dövriyyə</div>
+    <table class="report-table">
+      <thead><tr><th>Masa</th><th class="num">Neçə dəfə bağlanıb</th><th class="num">Dövriyyə</th><th class="num">Orta</th></tr></thead>
+      <tbody>${entries.map(([name,v],i) => `<tr class="${i===0?'report-table__top':''}"><td>${esc(name)}</td><td class="num">${v.count}</td><td class="num">${v.revenue.toFixed(2)} ₼</td><td class="num">${(v.revenue/v.count).toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportDaysView(orders, el) {
+  const byDay = {};
+  orders.forEach(o => {
+    const d = o.closedDate || '?';
+    if (!byDay[d]) byDay[d] = { count: 0, revenue: 0, ts: o.closedAt };
+    byDay[d].count++; byDay[d].revenue += o.total || 0;
+  });
+  const entries = Object.entries(byDay).sort((a,b)=>a[1].ts-b[1].ts);
+  const maxRev = Math.max(...entries.map(([,v])=>v.revenue), 1);
+  el.innerHTML = `
+    <div class="report-section-title"><svg class="icon"><use href="#i-clipboard"></use></svg> Günlərə görə dövriyyə</div>
+    <div class="report-bar-chart">
+      ${entries.map(([day,v]) => `<div class="report-bar-chart__col"><span class="report-bar-chart__val">${v.revenue.toFixed(0)}₼</span><div class="report-bar-chart__bar" style="height:${Math.max(4,(v.revenue/maxRev)*130)}px;"></div><span class="report-bar-chart__label">${esc(day)}</span></div>`).join('')}
+    </div>
+    <table class="report-table" style="margin-top:18px;">
+      <thead><tr><th>Tarix</th><th class="num">Masa sayı</th><th class="num">Dövriyyə</th><th class="num">Orta çek</th></tr></thead>
+      <tbody>${entries.slice().reverse().map(([day,v]) => `<tr><td>${esc(day)}</td><td class="num">${v.count}</td><td class="num">${v.revenue.toFixed(2)} ₼</td><td class="num">${(v.revenue/v.count).toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportHoursView(orders, el) {
+  const byHour = {};
+  for (let h=0; h<24; h++) byHour[h] = { count: 0, revenue: 0 };
+  orders.forEach(o => {
+    const h = new Date(o.closedAt).getHours();
+    byHour[h].count++; byHour[h].revenue += o.total || 0;
+  });
+  const entries = Object.entries(byHour).map(([h,v]) => [parseInt(h,10), v]);
+  const maxRev = Math.max(...entries.map(([,v])=>v.revenue), 1);
+  el.innerHTML = `
+    <div class="report-section-title"><svg class="icon"><use href="#i-clock"></use></svg> Saatlara görə dövriyyə (ən yığcam saatları göstərir)</div>
+    <div class="report-bar-chart">
+      ${entries.map(([h,v]) => `<div class="report-bar-chart__col"><span class="report-bar-chart__val">${v.revenue>0?v.revenue.toFixed(0)+'₼':''}</span><div class="report-bar-chart__bar" style="height:${Math.max(2,(v.revenue/maxRev)*130)}px;"></div><span class="report-bar-chart__label">${String(h).padStart(2,'0')}</span></div>`).join('')}
+    </div>
+    <table class="report-table" style="margin-top:18px;">
+      <thead><tr><th>Saat aralığı</th><th class="num">Masa sayı</th><th class="num">Dövriyyə</th></tr></thead>
+      <tbody>${entries.filter(([,v])=>v.count>0).map(([h,v]) => `<tr><td>${String(h).padStart(2,'0')}:00 – ${String(h).padStart(2,'0')}:59</td><td class="num">${v.count}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+  `;
 }
 
 export function adminEditTableNote(tableId) {
@@ -1455,6 +1734,10 @@ export function restoreClosedOrder(id) {
 }
 
 window.adminTab = adminTab;
+window.setReportQuickRange = setReportQuickRange;
+window.saveBizDayHour = saveBizDayHour;
+window.setReportView = setReportView;
+window.renderReports = renderReports;
 window.applyPermissionPreset = applyPermissionPreset;
 window.clearOldFeedbacks = clearOldFeedbacks;
 window.toggleFeedbackSelect = toggleFeedbackSelect;
