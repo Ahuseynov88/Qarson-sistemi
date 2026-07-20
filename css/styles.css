@@ -573,7 +573,8 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
 .stat-card,.ct-report__stats>div,.ct-detail-info-block,.ct-list-item__amount,
 .ct-report__stat-value,.audit-summary-header__value,.ticket-total-row__value,
 .cust-order-total__value,.pay-trigger__amount,.item-card,.log-item,.modal,
-.topbar h2,.form-group,.ct-report__type-chip{
+.topbar h2,.form-group,.ct-report__type-chip,.floor-card__name,.ct-list-item__name,
+.floor-card,.k-card,.report-bar-chart__label{
   min-width:0;overflow-wrap:break-word;word-break:break-word;
 }
 .topbar h2{display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
@@ -631,10 +632,15 @@ img,svg.icon{max-width:100%;}
   /* Login qutusu: kənar boşluq azalır, PIN klaviaturası sığır */
   .login-box{padding:26px 20px;}
 
-  /* Masa lövhəsi kartları: telefon üçün bir az kiçilir ki, sıra pozulmasın */
-  .table-board-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;}
-  .kitchen-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
-  .grid-2{grid-template-columns:1fr;}
+  /* Masa lövhəsi, mətbəx və idarəetmə kartları: telefonda TAM sıra tutmasın,
+     ən azı 2 sütun yan-yana sığsın (minmax əvəzinə sabit 2 sütun - məzmunun eni
+     nə olursa olsun sütun sayı dəyişmir) */
+  .table-board-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .kitchen-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .grid-2{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .floor-card{padding:11px 10px 10px 12px;min-width:0;}
+  .floor-card__name{font-size:13px;}
+  .item-card{padding:13px;min-width:0;}
 
   /* Toplu-əməliyyat zolağı (checkbox seçimi) telefonda alt-alta düzülür */
   .batch-bar{flex-wrap:wrap;}
@@ -649,5 +655,7 @@ img,svg.icon{max-width:100%;}
   .ct-report__stat-value{font-size:15px;}
   .admin-tab{padding:7px 10px;font-size:11.5px;}
   .ticket-action-grid{grid-template-columns:1fr 1fr;}
-  .table-board-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+  .table-board-grid{gap:6px;}
+  .floor-card{padding:9px 8px 8px 10px;}
+  .floor-card__name{font-size:12px;}
 }
