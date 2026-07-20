@@ -137,6 +137,13 @@ function confirmExit() {
 function initListeners() {
   db.ref('settings/kitchenPin').on('value', snap => { if (snap.val()) state.kitchenPin = snap.val(); });
   db.ref('settings/adminPin').on('value', snap => { if (snap.val()) { ADMIN_PIN = snap.val(); setAdminPin(snap.val()); } });
+  db.ref('settings/bizDayStartHour').on('value', snap => {
+    if (snap.val() !== null && snap.val() !== undefined) {
+      state._bizDayStartHour = snap.val();
+      const el = document.getElementById('repBizDayHour');
+      if (el && document.activeElement !== el) el.value = String(snap.val()).padStart(2,'0') + ':00';
+    }
+  });
 
   R.staff.on('value', snap => {
     state.staff = toArr(snap.val());
@@ -178,7 +185,7 @@ function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
   R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
-  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('chats').off();
+  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('chats').off();
 }
 
 function onDataChange() {
