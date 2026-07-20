@@ -58,6 +58,7 @@ export function adminTab(sec, el) {
   el.classList.add('active');
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+sec).classList.add('active');
+  document.querySelector('.admin-body')?.classList.add('admin-section-open');
   renderAdmin();
   document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods') ? 'flex':'none';
   if (sec==='settings') {
@@ -66,6 +67,12 @@ export function adminTab(sec, el) {
       if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
     });
   }
+}
+
+// Telefonda "ev ekranı" naviqasiyasında bölmə görünüşündən grid menyusuna qayıdır
+export function adminGoBack() {
+  document.querySelector('.admin-body')?.classList.remove('admin-section-open');
+  document.getElementById('adminFab').style.display = 'none';
 }
 
 // ── Kateqoriya (tab) sırasını sürükləyib dəyişmək (məs. "Ayarlar"ı birinci etmək) ──
@@ -1734,6 +1741,7 @@ export function restoreClosedOrder(id) {
 }
 
 window.adminTab = adminTab;
+window.adminGoBack = adminGoBack;
 window.setReportQuickRange = setReportQuickRange;
 window.saveBizDayHour = saveBizDayHour;
 window.setReportView = setReportView;
