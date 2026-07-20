@@ -25,6 +25,8 @@ export const state = {
   logFilter: 'all',
   adminSection: 'dashboard',
   _selectedClosedOrderId: null,
+  _reportView: 'summary',
+  _bizDayStartHour: 5,
   alarm: null,
   alarmType: null,
   alarmInterval: null,
