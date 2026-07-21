@@ -66,6 +66,9 @@ export function adminTab(sec, el) {
     db.ref('settings/menuUrl').once('value', snap => {
       if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
     });
+    const sc = state.serviceCharge || {};
+    document.getElementById('serviceChargeEnabled').checked = !!sc.enabled;
+    document.getElementById('serviceChargePercent').value = sc.percent || '';
   }
 }
 
@@ -859,6 +862,21 @@ export function saveMenuUrl() {
   document.getElementById('menuUrlStatus').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
   setTimeout(()=>{ document.getElementById('menuUrlStatus').textContent=''; },3000);
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Menyu URL yadda saxlandı');
+}
+
+export function saveServiceCharge() {
+  const enabled = document.getElementById('serviceChargeEnabled').checked;
+  const percent = parseFloat(document.getElementById('serviceChargePercent').value) || 0;
+  if (enabled && percent <= 0) {
+    showToast('<svg class="icon"><use href="#i-warning"></use></svg> Faiz dərəcəsi 0-dan böyük olmalıdır');
+    document.getElementById('serviceChargeEnabled').checked = false;
+    return;
+  }
+  db.ref('settings/serviceCharge').set({ enabled, percent });
+  addLog('admin', `Xidmət haqqı ${enabled?`aktiv edildi (${percent}%)`:'deaktiv edildi'}`, {});
+  document.getElementById('serviceChargeStatus').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
+  setTimeout(()=>{ const el = document.getElementById('serviceChargeStatus'); if (el) el.textContent=''; },3000);
+  showToast(`<svg class="icon"><use href="#i-check"></use></svg> Xidmət haqqı ${enabled?'aktivdir':'deaktivdir'}`);
 }
 
 export function renderStaff() {
@@ -1782,6 +1800,7 @@ window.saveAdminNote = saveAdminNote;
 window.saveItem = saveItem;
 window.saveKitchenPin = saveKitchenPin;
 window.saveMenuUrl = saveMenuUrl;
+window.saveServiceCharge = saveServiceCharge;
 window.setLogFilter = setLogFilter;
 window.setMenuCat = setMenuCat;
 window.setTableCat = setTableCat;
