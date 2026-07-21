@@ -15,6 +15,22 @@ export function formatItemsList(items) {
   return arr.map(it => `${it.qty}x ${it.name}`).join(', ');
 }
 
+// Malların cəmini hesablayır və (aktivdirsə) xidmət haqqını əlavə edir.
+// BÜTÜN yerlərdə order.total hesablanarkən İSTİFADƏ OLUNMALIDIR ki, xidmət
+// haqqı hər zaman tutarlı tətbiq olunsun (mal əlavəsi, endirim, köçürmə və s.).
+export function computeOrderTotals(items) {
+  let itemsSubtotal = 0;
+  Object.values(items || {}).forEach(v => {
+    itemsSubtotal += (v.price||0) * v.qty * (1 - ((v.discountPercent||0)/100)) + (v.extraFee||0);
+  });
+  itemsSubtotal = Math.round(itemsSubtotal * 100) / 100;
+  const sc = state.serviceCharge || {};
+  const scPercent = sc.enabled ? (sc.percent || 0) : 0;
+  const serviceChargeAmount = Math.round(itemsSubtotal * scPercent / 100 * 100) / 100;
+  const total = Math.round((itemsSubtotal + serviceChargeAmount) * 100) / 100;
+  return { itemsSubtotal, serviceChargeAmount, serviceChargePercent: scPercent, total };
+}
+
 // Masaya aid tarixçə görünüşündə eyni masanın adının təkrarlanmasının qarşısını alır
 // (məs. "Admin Əli "Kabinet 2" masası üçün hesab çap etdi" → "Admin Əli hesab çap etdi",
 // çünki artıq "Kabinet 2"-nin öz tarixçəsinə baxırıq, təkrar yazmağa ehtiyac yoxdur).
