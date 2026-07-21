@@ -27,6 +27,7 @@ export const state = {
   _selectedClosedOrderId: null,
   _reportView: 'summary',
   _bizDayStartHour: 5,
+  serviceCharge: { enabled: false, percent: 0 },
   alarm: null,
   alarmType: null,
   alarmInterval: null,
