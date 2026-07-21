@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList } from './utils.js';
+import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals } from './utils.js';
 import { hasPermission } from './permissions.js';
 
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
@@ -200,10 +200,11 @@ export class ConfirmedOrder {
       const items = { ...current.items };
       delete items[itemKey];
       if (!Object.keys(items).length) return null;
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0) * v.qty * (1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const _tot = computeOrderTotals(items);
+
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
-      return { ...current, items, total, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -308,12 +309,13 @@ export class ConfirmedOrder {
       if (!current || !current.items) return current;
       const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
       targetKeys.forEach(k => { if (items[k]) items[k] = { ...items[k], discountPercent: Math.round(equivPercent*100)/100 }; });
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const _tot = computeOrderTotals(items);
+
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
       appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
       appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
-      return { ...current, items, total, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -412,8 +414,9 @@ export class ConfirmedOrder {
         chargedItems = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
         targetKeys.forEach(k => delete items[k]);
         if (!Object.keys(items).length) return null;
-        let total = 0;
-        Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+        const _tot = computeOrderTotals(items);
+
+        const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
         const paidAmount = current.paidAmount || 0;
         return { ...current, items, total, remainingAmount: Math.max(0, total - paidAmount) };
       }, (error, committed) => {
@@ -494,11 +497,12 @@ export class ConfirmedOrder {
       if (!current || !current.items) return current;
       const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
       targetKeys.forEach(k => { if (items[k]) items[k] = { ...items[k], originalPrice: items[k].originalPrice ?? items[k].price, originalExtraFee: items[k].originalExtraFee ?? (items[k].extraFee||0), price: 0, extraFee: 0, compliment: true }; });
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0) * v.qty * (1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const _tot = computeOrderTotals(items);
+
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
       appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
-      return { ...current, items, total, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -537,11 +541,12 @@ export class ConfirmedOrder {
           originalPrice: null, originalExtraFee: null
         };
       });
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0) * v.qty * (1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const _tot = computeOrderTotals(items);
+
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
       resetItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
-      return { ...current, items, total, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -624,10 +629,11 @@ export class ConfirmedOrder {
       const newQty = items[itemKey].qty - moveQty;
       if (newQty <= 0) delete items[itemKey]; else items[itemKey] = { ...items[itemKey], qty: newQty };
       if (!Object.keys(items).length) return null;
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const _tot = computeOrderTotals(items);
+
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
-      return { ...current, items, total, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta: mənbə masa yenilənmədi'); return; }
       if (committed) this.renderSummary(fromTableId);
@@ -644,10 +650,11 @@ export class ConfirmedOrder {
       const key = makeLineKey(moved.menuItemId, moved.note, moved.extraFee);
       if (items[key]) items[key] = { ...items[key], qty: items[key].qty + moveQty };
       else items[key] = { ...moved, qty: moveQty };
-      let total = 0;
-      Object.values(items).forEach(v => { total += (v.price||0)*v.qty*(1-((v.discountPercent||0)/100)) + (v.extraFee||0); });
+      const _tot = computeOrderTotals(items);
+
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = (current && current.paidAmount) || 0;
-      return { items, total, waiterId: (current && current.waiterId) || toTable?.occupant || state.user.id, paidAmount, remainingAmount: total - paidAmount, updatedAt: Date.now() };
+      return { items, total, serviceChargeAmount, serviceChargePercent, waiterId: (current && current.waiterId) || toTable?.occupant || state.user.id, paidAmount, remainingAmount: total - paidAmount, updatedAt: Date.now() };
     }, (error) => {
       if (error) showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta: hədəf masa yenilənmədi');
     });
@@ -742,6 +749,14 @@ export class PaymentProcessor {
     } else {
       this.els.totalAmount.textContent = p.originalTotal.toFixed(2) + ' ₼';
       this.els.totalAmount.style.color = 'var(--green)';
+    }
+
+    if (order.serviceChargeAmount > 0) {
+      this.els.serviceChargeRow.style.display = 'flex';
+      this.els.serviceChargeLabel.textContent = `Xidmət haqqı (${order.serviceChargePercent||0}%) daxildir`;
+      this.els.serviceChargeValue.textContent = order.serviceChargeAmount.toFixed(2) + ' ₼';
+    } else {
+      this.els.serviceChargeRow.style.display = 'none';
     }
 
     if (p.discountValue > 0) {
