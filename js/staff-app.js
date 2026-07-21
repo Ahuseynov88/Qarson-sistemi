@@ -47,6 +47,7 @@ export class StaffApp {
     this.payment = new PaymentProcessor({
       modal: $('paymentModal'), tableName: $('paymentTableName'), totalAmount: $('paymentTotalAmount'),
       discountInfo: $('paymentDiscountInfo'), finalAmount: $('paymentFinalAmount'), discountRow: $('paymentDiscountRow'),
+      serviceChargeRow: $('paymentServiceChargeRow'), serviceChargeLabel: $('paymentServiceChargeLabel'), serviceChargeValue: $('paymentServiceChargeValue'),
       cashSection: $('paymentCashSection'), splitSection: $('paymentSplitSection'),
       cashGiven: $('paymentCashGiven'), changeRow: $('paymentChangeRow'), change: $('paymentChange'), changeLabel: $('changeLabel'),
       splitStatus: $('splitStatus'), splitInputsWrap: $('splitInputsWrap'),
@@ -326,13 +327,20 @@ export class StaffApp {
     const dateStr = now.toLocaleDateString('az-AZ');
     const items = order?.items ? Object.values(order.items) : [];
     const total = order?.total || 0;
+    const scAmount = order?.serviceChargeAmount || 0;
+    const scPercent = order?.serviceChargePercent || 0;
+    const itemsSubtotal = total - scAmount;
     const itemRows = items.length ? items.map(it => {
       const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
       const tag = it.compliment ? ' [İKRAM]' : (it.discountPercent>0 ? ` [-${it.discountPercent}%]` : '');
       return `<tr><td style="padding:4px 0;">${it.qty}x ${it.name}${tag}${it.note?` <em style="font-size:11px;color:#666;">(${it.note})</em>`:''}</td><td style="text-align:right;padding:4px 0;">${lineTotal.toFixed(2)} ₼</td></tr>`;
     }).join('') : '<tr><td colspan="2" style="color:#999;font-style:italic;">Sifariş yoxdur</td></tr>';
+    const serviceChargeRowHtml = scAmount > 0
+      ? `<tr><td style="padding:2px 0;">Ara cəm:</td><td style="text-align:right;padding:2px 0;">${itemsSubtotal.toFixed(2)} ₼</td></tr>
+         <tr><td style="padding:2px 0;">Xidmət haqqı (${scPercent}%):</td><td style="text-align:right;padding:2px 0;">${scAmount.toFixed(2)} ₼</td></tr>`
+      : '';
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table><tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table>${serviceChargeRowHtml}<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
 
     const w = window.open('', '_blank', 'width=340,height=600');
     if (w) {
