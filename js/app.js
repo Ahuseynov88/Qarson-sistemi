@@ -144,6 +144,10 @@ function initListeners() {
       if (el && document.activeElement !== el) el.value = String(snap.val()).padStart(2,'0') + ':00';
     }
   });
+  db.ref('settings/serviceCharge').on('value', snap => {
+    state.serviceCharge = snap.val() || { enabled: false, percent: 0 };
+    if (state.user?.role === 'admin') onDataChange();
+  });
 
   R.staff.on('value', snap => {
     state.staff = toArr(snap.val());
@@ -185,7 +189,7 @@ function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
   R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
-  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('chats').off();
+  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
 }
 
 function onDataChange() {
