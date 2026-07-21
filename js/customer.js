@@ -91,7 +91,15 @@ export function renderCustomerOrder(order) {
 
   const total = order.total || 0;
   const paid = order.paidAmount || 0;
-  list.innerHTML += `<div class="cust-order-total">
+  const scAmount = order.serviceChargeAmount || 0;
+  const scPercent = order.serviceChargePercent || 0;
+  list.innerHTML += `${scAmount > 0 ? `<div class="cust-order-line">
+    <div class="cust-order-line__row">
+      <span class="cust-order-line__qty">Xidmət haqqı (${scPercent}%)</span>
+      <span class="cust-order-line__price">${scAmount.toFixed(2)} ₼</span>
+    </div>
+  </div>` : ''}
+  <div class="cust-order-total">
     <span class="cust-order-total__label">Cəmi</span>
     <span class="cust-order-total__value">${total.toFixed(2)} ₼</span>
   </div>
