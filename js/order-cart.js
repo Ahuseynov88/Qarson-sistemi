@@ -5,7 +5,7 @@
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList } from './utils.js';
+import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals } from './utils.js';
 import { hasPermission } from './permissions.js';
 import { showScreen } from './theme.js';
 
@@ -152,6 +152,7 @@ export class OrderCart {
     if (!lines.length) {
       this.els.draftList.innerHTML = '';
       this.els.draftTotal.textContent = ((state.tableOrders[state.orderTableId]?.total)||0).toFixed(2) + ' ₼';
+      this._updateServiceChargeRow(state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0);
       return;
     }
     let draftTotal = 0;
@@ -199,7 +200,23 @@ export class OrderCart {
       <svg class="icon" style="width:.9em;height:.9em;"><use href="#i-plus"></use></svg> Yeni (göndərilməmiş)
     </div>${rows}`;
     const sentTotal = (state.tableOrders[state.orderTableId]?.total) || 0;
-    this.els.draftTotal.textContent = (sentTotal + draftTotal).toFixed(2) + ' ₼';
+    const scPct = state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0;
+    this.els.draftTotal.textContent = (sentTotal + draftTotal * (1 + scPct/100)).toFixed(2) + ' ₼';
+    this._updateServiceChargeRow(scPct);
+  }
+
+  _updateServiceChargeRow(scPct) {
+    const row = document.getElementById('ticketServiceChargeRow');
+    if (!row) return;
+    const order = state.tableOrders[state.orderTableId];
+    const scAmount = order?.serviceChargeAmount || 0;
+    if (scPct > 0 && (scAmount > 0 || Object.keys(state._orderDraft||{}).length)) {
+      row.style.display = 'flex';
+      document.getElementById('ticketServiceChargeLabel').textContent = `Xidmət haqqı (${scPct}%)`;
+      document.getElementById('ticketServiceChargeValue').textContent = scAmount.toFixed(2) + ' ₼';
+    } else {
+      row.style.display = 'none';
+    }
   }
 
   send() {
@@ -225,12 +242,12 @@ export class OrderCart {
         else items[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price || 0, qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0 };
       });
 
-      let total = 0;
-      Object.values(items).forEach(it => { total += (it.price || 0) * it.qty * (1 - ((it.discountPercent||0)/100)) + (it.extraFee || 0); });
+      const _tot = computeOrderTotals(items);
+      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = (current && current.paidAmount) || 0;
 
       return {
-        items, total,
+        items, total, serviceChargeAmount, serviceChargePercent,
         waiterId: (current && current.waiterId) || waiterId,
         paidAmount,
         remainingAmount: total - paidAmount,
