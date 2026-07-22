@@ -8,6 +8,7 @@ import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog } from './utils.js';
 import { hasPermission, staffHasPermission } from './permissions.js';
+import { checkReferralBonusOnClose } from './loyalty.js';
 
 export class TableBoard {
   /**
@@ -244,6 +245,7 @@ export class TableBoard {
       closedDate: new Date().toLocaleDateString('az-AZ')
     };
     db.ref('closedOrders').push(archiveData);
+    checkReferralBonusOnClose(t?.loyaltyCustomerId, archiveData.total);
 
     if (order) R.tableOrders.child(tableId).remove();
     if (t?.isRestoredTemp) {
@@ -251,7 +253,7 @@ export class TableBoard {
       // boş xəyal masa kimi qalmasın. Tarixçəsi artıq yuxarıda arxivə köçürülüb.
       R.tables.child(tableId).remove();
     } else {
-      R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
+      R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null, loyaltyCustomerId: null, loyaltyGuestId: null });
     }
     addLog('table', closeMsg, { tableId, sessionId, staffId: state.user?.id });
     return true;
