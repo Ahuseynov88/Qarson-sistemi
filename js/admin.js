@@ -69,6 +69,11 @@ export function adminTab(sec, el) {
     const sc = state.serviceCharge || {};
     document.getElementById('serviceChargeEnabled').checked = !!sc.enabled;
     document.getElementById('serviceChargePercent').value = sc.percent || '';
+    db.ref('settings/loyalty').once('value', snap => {
+      const l = snap.val() || {};
+      document.getElementById('referralBonusAmount').value = l.referralBonusAmount || '';
+      document.getElementById('referralMinOrderAmount').value = l.referralMinOrderAmount || '';
+    });
   }
 }
 
@@ -877,6 +882,19 @@ export function saveServiceCharge() {
   document.getElementById('serviceChargeStatus').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
   setTimeout(()=>{ const el = document.getElementById('serviceChargeStatus'); if (el) el.textContent=''; },3000);
   showToast(`<svg class="icon"><use href="#i-check"></use></svg> Xidmət haqqı ${enabled?'aktivdir':'deaktivdir'}`);
+}
+
+export function saveLoyaltySettings() {
+  const referralBonusAmount = parseFloat(document.getElementById('referralBonusAmount').value) || 0;
+  const referralMinOrderAmount = parseFloat(document.getElementById('referralMinOrderAmount').value) || 0;
+  db.ref('settings/loyalty').set({ referralBonusAmount, referralMinOrderAmount });
+  addLog('admin', `Referral proqramı yeniləndi: ${referralBonusAmount} bal / minimum ${referralMinOrderAmount} ₼`, {});
+  const el = document.getElementById('loyaltySettingsStatus');
+  if (el) {
+    el.innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
+    setTimeout(()=>{ if (el) el.textContent=''; },3000);
+  }
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Referral parametrləri yadda saxlandı');
 }
 
 export function renderStaff() {
@@ -1801,6 +1819,7 @@ window.saveItem = saveItem;
 window.saveKitchenPin = saveKitchenPin;
 window.saveMenuUrl = saveMenuUrl;
 window.saveServiceCharge = saveServiceCharge;
+window.saveLoyaltySettings = saveLoyaltySettings;
 window.setLogFilter = setLogFilter;
 window.setMenuCat = setMenuCat;
 window.setTableCat = setTableCat;
