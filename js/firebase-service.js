@@ -25,5 +25,10 @@ export const R = {
   customers:      db.ref('customers'),
   paymentMethods: db.ref('paymentMethods'),
   closedOrders:   db.ref('closedOrders'),
-  customerCharges: db.ref('customerCharges')
+  customerCharges: db.ref('customerCharges'),
+  // Müştəri Tanıma & Loyallıq modulu üçün AYRICA node-lar - "customers" node-u
+  // (nisyə/kredit hesabları) ilə QARIŞDIRILMIR, tamam fərqli konsepsiyadır.
+  loyaltyCustomers: db.ref('loyaltyCustomers'),
+  guestTokens:      db.ref('guestTokens'),
+  referrals:        db.ref('referrals')
 };
