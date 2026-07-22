@@ -171,6 +171,19 @@
           </div>
           <p id="serviceChargeStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
         </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-users"></use></svg> Müştəri Loyallıq Proqramı — Referral</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Qeydiyyatlı müştərilər dostlarını dəvət edə bilər. Dəvət olunan şəxs ilk sifarişini tamamlayanda, dəvət edən şəxsə bonus verilir.</p>
+          <div class="form-group">
+            <label>Dəvət bonusu (bal)</label>
+            <input type="number" id="referralBonusAmount" min="0" step="1" placeholder="10" onchange="saveLoyaltySettings()">
+          </div>
+          <div class="form-group">
+            <label>Minimum sifariş məbləği (₼) — bonus üçün</label>
+            <input type="number" id="referralMinOrderAmount" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
+          </div>
+          <p id="loyaltySettingsStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
         <div class="table-card">
           <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-clipboard"></use></svg> Sistem Məlumatları</h3>
           <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
@@ -459,6 +472,54 @@
 
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
 <div class="screen" id="customerScreen">
+  <!-- ═══ MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ═══ -->
+  <div class="modal-bg" id="custWelcomeModal" style="z-index:2500;">
+    <div class="cust-loyalty-modal">
+      <svg class="icon" style="width:44px;height:44px;color:var(--gold);margin-bottom:12px;"><use href="#i-utensils"></use></svg>
+      <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">İpək Yolu Restoranına xoş gəlmisiniz!</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;margin-bottom:16px;">Qeydiyyatdan keçərək aşağıdakı üstünlüklərdən yararlana bilərsiniz:</p>
+      <ul style="text-align:left;color:rgba(255,255,255,.85);font-size:13.5px;line-height:2;list-style:none;padding:0;margin-bottom:22px;">
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-star"></use></svg> Bonus xalları toplamaq</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-tag"></use></svg> Şəxsi endirimlər əldə etmək</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-gift"></use></svg> Ad günü hədiyyələri</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-bell"></use></svg> Kampaniyalardan ilk xəbərdar olmaq</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-clipboard"></use></svg> Son sifariş tarixçəsini saxlamaq</li>
+      </ul>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="openLoyaltyRegisterForm()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatdan keç</button>
+      <button class="cust-loyalty-btn cust-loyalty-btn--ghost" onclick="chooseGuestMode()">Qeydiyyatsız davam et</button>
+      <p style="margin-top:14px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;text-decoration:underline;" onclick="openPhoneRecoveryFromWelcome()">Artıq bonus hesabınız var?</p>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="custRegisterModal" style="z-index:2500;">
+    <div class="cust-loyalty-modal" style="text-align:left;">
+      <h2 style="color:#fff;font-size:19px;margin-bottom:16px;text-align:center;"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyat</h2>
+      <div class="cust-loyalty-field"><label>Ad</label><input type="text" id="regFirstName" placeholder="Adınız"></div>
+      <div class="cust-loyalty-field"><label>Soyad</label><input type="text" id="regLastName" placeholder="Soyadınız"></div>
+      <div class="cust-loyalty-field"><label>Ata adı</label><input type="text" id="regFatherName" placeholder="Ata adınız"></div>
+      <div class="cust-loyalty-field"><label>Telefon nömrəsi</label><input type="tel" id="regPhone" placeholder="+994 XX XXX XX XX"></div>
+      <div class="cust-loyalty-field">
+        <label>Cins</label>
+        <select id="regGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select>
+      </div>
+      <div class="cust-loyalty-field"><label>Doğum tarixi</label><input type="date" id="regBirthDate"></div>
+      <p id="regErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitLoyaltyRegistration()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatı Tamamla</button>
+      <button class="cust-loyalty-btn cust-loyalty-btn--ghost" onclick="closeLoyaltyRegisterForm()">Geri</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="custPhoneRecoveryModal" style="z-index:2500;">
+    <div class="cust-loyalty-modal">
+      <h2 style="color:#fff;font-size:18px;margin-bottom:10px;"><svg class="icon"><use href="#i-user"></use></svg> Bonus hesabınızı tapaq</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:13.5px;margin-bottom:16px;">Bonus hesabınız varsa telefon nömrənizi daxil edin.</p>
+      <div class="cust-loyalty-field"><input type="tel" id="recoveryPhone" placeholder="+994 XX XXX XX XX"></div>
+      <p id="recoveryErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitPhoneRecovery()"><svg class="icon"><use href="#i-search"></use></svg> Axtar</button>
+      <button class="cust-loyalty-btn cust-loyalty-btn--ghost" onclick="closePhoneRecovery()">Bağla</button>
+    </div>
+  </div>
+
   <div id="custWaiterCard">
     <img id="custWaiterAvatar" src="" alt="">
     <div class="cw-info">
@@ -470,7 +531,18 @@
     <div class="cust-header">
       <div class="icon"><svg class="icon"><use href="#i-utensils"></use></svg></div>
       <h1 id="customerTableName">Masa</h1>
-      <p>Xidmət üçün seçim edin</p>
+      <p id="custGreetingText">Xidmət üçün seçim edin</p>
+    </div>
+    <div class="cust-glass-card" id="custLoyaltyCard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.03em;font-weight:700;">Bonus balansınız</div>
+          <div id="custBonusValue" style="font-size:22px;font-weight:800;color:var(--gold);margin-top:2px;">0</div>
+        </div>
+        <button onclick="shareReferralLink()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 14px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <svg class="icon"><use href="#i-users"></use></svg> Dostunu Dəvət Et
+        </button>
+      </div>
     </div>
     <button class="menu-btn" onclick="openMenu()">
       <span class="menu-icon"><svg class="icon"><use href="#i-clipboard"></use></svg></span> Menyuya Bax
