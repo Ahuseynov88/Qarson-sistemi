@@ -9,6 +9,7 @@ import { state } from './state.js';
 import { esc, toArr, showToast, showCustomerToast, addLog } from './utils.js';
 import { triggerCustomerAlarm } from './alarm.js';
 import { renderFeedbackSection } from './admin.js';
+import { initCustomerLoyalty } from './loyalty.js';
 
 export function initCustomerRequestListener() {
   db.ref('customerRequests').orderByChild('status').equalTo('pending').on('value', snap => {
@@ -49,6 +50,7 @@ export function checkCustomerMode() {
         window._customerTableId = tableId;
         window._customerTableData = t;
         initCustomerChat(tableId);
+        initCustomerLoyalty(tableId);
         R.tableOrders.child(tableId).on('value', s => renderCustomerOrder(s.val()));
       }
       return;
