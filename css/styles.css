@@ -408,8 +408,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
    QEYD: bu bölmə BİLƏRƏKDƏN --card/--text kimi işıq/qaranlıq dəyişənlərindən istifadə ETMİR.
    Fon həmişə tünd şərab qradiyenti olduğu üçün, kartlar da öz sabit, yüksək-kontrastlı
    palitrasını daşıyır - əməliyyat panelinin gecə/gündüz rejimi bura təsir etmir. */
-#customerScreen{background:var(--brand-gradient);overflow-y:auto;position:relative;color:#fff;}
-#customerScreen::before{content:'';position:fixed;top:0;right:0;width:50%;height:40%;background:var(--brand-glow);pointer-events:none;z-index:0;}
+#customerScreen,#referralRegisterScreen{background:var(--brand-gradient);overflow-y:auto;position:relative;color:#fff;}
+#customerScreen::before,#referralRegisterScreen::before{content:'';position:fixed;top:0;right:0;width:50%;height:40%;background:var(--brand-glow);pointer-events:none;z-index:0;}
 .cust-wrap{width:100%;max-width:440px;margin:0 auto;padding:20px;position:relative;z-index:1;}
 .cust-header{text-align:center;padding:28px 0 22px;}
 .cust-header .icon{width:50px;height:50px;margin-bottom:10px;color:var(--gold);filter:drop-shadow(0 3px 10px rgba(0,0,0,.35));}
