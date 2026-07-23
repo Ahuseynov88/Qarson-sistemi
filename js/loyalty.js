@@ -95,6 +95,10 @@ function applyRecognition() {
     cardEl.style.display = 'block';
     document.getElementById('custBonusValue').textContent = (d.bonus || 0) + ' bal';
     _renderCustReferredFriends();
+    // Artıq tam qeydiyyatlı müştəridir - "Qeydiyyatdan keç / Hesabım var" dəvəti
+    // (əgər əvvəllər Guest olaraq göstərilmişdisə) indi gizlədilir, çünki artıq lazımsızdır
+    const promptEl = document.getElementById('custGuestRegisterPrompt');
+    if (promptEl) promptEl.style.display = 'none';
   } else if (_currentCustomer?.type === 'guest') {
     greetEl.textContent = 'Sizi yenidən görməyimizə şadıq.';
     cardEl.style.display = 'none';
