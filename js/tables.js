@@ -233,10 +233,17 @@ export class TableBoard {
     sessionLog.push({ message: closeMsg, time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'), timestamp: Date.now() });
 
     const closedAtNow = Date.now();
+    // Sifarişi göndərən (satışı edən) işçi - masanı bağlayan işçidən FƏRQLİ ola bilər.
+    // İşçi performans hesabatı bu sahəyə görə aparılır ("kim satıb" sualının cavabı).
+    const orderedById = (order && order.waiterId) || t?.openedById || state.user?.id || null;
+    const orderedByStaff = state.staff.find(s => s.id === orderedById);
+    const orderedByName = orderedByStaff?.name || t?.openedByName || state.user?.name || '?';
+
     const archiveData = {
       tableId, tableName: t?.name || '?',
       staffId: state.user?.id || null, staffName: state.user?.name || '?',
       openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
+      orderedById, orderedByName,
       items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
       sessionId,
       sessionLog,
