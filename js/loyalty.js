@@ -89,13 +89,24 @@ function applyRecognition() {
   const cardEl = document.getElementById('custLoyaltyCard');
   if (!greetEl || !cardEl) return;
   if (_currentCustomer?.type === 'customer') {
-    greetEl.textContent = `Salam, ${_currentCustomer.data.firstName}!`;
+    const d = _currentCustomer.data;
+    const honorific = d.gender === 'Kişi' ? 'bəy' : d.gender === 'Qadın' ? 'xanım' : '';
+    greetEl.textContent = honorific ? `Xoş gəlmisiniz, ${d.firstName} ${honorific}!` : `Xoş gəlmisiniz, ${d.firstName}!`;
     cardEl.style.display = 'block';
-    document.getElementById('custBonusValue').textContent = (_currentCustomer.data.bonus || 0) + ' bal';
+    document.getElementById('custBonusValue').textContent = (d.bonus || 0) + ' bal';
   } else if (_currentCustomer?.type === 'guest') {
     greetEl.textContent = 'Sizi yenidən görməyimizə şadıq.';
     cardEl.style.display = 'none';
+    showGuestRegisterPrompt();
   }
+}
+
+// Qeydiyyatsız (Guest) istifadəçiyə həmişə görünən, istənilən vaxt qeydiyyata keçmək
+// üçün kiçik bir dəvət göstərir (yalnız ilk pəncərədə deyil).
+function showGuestRegisterPrompt() {
+  const cardEl = document.getElementById('custLoyaltyCard');
+  const promptEl = document.getElementById('custGuestRegisterPrompt');
+  if (promptEl) promptEl.style.display = 'flex';
 }
 
 // Bu ziyarəti masaya bağlayır - masa bağlananda (tables.js) referral bonusu
@@ -129,7 +140,9 @@ export function openLoyaltyRegisterForm() {
 }
 export function closeLoyaltyRegisterForm() {
   document.getElementById('custRegisterModal')?.classList.remove('open');
-  document.getElementById('custWelcomeModal')?.classList.add('open');
+  // Yalnız hələ heç bir tanınma (guest/customer) yoxdursa Welcome Modal-a qayıdır -
+  // artıq Guest kimi tanınmış istifadəçi "geri" desə boş yerə ilk pəncərəyə düşməsin
+  if (!_currentCustomer) document.getElementById('custWelcomeModal')?.classList.add('open');
 }
 
 export function submitLoyaltyRegistration() {
@@ -230,7 +243,9 @@ export function submitPhoneRecovery() {
 export function shareReferralLink() {
   if (!_currentCustomer || _currentCustomer.type !== 'customer') return;
   const code = _currentCustomer.data.referralCode;
-  const url = `${location.origin}${location.pathname}?table=${_currentTableId}&ref=${code}`;
+  // QEYD: link masaya bağlı DEYİL (təkcə "?ref=KOD") - dostu istənilən vaxt,
+  // hər hansı masada və ya masasız açıb qeydiyyatdan keçə bilsin.
+  const url = `${location.origin}${location.pathname}?ref=${code}`;
   if (navigator.share) {
     navigator.share({ title: 'İpək Yolu Restoranı', text: 'Bu link ilə qeydiyyatdan keç, hər ikimiz bonus qazanaq!', url }).catch(() => {});
   } else if (navigator.clipboard) {
