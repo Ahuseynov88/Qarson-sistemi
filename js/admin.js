@@ -802,7 +802,9 @@ export function renderMenuItems() {
         </div>
       </div>
       <span class="status-badge ${available?'badge-green':'badge-red'}">${available?'Var':'Tükənib'}</span>
+      ${m.isTrackable ? `<span class="status-badge" style="background:rgba(52,152,219,.15);color:var(--blue);margin-left:6px;"><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-tag"></use></svg> Anbar: ${m.stock||0}</span>` : ''}
       <div class="item-actions">
+        ${m.isTrackable ? `<button class="btn" style="border:1px solid var(--blue);color:var(--blue);" onclick="openQuickStockModal('${m.id}')"><svg class="icon"><use href="#i-check"></use></svg> Stok Artır</button>` : ''}
         <button class="btn ${available?'btn-red':'btn-green'}" onclick="toggleMenuItemAvailability('${m.id}')">${available?'Tükəndi':'Yenidən Var'}</button>
         <button class="btn btn-ghost" onclick="editMenuItem('${m.id}')"><svg class="icon"><use href="#i-edit"></use></svg></button>
         <button class="btn btn-red" onclick="deleteMenuItem('${m.id}')"><svg class="icon"><use href="#i-trash"></use></svg></button>
@@ -814,6 +816,28 @@ export function renderMenuItems() {
 export function setMenuCat(cat) {
   state._menuCatFilter = cat;
   renderMenuItems();
+}
+
+export function openQuickStockModal(id) {
+  const m = state.menuItems.find(x=>x.id===id);
+  if (!m) return;
+  document.getElementById('quickStockModal').dataset.menuItemId = id;
+  document.getElementById('quickStockTitle').innerHTML = `<svg class="icon"><use href="#i-tag"></use></svg> ${esc(m.name)}`;
+  document.getElementById('quickStockCurrentInfo').textContent = `Hazırkı anbar: ${m.stock||0}`;
+  document.getElementById('quickStockAmount').value = '';
+  document.getElementById('quickStockModal').classList.add('open');
+}
+export function closeQuickStockModal() { document.getElementById('quickStockModal').classList.remove('open'); }
+
+export function confirmQuickStock() {
+  const id = document.getElementById('quickStockModal').dataset.menuItemId;
+  const amount = parseFloat(document.getElementById('quickStockAmount').value);
+  if (!amount || amount <= 0) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Düzgün miqdar daxil edin'); return; }
+  const m = state.menuItems.find(x=>x.id===id);
+  R.menuItems.child(id).child('stock').transaction(cur => (cur||0) + amount);
+  addLog('admin', `Anbar əl ilə artırıldı: ${m?.name} (+${amount})`, {});
+  closeQuickStockModal();
+  showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${amount} ədəd əlavə edildi`);
 }
 
 export function toggleMenuItemAvailability(id) {
@@ -884,7 +908,14 @@ export function menuItemForm(m={}) {
     <div class="form-group">
       <label>Təsvir (istəyə görə)</label>
       <textarea id="fm_description" rows="2" placeholder="Toyuq döşü, közdə bişmiş...">${esc(m.description||'')}</textarea>
-    </div>`;
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card2);border-radius:10px;cursor:pointer;margin-top:4px;">
+      <input type="checkbox" id="fm_trackable" ${m.isTrackable?'checked':''} style="width:20px;height:20px;cursor:pointer;flex-shrink:0;">
+      <span>
+        <span style="font-weight:700;display:block;">Sayıla bilən mal</span>
+        <span style="font-size:12px;color:var(--text2);">Anbarda izlənir, "Məhsul Alışı" bölməsində görünür və stoku izlənir</span>
+      </span>
+    </label>`;
 }
 
 export function onMenuCategorySelectChange() {
@@ -974,13 +1005,14 @@ export function saveItem() {
     const priceRaw = (document.getElementById('fm_price')?.value||'').trim();
     const description = (document.getElementById('fm_description')?.value||'').trim();
     const photo = (document.getElementById('fm_photo')?.value||'').trim();
+    const isTrackable = document.getElementById('fm_trackable')?.checked || false;
 
     if (!name) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Mal adı mütləqdir'); return; }
     if (!category) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Kateqoriya mütləqdir'); return; }
     const price = parseFloat(priceRaw);
     if (isNaN(price) || price < 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Düzgün qiymət daxil edin'); return; }
 
-    const menuItemData = { name, category, price, description, photo };
+    const menuItemData = { name, category, price, description, photo, isTrackable };
 
     if (state.editTarget) {
       R.menuItems.child(state.editTarget.id).update(menuItemData);
@@ -2257,7 +2289,7 @@ export function openPurchaseModal() {
   document.getElementById('purNotes').value = '';
   togglePurPaidAmountField();
   const datalist = document.getElementById('menuItemsDatalist');
-  if (datalist) datalist.innerHTML = state.menuItems.map(m => `<option value="${esc(m.name)}">`).join('');
+  if (datalist) datalist.innerHTML = state.menuItems.filter(m => m.isTrackable).map(m => `<option value="${esc(m.name)}">`).join('');
   renderPurchaseLines();
   document.getElementById('purchaseModal').classList.add('open');
 }
@@ -2317,7 +2349,7 @@ function _updatePurchaseGrandTotal() {
 
 function _buildPurchaseLineHintHtml(line) {
   if (!line.isTrackable || !line.name.trim()) return '';
-  const existsInMenu = state.menuItems.some(m => m.name.trim().toLowerCase() === line.name.trim().toLowerCase());
+  const existsInMenu = state.menuItems.some(m => m.isTrackable && m.name.trim().toLowerCase() === line.name.trim().toLowerCase());
   if (existsInMenu) {
     return `<div class="purchase-line__hint-linked"><svg class="icon" style="width:1em;height:1em;"><use href="#i-check"></use></svg> Mövcud menyu malına bağlanacaq, anbar stoku artacaq</div>`;
   }
@@ -2429,13 +2461,13 @@ export function savePurchase() {
   // Anbarda izlənən mallar üçün mövcud menyu malını tapır (stokunu artırır) və ya
   // yeni menyu malı yaradır (verilmiş satış qiyməti ilə)
   validLines.filter(l => l.isTrackable && l.name.trim()).forEach(l => {
-    const existing = state.menuItems.find(m => m.name.trim().toLowerCase() === l.name.trim().toLowerCase());
+    const existing = state.menuItems.find(m => m.isTrackable && m.name.trim().toLowerCase() === l.name.trim().toLowerCase());
     if (existing) {
       R.menuItems.child(existing.id).child('stock').transaction(cur => (cur||0) + l.qty);
     } else {
       R.menuItems.push({
         name: l.name.trim(), category: l.category.trim() || 'Digər',
-        price: l.newSalePrice || 0, stock: l.qty, createdAt: Date.now()
+        price: l.newSalePrice || 0, stock: l.qty, isTrackable: true, createdAt: Date.now()
       });
     }
   });
@@ -2561,6 +2593,9 @@ window.addPurchaseLine = addPurchaseLine;
 window.removePurchaseLine = removePurchaseLine;
 window.updatePurchaseLine = updatePurchaseLine;
 window.savePurchase = savePurchase;
+window.openQuickStockModal = openQuickStockModal;
+window.closeQuickStockModal = closeQuickStockModal;
+window.confirmQuickStock = confirmQuickStock;
 window.selectClosedOrder = selectClosedOrder;
 window.toggleClosedOrderSelect = toggleClosedOrderSelect;
 window.toggleSelectAllClosedOrders = toggleSelectAllClosedOrders;
