@@ -164,11 +164,24 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .report-bar-chart__label{font-size:10px;color:var(--text2);white-space:nowrap;font-weight:600;}
 
 /* ── TƏCHİZATÇILAR & MƏHSUL ALIŞLARI ── */
-.purchase-line{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
-.purchase-line__row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
-.purchase-line__row input,.purchase-line__row select{padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13.5px;}
-.purchase-line__remove{width:32px;height:32px;flex-shrink:0;border:none;background:rgba(163,42,36,.12);color:var(--red);border-radius:8px;cursor:pointer;font-size:16px;font-weight:700;}
-.purchase-line__total{font-weight:700;color:var(--green);white-space:nowrap;}
+.purchase-line{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px var(--shadow-color);}
+.purchase-line__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.purchase-line__index{width:26px;height:26px;border-radius:50%;background:var(--card2);color:var(--text2);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.purchase-line__remove{width:30px;height:30px;flex-shrink:0;border:none;background:rgba(163,42,36,.1);color:var(--red);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.purchase-line__remove .icon{width:15px;height:15px;}
+.purchase-line__grid{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px;}
+.purchase-line__grid--three{grid-template-columns:1fr 1fr 1fr;}
+.purchase-line__field label{display:block;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:4px;}
+.purchase-line__field input{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-size:14px;}
+.purchase-line__field input:focus{border-color:var(--blue);outline:none;}
+.purchase-line__total-display{padding:10px 11px;border-radius:9px;background:rgba(28,107,53,.1);color:var(--green);font-size:15px;font-weight:800;text-align:right;}
+.purchase-line__trackable{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;padding-top:8px;border-top:1px dashed var(--border);}
+.purchase-line__trackable input{width:17px;height:17px;cursor:pointer;flex-shrink:0;}
+.purchase-line__hint{margin-top:8px;}
+.purchase-line__hint-new{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(52,152,219,.08);border:1px solid rgba(52,152,219,.25);border-radius:9px;padding:10px;}
+.purchase-line__hint-new small{color:var(--blue);font-size:12px;flex:1;min-width:160px;}
+.purchase-line__hint-new input{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;width:110px;}
+.purchase-line__hint-linked{display:flex;align-items:center;gap:6px;color:var(--green);font-size:12.5px;font-weight:600;}
 .supplier-debt-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;}
 .supplier-debt-badge--owed{background:rgba(163,42,36,.12);color:var(--red);}
 .supplier-debt-badge--clear{background:rgba(28,107,53,.12);color:var(--green);}
@@ -619,6 +632,10 @@ img,svg.icon{max-width:100%;}
   .closed-tables-layout{flex-direction:column;}
   .closed-tables-list-col{max-width:none;}
   .closed-tables-detail-col{position:static;}
+
+  /* Mal alışı sətirləri: telefonda tək sütuna düşür */
+  .purchase-line__grid,.purchase-line__grid--three{grid-template-columns:1fr 1fr;}
+  .purchase-line{padding:13px;}
 
   /* Admin: filtr sətirləri (tarix aralığı, ödəniş növü və s.) tək sütuna düşür */
   .closed-tables-filters__row{grid-template-columns:1fr;}
