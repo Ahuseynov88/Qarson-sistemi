@@ -515,18 +515,52 @@
 </div>
 
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
+<div class="screen" id="referralRegisterScreen">
+  <div class="cust-wrap">
+    <div class="cust-header">
+      <div class="icon"><svg class="icon"><use href="#i-gift"></use></svg></div>
+      <h1>Sizi Dəvət Etdilər!</h1>
+      <p id="refScreenSubtitle">İpək Yolu Restoranının loyallıq proqramına qoşulun</p>
+    </div>
+
+    <div class="cust-glass-card" id="refAlreadyMemberBlock" style="display:none;text-align:center;">
+      <svg class="icon" style="width:40px;height:40px;color:var(--gold);margin-bottom:10px;"><use href="#i-check"></use></svg>
+      <h2 style="color:#fff;font-size:19px;margin-bottom:8px;">Siz artıq üzvsünüz!</h2>
+      <p id="refMemberGreeting" style="color:rgba(255,255,255,.75);font-size:14px;"></p>
+    </div>
+
+    <div class="cust-glass-card" id="refRegisterFormBlock" style="text-align:left;">
+      <div class="cust-loyalty-field"><label>Ad</label><input type="text" id="refRegFirstName" placeholder="Adınız"></div>
+      <div class="cust-loyalty-field"><label>Soyad</label><input type="text" id="refRegLastName" placeholder="Soyadınız"></div>
+      <div class="cust-loyalty-field"><label>Ata adı</label><input type="text" id="refRegFatherName" placeholder="Ata adınız"></div>
+      <div class="cust-loyalty-field"><label>Telefon nömrəsi</label><input type="tel" id="refRegPhone" placeholder="+994 XX XXX XX XX"></div>
+      <div class="cust-loyalty-field"><label>Cins</label><select id="refRegGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select></div>
+      <div class="cust-loyalty-field"><label>Doğum tarixi</label><input type="date" id="refRegBirthDate"></div>
+      <p id="refRegErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitReferralRegistration()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatdan Keç</button>
+    </div>
+
+    <div class="cust-glass-card" id="refThanksBlock" style="display:none;text-align:center;">
+      <svg class="icon" style="width:40px;height:40px;color:var(--gold);margin-bottom:10px;"><use href="#i-check"></use></svg>
+      <h2 style="color:#fff;font-size:19px;margin-bottom:8px;">Qeydiyyatdan keçdiyiniz üçün təşəkkür edirik!</h2>
+      <p style="color:rgba(255,255,255,.75);font-size:14px;line-height:1.6;">İpək Yolu Restoranına gələrək xidmətlərimizdən istifadə edə bilərsiniz.<br>Sizə xoş və uğurlu gün arzulayırıq!</p>
+    </div>
+  </div>
+</div>
+
 <div class="screen" id="customerScreen">
   <!-- ═══ MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ═══ -->
   <div class="modal-bg" id="custWelcomeModal" style="z-index:9999;">
     <div class="cust-loyalty-modal">
       <svg class="icon" style="width:44px;height:44px;color:var(--gold);margin-bottom:12px;"><use href="#i-utensils"></use></svg>
-      <h2 style="color:#fff;font-size:30px;margin-bottom:12px;">İpək Yolu Restoranına           Xoş gəlmisiniz!</h2>
-      <p style="color:rgba(255,255,255,.7);font-size:16px;line-height:1.6;margin-bottom:16px;">Qeydiyyatdan keçərək aşağıdakı üstünlüklərdən yararlana bilərsiniz:</p>
+      <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">İpək Yolu Restoranına xoş gəlmisiniz!</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;margin-bottom:16px;">Qeydiyyatdan keçərək aşağıdakı üstünlüklərdən yararlana bilərsiniz:</p>
       <ul style="text-align:left;color:rgba(255,255,255,.85);font-size:13.5px;line-height:2;list-style:none;padding:0;margin-bottom:22px;">
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-star"></use></svg> Bonus xalları toplamaq</li>
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-tag"></use></svg> Şəxsi endirimlər əldə etmək</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-gift"></use></svg> Ad günü hədiyyələri</li>
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-bell"></use></svg> Kampaniyalardan ilk xəbərdar olmaq</li>
-         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-clipboard"></use></svg> Dostlarınızı dəvət edərək bonuslar qazanmaq </li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-clipboard"></use></svg> Son sifariş tarixçəsini saxlamaq</li>
       </ul>
       <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="openLoyaltyRegisterForm()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatdan keç</button>
       <button class="cust-loyalty-btn cust-loyalty-btn--ghost" onclick="chooseGuestMode()">Qeydiyyatsız davam et</button>
@@ -576,11 +610,6 @@
       <h1 id="customerTableName">Masa</h1>
       <p id="custGreetingText">Xidmət üçün seçim edin</p>
     </div>
-    <div class="cust-glass-card" id="custStandaloneThanks" style="display:none;text-align:center;">
-      <svg class="icon" style="width:40px;height:40px;color:var(--gold);margin-bottom:10px;"><use href="#i-check"></use></svg>
-      <h2 style="color:#fff;font-size:19px;margin-bottom:8px;">Qeydiyyatdan keçdiyiniz üçün təşəkkür edirik!</h2>
-      <p style="color:rgba(255,255,255,.75);font-size:14px;line-height:1.6;">İpək Yolu Restoranın  masa üzərində olan QR kodu oxudaraq xidmətlərimizdən istifadə edə bilərsiniz.<br>Sizə xoş və uğurlu gün arzulayırıq!</p>
-    </div>
     <div class="cust-glass-card" id="custLoyaltyCard" style="display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
@@ -590,6 +619,10 @@
         <button onclick="shareReferralLink()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 14px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
           <svg class="icon"><use href="#i-users"></use></svg> Dostunu Dəvət Et
         </button>
+      </div>
+      <div id="custReferredFriends" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);">
+        <div style="font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px;">Dəvət etdiyiniz dostlar</div>
+        <div id="custReferredFriendsList"></div>
       </div>
     </div>
     <div class="cust-glass-card" id="custGuestRegisterPrompt" style="display:none;padding:14px 16px;">
