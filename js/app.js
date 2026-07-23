@@ -168,6 +168,9 @@ function initListeners() {
   R.customers.on('value', snap => { state.customers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
   R.paymentMethods.on('value', snap => { state.paymentMethods = toArr(snap.val()); onDataChange(); });
   R.closedOrders.limitToLast(200).on('value', snap => { state.closedOrders = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.loyaltyCustomers.on('value', snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.suppliers.on('value', snap => { state.suppliers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.purchases.on('value', snap => { state.purchases = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
   R.payments.limitToLast(500).on('value', snap => { state.payments = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
   R.customerCharges.on('value', snap => { state.customerCharges = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
   R.tableOrders.on('value', snap => { state.tableOrders = snap.val() || {}; onDataChange(); });
@@ -187,7 +190,7 @@ function initListeners() {
 
 function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
   db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
 }
