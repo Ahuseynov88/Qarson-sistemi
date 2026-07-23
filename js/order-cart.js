@@ -127,6 +127,12 @@ export class OrderCart {
     const m = state.menuItems.find(x => x.id === menuItemId);
     if (!m) return;
     const lineKey = makeLineKey(menuItemId, '', 0);
+    const currentDraftQty = state._orderDraft[lineKey]?.qty || 0;
+    // Anbarda stok izlənən maldırsa (stock sahəsi varsa), kifayət qədər olub-olmadığı yoxlanılır
+    if (m.stock !== undefined && m.stock !== null && (currentDraftQty + 1) > m.stock) {
+      showToast(`<svg class="icon"><use href="#i-warning"></use></svg> "${m.name}" anbarda mövcud deyil`);
+      return;
+    }
     if (state._orderDraft[lineKey]) state._orderDraft[lineKey].qty += 1;
     else state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 };
     this.renderDraftList();
@@ -252,6 +258,10 @@ export class OrderCart {
         paidAmount,
         remainingAmount: total - paidAmount,
         updatedAt: Date.now(),
+        // İlk sifarişin dəqiq vaxtı - hesabatlarda (saatlara/işçi performansına görə) bu
+        // istifadə olunur, masa bağlanma vaxtı YOX (saat 6-da açılıb 12-də bağlanan masa
+        // hesabatda 12 saatına yox, 6 saatına aid sayılmalıdır)
+        firstOrderAt: (current && current.firstOrderAt) || Date.now(),
         billPrintedAt: null
       };
     }, (error, committed, snapshot) => {
