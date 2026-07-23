@@ -929,6 +929,18 @@
   </div>
 </div>
 
+<div class="modal-bg" id="quickStockModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <h2 id="quickStockTitle" style="margin-bottom:8px;"><svg class="icon"><use href="#i-tag"></use></svg> Stok Artır</h2>
+    <p id="quickStockCurrentInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
+    <div class="form-group"><label>Nə qədər əlavə olunsun?</label><input type="number" id="quickStockAmount" min="1" step="1" placeholder="10"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeQuickStockModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="confirmQuickStock()">Əlavə Et</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="lcEditModal">
   <div class="modal">
     <h2 style="margin-bottom:16px;"><svg class="icon"><use href="#i-users"></use></svg> Müştərini Redaktə Et</h2>
