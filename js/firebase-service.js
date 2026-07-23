@@ -30,5 +30,8 @@ export const R = {
   // (nisyə/kredit hesabları) ilə QARIŞDIRILMIR, tamam fərqli konsepsiyadır.
   loyaltyCustomers: db.ref('loyaltyCustomers'),
   guestTokens:      db.ref('guestTokens'),
-  referrals:        db.ref('referrals')
+  referrals:        db.ref('referrals'),
+  // Təchizatçılar & Məhsul Alışları modulu
+  suppliers: db.ref('suppliers'),
+  purchases: db.ref('purchases')
 };
