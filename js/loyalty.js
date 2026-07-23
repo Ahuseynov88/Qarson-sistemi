@@ -1,357 +1,389 @@
 /* ═══════════════════════════════════════════
-   CUSTOMER (MÜŞTƏRİ) PANELİ + QARSON-MÜŞTƏRİ SÖHBƏTİ
-   Məntiq orijinaldan dəyişmədən köçürülüb - yalnız modula ayrılıb.
-   Mövcud HTML `onclick=""` atributları ilə işlədiyi üçün funksiyalar
-   `window`-a təyin edilir (bax: son sətirlər).
+   MÜŞTƏRİ TANIMA & LOYALLIQ MODULU
+   Restoran QR sistemi üçün müştəri tanıma, qeydiyyat, bonus və referral (dostunu
+   dəvət et) idarəsi. Bu modul MÖVCUD sistemi (customer.js-dəki menyu/çat/hesab
+   funksiyaları) POZMUR, tamamilə ayrıca, müstəqil qat kimi işləyir.
+
+   QEYD: "loyaltyCustomers" node-u MÖVCUD "customers" node-undan (nisyə/kredit
+   hesabları üçün istifadə olunan, admin.js-də idarə olunan) BİLƏRƏKDƏN AYRIDIR -
+   iki fərqli konsepsiyadır, qarışdırılmamalıdır.
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
-import { state } from './state.js';
-import { esc, toArr, showToast, showCustomerToast, addLog } from './utils.js';
-import { triggerCustomerAlarm } from './alarm.js';
-import { renderFeedbackSection } from './admin.js';
-import { initCustomerLoyalty, initReferralRegisterScreen } from './loyalty.js';
+import { showToast, esc } from './utils.js';
 
-export function initCustomerRequestListener() {
-  db.ref('customerRequests').orderByChild('status').equalTo('pending').on('value', snap => {
-    const data = snap.val() || {};
-    const list = Object.keys(data).map(k=>({id:k,...data[k]}));
-    if (state.user?.role === 'staff') {
-      list.forEach(r => {
-        const t = state.tables.find(x=>x.id===r.tableId);
-        if (t && t.occupant === state.user.id) triggerCustomerAlarm(r);
-      });
-    }
-    if (state.user?.role === 'admin') renderFeedbackSection();
-  });
+const TOKEN_KEY = 'qarson_loyalty_token'; // localStorage: { type: 'guest'|'customer', id }
+const PENDING_REF_KEY = 'qarson_pending_ref'; // sessionStorage: referral kodu (linklə gələnlər üçün)
 
-  db.ref('feedbacks').orderByChild('createdAt').limitToLast(50).on('value', snap => {
-    const data = snap.val() || {};
-    const list = Object.keys(data).map(k=>({id:k,...data[k]})).reverse();
-    if (state.user?.role === 'admin') state._feedbacks = list;
+let _currentTableId = null;
+let _currentCustomer = null; // { id, type: 'guest'|'customer', data }
+
+/* ── Köməkçi funksiyalar ── */
+
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
   });
 }
 
-export function checkCustomerMode() {
-  const params = new URLSearchParams(location.search);
-  const tableId = params.get('table');
-  const refCode = params.get('ref');
+function generateReferralCode() {
+  // Qarışıq oxunan hərf/rəqəmlər (0/O, 1/I) çıxarılıb ki, paylaşılanda səhv oxunmasın
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
 
-  // Referral linki (dostunu dəvət et) masaya BAĞLI DEYİL və müştəri panelindən
-  // TAM AYRI bir ekrandır - dəvət olunan şəxs restoranda olmaya da bilər.
-  if (!tableId) {
-    if (refCode) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById('referralRegisterScreen').classList.add('active');
-      initReferralRegisterScreen(refCode);
-    }
+function getStoredToken() {
+  try { return JSON.parse(localStorage.getItem(TOKEN_KEY) || 'null'); } catch (e) { return null; }
+}
+function storeToken(type, id) {
+  try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ type, id })); } catch (e) {}
+}
+
+function firstOnly(snapVal) {
+  // Firebase query nəticəsindən ilk (və yeganə) uyğun qeydin id/data cütünü çıxarır
+  const keys = Object.keys(snapVal || {});
+  return keys.length ? { id: keys[0], data: snapVal[keys[0]] } : null;
+}
+
+/* ── Giriş nöqtəsi: masa aktivləşəndə customer.js tərəfindən çağırılır ── */
+
+export function initCustomerLoyalty(tableId) {
+  _currentTableId = tableId;
+
+  // URL-də "?ref=KOD" varsa (kiminsə paylaşdığı linklə gəlibsə) - qeydiyyat anına qədər saxlanılır
+  const params = new URLSearchParams(location.search);
+  const refCode = params.get('ref');
+  if (refCode) { try { sessionStorage.setItem(PENDING_REF_KEY, refCode.toUpperCase()); } catch (e) {} }
+
+  const token = getStoredToken();
+  if (!token) {
+    document.getElementById('custWelcomeModal')?.classList.add('open');
     return;
   }
+  recognizeExistingToken(token);
+}
 
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('customerScreen').classList.add('active');
-
-  // Loyallıq tanıma/qeydiyyatı masanın aktiv olub-olmamasından ASILI DEYİL - dərhal başlayır.
-  // Sifariş/hesab funksiyaları isə hələ də yalnız masa aktiv olanda açılır (aşağıda).
-  if (!window._customerLoyaltyInited) {
-    window._customerLoyaltyInited = true;
-    initCustomerLoyalty(tableId);
-  }
-
-  R.tables.child(tableId).on('value', snap => {
-    const t = snap.val();
-    if (!t) { showCustomerClosedScreen('<svg class="icon"><use href="#i-error"></use></svg> Masa tapılmadı'); return; }
-    if (t.occupant) {
-      document.getElementById('customerInactiveOverlay').classList.remove('show');
-      document.getElementById('customerTableName').textContent = t.name || 'Masa';
-      showCustomerWaiterCard(t.occupant);
-      if (!window._customerTableId) {
-        window._customerTableId = tableId;
-        window._customerTableData = t;
-        initCustomerChat(tableId);
-        initCustomerRequestTracking(tableId);
-        R.tableOrders.child(tableId).on('value', s => renderCustomerOrder(s.val()));
-      }
+function recognizeExistingToken(token) {
+  const node = token.type === 'customer' ? R.loyaltyCustomers : R.guestTokens;
+  node.child(token.id).once('value', snap => {
+    const data = snap.val();
+    if (!data) {
+      // Token Firebase-də tapılmadı (məlumat silinib və s.) - yenidən tanıma prosesi başlasın
+      try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+      document.getElementById('custWelcomeModal')?.classList.add('open');
       return;
     }
-    document.getElementById('customerTableName').textContent = t.name || 'Masa';
-    document.getElementById('customerInactiveOverlay').classList.add('show');
-    if (window._customerTableId) {
-      window._customerTableId = null;
-      window._customerTableData = null;
-      db.ref('chats/' + tableId).off();
-      db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).off();
-      R.tableOrders.child(tableId).off();
-      showCustomerClosedScreen('<svg class="icon"><use href="#i-thanks"></use></svg> Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
-    }
+    _currentCustomer = { id: token.id, type: token.type, data };
+    // Ziyarət sayını yeniləyirik (yalnız məlumat üçün, funksionallığa təsir etmir)
+    node.child(token.id).update({ lastVisit: Date.now(), visitCount: (data.visitCount || 0) + 1 });
+    applyRecognition();
+    linkVisitToTable();
   });
 }
 
-export function renderCustomerOrder(order) {
-  const section = document.getElementById('custOrderSection');
-  const list = document.getElementById('custOrderList');
-  if (!section || !list) return;
-
-  const items = order?.items ? Object.values(order.items) : [];
-  if (!items.length) { section.style.display = 'none'; return; }
-  section.style.display = 'block';
-
-  list.innerHTML = items.map(it => {
-    const lineTotal = (it.price||0) * it.qty * (1-((it.discountPercent||0)/100)) + (it.extraFee||0);
-    return `<div class="cust-order-line">
-      <div class="cust-order-line__row">
-        <span class="cust-order-line__name">${esc(it.name)} <span class="cust-order-line__qty">×${it.qty}</span></span>
-        <span class="cust-order-line__price">${lineTotal.toFixed(2)} ₼</span>
-      </div>
-      ${(it.note || it.compliment || it.discountPercent>0) ? `<div class="cust-order-line__tags">
-        ${it.note ? `<span class="discount-badge" style="background:transparent;border-color:var(--border);color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(it.note)}</span>` : ''}
-        ${it.compliment ? `<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>` : ''}
-        ${(it.discountPercent>0) ? `<span class="discount-badge">-${it.discountPercent}%</span>` : ''}
-      </div>` : ''}
-    </div>`;
-  }).join('');
-
-  const total = order.total || 0;
-  const paid = order.paidAmount || 0;
-  const scAmount = order.serviceChargeAmount || 0;
-  const scPercent = order.serviceChargePercent || 0;
-  list.innerHTML += `${scAmount > 0 ? `<div class="cust-order-line">
-    <div class="cust-order-line__row">
-      <span class="cust-order-line__qty">Xidmət haqqı (${scPercent}%)</span>
-      <span class="cust-order-line__price">${scAmount.toFixed(2)} ₼</span>
-    </div>
-  </div>` : ''}
-  <div class="cust-order-total">
-    <span class="cust-order-total__label">Cəmi</span>
-    <span class="cust-order-total__value">${total.toFixed(2)} ₼</span>
-  </div>
-  ${paid > 0 ? `<div class="cust-order-paid-row"><span>Ödənilib: ${paid.toFixed(2)} ₼</span><span>Qalıq: ${Math.max(0,total-paid).toFixed(2)} ₼</span></div>` : ''}`;
-}
-
-export function showCustomerWaiterCard(waiterId) {
-  if (!waiterId) return;
-  R.staff.child(waiterId).once('value', snap => {
-    const w = snap.val();
-    if (!w) return;
-    const card = document.getElementById('custWaiterCard');
-    const avatar = document.getElementById('custWaiterAvatar');
-    const name = document.getElementById('custWaiterName');
-    if (!card) return;
-    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(w.name||'?')}&background=2ecc71&color=fff&size=200`;
-    avatar.src = w.avatar || fallback;
-    avatar.onerror = () => { avatar.src = fallback; };
-    name.textContent = w.name || '—';
-    card.style.display = 'flex';
-  });
-}
-
-export function openCustomerPanel(tableId, tableData) {
-  window._customerTableId = tableId;
-  window._customerTableData = tableData;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('customerScreen').classList.add('active');
-  document.getElementById('customerTableName').textContent = tableData.name || 'Masa';
-}
-
-export function showCustomerClosedScreen(msg) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const screen = document.getElementById('customerScreen');
-  screen.classList.add('active');
-  const wrap = screen.querySelector('div');
-  if (wrap) {
-    wrap.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:30px;"><div style="font-size:72px;margin-bottom:20px;"><svg class="icon"><use href="#i-thanks"></use></svg></div><p style="color:#eee;font-size:20px;font-weight:600;line-height:1.6;">${msg}</p></div>`;
+function applyRecognition() {
+  const greetEl = document.getElementById('custGreetingText');
+  const cardEl = document.getElementById('custLoyaltyCard');
+  if (!greetEl || !cardEl) return;
+  if (_currentCustomer?.type === 'customer') {
+    const d = _currentCustomer.data;
+    const honorific = d.gender === 'Kişi' ? 'bəy' : d.gender === 'Qadın' ? 'xanım' : '';
+    greetEl.textContent = honorific ? `Xoş gəlmisiniz, ${d.firstName} ${honorific}!` : `Xoş gəlmisiniz, ${d.firstName}!`;
+    cardEl.style.display = 'block';
+    document.getElementById('custBonusValue').textContent = (d.bonus || 0) + ' bal';
+    _renderCustReferredFriends();
+  } else if (_currentCustomer?.type === 'guest') {
+    greetEl.textContent = 'Sizi yenidən görməyimizə şadıq.';
+    cardEl.style.display = 'none';
+    showGuestRegisterPrompt();
   }
 }
 
-export function openMenu() {
-  db.ref('settings/menuUrl').once('value', snap => {
-    const url = snap.val();
-    if (!url) { showCustomerToast('<svg class="icon"><use href="#i-warning"></use></svg> Menyu hələ əlavə edilməyib'); return; }
-    window.open(url, '_blank');
-  });
-}
-
-let _custPendingRequestType = null;
-let _custKnownRequestStatuses = {};
-
-// Bu masaya aid tələbləri izləyir: (1) artıq gözləyən tələb varsa yenisinin
-// göndərilməsinin qarşısını almaq üçün, (2) ofisiant tələbi qəbul edəndə müştəriyə
-// bildiriş göstərmək üçün.
-export function initCustomerRequestTracking(tableId) {
-  _custPendingRequestType = null;
-  _custKnownRequestStatuses = {};
-  db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).on('value', snap => {
-    let stillPending = null;
-    const ackMessages = {
-      call: 'Ofisiant bildirişinizi qəbul etdi, sizə yaxınlaşır.',
-      bill_cash: 'Ofisiant istəyinizi qəbul etdi, sizə hesabı gətirir.',
-      bill_pos: 'Ofisiant istəyinizi qəbul etdi, sizə hesabı gətirir.'
-    };
-    snap.forEach(child => {
-      const req = child.val();
-      const id = child.key;
-      // Vəziyyət 'pending'-dən 'accepted'-ə keçdisə (köhnə, artıq qəbul edilmiş
-      // tələblər deyil, YENİ dəyişiklik) müştəriyə bildiriş göstərilir
-      if (_custKnownRequestStatuses[id] === 'pending' && req.status === 'accepted') {
-        showCustomerToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ackMessages[req.type] || 'Ofisiant tələbinizi qəbul etdi.'}`);
-      }
-      _custKnownRequestStatuses[id] = req.status;
-      if (req.status === 'pending') stillPending = req.type;
+// Müştərinin özünün dəvət etdiyi dostların siyahısı (ad + status)
+function _renderCustReferredFriends() {
+  if (!_currentCustomer || _currentCustomer.type !== 'customer') return;
+  R.referrals.orderByChild('referrerCustomerId').equalTo(_currentCustomer.id).once('value', snap => {
+    const referrals = [];
+    snap.forEach(child => { referrals.push(child.val()); });
+    const wrap = document.getElementById('custReferredFriends');
+    const list = document.getElementById('custReferredFriendsList');
+    if (!wrap || !list) return;
+    if (!referrals.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    const rows = [];
+    let pending = referrals.length;
+    referrals.forEach(r => {
+      R.loyaltyCustomers.child(r.referredCustomerId).once('value', cSnap => {
+        const c = cSnap.val();
+        rows.push({ name: c ? `${c.firstName} ${c.lastName}` : 'Naməlum', status: r.status });
+        pending--;
+        if (pending === 0) {
+          list.innerHTML = rows.map(row => `
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.85);padding:5px 0;">
+              <span>${esc(row.name)}</span>
+              <span style="color:${row.status==='completed'?'#5edb96':'#f7d35c'};font-weight:600;">${row.status==='completed'?'Tamamlandı':'Gözləmədə'}</span>
+            </div>
+          `).join('');
+        }
+      });
     });
-    _custPendingRequestType = stillPending;
   });
 }
 
-export function customerAction(type) {
-  const tableId = window._customerTableId;
-  const t = window._customerTableData;
-  if (!tableId || !t) return;
-  // Artıq gözləyən (qəbul edilməmiş) bir tələb varsa, yenisi göndərilmir - ofisiant
-  // panelinə eyni masadan bir-birinin ardınca yığılmış bildirişlər getməsin deyə.
-  if (_custPendingRequestType) {
-    showCustomerToast('<svg class="icon"><use href="#i-clock"></use></svg> Artıq bir tələbiniz var, ofisiant tezliklə cavab verəcək');
+// Qeydiyyatsız (Guest) istifadəçiyə həmişə görünən, istənilən vaxt qeydiyyata keçmək
+// üçün kiçik bir dəvət göstərir (yalnız ilk pəncərədə deyil).
+function showGuestRegisterPrompt() {
+  const cardEl = document.getElementById('custLoyaltyCard');
+  const promptEl = document.getElementById('custGuestRegisterPrompt');
+  if (promptEl) promptEl.style.display = 'flex';
+}
+
+// Bu ziyarəti masaya bağlayır - masa bağlananda (tables.js) referral bonusu
+// yoxlamaq üçün "bu masada kim oturub" məlumatı lazımdır
+function linkVisitToTable() {
+  if (!_currentTableId || !_currentCustomer) return;
+  R.tables.child(_currentTableId).update({
+    loyaltyCustomerId: _currentCustomer.type === 'customer' ? _currentCustomer.id : null,
+    loyaltyGuestId: _currentCustomer.type === 'guest' ? _currentCustomer.id : null
+  });
+}
+
+/* ── Qeydiyyatsız (Guest) davam etmək ── */
+
+export function chooseGuestMode() {
+  const uuid = generateUUID();
+  const guestData = { createdAt: Date.now(), lastVisit: Date.now(), visitCount: 1 };
+  R.guestTokens.child(uuid).set(guestData);
+  storeToken('guest', uuid);
+  _currentCustomer = { id: uuid, type: 'guest', data: guestData };
+  document.getElementById('custWelcomeModal')?.classList.remove('open');
+  applyRecognition();
+  linkVisitToTable();
+}
+
+/* ── Qeydiyyat forması ── */
+
+export function openLoyaltyRegisterForm() {
+  document.getElementById('custWelcomeModal')?.classList.remove('open');
+  document.getElementById('custRegisterModal')?.classList.add('open');
+}
+export function closeLoyaltyRegisterForm() {
+  document.getElementById('custRegisterModal')?.classList.remove('open');
+  // Yalnız hələ heç bir tanınma (guest/customer) yoxdursa Welcome Modal-a qayıdır -
+  // artıq Guest kimi tanınmış istifadəçi "geri" desə boş yerə ilk pəncərəyə düşməsin
+  if (!_currentCustomer) document.getElementById('custWelcomeModal')?.classList.add('open');
+}
+
+export function submitLoyaltyRegistration() {
+  const fields = {
+    firstName: document.getElementById('regFirstName').value.trim(),
+    lastName: document.getElementById('regLastName').value.trim(),
+    fatherName: document.getElementById('regFatherName').value.trim(),
+    phone: document.getElementById('regPhone').value.trim(),
+    gender: document.getElementById('regGender').value,
+    birthDate: document.getElementById('regBirthDate').value
+  };
+  const errEl = document.getElementById('regErrorMsg');
+  errEl.textContent = '';
+  if (!fields.firstName || !fields.lastName || !fields.phone) {
+    errEl.textContent = 'Ad, soyad və telefon nömrəsi mütləqdir.';
     return;
   }
-  const currentTable = state.tables.find(x=>x.id===tableId);
-  const occupantId = currentTable?.occupant || t.occupant;
-  const messages = {
-    call: { text:`${t.name} sizi çağırır!`, type:'call' },
-    bill_cash: { text:`${t.name} nağd hesab istəyir`, type:'bill_cash' },
-    bill_pos: { text:`${t.name} POS hesab istəyir`, type:'bill_pos' }
-  };
-  const m = messages[type];
-  if (!m) return;
-  db.ref('customerRequests').push({
-    tableId, tableName: t.name, type: m.type, message: m.text, waiterId: occupantId || null,
-    status: 'pending', time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now()
+  const existingGuestToken = (_currentCustomer?.type === 'guest') ? _currentCustomer.id : null;
+  _registerLoyaltyCustomer(fields, existingGuestToken, errEl, (newId, customerData) => {
+    _currentCustomer = { id: newId, type: 'customer', data: customerData };
+    document.getElementById('custRegisterModal')?.classList.remove('open');
+    applyRecognition();
+    linkVisitToTable();
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Qeydiyyat tamamlandı, xoş gəlmisiniz!');
   });
-  const typeLabels = { call: 'çağırış', bill_cash: 'nağd ödəniş istəyi', bill_pos: 'POS ilə ödəniş istəyi' };
-  addLog('customer',`"${t.name}" masasından ${typeLabels[type]||type} tələbi`,{ tableId, type });
-  const icons = { call:'<svg class="icon"><use href="#i-bell"></use></svg>', bill_cash:'<svg class="icon"><use href="#i-cash"></use></svg>', bill_pos:'<svg class="icon"><use href="#i-card"></use></svg>' };
-  showCustomerToast(`${icons[type]||'<svg class="icon"><use href="#i-megaphone"></use></svg>'} Bildiriş göndərildi!`);
 }
 
-export function initCustomerChat(tableId) {
-  db.ref(`chats/${tableId}/messages`).on('value', snap => { renderCustomerChatMsgs(snap.val() || {}); });
-}
+// Qeydiyyatın əsas (paylaşılan) məntiqi: telefon unikallığı, referral əlaqəsi, hesab
+// yaradılması. Həm masa-əsaslı, həm də müstəqil (referral linki) qeydiyyat bunu istifadə edir.
+function _registerLoyaltyCustomer(fields, existingGuestToken, errEl, onSuccess) {
+  R.loyaltyCustomers.orderByChild('phone').equalTo(fields.phone).once('value', snap => {
+    if (snap.exists()) {
+      if (errEl) errEl.textContent = 'Bu telefon nömrəsi ilə artıq qeydiyyat mövcuddur.';
+      return;
+    }
+    const referralCode = generateReferralCode();
+    let pendingRef = null;
+    try { pendingRef = sessionStorage.getItem(PENDING_REF_KEY); } catch (e) {}
 
-export function renderCustomerChatMsgs(msgsObj) {
-  const currentSessionId = window._customerTableData?.sessionId || null;
-  // Yalnız CARİ sessiyaya aid mesajlar göstərilir - masa bağlanıb yeni müştəri
-  // oturanda köhnə söhbət görünməsin deyə (qeyd Firebase-də qalır, sadəcə gizlədilir)
-  const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
-  const el = document.getElementById('custMsgList');
-  el.innerHTML = msgs.map(m=>`
-    <div class="cust-bubble ${m.sender}">
-      ${m.sender==='waiter'?`<span style="font-size:11px;font-weight:700;display:block;margin-bottom:2px;">${esc(m.senderName||'Qarson')}</span>`:''}
-      ${esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span>
-    </div>
-  `).join('');
-  el.scrollTop = el.scrollHeight;
-}
-
-export function sendCustomerMsg() {
-  const text = document.getElementById('custMsgInput').value.trim();
-  const tableId = window._customerTableId;
-  const t = window._customerTableData;
-  if (!text || !tableId) return;
-  const ref = db.ref(`chats/${tableId}/messages`).push();
-  ref.set({ sender: 'customer', text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now(), readByWaiter: false, sessionId: t.sessionId || null });
-  const currentTable = state.tables.find(x=>x.id===tableId);
-  db.ref('customerRequests').push({
-    tableId, tableName: t.name, type: 'message', message: `${t.name}: ${text}`,
-    waiterId: currentTable?.occupant || t.occupant || null, status: 'pending',
-    time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now()
-  });
-  addLog('chat',`"${t.name}" masasından mesaj: ${text}`,{ tableId });
-  document.getElementById('custMsgInput').value = '';
-  showCustomerToast('<svg class="icon"><use href="#i-check"></use></svg> Mesaj göndərildi!');
-}
-
-export function sendFeedback() {
-  const msg = document.getElementById('feedbackInput').value.trim();
-  const tableId = window._customerTableId;
-  const t = window._customerTableData;
-  if (!msg) return;
-  db.ref('feedbacks').push({
-    tableId, tableName: t ? t.name : '?', message: msg,
-    time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'),
-    createdAt: Date.now(), status: 'new'
-  });
-  addLog('customer',`"${t?t.name:'?'}" masasından şikayət/təklif: ${msg}`,{ tableId });
-  document.getElementById('feedbackInput').value = '';
-  showCustomerToast('<svg class="icon"><use href="#i-check"></use></svg> Şikayət/təklifiniz qeyd edildi!');
-}
-
-export function initWaiterChatListener() {
-  db.ref('chats').on('value', snap => {
-    const data = snap.val() || {};
-    Object.keys(data).forEach(tableId => {
-      const msgs = toArr(data[tableId].messages || {});
-      const t = state.tables.find(x=>x.id===tableId);
-      if (!t || t.occupant !== state.user?.id) return;
-      const unread = msgs.filter(m=>m.sender==='customer'&&!m.readByWaiter&&Date.now()-m.createdAt<60000);
-      if (unread.length && state.activeChatTableId !== tableId) {
-        const lastUnread = unread[unread.length-1];
-        if (!state._shownRequests.includes('chat_'+lastUnread.id)) {
-          state._shownRequests.push('chat_'+lastUnread.id);
-          showToast(`<svg class="icon"><use href="#i-chat"></use></svg> ${t.name}: Yeni mesaj!`);
-          openWaiterChatForTable(tableId, null);
-        }
+    const newRef = R.loyaltyCustomers.push();
+    const customerData = {
+      ...fields, bonus: 0, referralCode, registrationDate: Date.now(),
+      firstOrderCompleted: false, guestToken: existingGuestToken || null
+    };
+    newRef.set(customerData).then(() => {
+      if (existingGuestToken) {
+        R.guestTokens.child(existingGuestToken).update({ convertedToCustomerId: newRef.key });
       }
+      if (pendingRef) {
+        R.loyaltyCustomers.orderByChild('referralCode').equalTo(pendingRef).once('value', refSnap => {
+          const referrer = firstOnly(refSnap.val());
+          if (referrer && referrer.id !== newRef.key) {
+            R.referrals.push({
+              referrerCustomerId: referrer.id, referredCustomerId: newRef.key,
+              status: 'pending', createdAt: Date.now()
+            });
+          }
+        });
+        try { sessionStorage.removeItem(PENDING_REF_KEY); } catch (e) {}
+      }
+      storeToken('customer', newRef.key);
+      onSuccess(newRef.key, customerData);
     });
-    if (state.activeChatTableId) renderWaiterChatMsgs(data[state.activeChatTableId]?.messages || {});
   });
 }
 
-export function openWaiterChatForTable(tableId, requestId) {
-  const t = state.tables.find(x=>x.id===tableId);
-  state.activeChatTableId = tableId;
-  state.activeChatConvId = requestId;
-  document.getElementById('waiterChatTitle').innerHTML = `<svg class="icon"><use href="#i-chat"></use></svg> ${t ? t.name : 'Müştəri'} — Mesajlar`;
-  document.getElementById('waiterChatPanel').classList.add('show');
-  db.ref(`chats/${tableId}/messages`).once('value', snap => { renderWaiterChatMsgs(snap.val() || {}); });
+/* ── Telefon ilə hesab bərpası (brauzer məlumatları silinibsə) ── */
+
+export function openPhoneRecoveryFromWelcome() {
+  document.getElementById('custWelcomeModal')?.classList.remove('open');
+  document.getElementById('custPhoneRecoveryModal')?.classList.add('open');
+}
+export function closePhoneRecovery() {
+  document.getElementById('custPhoneRecoveryModal')?.classList.remove('open');
+  if (!_currentCustomer) document.getElementById('custWelcomeModal')?.classList.add('open');
 }
 
-export function closeWaiterChat() {
-  document.getElementById('waiterChatPanel').classList.remove('show');
-  state.activeChatTableId = null;
-  state.activeChatConvId = null;
-  document.getElementById('waiterChatMsgList').innerHTML = '';
-}
+export function submitPhoneRecovery() {
+  const phone = document.getElementById('recoveryPhone').value.trim();
+  const errEl = document.getElementById('recoveryErrorMsg');
+  errEl.textContent = '';
+  if (!phone) { errEl.textContent = 'Telefon nömrəsini daxil edin.'; return; }
 
-export function renderWaiterChatMsgs(msgsObj) {
-  const t = state.tables.find(x=>x.id===state.activeChatTableId);
-  const currentSessionId = t?.sessionId || null;
-  const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
-  const el = document.getElementById('waiterChatMsgList');
-  el.innerHTML = msgs.map(m=>`<div class="chat-bubble ${m.sender}">${esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span></div>`).join('');
-  el.scrollTop = el.scrollHeight;
-  msgs.filter(m=>m.sender==='customer'&&!m.readByWaiter).forEach(m=>{
-    db.ref(`chats/${state.activeChatTableId}/messages/${m.id}`).update({ readByWaiter: true });
+  R.loyaltyCustomers.orderByChild('phone').equalTo(phone).once('value', snap => {
+    const found = firstOnly(snap.val());
+    if (!found) { errEl.textContent = 'Bu nömrə ilə hesab tapılmadı.'; return; }
+    storeToken('customer', found.id);
+    _currentCustomer = { id: found.id, type: 'customer', data: found.data };
+    document.getElementById('custPhoneRecoveryModal')?.classList.remove('open');
+    document.getElementById('custWelcomeModal')?.classList.remove('open');
+    applyRecognition();
+    linkVisitToTable();
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesabınız tapıldı, xoş gəlmisiniz!');
   });
 }
 
-export function sendWaiterReply() {
-  const text = document.getElementById('waiterChatInput').value.trim();
-  if (!text || !state.activeChatTableId) return;
-  const w = state.user;
-  const t = state.tables.find(x=>x.id===state.activeChatTableId);
-  const ref = db.ref(`chats/${state.activeChatTableId}/messages`).push();
-  ref.set({ sender: 'waiter', senderName: w.name, text, time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now(), sessionId: t?.sessionId || null });
-  addLog('chat',`${w.name} "${t?t.name:'masa'}" müştərisinə cavab verdi: ${text}`,{ waiterId:w.id, tableId:state.activeChatTableId });
-  document.getElementById('waiterChatInput').value = '';
+/* ── Referral (Dostunu dəvət et) ── */
+
+export function shareReferralLink() {
+  if (!_currentCustomer || _currentCustomer.type !== 'customer') return;
+  const code = _currentCustomer.data.referralCode;
+  // QEYD: link masaya bağlı DEYİL (təkcə "?ref=KOD") - dostu istənilən vaxt,
+  // hər hansı masada və ya masasız açıb qeydiyyatdan keçə bilsin.
+  const url = `${location.origin}${location.pathname}?ref=${code}`;
+  if (navigator.share) {
+    navigator.share({ title: 'İpək Yolu Restoranı', text: 'Bu link ilə qeydiyyatdan keç, hər ikimiz bonus qazanaq!', url }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('<svg class="icon"><use href="#i-check"></use></svg> Dəvət linki kopyalandı!');
+    });
+  } else {
+    showToast('<svg class="icon"><use href="#i-error"></use></svg> Paylaşma bu cihazda dəstəklənmir');
+  }
+}
+
+/* ── Masa bağlananda referral bonusu yoxlanışı (tables.js tərəfindən çağırılır) ──
+   Yeni (referral ilə gəlmiş) müştərinin İLK sifarişi tamamlananda, əgər sifariş
+   minimum məbləği ötübsə, DƏVƏT EDƏN şəxsə bonus verilir.
+   QEYD: customerId birbaşa çağıran yerdən (yaddaşdakı state-dən) ötürülür,
+   Firebase-dən TƏZƏDƏN oxunmur - əks halda masa sıfırlanması ilə yarışma
+   (race condition) riski yaranardı. */
+export function checkReferralBonusOnClose(customerId, orderTotal) {
+  if (!customerId) return;
+
+  R.loyaltyCustomers.child(customerId).once('value', cSnap => {
+    const customer = cSnap.val();
+    if (!customer || customer.firstOrderCompleted) return; // yalnız İLK sifariş üçün
+
+    R.loyaltyCustomers.child(customerId).update({ firstOrderCompleted: true });
+
+    R.referrals.orderByChild('referredCustomerId').equalTo(customerId).once('value', refSnap => {
+      const referral = firstOnly(refSnap.val());
+      if (!referral || referral.data.status !== 'pending') return;
+
+      db.ref('settings/loyalty').once('value', settingsSnap => {
+        const settings = settingsSnap.val() || {};
+        const minAmount = settings.referralMinOrderAmount || 0;
+        const bonusAmount = settings.referralBonusAmount || 0;
+        if (orderTotal < minAmount || bonusAmount <= 0) return;
+
+        R.referrals.child(referral.id).update({ status: 'completed', completedAt: Date.now() });
+        R.loyaltyCustomers.child(referral.data.referrerCustomerId).transaction(cur => {
+          if (!cur) return cur;
+          return { ...cur, bonus: (cur.bonus || 0) + bonusAmount };
+        });
+      });
+    });
+  });
+}
+
+// ── Müstəqil (masasız) referral qeydiyyat ekranı ──
+// Bu, "customerScreen"dən TAM AYRIDIR - dəvət olunan şəxs restoranda olmaya da bilər,
+// ona görə masa/qarson/sifariş kimi heç bir masa-əsaslı elementə istinad ETMİR.
+export function initReferralRegisterScreen(refCode) {
+  try { sessionStorage.setItem(PENDING_REF_KEY, refCode.toUpperCase()); } catch (e) {}
+  const token = getStoredToken();
+  // Yalnız QEYDİYYATLI (customer) tokenlər yoxlanılır - Guest tokeni bu axında
+  // əlaqəli deyil, çünki "qeydiyyatsız davam et" seçimi burada YOXDUR.
+  if (token && token.type === 'customer') {
+    R.loyaltyCustomers.child(token.id).once('value', snap => {
+      const data = snap.val();
+      if (!data) { _showReferralRegisterForm(); return; }
+      document.getElementById('refRegisterFormBlock').style.display = 'none';
+      document.getElementById('refAlreadyMemberBlock').style.display = 'block';
+      const honorific = data.gender === 'Kişi' ? 'bəy' : data.gender === 'Qadın' ? 'xanım' : '';
+      document.getElementById('refMemberGreeting').textContent =
+        `${data.firstName}${honorific ? ' ' + honorific : ''}, siz artıq loyallıq proqramımızın üzvüsünüz. Cari bonusunuz: ${data.bonus || 0} bal.`;
+    });
+  } else {
+    _showReferralRegisterForm();
+  }
+}
+
+function _showReferralRegisterForm() {
+  document.getElementById('refRegisterFormBlock').style.display = 'block';
+  document.getElementById('refAlreadyMemberBlock').style.display = 'none';
+  document.getElementById('refThanksBlock').style.display = 'none';
+}
+
+export function submitReferralRegistration() {
+  const fields = {
+    firstName: document.getElementById('refRegFirstName').value.trim(),
+    lastName: document.getElementById('refRegLastName').value.trim(),
+    fatherName: document.getElementById('refRegFatherName').value.trim(),
+    phone: document.getElementById('refRegPhone').value.trim(),
+    gender: document.getElementById('refRegGender').value,
+    birthDate: document.getElementById('refRegBirthDate').value
+  };
+  const errEl = document.getElementById('refRegErrorMsg');
+  errEl.textContent = '';
+  if (!fields.firstName || !fields.lastName || !fields.phone) {
+    errEl.textContent = 'Ad, soyad və telefon nömrəsi mütləqdir.';
+    return;
+  }
+  // Bu axında Guest konsepti yoxdur - existingGuestToken həmişə null
+  _registerLoyaltyCustomer(fields, null, errEl, () => {
+    document.getElementById('refRegisterFormBlock').style.display = 'none';
+    document.getElementById('refThanksBlock').style.display = 'block';
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Qeydiyyat tamamlandı!');
+  });
 }
 
 // Mövcud HTML-də onclick="..." istifadə olunan funksiyalar qlobal əlçatan olmalıdır
-window.openMenu = openMenu;
-window.customerAction = customerAction;
-window.sendCustomerMsg = sendCustomerMsg;
-window.sendFeedback = sendFeedback;
-window.sendWaiterReply = sendWaiterReply;
-window.closeWaiterChat = closeWaiterChat;
-
-// alarm.js "mesaj" tipli bildirişdə söhbəti açmaq istəyəndə bu hadisəni göndərir
-// (dövri import (alarm.js <-> customer.js) olmasın deyə birbaşa çağırış əvəzinə hadisə istifadə olunur)
-document.addEventListener('alarm:open-chat', (e) => {
-  openWaiterChatForTable(e.detail.tableId, e.detail.requestId);
-});
+window.chooseGuestMode = chooseGuestMode;
+window.openLoyaltyRegisterForm = openLoyaltyRegisterForm;
+window.closeLoyaltyRegisterForm = closeLoyaltyRegisterForm;
+window.submitLoyaltyRegistration = submitLoyaltyRegistration;
+window.openPhoneRecoveryFromWelcome = openPhoneRecoveryFromWelcome;
+window.closePhoneRecovery = closePhoneRecovery;
+window.submitPhoneRecovery = submitPhoneRecovery;
+window.shareReferralLink = shareReferralLink;
+window.submitReferralRegistration = submitReferralRegistration;
