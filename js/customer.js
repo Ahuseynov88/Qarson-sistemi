@@ -9,7 +9,7 @@ import { state } from './state.js';
 import { esc, toArr, showToast, showCustomerToast, addLog } from './utils.js';
 import { triggerCustomerAlarm } from './alarm.js';
 import { renderFeedbackSection } from './admin.js';
-import { initCustomerLoyalty } from './loyalty.js';
+import { initCustomerLoyalty, initReferralRegisterScreen } from './loyalty.js';
 
 export function initCustomerRequestListener() {
   db.ref('customerRequests').orderByChild('status').equalTo('pending').on('value', snap => {
@@ -36,25 +36,13 @@ export function checkCustomerMode() {
   const tableId = params.get('table');
   const refCode = params.get('ref');
 
-  // Referral linki (dostunu dəvət et) masaya BAĞLI DEYİL - "table" parametri olmadan
-  // gəlsə belə, qeydiyyat/tanıma prosesi müstəqil işləməlidir.
+  // Referral linki (dostunu dəvət et) masaya BAĞLI DEYİL və müştəri panelindən
+  // TAM AYRI bir ekrandır - dəvət olunan şəxs restoranda olmaya da bilər.
   if (!tableId) {
     if (refCode) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById('customerScreen').classList.add('active');
-      // Masasız (referral linki ilə gələn) rejimdə sifariş/qarson/söhbət/şikayət kimi
-      // masaya bağlı funksiyaların HEÇ BİRİ işləmir - ona görə göstərilmir, əvəzinə
-      // sadə bir təşəkkür ekranı göstərilir.
-      document.getElementById('custWaiterCard').style.display = 'none';
-      document.getElementById('custOrderSection').style.display = 'none';
-      document.querySelector('.cust-actions').style.display = 'none';
-      document.querySelector('.menu-btn').style.display = 'none';
-      document.querySelector('.cust-chat-section').style.display = 'none';
-      document.querySelector('.cust-feedback').style.display = 'none';
-      document.getElementById('custStandaloneThanks').style.display = 'block';
-      document.getElementById('customerTableName').textContent = 'Xoş Gəlmisiniz';
-      document.getElementById('custGreetingText').textContent = '';
-      initCustomerLoyalty(null);
+      document.getElementById('referralRegisterScreen').classList.add('active');
+      initReferralRegisterScreen(refCode);
     }
     return;
   }
@@ -80,6 +68,7 @@ export function checkCustomerMode() {
         window._customerTableId = tableId;
         window._customerTableData = t;
         initCustomerChat(tableId);
+        initCustomerRequestTracking(tableId);
         R.tableOrders.child(tableId).on('value', s => renderCustomerOrder(s.val()));
       }
       return;
@@ -90,6 +79,7 @@ export function checkCustomerMode() {
       window._customerTableId = null;
       window._customerTableData = null;
       db.ref('chats/' + tableId).off();
+      db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).off();
       R.tableOrders.child(tableId).off();
       showCustomerClosedScreen('<svg class="icon"><use href="#i-thanks"></use></svg> Masa bağlandı. Yenidən gəlməyinizi gözləyirik!');
     }
@@ -180,10 +170,47 @@ export function openMenu() {
   });
 }
 
+let _custPendingRequestType = null;
+let _custKnownRequestStatuses = {};
+
+// Bu masaya aid tələbləri izləyir: (1) artıq gözləyən tələb varsa yenisinin
+// göndərilməsinin qarşısını almaq üçün, (2) ofisiant tələbi qəbul edəndə müştəriyə
+// bildiriş göstərmək üçün.
+export function initCustomerRequestTracking(tableId) {
+  _custPendingRequestType = null;
+  _custKnownRequestStatuses = {};
+  db.ref('customerRequests').orderByChild('tableId').equalTo(tableId).on('value', snap => {
+    let stillPending = null;
+    const ackMessages = {
+      call: 'Ofisiant bildirişinizi qəbul etdi, sizə yaxınlaşır.',
+      bill_cash: 'Ofisiant istəyinizi qəbul etdi, sizə hesabı gətirir.',
+      bill_pos: 'Ofisiant istəyinizi qəbul etdi, sizə hesabı gətirir.'
+    };
+    snap.forEach(child => {
+      const req = child.val();
+      const id = child.key;
+      // Vəziyyət 'pending'-dən 'accepted'-ə keçdisə (köhnə, artıq qəbul edilmiş
+      // tələblər deyil, YENİ dəyişiklik) müştəriyə bildiriş göstərilir
+      if (_custKnownRequestStatuses[id] === 'pending' && req.status === 'accepted') {
+        showCustomerToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ackMessages[req.type] || 'Ofisiant tələbinizi qəbul etdi.'}`);
+      }
+      _custKnownRequestStatuses[id] = req.status;
+      if (req.status === 'pending') stillPending = req.type;
+    });
+    _custPendingRequestType = stillPending;
+  });
+}
+
 export function customerAction(type) {
   const tableId = window._customerTableId;
   const t = window._customerTableData;
   if (!tableId || !t) return;
+  // Artıq gözləyən (qəbul edilməmiş) bir tələb varsa, yenisi göndərilmir - ofisiant
+  // panelinə eyni masadan bir-birinin ardınca yığılmış bildirişlər getməsin deyə.
+  if (_custPendingRequestType) {
+    showCustomerToast('<svg class="icon"><use href="#i-clock"></use></svg> Artıq bir tələbiniz var, ofisiant tezliklə cavab verəcək');
+    return;
+  }
   const currentTable = state.tables.find(x=>x.id===tableId);
   const occupantId = currentTable?.occupant || t.occupant;
   const messages = {
