@@ -232,6 +232,7 @@ export class TableBoard {
       : [];
     sessionLog.push({ message: closeMsg, time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'), timestamp: Date.now() });
 
+    const closedAtNow = Date.now();
     const archiveData = {
       tableId, tableName: t?.name || '?',
       staffId: state.user?.id || null, staffName: state.user?.name || '?',
@@ -240,9 +241,13 @@ export class TableBoard {
       sessionId,
       sessionLog,
       restoreCount: t?.restoreCount || 0,
-      closedAt: Date.now(),
-      closedTime: new Date().toLocaleTimeString('az-AZ'),
-      closedDate: new Date().toLocaleDateString('az-AZ')
+      // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX) - saat 6-da
+      // açılıb 12-də bağlanan masa "6" saatına aid sayılsın deyə. Sifariş heç olmayıbsa,
+      // masanın açılma vaxtına düşür.
+      firstOrderAt: (order && order.firstOrderAt) || t?.activatedAt || closedAtNow,
+      closedAt: closedAtNow,
+      closedTime: new Date(closedAtNow).toLocaleTimeString('az-AZ'),
+      closedDate: new Date(closedAtNow).toLocaleDateString('az-AZ')
     };
     db.ref('closedOrders').push(archiveData);
     checkReferralBonusOnClose(t?.loyaltyCustomerId, archiveData.total);
