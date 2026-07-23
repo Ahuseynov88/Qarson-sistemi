@@ -42,11 +42,18 @@ export function checkCustomerMode() {
     if (refCode) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('customerScreen').classList.add('active');
+      // Masasız (referral linki ilə gələn) rejimdə sifariş/qarson/söhbət/şikayət kimi
+      // masaya bağlı funksiyaların HEÇ BİRİ işləmir - ona görə göstərilmir, əvəzinə
+      // sadə bir təşəkkür ekranı göstərilir.
       document.getElementById('custWaiterCard').style.display = 'none';
       document.getElementById('custOrderSection').style.display = 'none';
       document.querySelector('.cust-actions').style.display = 'none';
       document.querySelector('.menu-btn').style.display = 'none';
-      document.getElementById('customerTableName').textContent = 'Qeydiyyat';
+      document.querySelector('.cust-chat-section').style.display = 'none';
+      document.querySelector('.cust-feedback').style.display = 'none';
+      document.getElementById('custStandaloneThanks').style.display = 'block';
+      document.getElementById('customerTableName').textContent = 'Xoş Gəlmisiniz';
+      document.getElementById('custGreetingText').textContent = '';
       initCustomerLoyalty(null);
     }
     return;
