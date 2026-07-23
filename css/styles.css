@@ -48,7 +48,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .pin-display{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
 .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:.2s;}
 .pin-dot.filled{background:var(--green);border-color:var(--green);}
-.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.numpad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px;}
 .num-btn{padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:22px;font-weight:600;cursor:pointer;transition:.15s;}
 .num-btn:active{transform:scale(0.93);background:var(--border);}
 .login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:10px;}
@@ -65,7 +65,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .topbar .topbar-right,.topbar > button{position:relative;z-index:1;}
 .topbar h2{font-size:18px;font-weight:600;}
 .topbar-right{display:flex;align-items:center;gap:10px;}
-.btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;}
+.btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;min-width:0;overflow-wrap:break-word;word-break:break-word;}
 .btn:active{transform:scale(0.96);}
 .btn-red{background:var(--red);color:white;}
 .btn-green{background:var(--green);color:white;}
@@ -98,7 +98,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .badge-green{background:rgba(46,204,113,.15);color:var(--green);}
 .badge-red{background:rgba(231,76,60,.15);color:var(--red);}
 .item-actions{display:flex;gap:8px;margin-top:14px;}
-.item-actions .btn{flex:1;padding:10px;}
+.item-actions .btn{flex:1;padding:10px;min-width:0;font-size:13px;white-space:normal;text-align:center;line-height:1.3;display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap;}
+.item-actions .btn .icon{flex-shrink:0;}
 .table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
 .table-card h3{font-size:16px;margin-bottom:6px;}
 .table-card .meta{font-size:13px;color:var(--text2);margin-bottom:14px;}
@@ -112,7 +113,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .closed-tables-list-col{flex:1;min-width:0;max-width:420px;}
 .closed-tables-filters{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px;}
 .closed-tables-filters input,.closed-tables-filters select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;}
-.closed-tables-filters__row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.closed-tables-filters__row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
 .closed-tables-filters__label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:3px;display:block;}
 .ct-list-empty{color:var(--text3);padding:16px;text-align:center;font-size:13px;}
 .ct-list-count{font-size:11.5px;color:var(--text3);margin-bottom:8px;font-weight:600;}
@@ -169,8 +170,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .purchase-line__index{width:26px;height:26px;border-radius:50%;background:var(--card2);color:var(--text2);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
 .purchase-line__remove{width:30px;height:30px;flex-shrink:0;border:none;background:rgba(163,42,36,.1);color:var(--red);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .purchase-line__remove .icon{width:15px;height:15px;}
-.purchase-line__grid{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px;}
-.purchase-line__grid--three{grid-template-columns:1fr 1fr 1fr;}
+.purchase-line__grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;margin-bottom:10px;}
+.purchase-line__grid--three{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);}
 .purchase-line__field label{display:block;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:4px;}
 .purchase-line__field input{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-size:14px;}
 .purchase-line__field input:focus{border-color:var(--blue);outline:none;}
@@ -225,14 +226,14 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .avatar-upload-area:hover{border-color:var(--green);background:rgba(46,204,113,.05);}
 .avatar-upload-area input[type=file]{display:none;}
 .avatar-preview{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:0 auto 8px;display:none;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
 .modal h2{font-size:20px;margin-bottom:20px;}
 .form-group{margin-bottom:16px;}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
 .form-group input:focus,.form-group select:focus{border-color:var(--blue);}
 .modal-actions{display:flex;gap:10px;margin-top:20px;}
-.modal-actions .btn{flex:1;padding:14px;}
+.modal-actions .btn{flex:1;padding:14px;min-width:0;white-space:normal;text-align:center;line-height:1.3;}
 .add-fab{position:fixed;bottom:28px;right:28px;width:60px;height:60px;border-radius:50%;background:var(--green);color:white;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(46,204,113,.4);z-index:160;}
 
 /* ── KITCHEN ── */
@@ -339,8 +340,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .ticket-line__note-btn.has-note{color:var(--blue);}
 .ticket-note-input{width:100%;margin-top:7px;font-size:12px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);}
 .ticket-footer{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--card2);}
-.ticket-action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;}
-.ticket-action-grid .btn{padding:8px 4px;font-size:10.5px;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.15;}
+.ticket-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px;}
+.ticket-action-grid .btn{padding:8px 4px;font-size:10.5px;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.15;min-width:0;overflow-wrap:break-word;text-align:center;}
 .ticket-action-grid .btn .icon{width:15px;height:15px;}
 .ticket-total-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
 .ticket-total-row__label{font-size:13px;color:var(--text2);font-weight:600;}
@@ -574,7 +575,7 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
 .order-cat-rail.category-rail .category-rail__tab .icon{width:18px;height:18px;flex-shrink:0;}
 
 .order-content-wrap{flex:1;display:flex;flex-direction:column;overflow-y:auto;min-width:0;}
-.order-items-grid{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;}
+.order-items-grid{flex-shrink:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px;}
 .ticket-panel{flex-shrink:0;max-height:none;border-top:2px solid var(--border);}
 
 /* Telefonda daha kompakt mal kartları və bilet sətirləri */
@@ -634,7 +635,7 @@ img,svg.icon{max-width:100%;}
   .closed-tables-detail-col{position:static;}
 
   /* Mal alışı sətirləri: telefonda tək sütuna düşür */
-  .purchase-line__grid,.purchase-line__grid--three{grid-template-columns:1fr 1fr;}
+  .purchase-line__grid,.purchase-line__grid--three{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .purchase-line{padding:13px;}
 
   /* Admin: filtr sətirləri (tarix aralığı, ödəniş növü və s.) tək sütuna düşür */
@@ -652,9 +653,9 @@ img,svg.icon{max-width:100%;}
   .stat-card{padding:12px;}
   .stat-num{font-size:22px;}
   .ct-report{padding:14px;}
-  .ct-report__stats{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .ct-report__stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
   .ct-report__stat-value{font-size:17px;}
-  .ct-detail-info-grid{grid-template-columns:repeat(2,1fr);}
+  .ct-detail-info-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
   .ct-detail-panel{padding:14px;}
   .ct-detail-header{font-size:15px;}
   .ct-detail-header span:last-child{font-size:18px!important;}
@@ -665,7 +666,7 @@ img,svg.icon{max-width:100%;}
   .modal h2{font-size:18px;}
 
   /* Bilet alt hərəkət düymələri: 3 sütun çox sıx olur, 2-yə düşür */
-  .ticket-action-grid{grid-template-columns:repeat(2,1fr);}
+  .ticket-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
 
   /* Ödəniş növü seçimi və digər 2-sütunlu ümumi qutular tələb olunanda 1 sütuna keçir */
   #paymentTypeGrid{grid-template-columns:1fr!important;}
@@ -693,7 +694,7 @@ img,svg.icon{max-width:100%;}
   /* Kart üzərindəki əməliyyat düymələri (Deaktiv/Düzənlə/Sil və s.): yan-yana
      sıxılıb yazı bölünmək əvəzinə alt-alta, incə formada düzülür */
   .item-actions{flex-direction:column;gap:6px;}
-  .item-actions .btn{width:100%;padding:8px 10px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;justify-content:center;gap:5px;}
+  .item-actions .btn{width:100%;padding:9px 10px;font-size:12.5px;white-space:normal;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.3;min-height:36px;}
   .item-actions .btn .icon{flex-shrink:0;}
 
   /* ── Admin paneli: telefonda "ev ekranı" naviqasiyası ──
@@ -701,7 +702,7 @@ img,svg.icon{max-width:100%;}
      məzmun aşağıda AÇILMIR - tam ekranı tutan yeni "səhifə" kimi açılır,
      "Geri" düyməsi ilə grid görünüşünə qayıdılır. */
   .admin-back-btn{display:none;}
-  .admin-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;border-bottom:none;padding-bottom:0;margin-bottom:16px;}
+  .admin-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border-bottom:none;padding-bottom:0;margin-bottom:16px;}
   .admin-tab{flex-direction:column;gap:8px;padding:22px 10px;font-size:12.5px;text-align:center;
     border-radius:16px;background:var(--card);box-shadow:0 2px 10px var(--shadow-color);border-color:var(--border);}
   .admin-tab.active{background:var(--card);color:var(--text2);}
@@ -721,10 +722,10 @@ img,svg.icon{max-width:100%;}
 
 /* ── ÇOX DAR TELEFON (≤380px): son sıxlaşdırma ── */
 @media (max-width:380px){
-  .ct-report__stats{grid-template-columns:1fr 1fr;}
+  .ct-report__stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .ct-report__stat-value{font-size:15px;}
   .admin-tab{padding:7px 10px;font-size:11.5px;}
-  .ticket-action-grid{grid-template-columns:1fr 1fr;}
+  .ticket-action-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .table-board-grid{gap:6px;}
   .floor-card{padding:9px 8px 8px 10px;}
   .floor-card__name{font-size:12px;}
