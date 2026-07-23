@@ -50,6 +50,9 @@ export function renderAdmin() {
   if (state.adminSection==='customers') renderCustomers();
   if (state.adminSection==='paymentMethods') renderPaymentMethods();
   if (state.adminSection==='closedOrders') renderClosedOrders();
+  if (state.adminSection==='loyaltyCustomers') renderLoyaltyCustomers();
+  if (state.adminSection==='suppliers') renderSuppliers();
+  if (state.adminSection==='purchases') renderPurchases();
 }
 
 export function adminTab(sec, el) {
@@ -60,7 +63,7 @@ export function adminTab(sec, el) {
   document.getElementById('sec-'+sec).classList.add('active');
   document.querySelector('.admin-body')?.classList.add('admin-section-open');
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods') ? 'flex':'none';
+  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -149,7 +152,10 @@ export function renderDashboard() {
   `;
   const bizHourEl = document.getElementById('repBizDayHour');
   if (bizHourEl && !bizHourEl.value) bizHourEl.value = String(state._bizDayStartHour||5).padStart(2,'0') + ':00';
-  renderReports();
+  // Filtr sahələri hələ boşdursa (ilk açılış), defolt olaraq "gün sonu" aralığı tətbiq olunur
+  const dateFromEl = document.getElementById('repDateFrom');
+  if (dateFromEl && !dateFromEl.value) { setReportQuickRange('today'); }
+  else { renderReports(); }
 }
 
 /* ═══════════════════════════════════════════
@@ -162,23 +168,37 @@ function hhmm(h) { return String(h).padStart(2,'0') + ':00'; }
 export function setReportQuickRange(type) {
   const now = new Date();
   const bizHour = state._bizDayStartHour || 5;
-  let dFrom, dTo, tFrom = '', tTo = '';
+  let dFrom, dTo;
+  const tFrom = hhmm(bizHour), tTo = hhmm(bizHour);
 
-  if (type === 'today') { dFrom = new Date(now); dTo = new Date(now); }
-  else if (type === 'yesterday') { dFrom = new Date(now); dFrom.setDate(dFrom.getDate()-1); dTo = new Date(dFrom); }
-  else if (type === 'week') { dTo = new Date(now); dFrom = new Date(now); const day=(dFrom.getDay()+6)%7; dFrom.setDate(dFrom.getDate()-day); }
-  else if (type === 'month') { dTo = new Date(now); dFrom = new Date(now.getFullYear(), now.getMonth(), 1); }
-  else if (type === 'lastMonth') { dFrom = new Date(now.getFullYear(), now.getMonth()-1, 1); dTo = new Date(now.getFullYear(), now.getMonth(), 0); }
-  else if (type === 'dayEnd') {
-    // Cari an hələ bu günkü "iş günü başlama saatı"na çatmayıbsa, iş günü DÜNƏNDƏN başlayır
-    dFrom = new Date(now);
-    if (now.getHours() < bizHour) dFrom.setDate(dFrom.getDate()-1);
-    dTo = new Date(dFrom); dTo.setDate(dTo.getDate()+1);
-    tFrom = hhmm(bizHour); tTo = hhmm(bizHour);
+  // Cari an hələ bugünkü "iş günü başlama saatı"na çatmayıbsa, indiki iş günü DÜNƏNDƏN
+  // başlayır sayılır (məs. gecə saat 2-də "bugün" hələ DÜNƏNKİ iş günüdür)
+  const bizToday = new Date(now);
+  if (now.getHours() < bizHour) bizToday.setDate(bizToday.getDate() - 1);
+  const bizTodayEnd = new Date(bizToday); bizTodayEnd.setDate(bizTodayEnd.getDate() + 1);
+
+  if (type === 'today' || type === 'dayEnd') {
+    dFrom = new Date(bizToday); dTo = new Date(bizTodayEnd);
+  } else if (type === 'yesterday') {
+    dFrom = new Date(bizToday); dFrom.setDate(dFrom.getDate() - 1);
+    dTo = new Date(bizToday);
+  } else if (type === 'week') {
+    dFrom = new Date(bizToday);
+    const day = (dFrom.getDay() + 6) % 7; // Bazar ertəsi = 0
+    dFrom.setDate(dFrom.getDate() - day);
+    dTo = new Date(bizTodayEnd);
+  } else if (type === 'month') {
+    dFrom = new Date(bizToday.getFullYear(), bizToday.getMonth(), 1);
+    dTo = new Date(bizTodayEnd);
+  } else if (type === 'lastMonth') {
+    dFrom = new Date(bizToday.getFullYear(), bizToday.getMonth() - 1, 1);
+    dTo = new Date(bizToday.getFullYear(), bizToday.getMonth(), 1);
+  } else if (type === 'year') {
+    dFrom = new Date(bizToday.getFullYear(), 0, 1);
+    dTo = new Date(bizTodayEnd);
   } else if (type === 'monthEnd') {
-    dFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    dTo = new Date(now.getFullYear(), now.getMonth()+1, 1);
-    tFrom = hhmm(bizHour); tTo = hhmm(bizHour);
+    dFrom = new Date(bizToday.getFullYear(), bizToday.getMonth(), 1);
+    dTo = new Date(bizToday.getFullYear(), bizToday.getMonth() + 1, 1);
   } else return;
 
   document.getElementById('repDateFrom').value = localDateStr(dFrom);
@@ -208,15 +228,19 @@ function getReportFilteredOrders() {
   const timeFrom = document.getElementById('repTimeFrom')?.value || '';
   const timeTo = document.getElementById('repTimeTo')?.value || '';
   return (state.closedOrders || []).filter(o => {
+    // Hesabatlar SİFARİŞİN VERİLDİYİ vaxta görə aparılır, masanın BAĞLANDIĞI vaxta görə
+    // YOX - saat 6-da açılıb 12-də bağlanan masa "12" yox "6" saatına aid sayılmalıdır.
+    // Köhnə (bu sahə olmayan) qeydlər üçün closedAt-a geri dönür.
+    const refTime = o.firstOrderAt || o.closedAt;
     if (dateFrom) {
       const b = new Date(dateFrom);
       if (timeFrom) { const [h,m] = timeFrom.split(':'); b.setHours(+h,+m,0,0); } else { b.setHours(0,0,0,0); }
-      if (o.closedAt < b.getTime()) return false;
+      if (refTime < b.getTime()) return false;
     }
     if (dateTo) {
       const b = new Date(dateTo);
       if (timeTo) { const [h,m] = timeTo.split(':'); b.setHours(+h,+m,59,999); } else { b.setHours(23,59,59,999); }
-      if (o.closedAt > b.getTime()) return false;
+      if (refTime > b.getTime()) return false;
     }
     return true;
   });
@@ -261,6 +285,10 @@ export function renderReports() {
   else if (view === 'tables') renderReportTablesView(orders, el);
   else if (view === 'days') renderReportDaysView(orders, el);
   else if (view === 'hours') renderReportHoursView(orders, el);
+  else if (view === 'discounts') renderReportDiscountsView(orders, el);
+  else if (view === 'turnover') renderReportTurnoverView(orders, el);
+  else if (view === 'loyalty') renderReportLoyaltyView(orders, el);
+  else if (view === 'compare') renderReportCompareView(orders, el);
   else renderReportSummaryView(orders, el);
 }
 
@@ -389,8 +417,9 @@ function renderReportTablesView(orders, el) {
 function renderReportDaysView(orders, el) {
   const byDay = {};
   orders.forEach(o => {
-    const d = o.closedDate || '?';
-    if (!byDay[d]) byDay[d] = { count: 0, revenue: 0, ts: o.closedAt };
+    const refTime = o.firstOrderAt || o.closedAt;
+    const d = new Date(refTime).toLocaleDateString('az-AZ');
+    if (!byDay[d]) byDay[d] = { count: 0, revenue: 0, ts: refTime };
     byDay[d].count++; byDay[d].revenue += o.total || 0;
   });
   const entries = Object.entries(byDay).sort((a,b)=>a[1].ts-b[1].ts);
@@ -411,7 +440,7 @@ function renderReportHoursView(orders, el) {
   const byHour = {};
   for (let h=0; h<24; h++) byHour[h] = { count: 0, revenue: 0 };
   orders.forEach(o => {
-    const h = new Date(o.closedAt).getHours();
+    const h = new Date(o.firstOrderAt || o.closedAt).getHours();
     byHour[h].count++; byHour[h].revenue += o.total || 0;
   });
   const entries = Object.entries(byHour).map(([h,v]) => [parseInt(h,10), v]);
@@ -424,6 +453,140 @@ function renderReportHoursView(orders, el) {
     <table class="report-table" style="margin-top:18px;">
       <thead><tr><th>Saat aralığı</th><th class="num">Masa sayı</th><th class="num">Dövriyyə</th></tr></thead>
       <tbody>${entries.filter(([,v])=>v.count>0).map(([h,v]) => `<tr><td>${String(h).padStart(2,'0')}:00 – ${String(h).padStart(2,'0')}:59</td><td class="num">${v.count}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportDiscountsView(orders, el) {
+  let totalDiscount = 0, totalCompliment = 0;
+  const byStaff = {};
+  orders.forEach(o => {
+    let orderDiscount = 0, orderCompliment = 0;
+    Object.values(o.items||{}).forEach(it => {
+      if (it.compliment) orderCompliment += (it.originalPrice||0)*it.qty + (it.originalExtraFee||0);
+      else if (it.discountPercent > 0) orderDiscount += (it.price||0)*it.qty*(it.discountPercent/100);
+    });
+    if (orderDiscount > 0 || orderCompliment > 0) {
+      const name = o.staffName || 'Naməlum';
+      if (!byStaff[name]) byStaff[name] = { discount: 0, compliment: 0, count: 0 };
+      byStaff[name].discount += orderDiscount;
+      byStaff[name].compliment += orderCompliment;
+      byStaff[name].count++;
+    }
+    totalDiscount += orderDiscount;
+    totalCompliment += orderCompliment;
+  });
+  const entries = Object.entries(byStaff).sort((a,b)=>(b[1].discount+b[1].compliment)-(a[1].discount+a[1].compliment));
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${totalDiscount.toFixed(2)} ₼</div><div class="stat-label">Verilən endirim</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--purple);">${totalCompliment.toFixed(2)} ₼</div><div class="stat-label">İkram dəyəri</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${(totalDiscount+totalCompliment).toFixed(2)} ₼</div><div class="stat-label">Cəmi</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Bölgü masanı bağlayan işçiyə görədir (təxmini - endirimi başqa işçi tətbiq etmiş ola bilər).</p>
+    <div class="report-section-title"><svg class="icon"><use href="#i-tag"></use></svg> İşçiyə görə</div>
+    <table class="report-table">
+      <thead><tr><th>İşçi</th><th class="num">Endirim</th><th class="num">İkram</th><th class="num">Masa sayı</th></tr></thead>
+      <tbody>${entries.length ? entries.map(([name,v]) => `<tr><td>${esc(name)}</td><td class="num">${v.discount.toFixed(2)} ₼</td><td class="num">${v.compliment.toFixed(2)} ₼</td><td class="num">${v.count}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);">Bu aralıqda endirim/ikram yoxdur</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+function renderReportTurnoverView(orders, el) {
+  const withDuration = orders.filter(o => o.firstOrderAt && o.closedAt && o.closedAt > o.firstOrderAt).map(o => ({
+    ...o, durationMin: (o.closedAt - o.firstOrderAt) / 60000
+  }));
+  if (!withDuration.length) { el.innerHTML = '<p class="report-empty">Hesablamaq üçün kifayət qədər məlumat yoxdur (köhnə qeydlərdə sifariş vaxtı saxlanılmayıb).</p>'; return; }
+  const avgDuration = withDuration.reduce((s,o)=>s+o.durationMin,0) / withDuration.length;
+  const byTable = {};
+  withDuration.forEach(o => {
+    const name = (o.tableName||'?').replace(/\s*\*+$/,'');
+    if (!byTable[name]) byTable[name] = { totalMin: 0, count: 0 };
+    byTable[name].totalMin += o.durationMin; byTable[name].count++;
+  });
+  const entries = Object.entries(byTable).map(([name,v]) => [name, v.totalMin/v.count, v.count]).sort((a,b)=>b[1]-a[1]);
+  const fmtDuration = (min) => min >= 60 ? `${Math.floor(min/60)} saat ${Math.round(min%60)} dəq` : `${Math.round(min)} dəq`;
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${fmtDuration(avgDuration)}</div><div class="stat-label">Orta oturma müddəti</div></div>
+      <div class="stat-card"><div class="stat-num">${withDuration.length}</div><div class="stat-label">Hesablanan sessiya</div></div>
+    </div>
+    <div class="report-section-title"><svg class="icon"><use href="#i-chair"></use></svg> Masaya görə orta oturma müddəti</div>
+    <table class="report-table">
+      <thead><tr><th>Masa</th><th class="num">Orta müddət</th><th class="num">Sessiya sayı</th></tr></thead>
+      <tbody>${entries.map(([name,avgMin,count]) => `<tr><td>${esc(name)}</td><td class="num">${fmtDuration(avgMin)}</td><td class="num">${count}</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderReportLoyaltyView(orders, el) {
+  const dateFrom = document.getElementById('repDateFrom')?.value || '';
+  const dateTo = document.getElementById('repDateTo')?.value || '';
+  const timeFrom = document.getElementById('repTimeFrom')?.value || '';
+  const timeTo = document.getElementById('repTimeTo')?.value || '';
+  const inRange = (ts) => {
+    if (!ts) return false;
+    if (dateFrom) { const b = new Date(dateFrom); if (timeFrom) { const [h,m]=timeFrom.split(':'); b.setHours(+h,+m,0,0);} else b.setHours(0,0,0,0); if (ts < b.getTime()) return false; }
+    if (dateTo) { const b = new Date(dateTo); if (timeTo) { const [h,m]=timeTo.split(':'); b.setHours(+h,+m,59,999);} else b.setHours(23,59,59,999); if (ts > b.getTime()) return false; }
+    return true;
+  };
+  const newCustomers = (state.loyaltyCustomers||[]).filter(c => inRange(c.registrationDate));
+  const totalCustomers = (state.loyaltyCustomers||[]).length;
+  const totalBonusIssued = (state.loyaltyCustomers||[]).reduce((s,c)=>s+(c.bonus||0),0);
+
+  db.ref('referrals').once('value', snap => {
+    const allReferrals = toArr(snap.val());
+    const referralsInRange = allReferrals.filter(r => inRange(r.createdAt));
+    const completedInRange = referralsInRange.filter(r=>r.status==='completed');
+
+    el.innerHTML = `
+      <div class="ct-report__stats" style="margin-bottom:20px;">
+        <div class="stat-card"><div class="stat-num" style="color:var(--green);">${newCustomers.length}</div><div class="stat-label">Yeni qeydiyyat</div></div>
+        <div class="stat-card"><div class="stat-num">${totalCustomers}</div><div class="stat-label">Ümumi qeydiyyatlı</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--gold-dark);">${totalBonusIssued}</div><div class="stat-label">Ümumi bonus (bal)</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${referralsInRange.length}</div><div class="stat-label">Dəvət (bu aralıqda)</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--purple);">${completedInRange.length}</div><div class="stat-label">Tamamlanan dəvət</div></div>
+      </div>
+      <p style="font-size:12px;color:var(--text3);">Qeydiyyat/dəvət sayları seçilmiş tarix aralığına görə hesablanır.</p>
+    `;
+  });
+}
+
+function renderReportCompareView(orders, el) {
+  const dateFrom = document.getElementById('repDateFrom')?.value;
+  const dateTo = document.getElementById('repDateTo')?.value;
+  if (!dateFrom || !dateTo) { el.innerHTML = '<p class="report-empty">Müqayisə üçün tarix aralığı seçin.</p>'; return; }
+  const timeFrom = document.getElementById('repTimeFrom')?.value || '';
+  const timeTo = document.getElementById('repTimeTo')?.value || '';
+
+  const from = new Date(dateFrom); if(timeFrom){const [h,m]=timeFrom.split(':');from.setHours(+h,+m,0,0);}else from.setHours(0,0,0,0);
+  const to = new Date(dateTo); if(timeTo){const [h,m]=timeTo.split(':');to.setHours(+h,+m,59,999);}else to.setHours(23,59,59,999);
+  const durationMs = to.getTime() - from.getTime();
+  const prevTo = new Date(from.getTime() - 1);
+  const prevFrom = new Date(from.getTime() - durationMs);
+
+  const prevOrders = (state.closedOrders||[]).filter(o => {
+    const refTime = o.firstOrderAt || o.closedAt;
+    return refTime >= prevFrom.getTime() && refTime <= prevTo.getTime();
+  });
+
+  const curRevenue = orders.reduce((s,o)=>s+(o.total||0),0);
+  const prevRevenue = prevOrders.reduce((s,o)=>s+(o.total||0),0);
+  const curCount = orders.length, prevCount = prevOrders.length;
+  const curAvg = curCount ? curRevenue/curCount : 0, prevAvg = prevCount ? prevRevenue/prevCount : 0;
+
+  const pctChange = (cur, prev) => prev === 0 ? (cur>0?100:0) : ((cur-prev)/prev*100);
+  const fmtChange = (pct) => `<span style="color:${pct>=0?'var(--green)':'var(--red)'};font-weight:700;">${pct>=0?'+':''}${pct.toFixed(1)}%</span>`;
+
+  el.innerHTML = `
+    <p style="font-size:12.5px;color:var(--text3);margin-bottom:16px;">Cari aralıq eyni uzunluqda, ondan bilavasitə əvvəlki dövrlə müqayisə olunur.</p>
+    <table class="report-table">
+      <thead><tr><th>Göstərici</th><th class="num">Əvvəlki dövr</th><th class="num">Cari dövr</th><th class="num">Dəyişiklik</th></tr></thead>
+      <tbody>
+        <tr><td>Dövriyyə</td><td class="num">${prevRevenue.toFixed(2)} ₼</td><td class="num">${curRevenue.toFixed(2)} ₼</td><td class="num">${fmtChange(pctChange(curRevenue,prevRevenue))}</td></tr>
+        <tr><td>Bağlanan masa</td><td class="num">${prevCount}</td><td class="num">${curCount}</td><td class="num">${fmtChange(pctChange(curCount,prevCount))}</td></tr>
+        <tr><td>Orta çek</td><td class="num">${prevAvg.toFixed(2)} ₼</td><td class="num">${curAvg.toFixed(2)} ₼</td><td class="num">${fmtChange(pctChange(curAvg,prevAvg))}</td></tr>
+      </tbody>
     </table>
   `;
 }
@@ -759,6 +922,14 @@ export function openAddModal() {
   state.editTarget = null;
   if (state.adminSection === 'staff') {
     openAddStaffModal();
+    return;
+  }
+  if (state.adminSection === 'suppliers') {
+    openSupplierModal();
+    return;
+  }
+  if (state.adminSection === 'purchases') {
+    openPurchaseModal();
     return;
   }
   if (state.adminSection === 'menu') {
@@ -1741,6 +1912,474 @@ function renderClosedOrderDetail(o) {
   `;
 }
 
+/* ═══════════════════════════════════════════
+   QEYDİYYAT OLUNANLAR (Müştəri Tanıma & Loyallıq Modulu)
+═══════════════════════════════════════════ */
+
+export function renderLoyaltyCustomers() {
+  const listEl = document.getElementById('loyaltyCustomersList');
+  const detailEl = document.getElementById('lcDetailPanel');
+  if (!listEl || !detailEl) return;
+  const all = state.loyaltyCustomers || [];
+
+  const q = (document.getElementById('lcSearchInput')?.value || '').trim().toLowerCase();
+  const filtered = all.filter(c => {
+    if (!q) return true;
+    const full = `${c.firstName||''} ${c.lastName||''} ${c.phone||''}`.toLowerCase();
+    return full.includes(q);
+  });
+
+  state._selectedLoyaltyCustomerIds = (state._selectedLoyaltyCustomerIds||[]).filter(id => filtered.some(c=>c.id===id));
+  const delBtn = document.getElementById('lcDeleteSelectedBtn');
+  if (delBtn) {
+    delBtn.style.display = state._selectedLoyaltyCustomerIds.length ? 'inline-flex' : 'none';
+    delBtn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedLoyaltyCustomerIds.length})`;
+  }
+  const selectAllCb = document.getElementById('lcSelectAllCheckbox');
+  if (selectAllCb) selectAllCb.checked = filtered.length>0 && filtered.every(c=>state._selectedLoyaltyCustomerIds.includes(c.id));
+
+  if (!filtered.length) {
+    listEl.innerHTML = '<p class="ct-list-empty">Qeydiyyatlı müştəri tapılmadı.</p>';
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir müştəri seçin</p></div>';
+    return;
+  }
+  if (state._selectedLoyaltyCustomerId && !filtered.find(c => c.id === state._selectedLoyaltyCustomerId)) {
+    state._selectedLoyaltyCustomerId = null;
+  }
+
+  listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.map(c => `
+    <div class="ct-list-item ${c.id===state._selectedLoyaltyCustomerId?'active':''}" onclick="selectLoyaltyCustomer('${c.id}')">
+      <div class="ct-list-item__top">
+        <label style="display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
+          <input type="checkbox" onchange="toggleLoyaltyCustomerSelect('${c.id}')" ${state._selectedLoyaltyCustomerIds.includes(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+          <span class="ct-list-item__name">${esc(c.firstName)} ${esc(c.lastName)}</span>
+        </label>
+        <span class="ct-list-item__amount" style="color:var(--gold-dark);">${c.bonus||0} bal</span>
+      </div>
+      <div class="ct-list-item__meta">${esc(c.phone||'')}</div>
+    </div>
+  `).join('');
+
+  if (state._selectedLoyaltyCustomerId) {
+    renderLoyaltyCustomerDetail(filtered.find(c => c.id === state._selectedLoyaltyCustomerId));
+  } else {
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir müştəri seçin</p></div>';
+  }
+}
+
+export function selectLoyaltyCustomer(id) {
+  state._selectedLoyaltyCustomerId = id;
+  renderLoyaltyCustomers();
+}
+
+function renderLoyaltyCustomerDetail(c) {
+  const el = document.getElementById('lcDetailPanel');
+  if (!el || !c) return;
+
+  db.ref('referrals').orderByChild('referrerCustomerId').equalTo(c.id).once('value', snap => {
+    const referrals = toArr(snap.val());
+    const completedCount = referrals.filter(r=>r.status==='completed').length;
+    const referralsHtml = referrals.length ? referrals.map(r => {
+      const referred = state.loyaltyCustomers.find(x=>x.id===r.referredCustomerId);
+      return `<div class="ct-detail-item-row">
+        <span>${esc(referred ? referred.firstName+' '+referred.lastName : 'Naməlum')}</span>
+        <span style="color:${r.status==='completed'?'var(--green)':'var(--orange)'};font-weight:600;">${r.status==='completed'?'Tamamlandı':'Gözləmədə'}</span>
+      </div>`;
+    }).join('') : '<p style="color:var(--text3);font-size:13px;">Hələ heç kimi dəvət etməyib.</p>';
+
+    el.innerHTML = `
+      <div class="ct-detail-header">
+        <span><svg class="icon"><use href="#i-users"></use></svg> ${esc(c.firstName)} ${esc(c.lastName)}</span>
+        <span style="font-size:20px;font-weight:800;color:var(--gold-dark);">${c.bonus||0} bal</span>
+      </div>
+      <div class="ct-detail-info-grid">
+        <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Ata adı</div><div class="ct-detail-info-block__value">${esc(c.fatherName||'—')}</div></div>
+        <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Telefon</div><div class="ct-detail-info-block__value">${esc(c.phone||'—')}</div></div>
+        <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Cins</div><div class="ct-detail-info-block__value">${esc(c.gender||'—')}</div></div>
+        <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Doğum tarixi</div><div class="ct-detail-info-block__value">${esc(c.birthDate||'—')}</div></div>
+        <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Qeydiyyat tarixi</div><div class="ct-detail-info-block__value">${c.registrationDate ? new Date(c.registrationDate).toLocaleDateString('az-AZ') : '—'}</div></div>
+        <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Referral kodu</div><div class="ct-detail-info-block__value">${esc(c.referralCode||'—')}</div></div>
+      </div>
+      <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-users"></use></svg> Dəvət etdiyi şəxslər (${completedCount}/${referrals.length} tamamlanıb)</div>
+      ${referralsHtml}
+      <div class="ct-detail-actions">
+        <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="openLoyaltyEditModal('${c.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Redaktə Et</button>
+        <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteSingleLoyaltyCustomer('${c.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+      </div>
+    `;
+  });
+}
+
+export function toggleLoyaltyCustomerSelect(id) {
+  state._selectedLoyaltyCustomerIds = state._selectedLoyaltyCustomerIds || [];
+  const i = state._selectedLoyaltyCustomerIds.indexOf(id);
+  if (i === -1) state._selectedLoyaltyCustomerIds.push(id); else state._selectedLoyaltyCustomerIds.splice(i,1);
+  const btn = document.getElementById('lcDeleteSelectedBtn');
+  if (btn) {
+    btn.style.display = state._selectedLoyaltyCustomerIds.length ? 'inline-flex' : 'none';
+    btn.innerHTML = `<svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedLoyaltyCustomerIds.length})`;
+  }
+}
+
+export function toggleSelectAllLoyaltyCustomers(checked) {
+  const q = (document.getElementById('lcSearchInput')?.value || '').trim().toLowerCase();
+  const filtered = (state.loyaltyCustomers||[]).filter(c => {
+    if (!q) return true;
+    return `${c.firstName||''} ${c.lastName||''} ${c.phone||''}`.toLowerCase().includes(q);
+  });
+  state._selectedLoyaltyCustomerIds = checked ? filtered.map(c=>c.id) : [];
+  renderLoyaltyCustomers();
+}
+
+export function deleteSelectedLoyaltyCustomers() {
+  const ids = state._selectedLoyaltyCustomerIds || [];
+  if (!ids.length) return;
+  confirmDelete2x(ids.length, 'qeydiyyatlı müştəri', () => {
+    ids.forEach(id => db.ref('loyaltyCustomers/' + id).remove());
+    addLog('admin', `Admin ${ids.length} qeydiyyatlı müştərini seçib sildi`, {});
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} müştəri silindi`);
+    state._selectedLoyaltyCustomerIds = [];
+    if (ids.includes(state._selectedLoyaltyCustomerId)) state._selectedLoyaltyCustomerId = null;
+  });
+}
+
+export function deleteSingleLoyaltyCustomer(id) {
+  const c = state.loyaltyCustomers.find(x=>x.id===id);
+  if (!c) return;
+  confirmDelete2x(1, `"${c.firstName} ${c.lastName}" adlı müştəri`, () => {
+    db.ref('loyaltyCustomers/' + id).remove();
+    addLog('admin', `Admin qeydiyyatlı müştərini sildi: ${c.firstName} ${c.lastName}`, {});
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Müştəri silindi');
+    if (state._selectedLoyaltyCustomerId === id) state._selectedLoyaltyCustomerId = null;
+  });
+}
+
+export function openLoyaltyEditModal(id) {
+  const c = state.loyaltyCustomers.find(x=>x.id===id);
+  if (!c) return;
+  document.getElementById('lcEditModal').dataset.editId = id;
+  document.getElementById('lcEditFirstName').value = c.firstName || '';
+  document.getElementById('lcEditLastName').value = c.lastName || '';
+  document.getElementById('lcEditFatherName').value = c.fatherName || '';
+  document.getElementById('lcEditPhone').value = c.phone || '';
+  document.getElementById('lcEditGender').value = c.gender || '';
+  document.getElementById('lcEditBirthDate').value = c.birthDate || '';
+  document.getElementById('lcEditBonus').value = c.bonus || 0;
+  document.getElementById('lcEditModal').classList.add('open');
+}
+export function closeLoyaltyEditModal() {
+  document.getElementById('lcEditModal').classList.remove('open');
+}
+export function saveLoyaltyCustomerEdit() {
+  const id = document.getElementById('lcEditModal').dataset.editId;
+  if (!id) return;
+  const updated = {
+    firstName: document.getElementById('lcEditFirstName').value.trim(),
+    lastName: document.getElementById('lcEditLastName').value.trim(),
+    fatherName: document.getElementById('lcEditFatherName').value.trim(),
+    phone: document.getElementById('lcEditPhone').value.trim(),
+    gender: document.getElementById('lcEditGender').value,
+    birthDate: document.getElementById('lcEditBirthDate').value,
+    bonus: parseFloat(document.getElementById('lcEditBonus').value) || 0
+  };
+  if (!updated.firstName || !updated.lastName || !updated.phone) {
+    showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad, soyad və telefon mütləqdir');
+    return;
+  }
+  db.ref('loyaltyCustomers/' + id).update(updated);
+  addLog('admin', `Admin qeydiyyatlı müştərini redaktə etdi: ${updated.firstName} ${updated.lastName}`, {});
+  closeLoyaltyEditModal();
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Məlumatlar yeniləndi');
+}
+
+/* ═══════════════════════════════════════════
+   TƏCHİZATÇILAR & MƏHSUL ALIŞLARI
+═══════════════════════════════════════════ */
+
+export function renderSuppliers() {
+  const el = document.getElementById('suppliersGrid');
+  if (!el) return;
+  if (!state.suppliers.length) { el.innerHTML = '<p style="color:var(--text3);">Hələ təchizatçı əlavə edilməyib. Sağ alt küncdəki "+" düyməsi ilə əlavə edin.</p>'; return; }
+  el.innerHTML = state.suppliers.map(s => {
+    const debt = s.totalDebt || 0;
+    return `<div class="item-card">
+      <div class="item-card-header">
+        <div style="width:44px;height:44px;border-radius:12px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg class="icon" style="width:22px;height:22px;color:var(--text2);"><use href="#i-users"></use></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;">${esc(s.name)}</div>
+          <div style="font-size:12px;color:var(--text3);">${esc(s.category||'')}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:8px;"><span class="supplier-debt-badge ${debt>0?'supplier-debt-badge--owed':'supplier-debt-badge--clear'}">${debt>0?debt.toFixed(2)+' ₼ borc':'Borc yoxdur'}</span></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:4px;">${esc(s.phone||'—')}</p>
+      <p style="font-size:12.5px;color:var(--text3);">${esc(s.address||'')}</p>
+      <div class="item-actions">
+        <button class="btn" style="border:1px solid var(--border);color:var(--text2);" onclick="openSupplierModal('${s.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Düzənlə</button>
+        <button class="btn btn-red" onclick="deleteSupplier('${s.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+export function openSupplierModal(id) {
+  document.getElementById('supplierModal').dataset.editId = id || '';
+  const s = id ? state.suppliers.find(x=>x.id===id) : null;
+  document.getElementById('supplierModalTitle').innerHTML = `<svg class="icon"><use href="#i-users"></use></svg> ${id?'Təchizatçını Redaktə Et':'Yeni Təchizatçı'}`;
+  document.getElementById('supName').value = s?.name || '';
+  document.getElementById('supPhone').value = s?.phone || '';
+  document.getElementById('supAddress').value = s?.address || '';
+  document.getElementById('supCategory').value = s?.category || '';
+  document.getElementById('supNotes').value = s?.notes || '';
+  document.getElementById('supplierModal').classList.add('open');
+}
+export function closeSupplierModal() { document.getElementById('supplierModal').classList.remove('open'); }
+
+export function saveSupplier() {
+  const name = document.getElementById('supName').value.trim();
+  if (!name) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad mütləqdir'); return; }
+  const data = {
+    name, phone: document.getElementById('supPhone').value.trim(),
+    address: document.getElementById('supAddress').value.trim(),
+    category: document.getElementById('supCategory').value.trim(),
+    notes: document.getElementById('supNotes').value.trim()
+  };
+  const editId = document.getElementById('supplierModal').dataset.editId;
+  if (editId) {
+    db.ref('suppliers/'+editId).update(data);
+    addLog('admin', `Təchizatçı redaktə edildi: ${name}`, {});
+  } else {
+    data.totalDebt = 0; data.createdAt = Date.now();
+    db.ref('suppliers').push(data);
+    addLog('admin', `Yeni təchizatçı əlavə edildi: ${name}`, {});
+  }
+  closeSupplierModal();
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı');
+}
+
+export function deleteSupplier(id) {
+  const s = state.suppliers.find(x=>x.id===id);
+  if (!s) return;
+  if ((s.totalDebt||0) > 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Borcu olan təchizatçı silinə bilməz, əvvəlcə borcu sıfırlayın'); return; }
+  confirmDelete2x(1, `"${s.name}" adlı təchizatçı`, () => {
+    db.ref('suppliers/'+id).remove();
+    addLog('admin', `Təchizatçı silindi: ${s.name}`, {});
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Təchizatçı silindi');
+  });
+}
+
+export function renderPurchases() {
+  const listEl = document.getElementById('purchasesList');
+  const detailEl = document.getElementById('purDetailPanel');
+  if (!listEl || !detailEl) return;
+  const q = (document.getElementById('purSearchInput')?.value || '').trim().toLowerCase();
+  const filtered = state.purchases.filter(p => {
+    if (!q) return true;
+    return `${p.supplierName||''} ${p.invoiceNumber||''}`.toLowerCase().includes(q);
+  });
+  if (!filtered.length) {
+    listEl.innerHTML = '<p class="ct-list-empty">Alış qeydi tapılmadı. Sağ alt küncdəki "+" düyməsi ilə əlavə edin.</p>';
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-cash"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir alış seçin</p></div>';
+    return;
+  }
+  if (state._selectedPurchaseId && !filtered.find(p=>p.id===state._selectedPurchaseId)) state._selectedPurchaseId = null;
+
+  listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.map(p => `
+    <div class="ct-list-item ${p.id===state._selectedPurchaseId?'active':''}" onclick="selectPurchase('${p.id}')">
+      <div class="ct-list-item__top">
+        <span class="ct-list-item__name">${esc(p.supplierName)}</span>
+        <span class="ct-list-item__amount">${(p.totalAmount||0).toFixed(2)} ₼</span>
+      </div>
+      <div class="ct-list-item__meta">№${esc(p.invoiceNumber||'—')} · ${esc(p.date||'')} · ${p.paymentStatus==='paid'?'Tam ödənilib':p.paymentStatus==='partial'?'Qismən ödənilib':'Nisyə'}</div>
+    </div>
+  `).join('');
+
+  if (state._selectedPurchaseId) renderPurchaseDetail(filtered.find(p=>p.id===state._selectedPurchaseId));
+  else detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-cash"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir alış seçin</p></div>';
+}
+
+export function selectPurchase(id) { state._selectedPurchaseId = id; renderPurchases(); }
+
+function renderPurchaseDetail(p) {
+  const el = document.getElementById('purDetailPanel');
+  if (!el || !p) return;
+  const statusLabel = p.paymentStatus==='paid'?'Tam ödənilib':p.paymentStatus==='partial'?'Qismən ödənilib':'Nisyə (borc)';
+  const typeLabel = {cash:'Nağd',transfer:'Köçürmə',card:'Kart'}[p.paymentType] || p.paymentType;
+  el.innerHTML = `
+    <div class="ct-detail-header">
+      <span><svg class="icon"><use href="#i-cash"></use></svg> ${esc(p.supplierName)}</span>
+      <span style="font-size:20px;font-weight:800;color:var(--green);">${(p.totalAmount||0).toFixed(2)} ₼</span>
+    </div>
+    <div class="ct-detail-info-grid">
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Faktura №</div><div class="ct-detail-info-block__value">${esc(p.invoiceNumber||'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Tarix</div><div class="ct-detail-info-block__value">${esc(p.date||'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Ödəniş növü</div><div class="ct-detail-info-block__value">${esc(typeLabel)}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Status</div><div class="ct-detail-info-block__value" style="color:${p.paymentStatus==='paid'?'var(--green)':'var(--orange)'};">${statusLabel}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Qəbul edən</div><div class="ct-detail-info-block__value">${esc(p.staffName||'—')}</div></div>
+    </div>
+    <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-food"></use></svg> Mallar</div>
+    ${(p.items||[]).map(it => `
+      <div class="ct-detail-item-row">
+        <span>${it.qty} ${esc(it.unit||'')} × ${esc(it.name)}${it.isTrackable?' <span style="color:var(--blue);font-size:11px;">(anbarda izlənir)</span>':''}</span>
+        <span style="font-weight:600;">${(it.total||0).toFixed(2)} ₼</span>
+      </div>
+    `).join('')}
+    ${p.notes ? `<div class="ct-detail-section-title">Qeyd</div><p style="font-size:13px;color:var(--text2);">${esc(p.notes)}</p>` : ''}
+    <div class="ct-detail-actions">
+      <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deletePurchase('${p.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  `;
+}
+
+export function deletePurchase(id) {
+  const p = state.purchases.find(x=>x.id===id);
+  if (!p) return;
+  confirmDelete2x(1, `"${p.supplierName}" təchizatçısından alış qeydi`, () => {
+    // QEYD: silinəndə stok/borc geri ALINMIR (mürəkkəb hesablama və səhv riski üçün) - yalnız qeyd silinir
+    db.ref('purchases/'+id).remove();
+    addLog('admin', `Alış qeydi silindi: ${p.supplierName} - №${p.invoiceNumber}`, {});
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Alış qeydi silindi');
+    if (state._selectedPurchaseId === id) state._selectedPurchaseId = null;
+  });
+}
+
+export function openPurchaseModal() {
+  if (!state.suppliers.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Əvvəlcə "Təchizatçılar" bölməsindən təchizatçı əlavə edin'); return; }
+  state._purchaseDraftLines = [{ id: 'l'+Date.now(), name:'', category:'', qty:1, unit:'ədəd', unitPrice:0, isTrackable:false, newSalePrice:0 }];
+  const supSel = document.getElementById('purSupplier');
+  supSel.innerHTML = state.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  document.getElementById('purInvoiceNumber').value = '';
+  document.getElementById('purDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('purPaymentType').value = 'cash';
+  document.getElementById('purPaymentStatus').value = 'paid';
+  document.getElementById('purPaidAmount').value = '';
+  document.getElementById('purNotes').value = '';
+  togglePurPaidAmountField();
+  const datalist = document.getElementById('menuItemsDatalist');
+  if (datalist) datalist.innerHTML = state.menuItems.map(m => `<option value="${esc(m.name)}">`).join('');
+  renderPurchaseLines();
+  document.getElementById('purchaseModal').classList.add('open');
+}
+export function closePurchaseModal() { document.getElementById('purchaseModal').classList.remove('open'); }
+
+export function togglePurPaidAmountField() {
+  const status = document.getElementById('purPaymentStatus')?.value;
+  const group = document.getElementById('purPaidAmountGroup');
+  if (group) group.style.display = status === 'partial' ? 'block' : 'none';
+}
+
+export function addPurchaseLine() {
+  state._purchaseDraftLines.push({ id: 'l'+Date.now()+Math.random().toString(36).slice(2,6), name:'', category:'', qty:1, unit:'ədəd', unitPrice:0, isTrackable:false, newSalePrice:0 });
+  renderPurchaseLines();
+}
+export function removePurchaseLine(id) {
+  state._purchaseDraftLines = state._purchaseDraftLines.filter(l => l.id !== id);
+  if (!state._purchaseDraftLines.length) state._purchaseDraftLines.push({ id: 'l'+Date.now(), name:'', category:'', qty:1, unit:'ədəd', unitPrice:0, isTrackable:false, newSalePrice:0 });
+  renderPurchaseLines();
+}
+export function updatePurchaseLine(id, field, value) {
+  const line = state._purchaseDraftLines.find(l => l.id === id);
+  if (!line) return;
+  if (field === 'qty' || field === 'unitPrice' || field === 'newSalePrice') line[field] = parseFloat(value) || 0;
+  else line[field] = value;
+  renderPurchaseLines();
+}
+
+function renderPurchaseLines() {
+  const container = document.getElementById('purchaseLinesContainer');
+  if (!container) return;
+  let grandTotal = 0;
+  container.innerHTML = state._purchaseDraftLines.map(line => {
+    const lineTotal = (line.qty||0) * (line.unitPrice||0);
+    grandTotal += lineTotal;
+    const existsInMenu = state.menuItems.some(m => m.name.trim().toLowerCase() === (line.name||'').trim().toLowerCase());
+    return `<div class="purchase-line">
+      <div class="purchase-line__row">
+        <input type="text" placeholder="Mal adı" value="${esc(line.name)}" list="menuItemsDatalist" oninput="updatePurchaseLine('${line.id}','name',this.value)" style="flex:2;">
+        <input type="text" placeholder="Kateqoriya" value="${esc(line.category)}" oninput="updatePurchaseLine('${line.id}','category',this.value)" style="flex:1;">
+        <button class="purchase-line__remove" onclick="removePurchaseLine('${line.id}')">×</button>
+      </div>
+      <div class="purchase-line__row">
+        <input type="number" placeholder="Miqdar" min="0" step="0.01" value="${line.qty}" oninput="updatePurchaseLine('${line.id}','qty',this.value)" style="width:80px;">
+        <input type="text" placeholder="Vahid" value="${esc(line.unit)}" oninput="updatePurchaseLine('${line.id}','unit',this.value)" style="width:70px;">
+        <input type="number" placeholder="Vahid qiymət" min="0" step="0.01" value="${line.unitPrice}" oninput="updatePurchaseLine('${line.id}','unitPrice',this.value)" style="width:100px;">
+        <span class="purchase-line__total">${lineTotal.toFixed(2)} ₼</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;margin-left:auto;white-space:nowrap;cursor:pointer;">
+          <input type="checkbox" ${line.isTrackable?'checked':''} onchange="updatePurchaseLine('${line.id}','isTrackable',this.checked)"> Anbarda izlə
+        </label>
+      </div>
+      ${line.isTrackable && line.name && !existsInMenu ? `
+        <div class="purchase-line__row" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;">
+          <small style="color:var(--blue);">"${esc(line.name)}" menyuda yoxdur — yeni mal kimi yaradılacaq. Satış qiyməti:</small>
+          <input type="number" placeholder="Satış qiyməti" min="0" step="0.01" value="${line.newSalePrice||''}" oninput="updatePurchaseLine('${line.id}','newSalePrice',this.value)" style="width:100px;">
+        </div>` : ''}
+      ${line.isTrackable && line.name && existsInMenu ? `<small style="color:var(--green);"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Mövcud menyu malına bağlanacaq, stok artacaq</small>` : ''}
+    </div>`;
+  }).join('');
+  const totalEl = document.getElementById('purchaseGrandTotal');
+  if (totalEl) totalEl.textContent = grandTotal.toFixed(2) + ' ₼';
+}
+
+export function savePurchase() {
+  const supplierId = document.getElementById('purSupplier').value;
+  const supplier = state.suppliers.find(s => s.id === supplierId);
+  if (!supplier) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Təchizatçı seçin'); return; }
+  const invoiceNumber = document.getElementById('purInvoiceNumber').value.trim();
+  const date = document.getElementById('purDate').value || new Date().toISOString().split('T')[0];
+  const validLines = state._purchaseDraftLines.filter(l => l.name.trim() && l.qty > 0);
+  if (!validLines.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ən azı bir mal sətri doldurun'); return; }
+
+  const paymentType = document.getElementById('purPaymentType').value;
+  const paymentStatus = document.getElementById('purPaymentStatus').value;
+
+  const items = validLines.map(l => ({
+    name: l.name.trim(), category: l.category.trim(), qty: l.qty, unit: l.unit, unitPrice: l.unitPrice,
+    total: Math.round(l.qty * l.unitPrice * 100) / 100, isTrackable: !!l.isTrackable
+  }));
+  const totalAmount = Math.round(items.reduce((s,it) => s + it.total, 0) * 100) / 100;
+
+  let paidAmount = 0;
+  if (paymentStatus === 'paid') paidAmount = totalAmount;
+  else if (paymentStatus === 'partial') paidAmount = parseFloat(document.getElementById('purPaidAmount').value) || 0;
+
+  const debtIncrease = Math.round((totalAmount - paidAmount) * 100) / 100;
+
+  const purchaseData = {
+    date, supplierId, supplierName: supplier.name, invoiceNumber, items, totalAmount,
+    paymentType, paymentStatus, paidAmount,
+    staffId: state.user?.id || null, staffName: state.user?.name || '?',
+    notes: document.getElementById('purNotes').value.trim(),
+    createdAt: Date.now()
+  };
+  db.ref('purchases').push(purchaseData);
+
+  // Təchizatçının borcunu yeniləyirik (ödənilməmiş hissə qədər)
+  if (debtIncrease !== 0) {
+    db.ref('suppliers/'+supplierId+'/totalDebt').transaction(cur => Math.max(0, Math.round(((cur||0) + debtIncrease)*100)/100));
+  }
+
+  // Anbarda izlənən mallar üçün mövcud menyu malını tapır (stokunu artırır) və ya
+  // yeni menyu malı yaradır (verilmiş satış qiyməti ilə)
+  validLines.filter(l => l.isTrackable && l.name.trim()).forEach(l => {
+    const existing = state.menuItems.find(m => m.name.trim().toLowerCase() === l.name.trim().toLowerCase());
+    if (existing) {
+      R.menuItems.child(existing.id).child('stock').transaction(cur => (cur||0) + l.qty);
+    } else {
+      R.menuItems.push({
+        name: l.name.trim(), category: l.category.trim() || 'Digər',
+        price: l.newSalePrice || 0, stock: l.qty, createdAt: Date.now()
+      });
+    }
+  });
+
+  addLog('admin', `Yeni alış qeydə alındı: ${supplier.name} - №${invoiceNumber||'?'} (${totalAmount.toFixed(2)} ₼)`, {});
+  closePurchaseModal();
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Alış qeydə alındı');
+}
+
+
+
 export function restoreClosedOrder(id) {
   if (state.user?.role !== 'admin') { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Yalnız admin bərpa edə bilər'); return; }
   const o = state.closedOrders.find(x=>x.id===id);
@@ -1831,6 +2470,30 @@ window.deleteCustomer = deleteCustomer;
 window.editPaymentMethod = editPaymentMethod;
 window.deletePaymentMethod = deletePaymentMethod;
 window.restoreClosedOrder = restoreClosedOrder;
+window.renderLoyaltyCustomers = renderLoyaltyCustomers;
+window.selectLoyaltyCustomer = selectLoyaltyCustomer;
+window.toggleLoyaltyCustomerSelect = toggleLoyaltyCustomerSelect;
+window.toggleSelectAllLoyaltyCustomers = toggleSelectAllLoyaltyCustomers;
+window.deleteSelectedLoyaltyCustomers = deleteSelectedLoyaltyCustomers;
+window.deleteSingleLoyaltyCustomer = deleteSingleLoyaltyCustomer;
+window.openLoyaltyEditModal = openLoyaltyEditModal;
+window.closeLoyaltyEditModal = closeLoyaltyEditModal;
+window.saveLoyaltyCustomerEdit = saveLoyaltyCustomerEdit;
+window.renderSuppliers = renderSuppliers;
+window.openSupplierModal = openSupplierModal;
+window.closeSupplierModal = closeSupplierModal;
+window.saveSupplier = saveSupplier;
+window.deleteSupplier = deleteSupplier;
+window.renderPurchases = renderPurchases;
+window.selectPurchase = selectPurchase;
+window.deletePurchase = deletePurchase;
+window.openPurchaseModal = openPurchaseModal;
+window.closePurchaseModal = closePurchaseModal;
+window.togglePurPaidAmountField = togglePurPaidAmountField;
+window.addPurchaseLine = addPurchaseLine;
+window.removePurchaseLine = removePurchaseLine;
+window.updatePurchaseLine = updatePurchaseLine;
+window.savePurchase = savePurchase;
 window.selectClosedOrder = selectClosedOrder;
 window.toggleClosedOrderSelect = toggleClosedOrderSelect;
 window.toggleSelectAllClosedOrders = toggleSelectAllClosedOrders;
