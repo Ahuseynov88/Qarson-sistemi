@@ -804,9 +804,9 @@ export function renderMenuItems() {
         </div>
       </div>
       <span class="status-badge ${available?'badge-green':'badge-red'}">${available?'Var':'Tükənib'}</span>
-      ${m.isTrackable ? `<span class="status-badge" style="background:rgba(52,152,219,.15);color:var(--blue);margin-left:6px;"><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-tag"></use></svg> Anbar: ${m.stock||0}</span>` : ''}
+      ${(m.stock !== undefined && m.stock !== null) ? `<span class="status-badge" style="background:rgba(52,152,219,.15);color:var(--blue);margin-left:6px;"><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-tag"></use></svg> Anbar: ${m.stock||0}</span>` : ''}
       <div class="item-actions">
-        ${m.isTrackable ? `<button class="btn" style="border:1px solid var(--blue);color:var(--blue);" onclick="openQuickStockModal('${m.id}')"><svg class="icon"><use href="#i-check"></use></svg> Stok Artır</button>` : ''}
+        ${!m.isTrackable ? `<button class="btn" style="border:1px solid var(--blue);color:var(--blue);" onclick="openQuickStockModal('${m.id}')"><svg class="icon"><use href="#i-check"></use></svg> Stok Artır</button>` : ''}
         <button class="btn ${available?'btn-red':'btn-green'}" onclick="toggleMenuItemAvailability('${m.id}')">${available?'Tükəndi':'Yenidən Var'}</button>
         <button class="btn btn-ghost" onclick="editMenuItem('${m.id}')"><svg class="icon"><use href="#i-edit"></use></svg></button>
         <button class="btn btn-red" onclick="deleteMenuItem('${m.id}')"><svg class="icon"><use href="#i-trash"></use></svg></button>
