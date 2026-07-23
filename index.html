@@ -76,6 +76,9 @@
       <button class="admin-tab" data-section="customers" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
       <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
       <button class="admin-tab" data-section="closedOrders" onclick="adminTab('closedOrders',this)"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</button>
+      <button class="admin-tab" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)"><svg class="icon"><use href="#i-star"></use></svg> Qeydiyyat Olunanlar</button>
+      <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar</button>
+      <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -86,6 +89,7 @@
         <button class="report-quick-btn" onclick="setReportQuickRange('week')">Bu həftə</button>
         <button class="report-quick-btn" onclick="setReportQuickRange('month')">Bu ay</button>
         <button class="report-quick-btn" onclick="setReportQuickRange('lastMonth')">Keçən ay</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('year')">Bu il</button>
         <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('dayEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Gün Sonu</button>
         <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('monthEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Ay Sonu</button>
       </div>
@@ -113,6 +117,10 @@
         <button class="report-subtab" data-view="tables" onclick="setReportView('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Masalara Görə</button>
         <button class="report-subtab" data-view="days" onclick="setReportView('days')"><svg class="icon"><use href="#i-clipboard"></use></svg> Günlərə Görə</button>
         <button class="report-subtab" data-view="hours" onclick="setReportView('hours')"><svg class="icon"><use href="#i-clock"></use></svg> Saatlara Görə</button>
+        <button class="report-subtab" data-view="discounts" onclick="setReportView('discounts')"><svg class="icon"><use href="#i-tag"></use></svg> Endirim / İkram</button>
+        <button class="report-subtab" data-view="turnover" onclick="setReportView('turnover')"><svg class="icon"><use href="#i-refresh"></use></svg> Masa Dövriyyəsi</button>
+        <button class="report-subtab" data-view="loyalty" onclick="setReportView('loyalty')"><svg class="icon"><use href="#i-users"></use></svg> Loyallıq Proqramı</button>
+        <button class="report-subtab" data-view="compare" onclick="setReportView('compare')"><svg class="icon"><use href="#i-chart"></use></svg> Dövrlər Müqayisəsi</button>
       </div>
       <div id="reportContent"></div>
     </div>
@@ -243,6 +251,42 @@
         </div>
         <div class="closed-tables-detail-col">
           <div class="ct-detail-panel" id="ctDetailPanel"></div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-loyaltyCustomers">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="lcSearchInput" placeholder="Ad, soyad və ya telefon ilə axtar..." oninput="renderLoyaltyCustomers()">
+      </div>
+      <div class="closed-tables-layout">
+        <div class="closed-tables-list-col">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+              <input type="checkbox" id="lcSelectAllCheckbox" onchange="toggleSelectAllLoyaltyCustomers(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+              Hamısını seç
+            </label>
+            <button id="lcDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedLoyaltyCustomers()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+          </div>
+          <div id="loyaltyCustomersList"></div>
+        </div>
+        <div class="closed-tables-detail-col">
+          <div class="ct-detail-panel" id="lcDetailPanel"></div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-suppliers">
+      <div class="grid-2" id="suppliersGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-purchases">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="purSearchInput" placeholder="Təchizatçı, faktura nömrəsi ilə axtar..." oninput="renderPurchases()">
+      </div>
+      <div class="closed-tables-layout">
+        <div class="closed-tables-list-col">
+          <div id="purchasesList"></div>
+        </div>
+        <div class="closed-tables-detail-col">
+          <div class="ct-detail-panel" id="purDetailPanel"></div>
         </div>
       </div>
     </div>
@@ -473,7 +517,7 @@
 <!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
 <div class="screen" id="customerScreen">
   <!-- ═══ MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ═══ -->
-  <div class="modal-bg" id="custWelcomeModal" style="z-index:2500;">
+  <div class="modal-bg" id="custWelcomeModal" style="z-index:9999;">
     <div class="cust-loyalty-modal">
       <svg class="icon" style="width:44px;height:44px;color:var(--gold);margin-bottom:12px;"><use href="#i-utensils"></use></svg>
       <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">İpək Yolu Restoranına xoş gəlmisiniz!</h2>
@@ -491,7 +535,7 @@
     </div>
   </div>
 
-  <div class="modal-bg" id="custRegisterModal" style="z-index:2500;">
+  <div class="modal-bg" id="custRegisterModal" style="z-index:9999;">
     <div class="cust-loyalty-modal" style="text-align:left;">
       <h2 style="color:#fff;font-size:19px;margin-bottom:16px;text-align:center;"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyat</h2>
       <div class="cust-loyalty-field"><label>Ad</label><input type="text" id="regFirstName" placeholder="Adınız"></div>
@@ -509,7 +553,7 @@
     </div>
   </div>
 
-  <div class="modal-bg" id="custPhoneRecoveryModal" style="z-index:2500;">
+  <div class="modal-bg" id="custPhoneRecoveryModal" style="z-index:9999;">
     <div class="cust-loyalty-modal">
       <h2 style="color:#fff;font-size:18px;margin-bottom:10px;"><svg class="icon"><use href="#i-user"></use></svg> Bonus hesabınızı tapaq</h2>
       <p style="color:rgba(255,255,255,.7);font-size:13.5px;margin-bottom:16px;">Bonus hesabınız varsa telefon nömrənizi daxil edin.</p>
@@ -542,6 +586,15 @@
         <button onclick="shareReferralLink()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 14px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
           <svg class="icon"><use href="#i-users"></use></svg> Dostunu Dəvət Et
         </button>
+      </div>
+    </div>
+    <div class="cust-glass-card" id="custGuestRegisterPrompt" style="display:none;padding:14px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:rgba(255,255,255,.75);">Bonus xallarından yararlanmaq istəyirsiniz?</span>
+        <div style="display:flex;gap:8px;">
+          <button onclick="openLoyaltyRegisterForm()" style="background:var(--gold);border:none;border-radius:9px;padding:9px 14px;color:#1f0a12;font-size:12.5px;font-weight:700;cursor:pointer;">Qeydiyyatdan keç</button>
+          <button onclick="openPhoneRecoveryFromWelcome()" style="background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:9px 14px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Hesabım var</button>
+        </div>
       </div>
     </div>
     <button class="menu-btn" onclick="openMenu()">
@@ -787,6 +840,78 @@
 </div>
 <!-- ═══ HESABAT MODALI ═══ -->
 <!-- ═══ ÜMUMİ TƏSDİQ PƏNCƏRƏSİ (brauzer confirm() əvəzinə) ═══ -->
+<div class="modal-bg" id="supplierModal">
+  <div class="modal">
+    <h2 id="supplierModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</h2>
+    <div class="form-group"><label>Ad</label><input type="text" id="supName" placeholder="Şirkət və ya şəxs adı"></div>
+    <div class="form-group"><label>Telefon</label><input type="tel" id="supPhone"></div>
+    <div class="form-group"><label>Ünvan</label><input type="text" id="supAddress"></div>
+    <div class="form-group"><label>Mal kateqoriyası</label><input type="text" id="supCategory" placeholder="Məs: Ət, Tərəvəz, İçki"></div>
+    <div class="form-group"><label>Qeyd</label><textarea id="supNotes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeSupplierModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveSupplier()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="menuItemsDatalist"></datalist>
+
+<div class="modal-bg" id="purchaseModal">
+  <div class="modal" style="max-width:640px;">
+    <h2 style="margin-bottom:16px;"><svg class="icon"><use href="#i-cash"></use></svg> Yeni Alış</h2>
+    <div class="closed-tables-filters__row">
+      <div class="form-group"><label>Təchizatçı</label><select id="purSupplier"></select></div>
+      <div class="form-group"><label>Faktura nömrəsi</label><input type="text" id="purInvoiceNumber" placeholder="№..."></div>
+    </div>
+    <div class="form-group"><label>Tarix</label><input type="date" id="purDate"></div>
+
+    <div style="margin:18px 0 8px;font-weight:700;color:var(--text2);font-size:13px;text-transform:uppercase;">Mallar</div>
+    <div id="purchaseLinesContainer"></div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:10px;" onclick="addPurchaseLine()"><svg class="icon"><use href="#i-check"></use></svg> Sətir əlavə et</button>
+
+    <div style="text-align:right;font-size:20px;font-weight:800;margin:18px 0;color:var(--green);">
+      Ümumi: <span id="purchaseGrandTotal">0.00 ₼</span>
+    </div>
+
+    <div class="closed-tables-filters__row">
+      <div class="form-group"><label>Ödəniş növü</label>
+        <select id="purPaymentType"><option value="cash">Nağd</option><option value="transfer">Köçürmə</option><option value="card">Kart</option></select>
+      </div>
+      <div class="form-group"><label>Ödəniş statusu</label>
+        <select id="purPaymentStatus" onchange="togglePurPaidAmountField()"><option value="paid">Tam ödənilib</option><option value="partial">Qismən ödənilib</option><option value="unpaid">Ödənilməyib (nisyə)</option></select>
+      </div>
+    </div>
+    <div class="form-group" id="purPaidAmountGroup" style="display:none;"><label>Ödənilən məbləğ</label><input type="number" id="purPaidAmount" min="0" step="0.01"></div>
+    <div class="form-group"><label>Qeyd</label><textarea id="purNotes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePurchaseModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="savePurchase()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="lcEditModal">
+  <div class="modal">
+    <h2 style="margin-bottom:16px;"><svg class="icon"><use href="#i-users"></use></svg> Müştərini Redaktə Et</h2>
+    <div class="form-group"><label>Ad</label><input type="text" id="lcEditFirstName"></div>
+    <div class="form-group"><label>Soyad</label><input type="text" id="lcEditLastName"></div>
+    <div class="form-group"><label>Ata adı</label><input type="text" id="lcEditFatherName"></div>
+    <div class="form-group"><label>Telefon</label><input type="tel" id="lcEditPhone"></div>
+    <div class="form-group">
+      <label>Cins</label>
+      <select id="lcEditGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select>
+    </div>
+    <div class="form-group"><label>Doğum tarixi</label><input type="date" id="lcEditBirthDate"></div>
+    <div class="form-group"><label>Bonus balı</label><input type="number" id="lcEditBonus" min="0" step="1"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeLoyaltyEditModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveLoyaltyCustomerEdit()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="confirmActionModal">
   <div class="modal" style="max-width:380px;text-align:center;">
     <div id="confirmActionIcon" style="width:52px;height:52px;border-radius:50%;background:rgba(163,42,36,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
