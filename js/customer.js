@@ -34,10 +34,33 @@ export function initCustomerRequestListener() {
 export function checkCustomerMode() {
   const params = new URLSearchParams(location.search);
   const tableId = params.get('table');
-  if (!tableId) return;
+  const refCode = params.get('ref');
+
+  // Referral linki (dostunu dəvət et) masaya BAĞLI DEYİL - "table" parametri olmadan
+  // gəlsə belə, qeydiyyat/tanıma prosesi müstəqil işləməlidir.
+  if (!tableId) {
+    if (refCode) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('customerScreen').classList.add('active');
+      document.getElementById('custWaiterCard').style.display = 'none';
+      document.getElementById('custOrderSection').style.display = 'none';
+      document.querySelector('.cust-actions').style.display = 'none';
+      document.querySelector('.menu-btn').style.display = 'none';
+      document.getElementById('customerTableName').textContent = 'Qeydiyyat';
+      initCustomerLoyalty(null);
+    }
+    return;
+  }
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('customerScreen').classList.add('active');
+
+  // Loyallıq tanıma/qeydiyyatı masanın aktiv olub-olmamasından ASILI DEYİL - dərhal başlayır.
+  // Sifariş/hesab funksiyaları isə hələ də yalnız masa aktiv olanda açılır (aşağıda).
+  if (!window._customerLoyaltyInited) {
+    window._customerLoyaltyInited = true;
+    initCustomerLoyalty(tableId);
+  }
 
   R.tables.child(tableId).on('value', snap => {
     const t = snap.val();
@@ -50,7 +73,6 @@ export function checkCustomerMode() {
         window._customerTableId = tableId;
         window._customerTableData = t;
         initCustomerChat(tableId);
-        initCustomerLoyalty(tableId);
         R.tableOrders.child(tableId).on('value', s => renderCustomerOrder(s.val()));
       }
       return;
