@@ -351,15 +351,17 @@ function renderReportPaymentsView(orders, el) {
 function renderReportStaffView(orders, el) {
   const byStaff = {};
   orders.forEach(o => {
-    const name = o.staffName || 'Naməlum';
+    // Sifarişi göndərən (satışı edən) işçiyə görə hesablanır - masanı bağlayan işçiyə görə
+    // YOX, çünki başqa işçi bağlaya bilər. Köhnə qeydlərdə bu sahə yoxdursa, bağlayan işçiyə düşür.
+    const name = o.orderedByName || o.staffName || 'Naməlum';
     if (!byStaff[name]) byStaff[name] = { count: 0, revenue: 0 };
     byStaff[name].count++; byStaff[name].revenue += o.total || 0;
   });
   const entries = Object.entries(byStaff).sort((a,b)=>b[1].revenue-a[1].revenue);
   el.innerHTML = `
-    <div class="report-section-title"><svg class="icon"><use href="#i-staff"></use></svg> Masanı bağlayan işçiyə görə (satış performansı)</div>
+    <div class="report-section-title"><svg class="icon"><use href="#i-staff"></use></svg> Sifarişi göndərən işçiyə görə (satış performansı)</div>
     <table class="report-table">
-      <thead><tr><th>İşçi</th><th class="num">Bağlanan masa</th><th class="num">Dövriyyə</th><th class="num">Orta çek</th></tr></thead>
+      <thead><tr><th>İşçi</th><th class="num">Sifariş verilən masa</th><th class="num">Dövriyyə</th><th class="num">Orta çek</th></tr></thead>
       <tbody>${entries.map(([name,v],i) => `<tr class="${i===0?'report-table__top':''}"><td>${esc(name)}</td><td class="num">${v.count}</td><td class="num">${v.revenue.toFixed(2)} ₼</td><td class="num">${(v.revenue/v.count).toFixed(2)} ₼</td></tr>`).join('')}</tbody>
     </table>
   `;
