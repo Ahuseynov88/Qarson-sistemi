@@ -1928,34 +1928,25 @@ export function renderClosedOrders() {
 
   if (!filtered.length) {
     listEl.innerHTML = '<p class="ct-list-empty">Filtrə uyğun bağlanan masa tapılmadı.</p>';
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-clipboard"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
     return;
   }
 
-  // Seçili detal qeydi filtrdən sonra da mövcuddursa saxlanılır; YOXSA sıfırlanır -
-  // avtomatik olaraq ilk nəticə seçilmir, yalnız üzərinə vuranda açılır.
-  if (state._selectedClosedOrderId && !filtered.find(o => o.id === state._selectedClosedOrderId)) {
-    state._selectedClosedOrderId = null;
-  }
-
-  listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.slice(0,150).map(o => `
-    <div class="ct-list-item ${o.id===state._selectedClosedOrderId?'active':''}" onclick="selectClosedOrder('${o.id}')">
-      <div class="ct-list-item__top">
-        <label style="display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
-          <input type="checkbox" onchange="toggleClosedOrderSelect('${o.id}')" ${state._selectedClosedOrderIds.includes(o.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
-          <span class="ct-list-item__name">${esc(o.tableName)}</span>
-          ${o.restoreCount ? `<span style="font-size:10px;font-weight:700;color:var(--orange);background:rgba(243,156,18,.15);border-radius:6px;padding:1px 6px;" title="${o.restoreCount} dəfə bərpa edilib">${o.restoreCount}× bərpa</span>` : ''}
-        </label>
-        <span class="ct-list-item__amount">${(o.total||0).toFixed(2)} ₼</span>
-      </div>
-      <div class="ct-list-item__meta">${esc(o.staffName||'')} · ${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</div>
+  listEl.innerHTML = filtered.slice(0,150).map(o => `
+    <div class="tile-card" onclick="selectClosedOrder('${o.id}')" style="position:relative;">
+      <label style="position:absolute;top:8px;left:8px;z-index:1;" onclick="event.stopPropagation()">
+        <input type="checkbox" onchange="toggleClosedOrderSelect('${o.id}')" ${state._selectedClosedOrderIds.includes(o.id)?'checked':''} style="width:17px;height:17px;cursor:pointer;">
+      </label>
+      <div class="tile-card__icon"><svg class="icon"><use href="#i-clipboard"></use></svg></div>
+      <div class="tile-card__name">${esc(o.tableName)}</div>
+      <div class="tile-card__meta">${(o.total||0).toFixed(2)} ₼</div>
+      <div class="tile-card__meta">${esc(o.closedDate||'')}</div>
+      ${o.restoreCount ? `<span class="status-badge badge-orange tile-card__badge" title="${o.restoreCount} dəfə bərpa edilib">${o.restoreCount}× bərpa</span>` : ''}
     </div>
   `).join('');
 
   if (state._selectedClosedOrderId) {
-    renderClosedOrderDetail(filtered.find(o => o.id === state._selectedClosedOrderId));
-  } else {
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-clipboard"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
+    const o = filtered.find(x => x.id === state._selectedClosedOrderId);
+    if (o) renderClosedOrderDetail(o); else selectClosedOrder(null);
   }
 }
 
@@ -1989,11 +1980,16 @@ export function deleteSelectedClosedOrders() {
 
 export function selectClosedOrder(id) {
   state._selectedClosedOrderId = id;
-  renderClosedOrders();
+  const overlay = document.getElementById('ctDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const o = (state.closedOrders||[]).find(x => x.id === id);
+  if (!o) { overlay?.classList.remove('open'); return; }
+  renderClosedOrderDetail(o);
+  overlay?.classList.add('open');
 }
 
 function renderClosedOrderDetail(o) {
-  const detailEl = document.getElementById('ctDetailPanel');
+  const detailEl = document.getElementById('ctDetailBody');
   if (!detailEl || !o) return;
   const isAdmin = state.user?.role === 'admin';
   const sessionLog = o.sessionLog || [];
@@ -2073,40 +2069,39 @@ export function renderLoyaltyCustomers() {
 
   if (!filtered.length) {
     listEl.innerHTML = '<p class="ct-list-empty">Qeydiyyatlı müştəri tapılmadı.</p>';
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir müştəri seçin</p></div>';
     return;
   }
-  if (state._selectedLoyaltyCustomerId && !filtered.find(c => c.id === state._selectedLoyaltyCustomerId)) {
-    state._selectedLoyaltyCustomerId = null;
-  }
 
-  listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.map(c => `
-    <div class="ct-list-item ${c.id===state._selectedLoyaltyCustomerId?'active':''}" onclick="selectLoyaltyCustomer('${c.id}')">
-      <div class="ct-list-item__top">
-        <label style="display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
-          <input type="checkbox" onchange="toggleLoyaltyCustomerSelect('${c.id}')" ${state._selectedLoyaltyCustomerIds.includes(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
-          <span class="ct-list-item__name">${esc(c.firstName)} ${esc(c.lastName)}</span>
-        </label>
-        <span class="ct-list-item__amount" style="color:var(--gold-dark);">${c.bonus||0} bal</span>
-      </div>
-      <div class="ct-list-item__meta">${esc(c.phone||'')}</div>
+  listEl.innerHTML = filtered.map(c => `
+    <div class="tile-card" onclick="selectLoyaltyCustomer('${c.id}')" style="position:relative;">
+      <label style="position:absolute;top:8px;left:8px;z-index:1;" onclick="event.stopPropagation()">
+        <input type="checkbox" onchange="toggleLoyaltyCustomerSelect('${c.id}')" ${state._selectedLoyaltyCustomerIds.includes(c.id)?'checked':''} style="width:17px;height:17px;cursor:pointer;">
+      </label>
+      <div class="tile-card__icon"><svg class="icon"><use href="#i-users"></use></svg></div>
+      <div class="tile-card__name">${esc(c.firstName)} ${esc(c.lastName)}</div>
+      <div class="tile-card__meta">${esc(c.phone||'')}</div>
+      <span class="status-badge" style="background:rgba(212,175,55,.15);color:var(--gold-dark);" class="tile-card__badge">${c.bonus||0} bal</span>
     </div>
   `).join('');
 
   if (state._selectedLoyaltyCustomerId) {
-    renderLoyaltyCustomerDetail(filtered.find(c => c.id === state._selectedLoyaltyCustomerId));
-  } else {
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir müştəri seçin</p></div>';
+    const c = filtered.find(x => x.id === state._selectedLoyaltyCustomerId);
+    if (c) renderLoyaltyCustomerDetail(c); else selectLoyaltyCustomer(null);
   }
 }
 
 export function selectLoyaltyCustomer(id) {
   state._selectedLoyaltyCustomerId = id;
-  renderLoyaltyCustomers();
+  const overlay = document.getElementById('lcDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const c = (state.loyaltyCustomers||[]).find(x => x.id === id);
+  if (!c) { overlay?.classList.remove('open'); return; }
+  renderLoyaltyCustomerDetail(c);
+  overlay?.classList.add('open');
 }
 
 function renderLoyaltyCustomerDetail(c) {
-  const el = document.getElementById('lcDetailPanel');
+  const el = document.getElementById('lcDetailBody');
   if (!el || !c) return;
 
   db.ref('referrals').orderByChild('referrerCustomerId').equalTo(c.id).once('value', snap => {
@@ -2338,8 +2333,7 @@ export function deleteSupplier(id) {
 
 export function renderPurchases() {
   const listEl = document.getElementById('purchasesList');
-  const detailEl = document.getElementById('purDetailPanel');
-  if (!listEl || !detailEl) return;
+  if (!listEl) return;
   const q = (document.getElementById('purSearchInput')?.value || '').trim().toLowerCase();
   const filtered = state.purchases.filter(p => {
     if (!q) return true;
@@ -2347,29 +2341,39 @@ export function renderPurchases() {
   });
   if (!filtered.length) {
     listEl.innerHTML = '<p class="ct-list-empty">Alış qeydi tapılmadı. Sağ alt küncdəki "+" düyməsi ilə əlavə edin.</p>';
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-cash"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir alış seçin</p></div>';
     return;
   }
-  if (state._selectedPurchaseId && !filtered.find(p=>p.id===state._selectedPurchaseId)) state._selectedPurchaseId = null;
 
-  listEl.innerHTML = `<div class="ct-list-count">${filtered.length} nəticə</div>` + filtered.map(p => `
-    <div class="ct-list-item ${p.id===state._selectedPurchaseId?'active':''}" onclick="selectPurchase('${p.id}')">
-      <div class="ct-list-item__top">
-        <span class="ct-list-item__name">${esc(p.supplierName)}</span>
-        <span class="ct-list-item__amount">${(p.totalAmount||0).toFixed(2)} ₼</span>
-      </div>
-      <div class="ct-list-item__meta">№${esc(p.invoiceNumber||'—')} · ${esc(p.date||'')} · ${p.paymentStatus==='paid'?'Tam ödənilib':p.paymentStatus==='partial'?'Qismən ödənilib':'Nisyə'}</div>
-    </div>
-  `).join('');
+  listEl.innerHTML = filtered.map(p => {
+    const statusColor = p.paymentStatus==='paid' ? 'var(--green)' : p.paymentStatus==='partial' ? 'var(--orange)' : 'var(--red)';
+    const statusLabel = p.paymentStatus==='paid'?'Tam ödənilib':p.paymentStatus==='partial'?'Qismən':'Nisyə';
+    return `<div class="tile-card" onclick="selectPurchase('${p.id}')">
+      <div class="tile-card__icon"><svg class="icon"><use href="#i-cash"></use></svg></div>
+      <div class="tile-card__name">${esc(p.supplierName)}</div>
+      <div class="tile-card__meta">${(p.totalAmount||0).toFixed(2)} ₼</div>
+      <div class="tile-card__meta">№${esc(p.invoiceNumber||'—')}</div>
+      <span class="status-badge tile-card__badge" style="background:${statusColor}22;color:${statusColor};">${statusLabel}</span>
+    </div>`;
+  }).join('');
 
-  if (state._selectedPurchaseId) renderPurchaseDetail(filtered.find(p=>p.id===state._selectedPurchaseId));
-  else detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-cash"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir alış seçin</p></div>';
+  if (state._selectedPurchaseId) {
+    const p = filtered.find(x => x.id === state._selectedPurchaseId);
+    if (p) renderPurchaseDetail(p); else selectPurchase(null);
+  }
 }
 
-export function selectPurchase(id) { state._selectedPurchaseId = id; renderPurchases(); }
+export function selectPurchase(id) {
+  state._selectedPurchaseId = id;
+  const overlay = document.getElementById('purDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const p = state.purchases.find(x => x.id === id);
+  if (!p) { overlay?.classList.remove('open'); return; }
+  renderPurchaseDetail(p);
+  overlay?.classList.add('open');
+}
 
 function renderPurchaseDetail(p) {
-  const el = document.getElementById('purDetailPanel');
+  const el = document.getElementById('purDetailBody');
   if (!el || !p) return;
   const statusLabel = p.paymentStatus==='paid'?'Tam ödənilib':p.paymentStatus==='partial'?'Qismən ödənilib':'Nisyə (borc)';
   const typeLabel = {cash:'Nağd',transfer:'Köçürmə',card:'Kart'}[p.paymentType] || p.paymentType;
