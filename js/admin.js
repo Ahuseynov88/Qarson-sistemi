@@ -764,9 +764,11 @@ export function clearOldFeedbacks() {
 export function renderMenuItems() {
   const el    = document.getElementById('menuGrid');
   const tabEl = document.getElementById('menuCatTabs');
+  const detailEl = document.getElementById('menuDetailPanel');
   if (!state.menuItems.length) {
     el.innerHTML  = '<p style="color:var(--text3);">Hələ mal əlavə edilməyib.</p>';
     tabEl.innerHTML = '';
+    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-food"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir mal seçin</p></div>';
     return;
   }
 
@@ -788,31 +790,65 @@ export function renderMenuItems() {
 
   if (!filtered.length) {
     el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada mal yoxdur.</p>';
+    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-food"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir mal seçin</p></div>';
     return;
   }
+  if (state._selectedMenuItemId && !filtered.find(m => m.id === state._selectedMenuItemId)) {
+    state._selectedMenuItemId = null;
+  }
 
-  el.innerHTML = filtered.map(m => {
+  el.innerHTML = `<div class="ct-list-count">${filtered.length} mal</div>` + filtered.map(m => {
     const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
     const available = m.available !== false;
-    return `<div class="item-card">
-      <div class="item-card-header">
-        <img class="avatar" src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'" style="${!available ? 'opacity:.4;' : ''}">
-        <div class="item-info">
-          <h3>${esc(m.name)}</h3>
-          <small style="color:var(--text2);">${esc(m.category || 'Digər')}</small>
-          <small style="color:var(--orange);display:block;font-weight:700;">${Number(m.price||0).toFixed(2)} ₼</small>
-        </div>
+    return `<div class="ct-list-item ${m.id===state._selectedMenuItemId?'active':''}" onclick="selectMenuItem('${m.id}')" style="display:flex;align-items:center;gap:10px;">
+      <img class="avatar" src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'" style="width:40px;height:40px;flex-shrink:0;${!available?'opacity:.4;':''}">
+      <div style="flex:1;min-width:0;">
+        <div class="ct-list-item__name">${esc(m.name)}</div>
+        <div class="ct-list-item__meta">${esc(m.category||'Digər')} · ${Number(m.price||0).toFixed(2)} ₼</div>
       </div>
-      <span class="status-badge ${available?'badge-green':'badge-red'}">${available?'Var':'Tükənib'}</span>
-      ${(m.stock !== undefined && m.stock !== null) ? `<span class="status-badge" style="background:rgba(52,152,219,.15);color:var(--blue);margin-left:6px;"><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-tag"></use></svg> Anbar: ${m.stock||0}</span>` : ''}
-      <div class="item-actions">
-        ${!m.isTrackable ? `<button class="btn" style="border:1px solid var(--blue);color:var(--blue);" onclick="openQuickStockModal('${m.id}')"><svg class="icon"><use href="#i-check"></use></svg> Stok Artır</button>` : ''}
-        <button class="btn ${available?'btn-red':'btn-green'}" onclick="toggleMenuItemAvailability('${m.id}')">${available?'Tükəndi':'Yenidən Var'}</button>
-        <button class="btn btn-ghost" onclick="editMenuItem('${m.id}')"><svg class="icon"><use href="#i-edit"></use></svg></button>
-        <button class="btn btn-red" onclick="deleteMenuItem('${m.id}')"><svg class="icon"><use href="#i-trash"></use></svg></button>
-      </div>
+      <span class="status-badge ${available?'badge-green':'badge-red'}" style="flex-shrink:0;">${available?'Var':'Tükənib'}</span>
     </div>`;
   }).join('');
+
+  if (state._selectedMenuItemId) {
+    renderMenuItemDetail(filtered.find(m => m.id === state._selectedMenuItemId));
+  } else if (detailEl) {
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-food"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir mal seçin</p></div>';
+  }
+}
+
+export function selectMenuItem(id) {
+  state._selectedMenuItemId = id;
+  renderMenuItems();
+}
+
+function renderMenuItemDetail(m) {
+  const el = document.getElementById('menuDetailPanel');
+  if (!el || !m) return;
+  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
+  const available = m.available !== false;
+  el.innerHTML = `
+    <div style="text-align:center;margin-bottom:14px;">
+      <img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'" style="width:96px;height:96px;border-radius:16px;object-fit:cover;${!available?'opacity:.4;':''}">
+    </div>
+    <div class="ct-detail-header" style="justify-content:center;text-align:center;flex-direction:column;gap:6px;">
+      <span style="font-size:19px;"><svg class="icon"><use href="#i-food"></use></svg> ${esc(m.name)}</span>
+      <span style="font-size:22px;font-weight:800;color:var(--orange);">${Number(m.price||0).toFixed(2)} ₼</span>
+    </div>
+    <div class="ct-detail-info-grid">
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Kateqoriya</div><div class="ct-detail-info-block__value">${esc(m.category||'Digər')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Status</div><div class="ct-detail-info-block__value" style="color:${available?'var(--green)':'var(--red)'};">${available?'Satışdadır':'Tükənib'}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Sayıla bilən</div><div class="ct-detail-info-block__value">${m.isTrackable?'Bəli':'Xeyr'}</div></div>
+      ${(m.stock !== undefined && m.stock !== null) ? `<div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Anbar qalığı</div><div class="ct-detail-info-block__value" style="color:var(--blue);">${m.stock}</div></div>` : ''}
+    </div>
+    ${m.description ? `<div class="ct-detail-section-title">Təsvir</div><p style="font-size:13px;color:var(--text2);">${esc(m.description)}</p>` : ''}
+    <div class="ct-detail-actions" style="flex-wrap:wrap;">
+      ${!m.isTrackable ? `<button class="btn" style="flex:1;padding:11px;border:1px solid var(--blue);color:var(--blue);" onclick="openQuickStockModal('${m.id}')"><svg class="icon"><use href="#i-check"></use></svg> Stok Artır</button>` : ''}
+      <button class="btn ${available?'btn-red':'btn-green'}" style="flex:1;padding:11px;" onclick="toggleMenuItemAvailability('${m.id}')">${available?'Tükəndi Et':'Yenidən Var Et'}</button>
+      <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="editMenuItem('${m.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Redaktə Et</button>
+      <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteMenuItem('${m.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  `;
 }
 
 export function setMenuCat(cat) {
@@ -1104,35 +1140,69 @@ export function saveLoyaltySettings() {
 
 export function renderStaff() {
   const el = document.getElementById('staffGrid');
+  const detailEl = document.getElementById('staffDetailPanel');
   if (!el) return;
   if (!state.staff || !state.staff.length) {
     el.innerHTML = '<p style="color:var(--text3);">Hələ işçi əlavə edilməyib.</p>';
+    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-staff"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir işçi seçin</p></div>';
     return;
   }
+  if (state._selectedStaffId && !state.staff.find(s => s.id === state._selectedStaffId)) {
+    state._selectedStaffId = null;
+  }
 
-  el.innerHTML = state.staff.map(s => {
-    const permCount = (s.permissions || []).length;
+  el.innerHTML = `<div class="ct-list-count">${state.staff.length} işçi</div>` + state.staff.map(s => {
     const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
     const st = s.status === 'offline' ? 'Deaktiv' : 'Aktiv';
     const bc = s.status === 'offline' ? 'badge-red' : 'badge-green';
-    return `<div class="item-card">
-      <div class="item-card-header">
-        <img class="avatar" src="${s.avatar || fallback}" alt="" onerror="this.src='${fallback}'">
-        <div class="item-info">
-          <h3>${esc(s.name)}</h3>
-          <small style="color:var(--text2);">${esc(s.position || 'İşçi')}</small>
-          <small style="color:var(--purple);display:block;font-weight:600;"><svg class="icon"><use href="#i-key"></use></svg> ${permCount} icazə</small>
-          ${s.phone ? `<small style="color:var(--text3);display:block;"><svg class="icon"><use href="#i-phone"></use></svg> ${esc(s.phone)}</small>` : ''}
-        </div>
+    return `<div class="ct-list-item ${s.id===state._selectedStaffId?'active':''}" onclick="selectStaff('${s.id}')" style="display:flex;align-items:center;gap:10px;">
+      <img class="avatar" src="${s.avatar || fallback}" alt="" onerror="this.src='${fallback}'" style="width:40px;height:40px;flex-shrink:0;">
+      <div style="flex:1;min-width:0;">
+        <div class="ct-list-item__name">${esc(s.name)}</div>
+        <div class="ct-list-item__meta">${esc(s.position||'İşçi')}</div>
       </div>
-      <span class="status-badge ${bc}">${st}</span>
-      <div class="item-actions">
-        <button class="btn ${s.status==='offline'?'btn-green':'btn-red'}" onclick="toggleStaff('${s.id}')">${s.status==='offline'?'Aktiv Et':'Deaktiv Et'}</button>
-        <button class="btn btn-ghost" onclick="editStaff('${s.id}')"><svg class="icon"><use href="#i-edit"></use></svg></button>
-        <button class="btn btn-red" onclick="deleteStaff('${s.id}')"><svg class="icon"><use href="#i-trash"></use></svg></button>
-      </div>
+      <span class="status-badge ${bc}" style="flex-shrink:0;">${st}</span>
     </div>`;
   }).join('');
+
+  if (state._selectedStaffId) {
+    renderStaffDetail(state.staff.find(s => s.id === state._selectedStaffId));
+  } else if (detailEl) {
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-staff"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir işçi seçin</p></div>';
+  }
+}
+
+export function selectStaff(id) {
+  state._selectedStaffId = id;
+  renderStaff();
+}
+
+function renderStaffDetail(s) {
+  const el = document.getElementById('staffDetailPanel');
+  if (!el || !s) return;
+  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
+  const permCount = (s.permissions || []).length;
+  const st = s.status === 'offline' ? 'Deaktiv' : 'Aktiv';
+  el.innerHTML = `
+    <div style="text-align:center;margin-bottom:14px;">
+      <img src="${s.avatar || fallback}" alt="" onerror="this.src='${fallback}'" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">
+    </div>
+    <div class="ct-detail-header" style="justify-content:center;text-align:center;flex-direction:column;gap:6px;">
+      <span style="font-size:19px;"><svg class="icon"><use href="#i-staff"></use></svg> ${esc(s.name)}</span>
+      <span style="font-size:14px;color:var(--text2);font-weight:600;">${esc(s.position||'İşçi')}</span>
+    </div>
+    <div class="ct-detail-info-grid">
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Status</div><div class="ct-detail-info-block__value" style="color:${s.status==='offline'?'var(--red)':'var(--green)'};">${st}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Telefon</div><div class="ct-detail-info-block__value">${esc(s.phone||'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">İcazə sayı</div><div class="ct-detail-info-block__value">${permCount}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">FİN</div><div class="ct-detail-info-block__value">${esc(s.fin||'—')}</div></div>
+    </div>
+    <div class="ct-detail-actions" style="flex-wrap:wrap;">
+      <button class="btn ${s.status==='offline'?'btn-green':'btn-red'}" style="flex:1;padding:11px;" onclick="toggleStaff('${s.id}')">${s.status==='offline'?'Aktiv Et':'Deaktiv Et'}</button>
+      <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="editStaff('${s.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Redaktə Et</button>
+      <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteStaff('${s.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  `;
 }
 
 export function toggleStaff(id) {
@@ -1274,12 +1344,14 @@ export function previewStaffPhoto(input) {
 export function renderTables() {
   const el = document.getElementById('tablesGrid');
   const tabEl = document.getElementById('tableCatTabs');
+  const detailEl = document.getElementById('tablesDetailPanel');
   // Müvəqqəti bərpa masaları burada göstərilmir - bu bölmə yalnız sabit (qeydiyyatlı)
   // masaların idarəsi üçündür. Onlar qarson panelində (aktiv olduqları müddətdə) görünür.
   const registeredTables = state.tables.filter(t => !t.isRestoredTemp);
   if (!registeredTables.length) {
     el.innerHTML = '<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>';
     tabEl.innerHTML = '';
+    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-chair"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
     return;
   }
 
@@ -1291,20 +1363,56 @@ export function renderTables() {
   `).join('');
 
   const filtered = state._tableCatFilter === 'all' ? registeredTables : registeredTables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._tableCatFilter);
-  if (!filtered.length) { el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>'; return; }
+  if (!filtered.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>';
+    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-chair"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
+    return;
+  }
+  if (state._selectedTableMgmtId && !filtered.find(t => t.id === state._selectedTableMgmtId)) {
+    state._selectedTableMgmtId = null;
+  }
 
-  el.innerHTML = filtered.map(t => {
+  el.innerHTML = `<div class="ct-list-count">${filtered.length} masa</div>` + filtered.map(t => {
     const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
-    return `<div class="table-card">
-      <h3><svg class="icon"><use href="#i-chair"></use></svg> ${esc(t.name)}</h3>
-      <div class="meta">${occ ? `İşçi: <strong>${esc(occ)}</strong>` : 'Boş'}</div>
-      <div class="item-actions">
-        <button class="btn btn-ghost" onclick="editTable('${t.id}')"><svg class="icon"><use href="#i-edit"></use></svg> Düzəliş</button>
-        <button class="btn btn-blue" onclick="showQR('${t.id}','${esc(t.name)}')"><svg class="icon"><use href="#i-qr"></use></svg> QR</button>
-        <button class="btn btn-red" onclick="deleteTable('${t.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    return `<div class="ct-list-item ${t.id===state._selectedTableMgmtId?'active':''}" onclick="selectTableMgmt('${t.id}')">
+      <div class="ct-list-item__top">
+        <span class="ct-list-item__name"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-chair"></use></svg> ${esc(t.name)}</span>
       </div>
+      <div class="ct-list-item__meta">${occ ? `İşçi: ${esc(occ)}` : 'Boş'}</div>
     </div>`;
   }).join('');
+
+  if (state._selectedTableMgmtId) {
+    renderTableMgmtDetail(filtered.find(t => t.id === state._selectedTableMgmtId));
+  } else if (detailEl) {
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-chair"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
+  }
+}
+
+export function selectTableMgmt(id) {
+  state._selectedTableMgmtId = id;
+  renderTables();
+}
+
+function renderTableMgmtDetail(t) {
+  const el = document.getElementById('tablesDetailPanel');
+  if (!el || !t) return;
+  const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
+  el.innerHTML = `
+    <div class="ct-detail-header" style="justify-content:center;text-align:center;">
+      <span style="font-size:19px;"><svg class="icon"><use href="#i-chair"></use></svg> ${esc(t.name)}</span>
+    </div>
+    <div class="ct-detail-info-grid">
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Status</div><div class="ct-detail-info-block__value" style="color:${occ?'var(--orange)':'var(--green)'};">${occ?'Aktiv':'Boş'}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">İşçi</div><div class="ct-detail-info-block__value">${occ?esc(occ):'—'}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Kateqoriya</div><div class="ct-detail-info-block__value">${esc(t.category || t.name.replace(/\s+\d+$/, '') || t.name)}</div></div>
+    </div>
+    <div class="ct-detail-actions" style="flex-wrap:wrap;">
+      <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="editTable('${t.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Adını Dəyiş</button>
+      <button class="btn" style="flex:1;padding:11px;border:1px solid var(--border);" onclick="showQR('${t.id}','${esc(t.name)}')"><svg class="icon"><use href="#i-qr"></use></svg> QR Kod</button>
+      <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteTable('${t.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  `;
 }
 
 export function setTableCat(cat) { state._tableCatFilter = cat; renderTables(); }
@@ -2132,29 +2240,65 @@ export function saveLoyaltyCustomerEdit() {
 
 export function renderSuppliers() {
   const el = document.getElementById('suppliersGrid');
+  const detailEl = document.getElementById('suppliersDetailPanel');
   if (!el) return;
-  if (!state.suppliers.length) { el.innerHTML = '<p style="color:var(--text3);">Hələ təchizatçı əlavə edilməyib. Sağ alt küncdəki "+" düyməsi ilə əlavə edin.</p>'; return; }
-  el.innerHTML = state.suppliers.map(s => {
+  if (!state.suppliers.length) {
+    el.innerHTML = '<p style="color:var(--text3);">Hələ təchizatçı əlavə edilməyib. Sağ alt küncdəki "+" düyməsi ilə əlavə edin.</p>';
+    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir təchizatçı seçin</p></div>';
+    return;
+  }
+  if (state._selectedSupplierMgmtId && !state.suppliers.find(s => s.id === state._selectedSupplierMgmtId)) {
+    state._selectedSupplierMgmtId = null;
+  }
+
+  el.innerHTML = `<div class="ct-list-count">${state.suppliers.length} təchizatçı</div>` + state.suppliers.map(s => {
     const debt = s.totalDebt || 0;
-    return `<div class="item-card">
-      <div class="item-card-header">
-        <div style="width:44px;height:44px;border-radius:12px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg class="icon" style="width:22px;height:22px;color:var(--text2);"><use href="#i-users"></use></svg>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;">${esc(s.name)}</div>
-          <div style="font-size:12px;color:var(--text3);">${esc(s.category||'')}</div>
-        </div>
+    return `<div class="ct-list-item ${s.id===state._selectedSupplierMgmtId?'active':''}" onclick="selectSupplierMgmt('${s.id}')">
+      <div class="ct-list-item__top">
+        <span class="ct-list-item__name">${esc(s.name)}</span>
+        <span class="supplier-debt-badge ${debt>0?'supplier-debt-badge--owed':'supplier-debt-badge--clear'}">${debt>0?debt.toFixed(2)+' ₼':'Təmiz'}</span>
       </div>
-      <div style="margin-bottom:8px;"><span class="supplier-debt-badge ${debt>0?'supplier-debt-badge--owed':'supplier-debt-badge--clear'}">${debt>0?debt.toFixed(2)+' ₼ borc':'Borc yoxdur'}</span></div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:4px;">${esc(s.phone||'—')}</p>
-      <p style="font-size:12.5px;color:var(--text3);">${esc(s.address||'')}</p>
-      <div class="item-actions">
-        <button class="btn" style="border:1px solid var(--border);color:var(--text2);" onclick="openSupplierModal('${s.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Düzənlə</button>
-        <button class="btn btn-red" onclick="deleteSupplier('${s.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
-      </div>
+      <div class="ct-list-item__meta">${esc(s.category||'')} ${s.phone?'· '+esc(s.phone):''}</div>
     </div>`;
   }).join('');
+
+  if (state._selectedSupplierMgmtId) {
+    renderSupplierMgmtDetail(state.suppliers.find(s => s.id === state._selectedSupplierMgmtId));
+  } else if (detailEl) {
+    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir təchizatçı seçin</p></div>';
+  }
+}
+
+export function selectSupplierMgmt(id) {
+  state._selectedSupplierMgmtId = id;
+  renderSuppliers();
+}
+
+function renderSupplierMgmtDetail(s) {
+  const el = document.getElementById('suppliersDetailPanel');
+  if (!el || !s) return;
+  const debt = s.totalDebt || 0;
+  const recentPurchases = state.purchases.filter(p => p.supplierId === s.id).slice(0, 5);
+  el.innerHTML = `
+    <div class="ct-detail-header">
+      <span><svg class="icon"><use href="#i-users"></use></svg> ${esc(s.name)}</span>
+      <span class="supplier-debt-badge ${debt>0?'supplier-debt-badge--owed':'supplier-debt-badge--clear'}" style="font-size:14px;">${debt>0?debt.toFixed(2)+' ₼ borc':'Borc yoxdur'}</span>
+    </div>
+    <div class="ct-detail-info-grid">
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Telefon</div><div class="ct-detail-info-block__value">${esc(s.phone||'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Kateqoriya</div><div class="ct-detail-info-block__value">${esc(s.category||'—')}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Ünvan</div><div class="ct-detail-info-block__value">${esc(s.address||'—')}</div></div>
+    </div>
+    ${s.notes ? `<div class="ct-detail-section-title">Qeyd</div><p style="font-size:13px;color:var(--text2);">${esc(s.notes)}</p>` : ''}
+    ${recentPurchases.length ? `
+      <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-cash"></use></svg> Son alışlar</div>
+      ${recentPurchases.map(p => `<div class="ct-detail-item-row"><span>№${esc(p.invoiceNumber||'—')} · ${esc(p.date||'')}</span><span style="font-weight:600;">${(p.totalAmount||0).toFixed(2)} ₼</span></div>`).join('')}
+    ` : ''}
+    <div class="ct-detail-actions">
+      <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="openSupplierModal('${s.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Redaktə Et</button>
+      <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteSupplier('${s.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  `;
 }
 
 export function openSupplierModal(id) {
@@ -2607,9 +2751,12 @@ window.saveServiceCharge = saveServiceCharge;
 window.saveLoyaltySettings = saveLoyaltySettings;
 window.setLogFilter = setLogFilter;
 window.setMenuCat = setMenuCat;
+window.selectMenuItem = selectMenuItem;
 window.setTableCat = setTableCat;
+window.selectTableMgmt = selectTableMgmt;
 window.showQR = showQR;
 window.toggleMenuItemAvailability = toggleMenuItemAvailability;
+window.selectStaff = selectStaff;
 window.toggleStaff = toggleStaff;
 window.editCustomer = editCustomer;
 window.deleteCustomer = deleteCustomer;
@@ -2626,6 +2773,7 @@ window.openLoyaltyEditModal = openLoyaltyEditModal;
 window.closeLoyaltyEditModal = closeLoyaltyEditModal;
 window.saveLoyaltyCustomerEdit = saveLoyaltyCustomerEdit;
 window.renderSuppliers = renderSuppliers;
+window.selectSupplierMgmt = selectSupplierMgmt;
 window.openSupplierModal = openSupplierModal;
 window.closeSupplierModal = closeSupplierModal;
 window.saveSupplier = saveSupplier;
