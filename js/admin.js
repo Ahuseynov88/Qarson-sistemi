@@ -764,11 +764,9 @@ export function clearOldFeedbacks() {
 export function renderMenuItems() {
   const el    = document.getElementById('menuGrid');
   const tabEl = document.getElementById('menuCatTabs');
-  const detailEl = document.getElementById('menuDetailPanel');
   if (!state.menuItems.length) {
     el.innerHTML  = '<p style="color:var(--text3);">Hələ mal əlavə edilməyib.</p>';
     tabEl.innerHTML = '';
-    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-food"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir mal seçin</p></div>';
     return;
   }
 
@@ -790,40 +788,38 @@ export function renderMenuItems() {
 
   if (!filtered.length) {
     el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada mal yoxdur.</p>';
-    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-food"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir mal seçin</p></div>';
     return;
   }
-  if (state._selectedMenuItemId && !filtered.find(m => m.id === state._selectedMenuItemId)) {
-    state._selectedMenuItemId = null;
-  }
 
-  el.innerHTML = `<div class="ct-list-count">${filtered.length} mal</div>` + filtered.map(m => {
+  el.innerHTML = filtered.map(m => {
     const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
     const available = m.available !== false;
-    return `<div class="ct-list-item ${m.id===state._selectedMenuItemId?'active':''}" onclick="selectMenuItem('${m.id}')" style="display:flex;align-items:center;gap:10px;">
-      <img class="avatar" src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'" style="width:40px;height:40px;flex-shrink:0;${!available?'opacity:.4;':''}">
-      <div style="flex:1;min-width:0;">
-        <div class="ct-list-item__name">${esc(m.name)}</div>
-        <div class="ct-list-item__meta">${esc(m.category||'Digər')} · ${Number(m.price||0).toFixed(2)} ₼</div>
-      </div>
-      <span class="status-badge ${available?'badge-green':'badge-red'}" style="flex-shrink:0;">${available?'Var':'Tükənib'}</span>
+    return `<div class="tile-card" onclick="selectMenuItem('${m.id}')">
+      <div class="tile-card__icon"><img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'" style="${!available?'opacity:.4;':''}"></div>
+      <div class="tile-card__name">${esc(m.name)}</div>
+      <div class="tile-card__meta">${Number(m.price||0).toFixed(2)} ₼</div>
+      <span class="status-badge ${available?'badge-green':'badge-red'} tile-card__badge">${available?'Var':'Tükənib'}</span>
     </div>`;
   }).join('');
 
   if (state._selectedMenuItemId) {
-    renderMenuItemDetail(filtered.find(m => m.id === state._selectedMenuItemId));
-  } else if (detailEl) {
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-food"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir mal seçin</p></div>';
+    const m = filtered.find(x => x.id === state._selectedMenuItemId);
+    if (m) renderMenuItemDetail(m); else selectMenuItem(null);
   }
 }
 
 export function selectMenuItem(id) {
   state._selectedMenuItemId = id;
-  renderMenuItems();
+  const overlay = document.getElementById('menuDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const m = state.menuItems.find(x => x.id === id);
+  if (!m) { overlay?.classList.remove('open'); return; }
+  renderMenuItemDetail(m);
+  overlay?.classList.add('open');
 }
 
 function renderMenuItemDetail(m) {
-  const el = document.getElementById('menuDetailPanel');
+  const el = document.getElementById('menuDetailBody');
   if (!el || !m) return;
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=f39c12&color=fff&size=200`;
   const available = m.available !== false;
@@ -1140,45 +1136,42 @@ export function saveLoyaltySettings() {
 
 export function renderStaff() {
   const el = document.getElementById('staffGrid');
-  const detailEl = document.getElementById('staffDetailPanel');
   if (!el) return;
   if (!state.staff || !state.staff.length) {
     el.innerHTML = '<p style="color:var(--text3);">Hələ işçi əlavə edilməyib.</p>';
-    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-staff"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir işçi seçin</p></div>';
     return;
   }
-  if (state._selectedStaffId && !state.staff.find(s => s.id === state._selectedStaffId)) {
-    state._selectedStaffId = null;
-  }
 
-  el.innerHTML = `<div class="ct-list-count">${state.staff.length} işçi</div>` + state.staff.map(s => {
+  el.innerHTML = state.staff.map(s => {
     const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
     const st = s.status === 'offline' ? 'Deaktiv' : 'Aktiv';
     const bc = s.status === 'offline' ? 'badge-red' : 'badge-green';
-    return `<div class="ct-list-item ${s.id===state._selectedStaffId?'active':''}" onclick="selectStaff('${s.id}')" style="display:flex;align-items:center;gap:10px;">
-      <img class="avatar" src="${s.avatar || fallback}" alt="" onerror="this.src='${fallback}'" style="width:40px;height:40px;flex-shrink:0;">
-      <div style="flex:1;min-width:0;">
-        <div class="ct-list-item__name">${esc(s.name)}</div>
-        <div class="ct-list-item__meta">${esc(s.position||'İşçi')}</div>
-      </div>
-      <span class="status-badge ${bc}" style="flex-shrink:0;">${st}</span>
+    return `<div class="tile-card" onclick="selectStaff('${s.id}')">
+      <div class="tile-card__icon"><img src="${s.avatar || fallback}" alt="" onerror="this.src='${fallback}'"></div>
+      <div class="tile-card__name">${esc(s.name)}</div>
+      <div class="tile-card__meta">${esc(s.position||'İşçi')}</div>
+      <span class="status-badge ${bc} tile-card__badge">${st}</span>
     </div>`;
   }).join('');
 
   if (state._selectedStaffId) {
-    renderStaffDetail(state.staff.find(s => s.id === state._selectedStaffId));
-  } else if (detailEl) {
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-staff"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir işçi seçin</p></div>';
+    const s = state.staff.find(x => x.id === state._selectedStaffId);
+    if (s) renderStaffDetail(s); else selectStaff(null);
   }
 }
 
 export function selectStaff(id) {
   state._selectedStaffId = id;
-  renderStaff();
+  const overlay = document.getElementById('staffDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const s = state.staff.find(x => x.id === id);
+  if (!s) { overlay?.classList.remove('open'); return; }
+  renderStaffDetail(s);
+  overlay?.classList.add('open');
 }
 
 function renderStaffDetail(s) {
-  const el = document.getElementById('staffDetailPanel');
+  const el = document.getElementById('staffDetailBody');
   if (!el || !s) return;
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
   const permCount = (s.permissions || []).length;
@@ -1344,14 +1337,12 @@ export function previewStaffPhoto(input) {
 export function renderTables() {
   const el = document.getElementById('tablesGrid');
   const tabEl = document.getElementById('tableCatTabs');
-  const detailEl = document.getElementById('tablesDetailPanel');
   // Müvəqqəti bərpa masaları burada göstərilmir - bu bölmə yalnız sabit (qeydiyyatlı)
   // masaların idarəsi üçündür. Onlar qarson panelində (aktiv olduqları müddətdə) görünür.
   const registeredTables = state.tables.filter(t => !t.isRestoredTemp);
   if (!registeredTables.length) {
     el.innerHTML = '<p style="color:var(--text3);">Hələ masa əlavə edilməyib.</p>';
     tabEl.innerHTML = '';
-    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-chair"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
     return;
   }
 
@@ -1365,37 +1356,37 @@ export function renderTables() {
   const filtered = state._tableCatFilter === 'all' ? registeredTables : registeredTables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._tableCatFilter);
   if (!filtered.length) {
     el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>';
-    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-chair"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
     return;
   }
-  if (state._selectedTableMgmtId && !filtered.find(t => t.id === state._selectedTableMgmtId)) {
-    state._selectedTableMgmtId = null;
-  }
 
-  el.innerHTML = `<div class="ct-list-count">${filtered.length} masa</div>` + filtered.map(t => {
+  el.innerHTML = filtered.map(t => {
     const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
-    return `<div class="ct-list-item ${t.id===state._selectedTableMgmtId?'active':''}" onclick="selectTableMgmt('${t.id}')">
-      <div class="ct-list-item__top">
-        <span class="ct-list-item__name"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-chair"></use></svg> ${esc(t.name)}</span>
-      </div>
-      <div class="ct-list-item__meta">${occ ? `İşçi: ${esc(occ)}` : 'Boş'}</div>
+    return `<div class="tile-card" onclick="selectTableMgmt('${t.id}')">
+      <div class="tile-card__icon"><svg class="icon"><use href="#i-chair"></use></svg></div>
+      <div class="tile-card__name">${esc(t.name)}</div>
+      <div class="tile-card__meta">${occ ? esc(occ) : 'Boş'}</div>
+      <span class="status-badge ${occ?'badge-orange':'badge-green'} tile-card__badge">${occ?'Aktiv':'Boş'}</span>
     </div>`;
   }).join('');
 
   if (state._selectedTableMgmtId) {
-    renderTableMgmtDetail(filtered.find(t => t.id === state._selectedTableMgmtId));
-  } else if (detailEl) {
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-chair"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir masa seçin</p></div>';
+    const t = filtered.find(x => x.id === state._selectedTableMgmtId);
+    if (t) renderTableMgmtDetail(t); else selectTableMgmt(null);
   }
 }
 
 export function selectTableMgmt(id) {
   state._selectedTableMgmtId = id;
-  renderTables();
+  const overlay = document.getElementById('tablesDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const t = state.tables.find(x => x.id === id);
+  if (!t) { overlay?.classList.remove('open'); return; }
+  renderTableMgmtDetail(t);
+  overlay?.classList.add('open');
 }
 
 function renderTableMgmtDetail(t) {
-  const el = document.getElementById('tablesDetailPanel');
+  const el = document.getElementById('tablesDetailBody');
   if (!el || !t) return;
   const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
   el.innerHTML = `
@@ -2240,42 +2231,40 @@ export function saveLoyaltyCustomerEdit() {
 
 export function renderSuppliers() {
   const el = document.getElementById('suppliersGrid');
-  const detailEl = document.getElementById('suppliersDetailPanel');
   if (!el) return;
   if (!state.suppliers.length) {
     el.innerHTML = '<p style="color:var(--text3);">Hələ təchizatçı əlavə edilməyib. Sağ alt küncdəki "+" düyməsi ilə əlavə edin.</p>';
-    if (detailEl) detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir təchizatçı seçin</p></div>';
     return;
   }
-  if (state._selectedSupplierMgmtId && !state.suppliers.find(s => s.id === state._selectedSupplierMgmtId)) {
-    state._selectedSupplierMgmtId = null;
-  }
 
-  el.innerHTML = `<div class="ct-list-count">${state.suppliers.length} təchizatçı</div>` + state.suppliers.map(s => {
+  el.innerHTML = state.suppliers.map(s => {
     const debt = s.totalDebt || 0;
-    return `<div class="ct-list-item ${s.id===state._selectedSupplierMgmtId?'active':''}" onclick="selectSupplierMgmt('${s.id}')">
-      <div class="ct-list-item__top">
-        <span class="ct-list-item__name">${esc(s.name)}</span>
-        <span class="supplier-debt-badge ${debt>0?'supplier-debt-badge--owed':'supplier-debt-badge--clear'}">${debt>0?debt.toFixed(2)+' ₼':'Təmiz'}</span>
-      </div>
-      <div class="ct-list-item__meta">${esc(s.category||'')} ${s.phone?'· '+esc(s.phone):''}</div>
+    return `<div class="tile-card" onclick="selectSupplierMgmt('${s.id}')">
+      <div class="tile-card__icon"><svg class="icon"><use href="#i-users"></use></svg></div>
+      <div class="tile-card__name">${esc(s.name)}</div>
+      <div class="tile-card__meta">${esc(s.category||'')}</div>
+      <span class="supplier-debt-badge ${debt>0?'supplier-debt-badge--owed':'supplier-debt-badge--clear'} tile-card__badge">${debt>0?debt.toFixed(2)+' ₼':'Təmiz'}</span>
     </div>`;
   }).join('');
 
   if (state._selectedSupplierMgmtId) {
-    renderSupplierMgmtDetail(state.suppliers.find(s => s.id === state._selectedSupplierMgmtId));
-  } else if (detailEl) {
-    detailEl.innerHTML = '<div class="ct-detail-empty"><svg class="icon" style="width:32px;height:32px;"><use href="#i-users"></use></svg><p style="margin-top:10px;">Baxmaq üçün soldan bir təchizatçı seçin</p></div>';
+    const s = state.suppliers.find(x => x.id === state._selectedSupplierMgmtId);
+    if (s) renderSupplierMgmtDetail(s); else selectSupplierMgmt(null);
   }
 }
 
 export function selectSupplierMgmt(id) {
   state._selectedSupplierMgmtId = id;
-  renderSuppliers();
+  const overlay = document.getElementById('suppliersDetailPanel');
+  if (!id) { overlay?.classList.remove('open'); return; }
+  const s = state.suppliers.find(x => x.id === id);
+  if (!s) { overlay?.classList.remove('open'); return; }
+  renderSupplierMgmtDetail(s);
+  overlay?.classList.add('open');
 }
 
 function renderSupplierMgmtDetail(s) {
-  const el = document.getElementById('suppliersDetailPanel');
+  const el = document.getElementById('suppliersDetailBody');
   if (!el || !s) return;
   const debt = s.totalDebt || 0;
   const recentPurchases = state.purchases.filter(p => p.supplierId === s.id).slice(0, 5);
