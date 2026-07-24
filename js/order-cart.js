@@ -106,9 +106,12 @@ export class OrderCart {
     });
     if (!items.length) { this.els.itemsList.innerHTML = `<p style="color:var(--text3);grid-column:1/-1;">${q ? 'Axtarışa uyğun mal tapılmadı.' : 'Bu kateqoriyada mal yoxdur.'}</p>`; return; }
     this.els.itemsList.innerHTML = items.map(m => {
-      const outOfStock = (m.stock !== undefined && m.stock !== null && m.stock <= 0);
+      const hasStock = (m.stock !== undefined && m.stock !== null);
+      const outOfStock = hasStock && m.stock <= 0;
+      const lowStock = hasStock && m.stock > 0 && m.stock <= 5;
       return `<div class="product-card ${m.photo?'':'no-photo'} ${outOfStock?'out-of-stock':''}" data-menu-item-id="${m.id}">
         ${m.photo ? `<img src="${esc(m.photo)}" alt="" loading="lazy">` : ''}
+        ${hasStock && !outOfStock ? `<div class="product-card__stock ${lowStock?'product-card__stock--low':''}">${m.stock} qalıb</div>` : ''}
         <div class="product-card__overlay">
           <div class="product-card__name">${esc(m.name)}</div>
           <div class="product-card__price">${(m.price||0).toFixed(2)} ₼</div>
