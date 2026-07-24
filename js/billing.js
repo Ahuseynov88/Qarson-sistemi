@@ -170,6 +170,16 @@ export class ConfirmedOrder {
     this._cancelCtx = { tableId, itemKey };
     this.els.cancelReasonItemName.textContent = `${it.name} (${it.qty} ədəd)`;
     this.els.cancelReasonSelect.value = 'Səhv sifariş';
+    const qtyGroup = document.getElementById('cancelReasonQtyGroup');
+    const qtyInput = document.getElementById('cancelReasonQty');
+    if (it.qty > 1) {
+      qtyGroup.style.display = 'block';
+      qtyInput.max = it.qty;
+      qtyInput.value = it.qty;
+    } else {
+      qtyGroup.style.display = 'none';
+      qtyInput.value = 1;
+    }
     this.els.cancelReasonModal.classList.add('open');
   }
 
@@ -182,23 +192,36 @@ export class ConfirmedOrder {
     if (!this._cancelCtx) return;
     const { tableId, itemKey } = this._cancelCtx;
     const reason = this.els.cancelReasonSelect.value;
+    const order = state.tableOrders[tableId];
+    const it = order?.items?.[itemKey];
+    const maxQty = it?.qty || 1;
+    let cancelQty = parseInt(document.getElementById('cancelReasonQty').value, 10) || maxQty;
+    cancelQty = Math.min(Math.max(cancelQty, 1), maxQty);
     this.closeCancelReasonModal();
-    this.cancelItem(tableId, itemKey, reason);
+    this.cancelItem(tableId, itemKey, reason, cancelQty);
   }
 
-  cancelItem(tableId, itemKey, reason) {
+  cancelItem(tableId, itemKey, reason, cancelQty) {
     if (!hasPermission('order.cancel_item')) return;
     const order = state.tableOrders[tableId];
     if (!order?.items) return;
     const it = order.items[itemKey];
     if (!it) return;
-    const cancelledQty = it.qty, cancelledName = it.name, cancelledMenuItemId = it.menuItemId;
+    const fullQty = it.qty;
+    const qtyToCancel = Math.min(Math.max(cancelQty || fullQty, 1), fullQty);
+    const isPartial = qtyToCancel < fullQty;
+    const cancelledName = it.name, cancelledMenuItemId = it.menuItemId;
     const reasonText = reason || 'Qeyd olunmayıb';
 
     R.tableOrders.child(tableId).transaction(current => {
       if (!current || !current.items || !current.items[itemKey]) return current;
       const items = { ...current.items };
-      delete items[itemKey];
+      if (isPartial) {
+        // Yalnız QİSMƏN ləğv olunur - sətir qalır, miqdarı azalır
+        items[itemKey] = { ...items[itemKey], qty: items[itemKey].qty - qtyToCancel };
+      } else {
+        delete items[itemKey];
+      }
       if (!Object.keys(items).length) return null;
       const _tot = computeOrderTotals(items);
 
@@ -208,10 +231,11 @@ export class ConfirmedOrder {
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
-      updateStock(cancelledMenuItemId, cancelledQty, state.menuItems);
+      updateStock(cancelledMenuItemId, qtyToCancel, state.menuItems);
       const t = state.tables.find(x => x.id === tableId);
-      addLog('order', `${state.user?.name} "${cancelledName}" malını sifarişdən iptal etdi — Səbəb: ${reasonText}`, { tableId, menuItemId: cancelledMenuItemId, reason: reasonText });
-      showToast(`<svg class="icon"><use href="#i-trash"></use></svg> ${cancelledName} sifarişdən silindi`);
+      const qtyLabel = isPartial ? `${qtyToCancel} ədəd` : `bütün (${fullQty} ədəd)`;
+      addLog('order', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi — Səbəb: ${reasonText}`, { tableId, menuItemId: cancelledMenuItemId, reason: reasonText });
+      showToast(`<svg class="icon"><use href="#i-trash"></use></svg> ${cancelledName} (${qtyToCancel} ədəd) sifarişdən silindi`);
       this.renderSummary(tableId);
     });
   }
