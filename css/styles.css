@@ -65,7 +65,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .topbar .topbar-right,.topbar > button{position:relative;z-index:1;}
 .topbar h2{font-size:18px;font-weight:600;}
 .topbar-right{display:flex;align-items:center;gap:10px;}
-.btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;min-width:0;overflow-wrap:break-word;word-break:break-word;}
+.btn{padding:9px 18px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;min-width:0;overflow-wrap:break-word;}
 .btn:active{transform:scale(0.96);}
 .btn-red{background:var(--red);color:white;}
 .btn-green{background:var(--green);color:white;}
@@ -92,8 +92,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .item-card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;}
 .item-info{min-width:0;flex:1;}
-.item-info h3{font-size:16px;margin-bottom:3px;overflow-wrap:break-word;word-break:break-word;}
-.item-info small{color:var(--text2);font-size:13px;overflow-wrap:break-word;word-break:break-word;}
+.item-info h3{font-size:16px;margin-bottom:3px;overflow-wrap:break-word;}
+.item-info small{color:var(--text2);font-size:13px;overflow-wrap:break-word;}
 .status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
 .badge-green{background:rgba(46,204,113,.15);color:var(--green);}
 .badge-red{background:rgba(231,76,60,.15);color:var(--red);}
@@ -196,7 +196,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .ct-report__type-chip{background:rgba(255,255,255,.08);border-radius:8px;padding:7px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;}
 .ct-report__type-chip b{color:var(--blue);}
 .log-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
-.log-text{font-size:13px;color:var(--text2);flex:1;min-width:0;overflow-wrap:break-word;word-break:break-word;}
+.log-text{font-size:13px;color:var(--text2);flex:1;min-width:0;overflow-wrap:break-word;}
 .log-time{font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;}
 .log-filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .log-filter{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
@@ -313,6 +313,8 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .product-card__price{color:#fff;font-weight:700;margin-top:3px;font-size:12.5px;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6);}
 .product-card.out-of-stock{opacity:.45;pointer-events:none;}
 .product-card__oos{font-size:9.5px;color:#ffb4b0;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.product-card__stock{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:7px;z-index:2;}
+.product-card__stock--low{background:rgba(211,84,0,.85);}
 /* Şəkli olmayan mallar üçün sadə mətn kartı */
 .product-card.no-photo{align-items:center;justify-content:center;background:var(--card);aspect-ratio:auto;padding:14px 8px;}
 .product-card.no-photo:hover{background:var(--overlay-soft);}
@@ -495,7 +497,7 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 #custWaiterCard img{width:88px;height:88px;border-radius:50%;object-fit:cover;object-position:center top;border:3px solid var(--gold);flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,.35);}
 #custWaiterCard .cw-info{display:flex;flex-direction:column;align-items:center;text-align:center;}
 #custWaiterCard .cw-label{font-size:10px;color:rgba(255,255,255,.6);font-weight:600;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);}
-#custWaiterCard .cw-name{font-size:15px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px;text-align:center;white-space:normal;word-break:break-word;max-width:140px;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+#custWaiterCard .cw-name{font-size:15px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px;text-align:center;white-space:normal;max-width:140px;text-shadow:0 1px 4px rgba(0,0,0,.8);}
 
 /* ── MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ── */
 .cust-loyalty-modal{background:linear-gradient(160deg,#3a0f1f,#1f0a12);border:1px solid rgba(255,255,255,.14);
@@ -614,7 +616,7 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
 .cust-order-total__value,.pay-trigger__amount,.item-card,.log-item,.modal,
 .topbar h2,.form-group,.ct-report__type-chip,.floor-card__name,.ct-list-item__name,
 .floor-card,.k-card,.report-bar-chart__label{
-  min-width:0;overflow-wrap:break-word;word-break:break-word;
+  min-width:0;overflow-wrap:break-word;
 }
 .topbar h2{display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
 img,svg.icon{max-width:100%;}
