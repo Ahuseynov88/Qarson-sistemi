@@ -64,7 +64,7 @@
     </div>
   </div>
   <div class="admin-body">
-    <button id="adminBackBtn" class="admin-back-btn" onclick="adminGoBack()"><svg class="icon"><use href="#i-close"></use></svg> Bölmələrə qayıt</button>
+    <button id="adminBackBtn" class="admin-back-btn" onclick="adminGoBack()"><svg class="icon"><use href="#i-close"></use></svg> Geri</button>
     <div class="admin-tabs" id="adminTabsContainer">
       <button class="admin-tab active" data-section="dashboard" onclick="adminTab('dashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> Hesabatlar</button>
       <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</button>
@@ -127,7 +127,7 @@
     <div class="admin-section" id="sec-staff">
       <div class="tile-grid" id="staffGrid"></div>
       <div class="tile-detail-overlay" id="staffDetailPanel">
-        <div class="tile-detail-back" onclick="selectStaff(null)"><svg class="icon"><use href="#i-close"></use></svg> İşçilərə qayıt</div>
+        <div class="tile-detail-back" onclick="selectStaff(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="staffDetailBody"></div>
       </div>
     </div>
@@ -135,7 +135,7 @@
       <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div class="tile-grid" id="tablesGrid"></div>
       <div class="tile-detail-overlay" id="tablesDetailPanel">
-        <div class="tile-detail-back" onclick="selectTableMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Masalara qayıt</div>
+        <div class="tile-detail-back" onclick="selectTableMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="tablesDetailBody"></div>
       </div>
     </div>
@@ -143,7 +143,7 @@
       <div id="menuCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div class="tile-grid" id="menuGrid"></div>
       <div class="tile-detail-overlay" id="menuDetailPanel">
-        <div class="tile-detail-back" onclick="selectMenuItem(null)"><svg class="icon"><use href="#i-close"></use></svg> Mallara qayıt</div>
+        <div class="tile-detail-back" onclick="selectMenuItem(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="menuDetailBody"></div>
       </div>
     </div>
@@ -259,7 +259,7 @@
       </div>
       <div class="tile-grid" id="closedOrdersList"></div>
       <div class="tile-detail-overlay" id="ctDetailPanel">
-        <div class="tile-detail-back" onclick="selectClosedOrder(null)"><svg class="icon"><use href="#i-close"></use></svg> Masalara qayıt</div>
+        <div class="tile-detail-back" onclick="selectClosedOrder(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="ctDetailBody"></div>
       </div>
     </div>
@@ -276,14 +276,14 @@
       </div>
       <div class="tile-grid" id="loyaltyCustomersList"></div>
       <div class="tile-detail-overlay" id="lcDetailPanel">
-        <div class="tile-detail-back" onclick="selectLoyaltyCustomer(null)"><svg class="icon"><use href="#i-close"></use></svg> Müştərilərə qayıt</div>
+        <div class="tile-detail-back" onclick="selectLoyaltyCustomer(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="lcDetailBody"></div>
       </div>
     </div>
     <div class="admin-section" id="sec-suppliers">
       <div class="tile-grid" id="suppliersGrid"></div>
       <div class="tile-detail-overlay" id="suppliersDetailPanel">
-        <div class="tile-detail-back" onclick="selectSupplierMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Təchizatçılara qayıt</div>
+        <div class="tile-detail-back" onclick="selectSupplierMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="suppliersDetailBody"></div>
       </div>
     </div>
@@ -293,7 +293,7 @@
       </div>
       <div class="tile-grid" id="purchasesList"></div>
       <div class="tile-detail-overlay" id="purDetailPanel">
-        <div class="tile-detail-back" onclick="selectPurchase(null)"><svg class="icon"><use href="#i-close"></use></svg> Alışlara qayıt</div>
+        <div class="tile-detail-back" onclick="selectPurchase(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="purDetailBody"></div>
       </div>
     </div>
@@ -414,7 +414,7 @@
 <div class="screen" id="orderScreen">
   <div class="topbar">
     <h2 id="orderModalTitle"><svg class="icon"><use href="#i-food"></use></svg> Masa</h2>
-    <button class="btn btn-ghost" data-close-order><svg class="icon"><use href="#i-close"></use></svg> Masalara qayıt</button>
+    <button class="btn btn-ghost" data-close-order><svg class="icon"><use href="#i-close"></use></svg> Geri</button>
   </div>
   <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
     <div style="position:relative;">
