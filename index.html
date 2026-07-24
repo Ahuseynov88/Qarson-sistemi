@@ -250,40 +250,34 @@
         </label>
       </div>
       <div id="ctReportSummary" style="margin-bottom:14px;"></div>
-      <div class="closed-tables-layout">
-        <div class="closed-tables-list-col">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
-              <input type="checkbox" id="ctSelectAllCheckbox" onchange="toggleSelectAllClosedOrders(this.checked)" style="width:16px;height:16px;cursor:pointer;">
-              Hamısını seç
-            </label>
-            <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
-          </div>
-          <div id="closedOrdersList"></div>
-        </div>
-        <div class="closed-tables-detail-col">
-          <div class="ct-detail-panel" id="ctDetailPanel"></div>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ctSelectAllCheckbox" onchange="toggleSelectAllClosedOrders(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+          Hamısını seç
+        </label>
+        <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+      </div>
+      <div class="tile-grid" id="closedOrdersList"></div>
+      <div class="tile-detail-overlay" id="ctDetailPanel">
+        <div class="tile-detail-back" onclick="selectClosedOrder(null)"><svg class="icon"><use href="#i-close"></use></svg> Masalara qayıt</div>
+        <div class="tile-detail-body" id="ctDetailBody"></div>
       </div>
     </div>
     <div class="admin-section" id="sec-loyaltyCustomers">
       <div class="closed-tables-filters" style="margin-bottom:14px;">
         <input type="text" id="lcSearchInput" placeholder="Ad, soyad və ya telefon ilə axtar..." oninput="renderLoyaltyCustomers()">
       </div>
-      <div class="closed-tables-layout">
-        <div class="closed-tables-list-col">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
-              <input type="checkbox" id="lcSelectAllCheckbox" onchange="toggleSelectAllLoyaltyCustomers(this.checked)" style="width:16px;height:16px;cursor:pointer;">
-              Hamısını seç
-            </label>
-            <button id="lcDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedLoyaltyCustomers()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
-          </div>
-          <div id="loyaltyCustomersList"></div>
-        </div>
-        <div class="closed-tables-detail-col">
-          <div class="ct-detail-panel" id="lcDetailPanel"></div>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="lcSelectAllCheckbox" onchange="toggleSelectAllLoyaltyCustomers(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+          Hamısını seç
+        </label>
+        <button id="lcDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedLoyaltyCustomers()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+      </div>
+      <div class="tile-grid" id="loyaltyCustomersList"></div>
+      <div class="tile-detail-overlay" id="lcDetailPanel">
+        <div class="tile-detail-back" onclick="selectLoyaltyCustomer(null)"><svg class="icon"><use href="#i-close"></use></svg> Müştərilərə qayıt</div>
+        <div class="tile-detail-body" id="lcDetailBody"></div>
       </div>
     </div>
     <div class="admin-section" id="sec-suppliers">
@@ -297,13 +291,10 @@
       <div class="closed-tables-filters" style="margin-bottom:14px;">
         <input type="text" id="purSearchInput" placeholder="Təchizatçı, faktura nömrəsi ilə axtar..." oninput="renderPurchases()">
       </div>
-      <div class="closed-tables-layout">
-        <div class="closed-tables-list-col">
-          <div id="purchasesList"></div>
-        </div>
-        <div class="closed-tables-detail-col">
-          <div class="ct-detail-panel" id="purDetailPanel"></div>
-        </div>
+      <div class="tile-grid" id="purchasesList"></div>
+      <div class="tile-detail-overlay" id="purDetailPanel">
+        <div class="tile-detail-back" onclick="selectPurchase(null)"><svg class="icon"><use href="#i-close"></use></svg> Alışlara qayıt</div>
+        <div class="tile-detail-body" id="purDetailBody"></div>
       </div>
     </div>
     <div class="admin-section" id="sec-feedback">
