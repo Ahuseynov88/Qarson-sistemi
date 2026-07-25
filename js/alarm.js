@@ -68,12 +68,12 @@ export function acceptAlarm() {
   if (!state.alarm) return;
   if (state.alarmType === 'order') {
     R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
-    addLog('order',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
+    addLog('order_send',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
   } else if (state.alarmType === 'customer') {
     const reqType = window._currentRequestId;
     if (reqType) {
       db.ref('customerRequests').child(reqType).update({ status:'accepted', acceptedAt:Date.now() });
-      addLog('customer',`${state.user.name} müştəri tələbini qəbul etdi`,{ requestId:reqType, waiterId:state.user.id });
+      addLog('customer_request',`${state.user.name} müştəri tələbini qəbul etdi`,{ requestId:reqType, waiterId:state.user.id });
     }
     window._currentRequestId = null;
   }
