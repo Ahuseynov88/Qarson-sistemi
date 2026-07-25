@@ -1460,6 +1460,15 @@ export function previewStaffPhoto(input) {
   reader.readAsDataURL(file);
 }
 
+// Masa kateqoriyasını təhlükəsiz təyin edir - t.name mətn olmaya bilər (köhnə/uyğunsuz
+// məlumat üçün), ona görə hər addımda yoxlama edilir ki, TƏK BİR səhv masa BÜTÜN
+// siyahını (hətta Firebase-də məlumat düzgün olsa belə) qırmasın.
+function tableCategoryOf(t) {
+  if (t.category) return t.category;
+  const name = typeof t.name === 'string' ? t.name : String(t.name ?? 'Masa');
+  return name.replace(/\s+\d+$/, '') || name;
+}
+
 export function renderTables() {
   const el = document.getElementById('tablesGrid');
   const tabEl = document.getElementById('tableCatTabs');
@@ -1472,14 +1481,14 @@ export function renderTables() {
     return;
   }
 
-  const cats = ['all', ...new Set(registeredTables.map(t => t.category || t.name.replace(/\s+\d+$/, '') || t.name))];
+  const cats = ['all', ...new Set(registeredTables.map(tableCategoryOf))];
   tabEl.innerHTML = cats.map(c => `
     <button onclick="setTableCat('${esc(c)}')" style="padding:8px 18px;border-radius:20px;border:1px solid var(--border);background:${state._tableCatFilter===c?'var(--brand-gradient)':'transparent'};color:${state._tableCatFilter===c?'white':'var(--text2)'};font-weight:600;font-size:13px;cursor:pointer;">
       ${c === 'all' ? '<svg class="icon"><use href="#i-chair"></use></svg> Hamısı' : esc(c)}
     </button>
   `).join('');
 
-  const filtered = state._tableCatFilter === 'all' ? registeredTables : registeredTables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._tableCatFilter);
+  const filtered = state._tableCatFilter === 'all' ? registeredTables : registeredTables.filter(t => tableCategoryOf(t) === state._tableCatFilter);
   if (!filtered.length) {
     el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>';
     return;
@@ -1523,7 +1532,7 @@ function renderTableMgmtDetail(t) {
     <div class="ct-detail-info-grid">
       <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Status</div><div class="ct-detail-info-block__value" style="color:${occ?'var(--orange)':'var(--green)'};">${occ?'Aktiv':'Boş'}</div></div>
       <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">İşçi</div><div class="ct-detail-info-block__value">${occ?esc(occ):'—'}</div></div>
-      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Kateqoriya</div><div class="ct-detail-info-block__value">${esc(t.category || t.name.replace(/\s+\d+$/, '') || t.name)}</div></div>
+      <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Kateqoriya</div><div class="ct-detail-info-block__value">${esc(tableCategoryOf(t))}</div></div>
     </div>
     <div class="ct-detail-actions" style="flex-wrap:wrap;">
       <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="editTable('${t.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Adını Dəyiş</button>
