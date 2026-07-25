@@ -225,7 +225,7 @@ export function customerAction(type) {
     status: 'pending', time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now()
   });
   const typeLabels = { call: 'çağırış', bill_cash: 'nağd ödəniş istəyi', bill_pos: 'POS ilə ödəniş istəyi' };
-  addLog('customer',`"${t.name}" masasından ${typeLabels[type]||type} tələbi`,{ tableId, type });
+  addLog('customer_request',`"${t.name}" masasından ${typeLabels[type]||type} tələbi`,{ tableId, type });
   const icons = { call:'<svg class="icon"><use href="#i-bell"></use></svg>', bill_cash:'<svg class="icon"><use href="#i-cash"></use></svg>', bill_pos:'<svg class="icon"><use href="#i-card"></use></svg>' };
   showCustomerToast(`${icons[type]||'<svg class="icon"><use href="#i-megaphone"></use></svg>'} Bildiriş göndərildi!`);
 }
@@ -277,7 +277,7 @@ export function sendFeedback() {
     time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'),
     createdAt: Date.now(), status: 'new'
   });
-  addLog('customer',`"${t?t.name:'?'}" masasından şikayət/təklif: ${msg}`,{ tableId });
+  addLog('feedback',`"${t?t.name:'?'}" masasından şikayət/təklif: ${msg}`,{ tableId });
   document.getElementById('feedbackInput').value = '';
   showCustomerToast('<svg class="icon"><use href="#i-check"></use></svg> Şikayət/təklifiniz qeyd edildi!');
 }
