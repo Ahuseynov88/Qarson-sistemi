@@ -33,7 +33,7 @@ export function callWaiter(waiterId) {
   if (!w) return;
   const ref = R.orders.push();
   ref.set({ waiterId: w.id, waiterName: w.name, status: 'pending', time: new Date().toLocaleTimeString('az-AZ'), createdAt: Date.now() });
-  addLog('order',`Mətbəx ${w.name}-ə sifariş bildirişi göndərdi`,{ waiterId:w.id });
+  addLog('order_send',`Mətbəx ${w.name}-ə sifariş bildirişi göndərdi`,{ waiterId:w.id });
   showToast(`<svg class="icon"><use href="#i-bell"></use></svg> ${w.name}-ə bildiriş göndərildi`);
 }
 
