@@ -345,7 +345,7 @@ export class StaffApp {
     const w = window.open('', '_blank', 'width=340,height=600');
     if (w) {
       w.document.write(html); w.document.close();
-      addLog('order', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
+      addLog('bill_print', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
       if (order) R.tableOrders.child(tableId).update({ billPrintedAt: Date.now() });
     } else {
       showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
