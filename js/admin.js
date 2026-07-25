@@ -909,6 +909,9 @@ export function deleteMenuItem(id) {
   confirmAction(`"${esc(m?.name)}" silinsin?`, () => {
     R.menuItems.child(id).remove();
     addLog('admin', `Mal silindi: ${m?.name}`, { menuItemId:id });
+    state.menuItems = state.menuItems.filter(x => x.id !== id);
+    if (state._selectedMenuItemId === id) state._selectedMenuItemId = null;
+    renderMenuItems();
     showToast('<svg class="icon"><use href="#i-trash"></use></svg> Mal silindi');
   });
 }
@@ -1235,6 +1238,9 @@ export function deleteStaff(id) {
   confirmAction(`"${esc(s?.name)}" adlı işçi silinsin?`, () => {
     db.ref('staff').child(id).remove();
     addLog('admin', `İşçi silindi: ${s?.name}`, { staffId: id });
+    state.staff = state.staff.filter(x => x.id !== id);
+    if (state._selectedStaffId === id) state._selectedStaffId = null;
+    renderStaff();
     showToast('<svg class="icon"><use href="#i-trash"></use></svg> İşçi silindi');
   });
 }
@@ -1436,6 +1442,9 @@ export function deleteTable(id) {
   confirmAction(`"${esc(t?.name)}" masası silinsin?`, () => {
     R.tables.child(id).remove();
     addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
+    state.tables = state.tables.filter(x => x.id !== id);
+    if (state._selectedTableMgmtId === id) state._selectedTableMgmtId = null;
+    renderTables();
     showToast('<svg class="icon"><use href="#i-trash"></use></svg> Masa silindi');
   });
 }
@@ -1507,8 +1516,12 @@ export function deleteSelectedLogs() {
   confirmDelete2x(ids.length, 'tarixçə qeydi', () => {
     Promise.all(ids.map(id => R.logs.child(id).remove()))
       .then(() => {
-        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
+        // Passiv real-vaxt dinləyiciyə güvənmirik - uğurlu silinmədən dərhal sonra
+        // lokal state-i özümüz təmizləyib ekranı yeniləyirik ki, gecikmə/uyğunsuzluq olmasın
+        state.logs = state.logs.filter(l => !ids.includes(l.id));
         state._selectedLogIds = [];
+        renderLogs();
+        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
       })
       .catch(err => {
         showToast('<svg class="icon"><use href="#i-error"></use></svg> Silinmədi: ' + (err?.message || 'naməlum xəta'));
@@ -1531,7 +1544,11 @@ export function clearOldLogs() {
       const toDelete = Object.keys(data).filter(key => data[key].timestamp < cutoff);
       if (!toDelete.length) { showToast('<svg class="icon"><use href="#i-check"></use></svg> Silinəcək köhnə qeyd yoxdur'); return; }
       Promise.all(toDelete.map(key => R.logs.child(key).remove()))
-        .then(() => showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${toDelete.length} köhnə qeyd silindi`))
+        .then(() => {
+          state.logs = state.logs.filter(l => !toDelete.includes(l.id));
+          renderLogs();
+          showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${toDelete.length} köhnə qeyd silindi`);
+        })
         .catch(err => showToast('<svg class="icon"><use href="#i-error"></use></svg> Silinmədi: ' + (err?.message || 'naməlum xəta')));
     });
   });
@@ -1992,9 +2009,11 @@ export function deleteSelectedClosedOrders() {
   confirmDelete2x(ids.length, 'bağlanmış masa qeydi', () => {
     ids.forEach(id => db.ref('closedOrders/' + id).remove());
     addLog('admin', `Admin ${ids.length} bağlanmış masa qeydini seçib sildi`, {});
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
+    state.closedOrders = state.closedOrders.filter(o => !ids.includes(o.id));
     state._selectedClosedOrderIds = [];
     if (ids.includes(state._selectedClosedOrderId)) state._selectedClosedOrderId = null;
+    renderClosedOrders();
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
   });
 }
 
@@ -2187,9 +2206,11 @@ export function deleteSelectedLoyaltyCustomers() {
   confirmDelete2x(ids.length, 'qeydiyyatlı müştəri', () => {
     ids.forEach(id => db.ref('loyaltyCustomers/' + id).remove());
     addLog('admin', `Admin ${ids.length} qeydiyyatlı müştərini seçib sildi`, {});
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} müştəri silindi`);
+    state.loyaltyCustomers = state.loyaltyCustomers.filter(c => !ids.includes(c.id));
     state._selectedLoyaltyCustomerIds = [];
     if (ids.includes(state._selectedLoyaltyCustomerId)) state._selectedLoyaltyCustomerId = null;
+    renderLoyaltyCustomers();
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} müştəri silindi`);
   });
 }
 
@@ -2199,8 +2220,10 @@ export function deleteSingleLoyaltyCustomer(id) {
   confirmDelete2x(1, `"${c.firstName} ${c.lastName}" adlı müştəri`, () => {
     db.ref('loyaltyCustomers/' + id).remove();
     addLog('admin', `Admin qeydiyyatlı müştərini sildi: ${c.firstName} ${c.lastName}`, {});
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Müştəri silindi');
+    state.loyaltyCustomers = state.loyaltyCustomers.filter(x => x.id !== id);
     if (state._selectedLoyaltyCustomerId === id) state._selectedLoyaltyCustomerId = null;
+    renderLoyaltyCustomers();
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Müştəri silindi');
   });
 }
 
@@ -2350,6 +2373,9 @@ export function deleteSupplier(id) {
   confirmDelete2x(1, `"${s.name}" adlı təchizatçı`, () => {
     db.ref('suppliers/'+id).remove();
     addLog('admin', `Təchizatçı silindi: ${s.name}`, {});
+    state.suppliers = state.suppliers.filter(x => x.id !== id);
+    if (state._selectedSupplierMgmtId === id) state._selectedSupplierMgmtId = null;
+    renderSuppliers();
     showToast('<svg class="icon"><use href="#i-check"></use></svg> Təchizatçı silindi');
   });
 }
@@ -2446,8 +2472,10 @@ export function deletePurchase(id) {
     });
     db.ref('purchases/'+id).remove();
     addLog('admin', `Alış qeydi silindi: ${p.supplierName} - №${p.invoiceNumber}`, {});
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Alış qeydi silindi');
+    state.purchases = state.purchases.filter(x => x.id !== id);
     if (state._selectedPurchaseId === id) state._selectedPurchaseId = null;
+    renderPurchases();
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Alış qeydi silindi');
   });
 }
 
