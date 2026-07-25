@@ -281,13 +281,23 @@ function buildPaymentTypeBreakdown(orders) {
 export function renderReports() {
   const el = document.getElementById('reportContent');
   if (!el) return;
+  const view = state._reportView || 'summary';
+
+  // "Hazırda Açıq Masalar" hesabatı canlı vəziyyəti göstərir - tarix filtri ilə
+  // ƏLAQƏLİ DEYİL, ona görə aşağıdakı "bağlanan masa yoxdursa boş göstər" yoxlamasından
+  // TAMAMİLƏ keçib bunu birbaşa göstəririk.
+  if (view === 'openTables') { renderReportOpenTablesView(el); return; }
+
   const orders = getReportFilteredOrders();
   const summaryEl = document.getElementById('reportRangeSummary');
   if (summaryEl) summaryEl.textContent = `${orders.length} əməliyyat tapıldı`;
 
+  // "Ləğvetmələr" hesabatı "logs" mənbəyindən qurulur, "closedOrders"dan ASILI DEYİL -
+  // ona görə bağlanan masa olmasa belə (yalnız ləğvetmə olsa) düzgün göstərilməlidir.
+  if (view === 'cancellations') { renderReportCancellationsView(el); return; }
+
   if (!orders.length) { el.innerHTML = '<p class="report-empty"><svg class="icon" style="width:28px;height:28px;"><use href="#i-clipboard"></use></svg><br>Seçilmiş tarix/saat aralığında əməliyyat tapılmadı.</p>'; return; }
 
-  const view = state._reportView || 'summary';
   if (view === 'summary') renderReportSummaryView(orders, el);
   else if (view === 'payments') renderReportPaymentsView(orders, el);
   else if (view === 'staff') renderReportStaffView(orders, el);
@@ -603,6 +613,104 @@ function renderReportCompareView(orders, el) {
   `;
 }
 
+// Ləğvetmə hesabatı - "sifariş ləğvi" (order_cancel) tipli tarixçə qeydlərindən qurulur.
+// Hər ləğvin: vaxtı, masası, malı, miqdarı, məbləği, səbəbi, kim etdiyi görünür.
+function renderReportCancellationsView(el) {
+  const dateFrom = document.getElementById('repDateFrom')?.value || '';
+  const dateTo = document.getElementById('repDateTo')?.value || '';
+  const timeFrom = document.getElementById('repTimeFrom')?.value || '';
+  const timeTo = document.getElementById('repTimeTo')?.value || '';
+  let cancellations = (state.logs || []).filter(l => l.type === 'order_cancel');
+  if (dateFrom) {
+    const b = new Date(dateFrom); if (timeFrom) { const [h,m]=timeFrom.split(':'); b.setHours(+h,+m,0,0);} else b.setHours(0,0,0,0);
+    cancellations = cancellations.filter(l => l.timestamp >= b.getTime());
+  }
+  if (dateTo) {
+    const b = new Date(dateTo); if (timeTo) { const [h,m]=timeTo.split(':'); b.setHours(+h,+m,59,999);} else b.setHours(23,59,59,999);
+    cancellations = cancellations.filter(l => l.timestamp <= b.getTime());
+  }
+
+  const totalAmount = cancellations.reduce((s,l) => s + (l.details?.amount||0), 0);
+
+  const byStaff = {};
+  cancellations.forEach(l => {
+    const name = l.details?.staffName || 'Naməlum';
+    if (!byStaff[name]) byStaff[name] = { count: 0, amount: 0 };
+    byStaff[name].count++; byStaff[name].amount += l.details?.amount||0;
+  });
+  const staffEntries = Object.entries(byStaff).sort((a,b)=>b[1].amount-a[1].amount);
+
+  const byReason = {};
+  cancellations.forEach(l => {
+    const reason = l.details?.reason || 'Qeyd olunmayıb';
+    byReason[reason] = (byReason[reason]||0) + 1;
+  });
+  const reasonEntries = Object.entries(byReason).sort((a,b)=>b[1]-a[1]);
+
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${cancellations.length}</div><div class="stat-label">Ləğv sayı</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${totalAmount.toFixed(2)} ₼</div><div class="stat-label">Ləğv olunan məbləğ</div></div>
+    </div>
+    <div class="report-section-title"><svg class="icon"><use href="#i-staff"></use></svg> İşçiyə görə</div>
+    <table class="report-table">
+      <thead><tr><th>İşçi</th><th class="num">Ləğv sayı</th><th class="num">Məbləğ</th></tr></thead>
+      <tbody>${staffEntries.length ? staffEntries.map(([name,v]) => `<tr><td>${esc(name)}</td><td class="num">${v.count}</td><td class="num">${v.amount.toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda ləğvetmə yoxdur</td></tr>'}</tbody>
+    </table>
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-warning"></use></svg> Səbəbə görə</div>
+    <table class="report-table">
+      <thead><tr><th>Səbəb</th><th class="num">Sayı</th></tr></thead>
+      <tbody>${reasonEntries.length ? reasonEntries.map(([reason,count]) => `<tr><td>${esc(reason)}</td><td class="num">${count}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text3);">—</td></tr>'}</tbody>
+    </table>
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Ətraflı siyahı</div>
+    <table class="report-table">
+      <thead><tr><th>Tarix/Saat</th><th>Masa</th><th>Mal</th><th class="num">Miqdar</th><th class="num">Məbləğ</th><th>Səbəb</th><th>İşçi</th></tr></thead>
+      <tbody>${cancellations.length ? cancellations.slice(0,200).map(l => `<tr>
+        <td>${esc(l.date)} ${esc(l.time)}</td>
+        <td>${esc(l.details?.tableName||'—')}</td>
+        <td>${esc(l.details?.itemName||'—')}</td>
+        <td class="num">${l.details?.qty??'—'}</td>
+        <td class="num">${(l.details?.amount||0).toFixed(2)} ₼</td>
+        <td>${esc(l.details?.reason||'—')}</td>
+        <td>${esc(l.details?.staffName||'—')}</td>
+      </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text3);">Bu aralıqda ləğvetmə yoxdur</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+// Hazırda açıq olan masaların hesabatı - tarix filtrindən ASILI DEYİL, HAZIRKI anın
+// vəziyyətini göstərir (neçə masa açıqdır, üzərlərində nə qədər məbləğ var).
+function renderReportOpenTablesView(el) {
+  const openTables = (state.tables || []).filter(t => t.occupant);
+  const rows = openTables.map(t => {
+    const order = state.tableOrders[t.id];
+    const total = order?.total || 0;
+    const paid = order?.paidAmount || 0;
+    const remaining = Math.max(0, total - paid);
+    const waiter = state.staff.find(s => s.id === t.occupant);
+    const startTime = order?.firstOrderAt || t.activatedAt;
+    const durationMin = startTime ? Math.round((Date.now() - startTime) / 60000) : 0;
+    return { name: t.name, waiter: waiter?.name || '?', total, remaining, durationMin };
+  }).sort((a,b) => b.total - a.total);
+
+  const totalOpenAmount = rows.reduce((s,r) => s + r.total, 0);
+  const totalRemaining = rows.reduce((s,r) => s + r.remaining, 0);
+  const fmtDuration = (min) => min >= 60 ? `${Math.floor(min/60)} saat ${min%60} dəq` : `${min} dəq`;
+
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${rows.length}</div><div class="stat-label">Hazırda açıq masa</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${totalOpenAmount.toFixed(2)} ₼</div><div class="stat-label">Ümumi dövriyyə (açıq masalarda)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${totalRemaining.toFixed(2)} ₼</div><div class="stat-label">Hələ ödənilməmiş qalıq</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Bu hesabat tarix filtrindən asılı deyil - hazırkı anın vəziyyətini göstərir.</p>
+    <table class="report-table">
+      <thead><tr><th>Masa</th><th>İşçi</th><th class="num">Cəmi</th><th class="num">Qalıq</th><th class="num">Neçə vaxtdır açıqdır</th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.waiter)}</td><td class="num">${r.total.toFixed(2)} ₼</td><td class="num" style="color:${r.remaining>0?'var(--orange)':'var(--green)'};">${r.remaining.toFixed(2)} ₼</td><td class="num">${fmtDuration(r.durationMin)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);">Hazırda açıq masa yoxdur</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
 export function adminEditTableNote(tableId) {
   const t = state.tables.find(x=>x.id===tableId);
   if (!t) return;
@@ -616,7 +724,7 @@ export function saveAdminNote() {
   if (!state.noteTableId) return;
   const notes = document.getElementById('adminNoteText').value;
   R.tables.child(state.noteTableId).update({ notes });
-  addLog('admin','Admin "' + (state.tables.find(x=>x.id===state.noteTableId)||{name:'?'}).name + '" masasına qeyd əlavə etdi',{});
+  addLog('table','Admin "' + (state.tables.find(x=>x.id===state.noteTableId)||{name:'?'}).name + '" masasına qeyd əlavə etdi',{});
   closeAdminNoteModal();
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Qeyd saxlanıldı');
 }
@@ -718,7 +826,7 @@ export function deleteSelectedRequests() {
   if (!ids.length) return;
   confirmDelete2x(ids.length, 'tələb', () => {
     ids.forEach(id => db.ref('customerRequests/' + id).remove());
-    addLog('admin', `Admin ${ids.length} müştəri tələbini seçib sildi`, {});
+    addLog('customer_request', `Admin ${ids.length} müştəri tələbini seçib sildi`, {});
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} tələb silindi`);
     state._selectedRequestIds = [];
     renderFeedbackSection();
@@ -746,7 +854,7 @@ export function deleteSelectedFeedbacks() {
   if (!ids.length) return;
   confirmDelete2x(ids.length, 'şikayət', () => {
     ids.forEach(id => db.ref('feedbacks/' + id).remove());
-    addLog('admin', `Admin ${ids.length} şikayəti seçib sildi`, {});
+    addLog('feedback', `Admin ${ids.length} şikayəti seçib sildi`, {});
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} şikayət silindi`);
     state._selectedFeedbackIds = [];
     renderFeedbackSection();
@@ -765,7 +873,7 @@ export function clearOldFeedbacks() {
           deletedCount++;
         }
       });
-      addLog('admin', `${deletedCount} köhnə şikayət silindi`, {});
+      addLog('feedback', `${deletedCount} köhnə şikayət silindi`, {});
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${deletedCount} şikayət silindi`);
     });
   });
@@ -880,7 +988,7 @@ export function confirmQuickStock() {
   if (!amount || amount <= 0) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Düzgün miqdar daxil edin'); return; }
   const m = state.menuItems.find(x=>x.id===id);
   R.menuItems.child(id).child('stock').transaction(cur => (cur||0) + amount);
-  addLog('admin', `Anbar əl ilə artırıldı: ${m?.name} (+${amount})`, {});
+  addLog('menu_mgmt', `Anbar əl ilə artırıldı: ${m?.name} (+${amount})`, {});
   closeQuickStockModal();
   showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${amount} ədəd əlavə edildi`);
 }
@@ -890,7 +998,7 @@ export function toggleMenuItemAvailability(id) {
   if (!m) return;
   const newAvailable = !(m.available !== false);
   R.menuItems.child(id).update({ available: newAvailable });
-  addLog('admin', `"${m.name}" ${newAvailable?'yenidən mövcud edildi':'tükəndi olaraq işarələndi'}`, { menuItemId:id });
+  addLog('menu_mgmt', `"${m.name}" ${newAvailable?'yenidən mövcud edildi':'tükəndi olaraq işarələndi'}`, { menuItemId:id });
   showToast(newAvailable?`<svg class="icon"><use href="#i-check"></use></svg> ${m.name} yenidən mövcuddur`:`<svg class="icon"><use href="#i-ban"></use></svg> ${m.name} tükəndi`);
 }
 
@@ -908,7 +1016,7 @@ export function deleteMenuItem(id) {
   const m = state.menuItems.find(x=>x.id===id);
   confirmAction(`"${esc(m?.name)}" silinsin?`, () => {
     R.menuItems.child(id).remove();
-    addLog('admin', `Mal silindi: ${m?.name}`, { menuItemId:id });
+    addLog('menu_mgmt', `Mal silindi: ${m?.name}`, { menuItemId:id });
     state.menuItems = state.menuItems.filter(x => x.id !== id);
     if (state._selectedMenuItemId === id) state._selectedMenuItemId = null;
     renderMenuItems();
@@ -1064,11 +1172,11 @@ export function saveItem() {
 
     if (state.editTarget) {
       R.menuItems.child(state.editTarget.id).update(menuItemData);
-      addLog('admin', `Mal yeniləndi: ${name}`, { menuItemId: state.editTarget.id });
+      addLog('menu_mgmt', `Mal yeniləndi: ${name}`, { menuItemId: state.editTarget.id });
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Mal yeniləndi');
     } else {
       R.menuItems.push({ ...menuItemData, available: true, createdAt: Date.now() });
-      addLog('admin', `Yeni mal əlavə edildi: ${name}`, {});
+      addLog('menu_mgmt', `Yeni mal əlavə edildi: ${name}`, {});
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Mal əlavə edildi');
     }
   } else {
@@ -1077,7 +1185,7 @@ export function saveItem() {
 
     if (state.editTarget) {
       R.tables.child(state.editTarget.id).update({ name: prefix });
-      addLog('admin', `Masa adı dəyişdirildi: ${prefix}`, {});
+      addLog('table_mgmt', `Masa adı dəyişdirildi: ${prefix}`, {});
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa yeniləndi');
     } else {
       const count = parseInt(document.getElementById('ft_count').value) || 1;
@@ -1085,7 +1193,7 @@ export function saveItem() {
         const tName = count === 1 ? prefix : `${prefix} ${i}`;
         R.tables.push({ name: tName, category: prefix, occupant: null, notes: '', createdAt: Date.now() + i });
       }
-      addLog('admin', `${count} ədəd masa əlavə edildi: ${prefix}`, {});
+      addLog('table_mgmt', `${count} ədəd masa əlavə edildi: ${prefix}`, {});
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${count} ədəd masa əlavə edildi`);
     }
   }
@@ -1105,7 +1213,7 @@ export function saveKitchenPin() {
   if (String(pin) === String(ADMIN_PIN)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Admin PIN ilə eyni ola bilməz'); return; }
   db.ref('settings/kitchenPin').set(pin);
   state.kitchenPin = pin;
-  addLog('admin','Mətbəx PIN dəyişdirildi',{});
+  addLog('settings','Mətbəx PIN dəyişdirildi',{});
   closeKitchenPinModal();
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Mətbəx PIN dəyişdirildi');
 }
@@ -1114,7 +1222,7 @@ export function saveMenuUrl() {
   const url = document.getElementById('menuUrlInput').value.trim();
   if (!url) { showToast('<svg class="icon"><use href="#i-error"></use></svg> URL boş ola bilməz'); return; }
   db.ref('settings/menuUrl').set(url);
-  addLog('admin',`Menyu URL dəyişdirildi: ${url}`,{});
+  addLog('settings',`Menyu URL dəyişdirildi: ${url}`,{});
   document.getElementById('menuUrlStatus').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
   setTimeout(()=>{ document.getElementById('menuUrlStatus').textContent=''; },3000);
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Menyu URL yadda saxlandı');
@@ -1129,7 +1237,7 @@ export function saveServiceCharge() {
     return;
   }
   db.ref('settings/serviceCharge').set({ enabled, percent });
-  addLog('admin', `Xidmət haqqı ${enabled?`aktiv edildi (${percent}%)`:'deaktiv edildi'}`, {});
+  addLog('settings', `Xidmət haqqı ${enabled?`aktiv edildi (${percent}%)`:'deaktiv edildi'}`, {});
   document.getElementById('serviceChargeStatus').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
   setTimeout(()=>{ const el = document.getElementById('serviceChargeStatus'); if (el) el.textContent=''; },3000);
   showToast(`<svg class="icon"><use href="#i-check"></use></svg> Xidmət haqqı ${enabled?'aktivdir':'deaktivdir'}`);
@@ -1139,7 +1247,7 @@ export function saveLoyaltySettings() {
   const referralBonusAmount = parseFloat(document.getElementById('referralBonusAmount').value) || 0;
   const referralMinOrderAmount = parseFloat(document.getElementById('referralMinOrderAmount').value) || 0;
   db.ref('settings/loyalty').set({ referralBonusAmount, referralMinOrderAmount });
-  addLog('admin', `Referral proqramı yeniləndi: ${referralBonusAmount} bal / minimum ${referralMinOrderAmount} ₼`, {});
+  addLog('settings', `Referral proqramı yeniləndi: ${referralBonusAmount} bal / minimum ${referralMinOrderAmount} ₼`, {});
   const el = document.getElementById('loyaltySettingsStatus');
   if (el) {
     el.innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
@@ -1218,7 +1326,7 @@ export function toggleStaff(id) {
   if (!s) return;
   const newStatus = s.status === 'offline' ? 'active' : 'offline';
   db.ref('staff').child(id).update({ status: newStatus });
-  addLog('admin', `İşçi ${newStatus==='active'?'aktiv':'deaktiv'} edildi: ${s.name}`, { staffId: id });
+  addLog('staff_mgmt', `İşçi ${newStatus==='active'?'aktiv':'deaktiv'} edildi: ${s.name}`, { staffId: id });
   showToast(newStatus==='active' ? `<svg class="icon"><use href="#i-check"></use></svg> ${s.name} aktiv edildi` : `<svg class="icon"><use href="#i-ban"></use></svg> ${s.name} deaktiv edildi`);
 }
 
@@ -1237,7 +1345,7 @@ export function deleteStaff(id) {
   if (activeTable) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${s?.name}" adlı işçinin "${activeTable.name}" masası aktivdir! Əvvəlcə masanı bağlayın.`); return; }
   confirmAction(`"${esc(s?.name)}" adlı işçi silinsin?`, () => {
     db.ref('staff').child(id).remove();
-    addLog('admin', `İşçi silindi: ${s?.name}`, { staffId: id });
+    addLog('staff_mgmt', `İşçi silindi: ${s?.name}`, { staffId: id });
     state.staff = state.staff.filter(x => x.id !== id);
     if (state._selectedStaffId === id) state._selectedStaffId = null;
     renderStaff();
@@ -1283,11 +1391,11 @@ export function saveStaff() {
 
   if (state.editTarget?.id) {
     db.ref('staff').child(state.editTarget.id).update(staffData);
-    addLog('admin', `İşçi yeniləndi: ${name}`, { staffId: state.editTarget.id });
+    addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: state.editTarget.id });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi yeniləndi');
   } else {
     db.ref('staff').push({ ...staffData, status: 'active', createdAt: Date.now() });
-    addLog('admin', `Yeni işçi əlavə edildi: ${name}`, {});
+    addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, {});
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi əlavə edildi');
   }
   closeAddModal();
@@ -1441,7 +1549,7 @@ export function deleteTable(id) {
   if (t?.occupant) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${t?.name}" masası aktivdir! Əvvəlcə bağlayın.`); return; }
   confirmAction(`"${esc(t?.name)}" masası silinsin?`, () => {
     R.tables.child(id).remove();
-    addLog('admin',`Masa silindi: ${t?.name}`,{ tableId:id });
+    addLog('table_mgmt',`Masa silindi: ${t?.name}`,{ tableId:id });
     state.tables = state.tables.filter(x => x.id !== id);
     if (state._selectedTableMgmtId === id) state._selectedTableMgmtId = null;
     renderTables();
@@ -1489,12 +1597,50 @@ function getFilteredLogs() {
   return list;
 }
 
+// Tarixçə üçün tam kateqoriya lüğəti - proqramdakı HƏR əməliyyat növü üçün ayrıca,
+// dəqiq kateqoriya (əvvəllər hər şey 7 ümumi tipə yığılmışdı, indi 23 dəqiq tipdir).
+// Digər hesabatlarda da (məs. Ləğvetmələr) bu etiket/rəng xəritəsi təkrar istifadə olunur.
+export const LOG_TYPE_INFO = {
+  login:                { label: 'GİRİŞ',               color: '#2ecc71' },
+  logout:                { label: 'ÇIXIŞ',               color: '#7f8c8d' },
+  table_open:            { label: 'MASA AÇILIŞI',         color: '#3498db' },
+  table_close:           { label: 'MASA BAĞLANIŞI',       color: '#2c5f8a' },
+  table:                 { label: 'MASA',                 color: '#3498db' },
+  table_transfer:        { label: 'MASA/MAL KÖÇÜRMƏ',     color: '#16a085' },
+  order_send:            { label: 'SİFARİŞ GÖNDƏRMƏ',     color: '#f39c12' },
+  order_cancel:          { label: 'SİFARİŞ LƏĞVİ',        color: '#e74c3c' },
+  discount:              { label: 'ENDİRİM/İKRAM',        color: '#9b59b6' },
+  payment:               { label: 'ÖDƏNİŞ',               color: '#27ae60' },
+  bill_print:            { label: 'HESAB ÇAPI',           color: '#1abc9c' },
+  credit:                { label: 'NİSYƏ',                color: '#d35400' },
+  customer_request:      { label: 'MÜŞTƏRİ TƏLƏBİ',       color: '#e74c3c' },
+  chat:                  { label: 'SÖHBƏT',               color: '#e67e22' },
+  feedback:              { label: 'ŞİKAYƏT/TƏKLİF',       color: '#c0392b' },
+  menu_mgmt:             { label: 'MENYU İDARƏSİ',        color: '#8e44ad' },
+  staff_mgmt:            { label: 'İŞÇİ İDARƏSİ',         color: '#8e44ad' },
+  table_mgmt:            { label: 'MASA İDARƏSİ',         color: '#8e44ad' },
+  supplier_mgmt:         { label: 'TƏCHİZATÇI İDARƏSİ',   color: '#8e44ad' },
+  purchase_mgmt:         { label: 'MAL ALIŞI İDARƏSİ',    color: '#8e44ad' },
+  loyalty_mgmt:          { label: 'LOYALLIQ İDARƏSİ',     color: '#8e44ad' },
+  payment_method_mgmt:   { label: 'ÖDƏNİŞ NÖVÜ İDARƏSİ',  color: '#8e44ad' },
+  customer_mgmt:         { label: 'NİSYƏ MÜŞTƏRİ İDARƏSİ',color: '#8e44ad' },
+  settings:              { label: 'SİSTEM AYARLARI',      color: '#5d6d7e' }
+};
+
 export function renderLogs() {
   const el = document.getElementById('logList');
+  const filterBarEl = document.getElementById('logFilterBar');
+  if (filterBarEl && !filterBarEl.dataset.built) {
+    // Filtr düymələri BİR DƏFƏ, ümumi kateqoriya lüğətindən dinamik qurulur - yeni
+    // kateqoriya əlavə olunanda burada əl ilə düymə əlavə etməyə ehtiyac qalmır.
+    filterBarEl.innerHTML = `<button class="log-filter ${state.logFilter==='all'?'active':''}" onclick="setLogFilter('all',this)">Hamısı</button>` +
+      Object.entries(LOG_TYPE_INFO).map(([type, info]) =>
+        `<button class="log-filter ${state.logFilter===type?'active':''}" onclick="setLogFilter('${type}',this)" style="border-color:${info.color}66;">${info.label}</button>`
+      ).join('');
+    filterBarEl.dataset.built = '1';
+  }
   const list = getFilteredLogs();
   if (!list.length) { el.innerHTML='<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
-  const colors = { login:'#2ecc71', logout:'#95a5a6', order:'#f39c12', table:'#3498db', admin:'#8e44ad', chat:'#e67e22', customer:'#e74c3c' };
-  const labels = { login:'GİRİŞ', logout:'ÇIXIŞ', order:'SİFARİŞ', table:'MASA', admin:'ADMİN', chat:'MESAJ', customer:'MÜŞTƏRİ' };
   // DİQQƏT: "visible" YALNIZ EKRANDA göstəriləni məhdudlaşdırır (performans üçün, çox uzun
   // siyahını render etməmək məqsədilə). SEÇİM (_selectedLogIds) isə BÜTÜN (list) üzərində
   // işləməlidir - əks halda "hamısını seç" yalnız görünən ilk hissəni seçər, qalanları YOX.
@@ -1514,7 +1660,7 @@ export function renderLogs() {
   el.innerHTML = barHtml + noticeHtml + visible.map(l=>`
     <div class="log-item">
       <input type="checkbox" onchange="toggleLogSelect('${l.id}')" ${state._selectedLogIds.includes(l.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
-      <span class="log-badge" style="background:${colors[l.type]||'#666'}22;color:${colors[l.type]||'#aaa'}">${labels[l.type]||'LOG'}</span>
+      <span class="log-badge" style="background:${(LOG_TYPE_INFO[l.type]?.color||'#666')}22;color:${LOG_TYPE_INFO[l.type]?.color||'#aaa'}">${LOG_TYPE_INFO[l.type]?.label||'LOG'}</span>
       <span class="log-text">${esc(l.message)}</span>
       <span class="log-time">${l.time} ${l.date}</span>
     </div>
@@ -1727,10 +1873,10 @@ export function saveCustomer() {
 
   if (state.editTarget?.type === 'customer') {
     R.customers.child(state.editTarget.id).update({ name, phone });
-    addLog('admin', `Müştəri redaktə edildi: ${name}`, {});
+    addLog('customer_mgmt', `Müştəri redaktə edildi: ${name}`, {});
   } else {
     R.customers.push({ name, phone, balance, createdAt: Date.now() });
-    addLog('admin', `Yeni müştəri qeydə alındı: ${name}`, {});
+    addLog('customer_mgmt', `Yeni müştəri qeydə alındı: ${name}`, {});
   }
   closeAddModal();
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Müştəri saxlanıldı');
@@ -1750,7 +1896,7 @@ export function deleteCustomer(id) {
   if (c?.balance > 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu müştərinin ödənilməmiş borcu var, əvvəlcə sıfırlayın.'); return; }
   confirmAction(`"${esc(c?.name)}" müştərisi silinsin?`, () => {
     R.customers.child(id).remove();
-    addLog('admin', `Müştəri silindi: ${c?.name}`, {});
+    addLog('customer_mgmt', `Müştəri silindi: ${c?.name}`, {});
     showToast('<svg class="icon"><use href="#i-trash"></use></svg> Müştəri silindi');
   });
 }
@@ -1821,10 +1967,10 @@ export function savePaymentMethod() {
 
   if (state.editTarget?.type === 'paymentMethod') {
     R.paymentMethods.child(state.editTarget.id).update({ name });
-    addLog('admin', `Ödəniş növü redaktə edildi: ${name}`, {});
+    addLog('payment_method_mgmt', `Ödəniş növü redaktə edildi: ${name}`, {});
   } else {
     R.paymentMethods.push({ name, createdAt: Date.now() });
-    addLog('admin', `Yeni ödəniş növü yaradıldı: ${name}`, {});
+    addLog('payment_method_mgmt', `Yeni ödəniş növü yaradıldı: ${name}`, {});
   }
   closeAddModal();
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Ödəniş növü saxlanıldı');
@@ -1843,7 +1989,7 @@ export function deletePaymentMethod(id) {
   const p = state.paymentMethods.find(x=>x.id===id);
   confirmAction(`"${esc(p?.name)}" ödəniş növü silinsin?`, () => {
     R.paymentMethods.child(id).remove();
-    addLog('admin', `Ödəniş növü silindi: ${p?.name}`, {});
+    addLog('payment_method_mgmt', `Ödəniş növü silindi: ${p?.name}`, {});
     showToast('<svg class="icon"><use href="#i-trash"></use></svg> Ödəniş növü silindi');
   });
 }
@@ -2037,7 +2183,7 @@ export function deleteSelectedClosedOrders() {
   if (!ids.length) return;
   confirmDelete2x(ids.length, 'bağlanmış masa qeydi', () => {
     ids.forEach(id => db.ref('closedOrders/' + id).remove());
-    addLog('admin', `Admin ${ids.length} bağlanmış masa qeydini seçib sildi`, {});
+    addLog('table_close', `Admin ${ids.length} bağlanmış masa qeydini seçib sildi`, {});
     state.closedOrders = state.closedOrders.filter(o => !ids.includes(o.id));
     state._selectedClosedOrderIds = [];
     if (ids.includes(state._selectedClosedOrderId)) state._selectedClosedOrderId = null;
@@ -2234,7 +2380,7 @@ export function deleteSelectedLoyaltyCustomers() {
   if (!ids.length) return;
   confirmDelete2x(ids.length, 'qeydiyyatlı müştəri', () => {
     ids.forEach(id => db.ref('loyaltyCustomers/' + id).remove());
-    addLog('admin', `Admin ${ids.length} qeydiyyatlı müştərini seçib sildi`, {});
+    addLog('loyalty_mgmt', `Admin ${ids.length} qeydiyyatlı müştərini seçib sildi`, {});
     state.loyaltyCustomers = state.loyaltyCustomers.filter(c => !ids.includes(c.id));
     state._selectedLoyaltyCustomerIds = [];
     if (ids.includes(state._selectedLoyaltyCustomerId)) state._selectedLoyaltyCustomerId = null;
@@ -2248,7 +2394,7 @@ export function deleteSingleLoyaltyCustomer(id) {
   if (!c) return;
   confirmDelete2x(1, `"${c.firstName} ${c.lastName}" adlı müştəri`, () => {
     db.ref('loyaltyCustomers/' + id).remove();
-    addLog('admin', `Admin qeydiyyatlı müştərini sildi: ${c.firstName} ${c.lastName}`, {});
+    addLog('loyalty_mgmt', `Admin qeydiyyatlı müştərini sildi: ${c.firstName} ${c.lastName}`, {});
     state.loyaltyCustomers = state.loyaltyCustomers.filter(x => x.id !== id);
     if (state._selectedLoyaltyCustomerId === id) state._selectedLoyaltyCustomerId = null;
     renderLoyaltyCustomers();
@@ -2289,7 +2435,7 @@ export function saveLoyaltyCustomerEdit() {
     return;
   }
   db.ref('loyaltyCustomers/' + id).update(updated);
-  addLog('admin', `Admin qeydiyyatlı müştərini redaktə etdi: ${updated.firstName} ${updated.lastName}`, {});
+  addLog('loyalty_mgmt', `Admin qeydiyyatlı müştərini redaktə etdi: ${updated.firstName} ${updated.lastName}`, {});
   closeLoyaltyEditModal();
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Məlumatlar yeniləndi');
 }
@@ -2385,11 +2531,11 @@ export function saveSupplier() {
   const editId = document.getElementById('supplierModal').dataset.editId;
   if (editId) {
     db.ref('suppliers/'+editId).update(data);
-    addLog('admin', `Təchizatçı redaktə edildi: ${name}`, {});
+    addLog('supplier_mgmt', `Təchizatçı redaktə edildi: ${name}`, {});
   } else {
     data.totalDebt = 0; data.createdAt = Date.now();
     db.ref('suppliers').push(data);
-    addLog('admin', `Yeni təchizatçı əlavə edildi: ${name}`, {});
+    addLog('supplier_mgmt', `Yeni təchizatçı əlavə edildi: ${name}`, {});
   }
   closeSupplierModal();
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı');
@@ -2401,7 +2547,7 @@ export function deleteSupplier(id) {
   if ((s.totalDebt||0) > 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Borcu olan təchizatçı silinə bilməz, əvvəlcə borcu sıfırlayın'); return; }
   confirmDelete2x(1, `"${s.name}" adlı təchizatçı`, () => {
     db.ref('suppliers/'+id).remove();
-    addLog('admin', `Təchizatçı silindi: ${s.name}`, {});
+    addLog('supplier_mgmt', `Təchizatçı silindi: ${s.name}`, {});
     state.suppliers = state.suppliers.filter(x => x.id !== id);
     if (state._selectedSupplierMgmtId === id) state._selectedSupplierMgmtId = null;
     renderSuppliers();
@@ -2500,7 +2646,7 @@ export function deletePurchase(id) {
       }
     });
     db.ref('purchases/'+id).remove();
-    addLog('admin', `Alış qeydi silindi: ${p.supplierName} - №${p.invoiceNumber}`, {});
+    addLog('purchase_mgmt', `Alış qeydi silindi: ${p.supplierName} - №${p.invoiceNumber}`, {});
     state.purchases = state.purchases.filter(x => x.id !== id);
     if (state._selectedPurchaseId === id) state._selectedPurchaseId = null;
     renderPurchases();
@@ -2754,7 +2900,7 @@ export function savePurchase() {
     db.ref('purchases').push(purchaseData);
   }
 
-  addLog('admin', `${editId?'Alış qeydi redaktə edildi':'Yeni alış qeydə alındı'}: ${supplier.name} - №${invoiceNumber||'?'} (${totalAmount.toFixed(2)} ₼)`, {});
+  addLog('purchase_mgmt', `${editId?'Alış qeydi redaktə edildi':'Yeni alış qeydə alındı'}: ${supplier.name} - №${invoiceNumber||'?'} (${totalAmount.toFixed(2)} ₼)`, {});
   closePurchaseModal();
   showToast(`<svg class="icon"><use href="#i-check"></use></svg> Alış ${editId?'yeniləndi':'qeydə alındı'}`);
 }
@@ -2791,7 +2937,7 @@ export function restoreClosedOrder(id) {
       sessionId, openedById: o.openedById || o.staffId, openedByName: o.openedByName || o.staffName
     });
     R.closedOrders.child(id).remove();
-    addLog('admin', `Admin "${o.tableName}" masasını "${newName}" adı ilə bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: newTableId, sessionId });
+    addLog('table_open', `Admin "${o.tableName}" masasını "${newName}" adı ilə bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: newTableId, sessionId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${newName}" olaraq bərpa edildi`);
   }, { title: 'Masanı bərpa et', okLabel: '<svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et', okClass: 'btn-blue' });
 }
