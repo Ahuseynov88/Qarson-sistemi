@@ -280,7 +280,7 @@ export class OrderCart {
         const m = state.menuItems.find(x => x.id === draft?.menuItemId);
         return m ? { name: m.name, qty: draft.qty } : null;
       }).filter(Boolean);
-      addLog('order', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi: ${formatItemsList(sentItemsSummary)} (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
+      addLog('order_send', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi: ${formatItemsList(sentItemsSummary)} (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Sifariş göndərildi');
     });
 
