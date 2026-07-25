@@ -121,6 +121,8 @@
         <button class="report-subtab" data-view="turnover" onclick="setReportView('turnover')"><svg class="icon"><use href="#i-refresh"></use></svg> Masa Dövriyyəsi</button>
         <button class="report-subtab" data-view="loyalty" onclick="setReportView('loyalty')"><svg class="icon"><use href="#i-users"></use></svg> Loyallıq Proqramı</button>
         <button class="report-subtab" data-view="compare" onclick="setReportView('compare')"><svg class="icon"><use href="#i-chart"></use></svg> Dövrlər Müqayisəsi</button>
+        <button class="report-subtab" data-view="cancellations" onclick="setReportView('cancellations')"><svg class="icon"><use href="#i-trash"></use></svg> Ləğvetmələr</button>
+        <button class="report-subtab" data-view="openTables" onclick="setReportView('openTables')"><svg class="icon"><use href="#i-chair"></use></svg> Hazırda Açıq Masalar</button>
       </div>
       <div id="reportContent"></div>
     </div>
@@ -162,15 +164,7 @@
         <div class="form-group"><label>Saatdan</label><input type="time" id="logTimeFrom" onchange="renderLogs()"></div>
         <div class="form-group"><label>Saata</label><input type="time" id="logTimeTo" onchange="renderLogs()"></div>
       </div>
-      <div class="log-filter-bar">
-        <button class="log-filter active" onclick="setLogFilter('all',this)">Hamısı</button>
-        <button class="log-filter" onclick="setLogFilter('login',this)">Giriş/Çıxış</button>
-        <button class="log-filter" onclick="setLogFilter('order',this)">Sifariş</button>
-        <button class="log-filter" onclick="setLogFilter('table',this)">Masa</button>
-        <button class="log-filter" onclick="setLogFilter('admin',this)">Admin</button>
-        <button class="log-filter" onclick="setLogFilter('chat',this)">Mesaj</button>
-        <button class="log-filter" onclick="setLogFilter('customer',this)">Müştəri</button>
-      </div>
+      <div class="log-filter-bar" id="logFilterBar"></div>
       <div class="log-list" id="logList"></div>
     </div>
     <div class="admin-section" id="sec-settings">
