@@ -212,6 +212,9 @@ export class ConfirmedOrder {
     const isPartial = qtyToCancel < fullQty;
     const cancelledName = it.name, cancelledMenuItemId = it.menuItemId;
     const reasonText = reason || 'Qeyd olunmayıb';
+    // Sifarişi ilk göndərən işçi (ləğv edəndən FƏRQLİ ola bilər) - hesabatda hər ikisi görünsün
+    const orderOwner = state.staff.find(s => s.id === order.waiterId);
+    const orderOwnerName = orderOwner?.name || 'Naməlum';
 
     R.tableOrders.child(tableId).transaction(current => {
       if (!current || !current.items || !current.items[itemKey]) return current;
@@ -236,8 +239,9 @@ export class ConfirmedOrder {
       const qtyLabel = isPartial ? `${qtyToCancel} ədəd` : `bütün (${fullQty} ədəd)`;
       // Ləğv edilən məbləğ = (ləğv olunan miqdar / ümumi miqdar) nisbətində qiymətdən pay
       const cancelledAmount = Math.round((it.price||0) * (1-((it.discountPercent||0)/100)) * qtyToCancel * 100) / 100;
-      addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Səbəb: ${reasonText}`,
-        { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText, staffId: state.user?.id, staffName: state.user?.name });
+      addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Sifarişi vermiş: ${orderOwnerName} — Səbəb: ${reasonText}`,
+        { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText,
+          staffId: state.user?.id, staffName: state.user?.name, orderOwnerId: order.waiterId||null, orderOwnerName });
       showToast(`<svg class="icon"><use href="#i-trash"></use></svg> ${cancelledName} (${qtyToCancel} ədəd) sifarişdən silindi`);
       this.renderSummary(tableId);
     });
