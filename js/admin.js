@@ -1505,9 +1505,14 @@ export function deleteSelectedLogs() {
   const ids = state._selectedLogIds || [];
   if (!ids.length) return;
   confirmDelete2x(ids.length, 'tarixçə qeydi', () => {
-    ids.forEach(id => R.logs.child(id).remove());
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
-    state._selectedLogIds = [];
+    Promise.all(ids.map(id => R.logs.child(id).remove()))
+      .then(() => {
+        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ids.length} qeyd silindi`);
+        state._selectedLogIds = [];
+      })
+      .catch(err => {
+        showToast('<svg class="icon"><use href="#i-error"></use></svg> Silinmədi: ' + (err?.message || 'naməlum xəta'));
+      });
   });
 }
 
@@ -1523,9 +1528,11 @@ export function clearOldLogs() {
     const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
     R.logs.once('value', snap => {
       const data = snap.val() || {};
-      let deletedCount = 0;
-      Object.keys(data).forEach(key => { if (data[key].timestamp < cutoff) { R.logs.child(key).remove(); deletedCount++; } });
-      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${deletedCount} köhnə qeyd silindi`);
+      const toDelete = Object.keys(data).filter(key => data[key].timestamp < cutoff);
+      if (!toDelete.length) { showToast('<svg class="icon"><use href="#i-check"></use></svg> Silinəcək köhnə qeyd yoxdur'); return; }
+      Promise.all(toDelete.map(key => R.logs.child(key).remove()))
+        .then(() => showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${toDelete.length} köhnə qeyd silindi`))
+        .catch(err => showToast('<svg class="icon"><use href="#i-error"></use></svg> Silinmədi: ' + (err?.message || 'naməlum xəta')));
     });
   });
 }
@@ -2623,23 +2630,59 @@ export function savePurchase() {
   if (paymentStatus === 'paid') paidAmount = totalAmount;
   else if (paymentStatus === 'partial') paidAmount = parseFloat(document.getElementById('purPaidAmount').value) || 0;
 
-  // REDAKTƏ rejimindədirsə, ƏVVƏLCƏ köhnə qeydin borc/stok təsirini GERİ ALIRIQ, sonra
-  // yeni dəyərləri tətbiq edirik - bu, istənilən dəyişikliyi (miqdar, qiymət, təchizatçı
-  // dəyişməsi belə) riyazi cəhətdən düzgün əks etdirir.
-  if (oldPurchase) {
-    const oldDebtDelta = Math.round(((oldPurchase.totalAmount||0) - (oldPurchase.paidAmount||0)) * 100) / 100;
-    if (oldDebtDelta !== 0) {
-      db.ref('suppliers/'+oldPurchase.supplierId+'/totalDebt').transaction(cur => Math.max(0, Math.round(((cur||0) - oldDebtDelta)*100)/100));
+  const newDebtContribution = Math.round((totalAmount - paidAmount) * 100) / 100;
+  const oldDebtContribution = oldPurchase ? Math.round(((oldPurchase.totalAmount||0) - (oldPurchase.paidAmount||0)) * 100) / 100 : 0;
+
+  // NET FƏRQ (delta) əsaslı yanaşma: "əvvəlcə köhnəni geri al, sonra yenini tətbiq et"
+  // ƏVƏZİNƏ, birbaşa FƏRQİ tətbiq edirik. Bu vacibdir, çünki aralıqda satış olubsa (stok
+  // artıq dəyişibsə), geri-alma addımı mənfi ədədi sıfıra "kilidləyə" bilər və məlumat itər
+  // (məs. 10 alınıb, 3 satılıb (stok=7), sonra 10→15 redaktə edilsə, DÜZGÜN nəticə 12-dir,
+  // "geri al + tətbiq et" isə səhvən 15 verir).
+  if (oldPurchase && oldPurchase.supplierId !== supplierId) {
+    // Təchizatçı özü dəyişibsə, delta mənasız olur - hər iki hesab ayrıca düzəldilir
+    if (oldDebtContribution !== 0) {
+      db.ref('suppliers/'+oldPurchase.supplierId+'/totalDebt').transaction(cur => Math.max(0, Math.round(((cur||0) - oldDebtContribution)*100)/100));
     }
-    (oldPurchase.items||[]).filter(it => it.isTrackable).forEach(it => {
-      const existing = state.menuItems.find(m => m.isTrackable && m.name.trim().toLowerCase() === it.name.trim().toLowerCase());
-      if (existing) {
-        R.menuItems.child(existing.id).child('stock').transaction(cur => Math.max(0, (cur||0) - it.qty));
-      }
-    });
+    if (newDebtContribution !== 0) {
+      db.ref('suppliers/'+supplierId+'/totalDebt').transaction(cur => Math.max(0, Math.round(((cur||0) + newDebtContribution)*100)/100));
+    }
+  } else {
+    const netDebtDelta = Math.round((newDebtContribution - oldDebtContribution) * 100) / 100;
+    if (netDebtDelta !== 0) {
+      db.ref('suppliers/'+supplierId+'/totalDebt').transaction(cur => Math.max(0, Math.round(((cur||0) + netDebtDelta)*100)/100));
+    }
   }
 
-  const debtIncrease = Math.round((totalAmount - paidAmount) * 100) / 100;
+  // Stok üçün: köhnə və yeni sətirləri AD üzrə uyğunlaşdırıb, hər biri üçün NET fərqi
+  // cari (indiki) stok üzərinə tətbiq edirik - beləliklə aralıqdakı satışlar qorunur.
+  const oldByName = {};
+  (oldPurchase?.items || []).filter(it => it.isTrackable).forEach(it => {
+    const key = it.name.trim().toLowerCase();
+    oldByName[key] = (oldByName[key]||0) + it.qty;
+  });
+  const newByName = {};
+  validLines.filter(l => l.isTrackable && l.name.trim()).forEach(l => {
+    const key = l.name.trim().toLowerCase();
+    newByName[key] = (newByName[key]||0) + l.qty;
+  });
+  const allTrackableNames = new Set([...Object.keys(oldByName), ...Object.keys(newByName)]);
+  allTrackableNames.forEach(nameKey => {
+    const delta = (newByName[nameKey]||0) - (oldByName[nameKey]||0);
+    if (delta === 0) return;
+    const existing = state.menuItems.find(m => m.isTrackable && m.name.trim().toLowerCase() === nameKey);
+    if (existing) {
+      R.menuItems.child(existing.id).child('stock').transaction(cur => Math.max(0, (cur||0) + delta));
+    } else if (delta > 0) {
+      // Mal menyuda ümumiyyətlə yoxdur və müsbət fərqdir - yeni mal kimi yaradılır
+      const line = validLines.find(l => l.name.trim().toLowerCase() === nameKey);
+      if (line) {
+        R.menuItems.push({
+          name: line.name.trim(), category: line.category.trim() || 'Digər',
+          price: line.newSalePrice || 0, stock: delta, isTrackable: true, createdAt: Date.now()
+        });
+      }
+    }
+  });
 
   const purchaseData = {
     date, supplierId, supplierName: supplier.name, invoiceNumber, items, totalAmount,
@@ -2653,25 +2696,6 @@ export function savePurchase() {
   } else {
     db.ref('purchases').push(purchaseData);
   }
-
-  // Təchizatçının borcunu yeniləyirik (ödənilməmiş hissə qədər)
-  if (debtIncrease !== 0) {
-    db.ref('suppliers/'+supplierId+'/totalDebt').transaction(cur => Math.max(0, Math.round(((cur||0) + debtIncrease)*100)/100));
-  }
-
-  // Anbarda izlənən mallar üçün mövcud menyu malını tapır (stokunu artırır) və ya
-  // yeni menyu malı yaradır (verilmiş satış qiyməti ilə)
-  validLines.filter(l => l.isTrackable && l.name.trim()).forEach(l => {
-    const existing = state.menuItems.find(m => m.isTrackable && m.name.trim().toLowerCase() === l.name.trim().toLowerCase());
-    if (existing) {
-      R.menuItems.child(existing.id).child('stock').transaction(cur => (cur||0) + l.qty);
-    } else {
-      R.menuItems.push({
-        name: l.name.trim(), category: l.category.trim() || 'Digər',
-        price: l.newSalePrice || 0, stock: l.qty, isTrackable: true, createdAt: Date.now()
-      });
-    }
-  });
 
   addLog('admin', `${editId?'Alış qeydi redaktə edildi':'Yeni alış qeydə alındı'}: ${supplier.name} - №${invoiceNumber||'?'} (${totalAmount.toFixed(2)} ₼)`, {});
   closePurchaseModal();
