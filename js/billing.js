@@ -234,7 +234,10 @@ export class ConfirmedOrder {
       updateStock(cancelledMenuItemId, qtyToCancel, state.menuItems);
       const t = state.tables.find(x => x.id === tableId);
       const qtyLabel = isPartial ? `${qtyToCancel} ədəd` : `bütün (${fullQty} ədəd)`;
-      addLog('order', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi — Səbəb: ${reasonText}`, { tableId, menuItemId: cancelledMenuItemId, reason: reasonText });
+      // Ləğv edilən məbləğ = (ləğv olunan miqdar / ümumi miqdar) nisbətində qiymətdən pay
+      const cancelledAmount = Math.round((it.price||0) * (1-((it.discountPercent||0)/100)) * qtyToCancel * 100) / 100;
+      addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Səbəb: ${reasonText}`,
+        { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText, staffId: state.user?.id, staffName: state.user?.name });
       showToast(`<svg class="icon"><use href="#i-trash"></use></svg> ${cancelledName} (${qtyToCancel} ədəd) sifarişdən silindi`);
       this.renderSummary(tableId);
     });
@@ -344,7 +347,7 @@ export class ConfirmedOrder {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
       const discStr = this._discountType==='percent' ? `${val}%` : `${val.toFixed(2)} ₼`;
-      addLog('order', isWholeTable
+      addLog('discount', isWholeTable
         ? `${state.user.name} "${t?.name}" masasına ${discStr} endirim verdi (bütün hesab)`
         : `${state.user.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} mallarına ${discStr} endirim verdi`, { tableId });
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> Endirim tətbiq edildi: ${discStr}`);
@@ -453,7 +456,7 @@ export class ConfirmedOrder {
           staffId: state.user.id, staffName: state.user.name,
           createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
         });
-        addLog('order', `${state.user.name} "${t?.name}" masasından ${formatItemsList(chargedItems)} (${chargedAmount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+        addLog('credit', `${state.user.name} "${t?.name}" masasından ${formatItemsList(chargedItems)} (${chargedAmount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
         showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
         this.clearBatchSelection();
         this.renderSummary(tableId);
@@ -480,7 +483,7 @@ export class ConfirmedOrder {
         staffId: state.user.id, staffName: state.user.name,
         createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
       });
-      addLog('order', `${state.user.name} "${t?.name}" masasının hesabı: ${formatItemsList(wholeTableItems)} (${remaining.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+      addLog('credit', `${state.user.name} "${t?.name}" masasının hesabı: ${formatItemsList(wholeTableItems)} (${remaining.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${remaining.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
       this.renderSummary(tableId);
     });
@@ -530,7 +533,7 @@ export class ConfirmedOrder {
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
-      addLog('order', `${state.user?.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} ikram etdi`, { tableId });
+      addLog('discount', `${state.user?.name} "${t?.name}" masasında ${formatItemsList(appliedItemsList)} ikram etdi`, { tableId });
       showToast(`<svg class="icon"><use href="#i-gift"></use></svg> ${formatItemsList(appliedItemsList)} ikram edildi`);
       this.clearBatchSelection();
       this.renderSummary(tableId);
@@ -574,7 +577,7 @@ export class ConfirmedOrder {
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
-      addLog('order', `${state.user?.name} "${t?.name}" masasında ${formatItemsList(resetItemsList)} endirim/ikramını sıfırladı`, { tableId });
+      addLog('discount', `${state.user?.name} "${t?.name}" masasında ${formatItemsList(resetItemsList)} endirim/ikramını sıfırladı`, { tableId });
       showToast(`<svg class="icon"><use href="#i-check"></use></svg> Endirim/ikram sıfırlandı`);
       this.clearBatchSelection();
       this.renderSummary(tableId);
@@ -707,7 +710,7 @@ export class ConfirmedOrder {
       this._transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved);
     });
 
-    addLog('table', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə köçürdü: ${formatItemsList(movedList)}`, { tableId: fromTableId, toTableId });
+    addLog('table_transfer', `${state.user?.name} "${fromT?.name}"-dən "${toT?.name}"-ə köçürdü: ${formatItemsList(movedList)}`, { tableId: fromTableId, toTableId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${formatItemsList(movedList)} → "${toT?.name}"`);
     this.clearBatchSelection();
     this.closeItemTransferModal();
@@ -730,7 +733,7 @@ export class ConfirmedOrder {
     }
     R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now(), sessionId, openedById: fromT?.openedById||null, openedByName: fromT?.openedByName||null });
     R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
-    addLog('table', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü: ${formatItemsList(order?.items||{})}`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
+    addLog('table_transfer', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü: ${formatItemsList(order?.items||{})}`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
 }
@@ -940,7 +943,7 @@ export class PaymentProcessor {
       p.remainingAmount = finalData ? (finalData.remainingAmount||0) : Math.max(0, finalTotalForCalc - p.paidAmount);
 
       const logTypeLabel = payData.splitLabel ? `${typeLabel}: ${payData.splitLabel}` : typeLabel;
-      addLog('order', `${state.user.name} ${thisPay.toFixed(2)} ₼ ödəniş aldı (${logTypeLabel})`, { tableId });
+      addLog('payment', `${state.user.name} ${thisPay.toFixed(2)} ₼ ödəniş aldı (${logTypeLabel})`, { tableId });
       this.close();
 
       const fullyPaid = p.remainingAmount <= 0.01;
