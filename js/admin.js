@@ -196,7 +196,10 @@ export function setReportQuickRange(type) {
     dFrom = new Date(bizToday);
     const day = (dFrom.getDay() + 6) % 7; // Bazar ertəsi = 0
     dFrom.setDate(dFrom.getDate() - day);
-    dTo = new Date(bizTodayEnd);
+    // TAM 7 gün (Bazar ertəsi - Bazar) göstərilir, "bu günə qədər" YOX - bu gün
+    // çərşənbə axşamı olsa belə, bütün həftə (gələcək günlər daxil) görünməlidir.
+    dTo = new Date(dFrom);
+    dTo.setDate(dTo.getDate() + 7);
   } else if (type === 'month') {
     dFrom = new Date(bizToday.getFullYear(), bizToday.getMonth(), 1);
     dTo = new Date(bizTodayEnd);
@@ -664,7 +667,7 @@ function renderReportCancellationsView(el) {
     </table>
     <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Ətraflı siyahı</div>
     <table class="report-table">
-      <thead><tr><th>Tarix/Saat</th><th>Masa</th><th>Mal</th><th class="num">Miqdar</th><th class="num">Məbləğ</th><th>Səbəb</th><th>İşçi</th></tr></thead>
+      <thead><tr><th>Tarix/Saat</th><th>Masa</th><th>Mal</th><th class="num">Miqdar</th><th class="num">Məbləğ</th><th>Səbəb</th><th>Sifarişi verən</th><th>Ləğv edən</th></tr></thead>
       <tbody>${cancellations.length ? cancellations.slice(0,200).map(l => `<tr>
         <td>${esc(l.date)} ${esc(l.time)}</td>
         <td>${esc(l.details?.tableName||'—')}</td>
@@ -672,8 +675,9 @@ function renderReportCancellationsView(el) {
         <td class="num">${l.details?.qty??'—'}</td>
         <td class="num">${(l.details?.amount||0).toFixed(2)} ₼</td>
         <td>${esc(l.details?.reason||'—')}</td>
+        <td>${esc(l.details?.orderOwnerName||'—')}</td>
         <td>${esc(l.details?.staffName||'—')}</td>
-      </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text3);">Bu aralıqda ləğvetmə yoxdur</td></tr>'}</tbody>
+      </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text3);">Bu aralıqda ləğvetmə yoxdur</td></tr>'}</tbody>
     </table>
   `;
 }
@@ -1622,6 +1626,7 @@ export const LOG_TYPE_INFO = {
   payment:               { label: 'ÖDƏNİŞ',               color: '#27ae60' },
   bill_print:            { label: 'HESAB ÇAPI',           color: '#1abc9c' },
   credit:                { label: 'NİSYƏ',                color: '#d35400' },
+  credit_payment:        { label: 'NİSYƏ ÖDƏNİŞİ',        color: '#27ae60' },
   customer_request:      { label: 'MÜŞTƏRİ TƏLƏBİ',       color: '#e74c3c' },
   chat:                  { label: 'SÖHBƏT',               color: '#e67e22' },
   feedback:              { label: 'ŞİKAYƏT/TƏKLİF',       color: '#c0392b' },
@@ -1858,6 +1863,7 @@ export function renderCustomers() {
       </div>
       <span class="status-badge ${(c.balance>0)?'badge-red':'badge-green'}">${(c.balance||0).toFixed(2)} ₼ borc</span>
       <div class="item-actions">
+        ${(c.balance>0) ? `<button class="btn btn-green" onclick="openCustomerPaymentModal('${c.id}')"><svg class="icon"><use href="#i-cash"></use></svg> Ödəniş Al</button>` : ''}
         <button class="btn" style="border:1px solid var(--blue);color:var(--blue);" onclick="openCustomerHistoryModal('${c.id}')"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
         <button class="btn btn-blue" onclick="editCustomer('${c.id}')"><svg class="icon"><use href="#i-edit"></use></svg> Redaktə</button>
         <button class="btn btn-red" onclick="deleteCustomer('${c.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
@@ -1913,15 +1919,33 @@ export function deleteCustomer(id) {
 export function openCustomerHistoryModal(customerId) {
   const c = state.customers.find(x=>x.id===customerId);
   if (!c) return;
-  document.getElementById('customerHistoryTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(c.name)} — Alış Tarixçəsi`;
-  document.getElementById('customerHistoryBalance').textContent = `Cari borc: ${(c.balance||0).toFixed(2)} ₼`;
+  document.getElementById('customerHistoryModal').dataset.customerId = customerId;
+  document.getElementById('customerHistoryTitle').innerHTML = `<svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(c.name)} — Hesab Tarixçəsi`;
+  document.getElementById('customerHistoryBalance').innerHTML = `Cari borc: <span style="color:${(c.balance||0)>0?'var(--red)':'var(--green)'};">${(c.balance||0).toFixed(2)} ₼</span>`;
+  // Borcu olmayan müştəri üçün "Ödəniş Al" düyməsi lazımsızdır - gizlədilir
+  const payBtn = document.getElementById('customerHistoryPayBtn');
+  if (payBtn) payBtn.style.display = (c.balance||0) > 0 ? 'flex' : 'none';
 
-  const charges = (state.customerCharges||[]).filter(ch => ch.customerId === customerId);
+  // Bütöv hesab tarixçəsi: HƏM borc yazılan alışlar (qırmızı), HƏM edilən ödənişlər
+  // (yaşıl) XRONOLOJİ ardıcıllıqla göstərilir - əvvəllər yalnız alışlar görünürdü.
+  const entries = (state.customerCharges||[]).filter(ch => ch.customerId === customerId)
+    .slice().sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
   const el = document.getElementById('customerHistoryList');
-  if (!charges.length) {
-    el.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Hələ heç bir alış qeydə alınmayıb.</p>';
+  if (!entries.length) {
+    el.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Hələ heç bir əməliyyat qeydə alınmayıb.</p>';
   } else {
-    el.innerHTML = charges.map(ch => {
+    el.innerHTML = entries.map(ch => {
+      if (ch.type === 'payment') {
+        const typeLabel = ch.paymentType === 'pos' ? 'POS' : 'Nağd';
+        return `<div class="audit-timeline-item">
+          <div class="audit-timeline-text">
+            <strong style="color:var(--green);"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Ödəniş qəbul edildi — ${(ch.amount||0).toFixed(2)} ₼</strong><br>
+            <span style="color:var(--text2);font-size:12px;">${typeLabel}</span><br>
+            <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
+          </div>
+          <div class="audit-timeline-time">${ch.time||''} — ${ch.date||''}</div>
+        </div>`;
+      }
       const itemsStr = (ch.items||[]).map(it => `${it.qty}x ${it.name}`).join(', ');
       return `<div class="audit-timeline-item">
         <div class="audit-timeline-text">
@@ -1938,6 +1962,56 @@ export function openCustomerHistoryModal(customerId) {
 
 export function closeCustomerHistoryModal() {
   document.getElementById('customerHistoryModal').classList.remove('open');
+}
+
+export function openCustomerPaymentModal(customerId) {
+  customerId = customerId || document.getElementById('customerHistoryModal').dataset.customerId;
+  const c = state.customers.find(x=>x.id===customerId);
+  if (!c) return;
+  document.getElementById('customerPaymentModal').dataset.customerId = customerId;
+  document.getElementById('customerPaymentCustomerName').textContent = c.name;
+  document.getElementById('customerPaymentCurrentBalance').textContent = `Cari borc: ${(c.balance||0).toFixed(2)} ₼`;
+  document.getElementById('customerPaymentAmount').value = '';
+  document.getElementById('customerPaymentAmount').max = c.balance||0;
+  document.getElementById('customerPaymentType').value = 'cash';
+  document.getElementById('customerPaymentError').textContent = '';
+  document.getElementById('customerPaymentModal').classList.add('open');
+}
+
+export function closeCustomerPaymentModal() {
+  document.getElementById('customerPaymentModal').classList.remove('open');
+}
+
+export function submitCustomerPayment() {
+  const customerId = document.getElementById('customerPaymentModal').dataset.customerId;
+  const c = state.customers.find(x=>x.id===customerId);
+  const errEl = document.getElementById('customerPaymentError');
+  errEl.textContent = '';
+  if (!c) return;
+  const amount = Math.round((parseFloat(document.getElementById('customerPaymentAmount').value) || 0) * 100) / 100;
+  const paymentType = document.getElementById('customerPaymentType').value;
+  const balance = c.balance || 0;
+
+  if (amount <= 0) { errEl.textContent = 'Məbləğ 0-dan böyük olmalıdır.'; return; }
+  if (amount > balance) { errEl.textContent = `Ödəniş cari borcdan (${balance.toFixed(2)} ₼) çox ola bilməz.`; return; }
+
+  // Borcu ödəniş məbləği qədər azaldır (mənfi olmasın deyə əlavə təhlükəsizlik yoxlaması)
+  R.customers.child(customerId).child('balance').transaction(cur => Math.max(0, Math.round(((cur||0) - amount)*100)/100));
+
+  // Ödənişi HƏM ayrıca "customerCharges" jurnalına (ledger) əlavə edirik ki, tarixçədə
+  // görünsün, HƏM DƏ ümumi tarixçəyə (Loglar) qeyd edirik.
+  db.ref('customerCharges').push({
+    customerId, type: 'payment', amount, paymentType,
+    staffId: state.user?.id || null, staffName: state.user?.name || '?',
+    createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
+  });
+  addLog('credit_payment', `${state.user?.name} "${c.name}" adlı müştərinin nisyə borcundan ${amount.toFixed(2)} ₼ ödəniş qəbul etdi (${paymentType==='pos'?'POS':'Nağd'})`,
+    { customerId, customerName: c.name, amount, paymentType, staffId: state.user?.id, staffName: state.user?.name });
+
+  closeCustomerPaymentModal();
+  showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${amount.toFixed(2)} ₼ ödəniş qəbul edildi`);
+  // Tarixçə pəncərəsi açıqdırsa, yeni vəziyyəti əks etdirmək üçün yenidən açırıq
+  setTimeout(() => openCustomerHistoryModal(customerId), 150);
 }
 
 /* ═══════════════════════════════════════════
@@ -2996,6 +3070,7 @@ window.saveMenuUrl = saveMenuUrl;
 window.saveServiceCharge = saveServiceCharge;
 window.saveLoyaltySettings = saveLoyaltySettings;
 window.setLogFilter = setLogFilter;
+window.renderLogs = renderLogs;
 window.setMenuCat = setMenuCat;
 window.selectMenuItem = selectMenuItem;
 window.setTableCat = setTableCat;
@@ -3044,3 +3119,6 @@ window.deleteSelectedClosedOrders = deleteSelectedClosedOrders;
 window.renderClosedOrders = renderClosedOrders;
 window.openCustomerHistoryModal = openCustomerHistoryModal;
 window.closeCustomerHistoryModal = closeCustomerHistoryModal;
+window.openCustomerPaymentModal = openCustomerPaymentModal;
+window.closeCustomerPaymentModal = closeCustomerPaymentModal;
+window.submitCustomerPayment = submitCustomerPayment;
