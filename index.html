@@ -151,6 +151,17 @@
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
         <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldLogs()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
       </div>
+      <div class="closed-tables-filters" style="margin-bottom:12px;">
+        <input type="text" id="logSearchInput" placeholder="Söz və ya ifadə ilə axtar..." oninput="renderLogs()">
+      </div>
+      <div class="closed-tables-filters__row" style="margin-bottom:10px;">
+        <div class="form-group"><label>Tarixdən</label><input type="date" id="logDateFrom" onchange="renderLogs()"></div>
+        <div class="form-group"><label>Tarixə</label><input type="date" id="logDateTo" onchange="renderLogs()"></div>
+      </div>
+      <div class="closed-tables-filters__row" style="margin-bottom:12px;">
+        <div class="form-group"><label>Saatdan</label><input type="time" id="logTimeFrom" onchange="renderLogs()"></div>
+        <div class="form-group"><label>Saata</label><input type="time" id="logTimeTo" onchange="renderLogs()"></div>
+      </div>
       <div class="log-filter-bar">
         <button class="log-filter active" onclick="setLogFilter('all',this)">Hamısı</button>
         <button class="log-filter" onclick="setLogFilter('login',this)">Giriş/Çıxış</button>
