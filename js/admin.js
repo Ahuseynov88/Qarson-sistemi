@@ -1465,24 +1465,53 @@ export function tableForm(name='', isEdit=false) {
   `;
 }
 
-export function renderLogs() {
-  const el = document.getElementById('logList');
+// Tarixçə üçün paylaşılan filtr məntiqi (növ + söz axtarışı + tarix/saat aralığı) -
+// həm göstərmə, həm "hamısını seç" EYNİ filtrlənmiş siyahı üzərində işləməlidir.
+function getFilteredLogs() {
   let list = state.logs;
   if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
+  const q = (document.getElementById('logSearchInput')?.value || '').trim().toLowerCase();
+  if (q) list = list.filter(l => (l.message||'').toLowerCase().includes(q));
+  const dateFrom = document.getElementById('logDateFrom')?.value || '';
+  const dateTo = document.getElementById('logDateTo')?.value || '';
+  const timeFrom = document.getElementById('logTimeFrom')?.value || '';
+  const timeTo = document.getElementById('logTimeTo')?.value || '';
+  if (dateFrom) {
+    const b = new Date(dateFrom);
+    if (timeFrom) { const [h,m] = timeFrom.split(':'); b.setHours(+h,+m,0,0); } else b.setHours(0,0,0,0);
+    list = list.filter(l => l.timestamp >= b.getTime());
+  }
+  if (dateTo) {
+    const b = new Date(dateTo);
+    if (timeTo) { const [h,m] = timeTo.split(':'); b.setHours(+h,+m,59,999); } else b.setHours(23,59,59,999);
+    list = list.filter(l => l.timestamp <= b.getTime());
+  }
+  return list;
+}
+
+export function renderLogs() {
+  const el = document.getElementById('logList');
+  const list = getFilteredLogs();
   if (!list.length) { el.innerHTML='<p style="color:var(--text3);padding:16px;">Log tapılmadı.</p>'; return; }
   const colors = { login:'#2ecc71', logout:'#95a5a6', order:'#f39c12', table:'#3498db', admin:'#8e44ad', chat:'#e67e22', customer:'#e74c3c' };
   const labels = { login:'GİRİŞ', logout:'ÇIXIŞ', order:'SİFARİŞ', table:'MASA', admin:'ADMİN', chat:'MESAJ', customer:'MÜŞTƏRİ' };
+  // DİQQƏT: "visible" YALNIZ EKRANDA göstəriləni məhdudlaşdırır (performans üçün, çox uzun
+  // siyahını render etməmək məqsədilə). SEÇİM (_selectedLogIds) isə BÜTÜN (list) üzərində
+  // işləməlidir - əks halda "hamısını seç" yalnız görünən ilk hissəni seçər, qalanları YOX.
   const visible = list.slice(0,150);
-  state._selectedLogIds = (state._selectedLogIds||[]).filter(id => visible.some(l=>l.id===id));
-  const allChecked = visible.length>0 && visible.every(l=>state._selectedLogIds.includes(l.id));
+  state._selectedLogIds = (state._selectedLogIds||[]).filter(id => list.some(l=>l.id===id));
+  const allChecked = list.length>0 && list.every(l=>state._selectedLogIds.includes(l.id));
   const barHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
     <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
       <input type="checkbox" onchange="toggleSelectAllLogs(this.checked)" ${allChecked?'checked':''} style="width:16px;height:16px;cursor:pointer;">
-      Hamısını seç (${visible.length})
+      Hamısını seç (${list.length})
     </label>
     <button id="logDeleteSelectedBtn" class="btn btn-red" style="display:${state._selectedLogIds.length?'inline-flex':'none'};padding:5px 12px;font-size:11px;" onclick="deleteSelectedLogs()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (${state._selectedLogIds.length})</button>
   </div>`;
-  el.innerHTML = barHtml + visible.map(l=>`
+  const noticeHtml = list.length > visible.length
+    ? `<p style="font-size:11.5px;color:var(--text3);margin-bottom:8px;">Yalnız ilk ${visible.length} qeyd göstərilir (performans üçün), amma "Hamısını seç" bütün ${list.length} qeydi seçir.</p>`
+    : '';
+  el.innerHTML = barHtml + noticeHtml + visible.map(l=>`
     <div class="log-item">
       <input type="checkbox" onchange="toggleLogSelect('${l.id}')" ${state._selectedLogIds.includes(l.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
       <span class="log-badge" style="background:${colors[l.type]||'#666'}22;color:${colors[l.type]||'#aaa'}">${labels[l.type]||'LOG'}</span>
@@ -1504,9 +1533,9 @@ export function toggleLogSelect(id) {
 }
 
 export function toggleSelectAllLogs(checked) {
-  let list = state.logs;
-  if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
-  state._selectedLogIds = checked ? list.slice(0,150).map(l=>l.id) : [];
+  const list = getFilteredLogs();
+  // BÜTÜN uyğun gələn qeydləri seçir (yalnız ekranda göstərilən ilk 150-ni YOX)
+  state._selectedLogIds = checked ? list.map(l=>l.id) : [];
   renderLogs();
 }
 
