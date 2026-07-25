@@ -1,354 +1,273 @@
 /* ═══════════════════════════════════════════
-   STAFF APP
-   Qarson ekranının bütün hissələrini (TableBoard, OrderCart,
-   ConfirmedOrder, PaymentProcessor, AuditTrail) DOM-a bağlayan controller.
-   Bu fayl "Sifariş/Masa/Ödəniş nüvəsi"nin giriş nöqtəsidir.
+   TABLE BOARD
+   Qarson ekranındakı masa grid-i: kateqoriya/işçi filtri,
+   masa aktivləşdirmə/bağlama, canlı taymer.
+   Hadisələr addEventListener ilə bağlanır (inline onclick yoxdur).
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, formatItemsList, closeConfirmAction } from './utils.js';
-import { hasPermission, requirePermission } from './permissions.js';
-import { TableBoard } from './tables.js';
-import { OrderCart } from './order-cart.js';
-import { ConfirmedOrder, PaymentProcessor } from './billing.js';
-import { AuditTrail } from './audit.js';
+import { esc, showToast, addLog } from './utils.js';
+import { hasPermission, staffHasPermission } from './permissions.js';
+import { checkReferralBonusOnClose } from './loyalty.js';
 
-const $ = (id) => document.getElementById(id);
-
-export class StaffApp {
-  constructor() {
-    this._transferFromTableId = null;
-
-    this.tableBoard = new TableBoard(
-      { grid: $('waiterTables'), catTabs: $('waiterCatTabs'), staffFilter: $('waiterStaffFilterRow') },
-      { onTableOpen: (tableId) => this.openTableDetail(tableId) }
-    );
-
-    this.orderCart = new OrderCart(
-      {
-        screen: $('orderScreen'), title: $('orderModalTitle'), catTabs: $('orderCatTabs'),
-        itemsList: $('orderItemsList'), draftList: $('orderDraftList'), draftTotal: $('orderDraftTotal'),
-        searchInput: $('orderSearchInput')
-      },
-      { onClosed: () => this.tableBoard.render() }
-    );
-
-    this.confirmedOrder = new ConfirmedOrder({
-      summaryEl: $('noteOrderSummary'),
-      cancelReasonModal: $('cancelReasonModal'), cancelReasonItemName: $('cancelReasonItemName'), cancelReasonSelect: $('cancelReasonSelect'),
-      discountModal: $('discountModal'), discountTableInfo: $('discountTableInfo'), discountValue: $('discountValue'),
-      discountPreview: $('discountPreview'), discPctBtn: $('disc_pct_btn'), discFixBtn: $('disc_fix_btn'), discountValueLabel: $('discountValueLabel'),
-      complimentModal: $('complimentModal'), complimentBatchInfo: $('complimentBatchInfo'),
-      itemTransferModal: $('itemTransferModal'), itemTransferInfo: $('itemTransferInfo'), itemTransferBatchInfo: $('itemTransferBatchInfo'),
-      itemTransferStage1: $('itemTransferStage1'), itemTransferStage2: $('itemTransferStage2'), itemTransferStage3: $('itemTransferStage3'),
-      itemTransferTableGrid: $('itemTransferTableGrid'), itemTransferConfirmText: $('itemTransferConfirmText')
-    });
-
-    this.payment = new PaymentProcessor({
-      modal: $('paymentModal'), tableName: $('paymentTableName'), totalAmount: $('paymentTotalAmount'),
-      discountInfo: $('paymentDiscountInfo'), finalAmount: $('paymentFinalAmount'), discountRow: $('paymentDiscountRow'),
-      serviceChargeRow: $('paymentServiceChargeRow'), serviceChargeLabel: $('paymentServiceChargeLabel'), serviceChargeValue: $('paymentServiceChargeValue'),
-      cashSection: $('paymentCashSection'), splitSection: $('paymentSplitSection'),
-      cashGiven: $('paymentCashGiven'), changeRow: $('paymentChangeRow'), change: $('paymentChange'), changeLabel: $('changeLabel'),
-      splitStatus: $('splitStatus'), splitInputsWrap: $('splitInputsWrap'),
-      pt_cash: $('pt_cash'), pt_pos: $('pt_pos'), pt_split: $('pt_split'), customMethodsEl: $('paymentCustomMethods')
-    });
-
-    this.audit = new AuditTrail({ modal: $('tableAuditModal'), title: $('tableAuditTitle'), list: $('tableAuditList') });
-
-    this._bindGlobalEvents();
-    this._bindStaticButtons();
+export class TableBoard {
+  /**
+   * @param {Object} els - { grid, catTabs, staffFilter }  DOM elementləri
+   * @param {Object} callbacks - { onTableOpen(tableId) }  masa üstünə klik ediləndə çağırılır
+   */
+  constructor(els, callbacks = {}) {
+    this.el = els.grid;
+    this.catTabsEl = els.catTabs;
+    this.staffFilterEl = els.staffFilter;
+    this.onTableOpen = callbacks.onTableOpen || (() => {});
+    this._bindEvents();
   }
 
-  // ── TableBoard-dan gələn "aktivləşdirmə/bağlama" tələbləri ──
-  _bindGlobalEvents() {
-    document.getElementById('confirmActionModal')?.querySelector('[data-confirm-action-cancel]')?.addEventListener('click', () => closeConfirmAction());
-    document.addEventListener('table:activate-requested', (e) => {
-      const t = state.tables.find(x => x.id === e.detail.tableId);
-      $('confirmTableName').textContent = t?.name || '';
-      $('confirmTableModal').classList.add('open');
+  _bindEvents() {
+    this.el.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-table-id]');
+      if (!card) return;
+      this._handleCardClick(card.dataset.tableId);
     });
-    // OrderCart-da draft (göndərilməmiş) siyahı dəyişəndə bileti yenilə
-    // (göndərilmiş mallar bölməsi avtomatik yığılsın/açılsın deyə)
-    document.addEventListener('order:draft-changed', () => {
-      if (state.noteTableId) this.confirmedOrder.renderSummary(state.noteTableId);
+    this.catTabsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-cat]');
+      if (!btn) return;
+      this.setCategory(btn.dataset.cat);
     });
-    // ESC: açıq modal varsa onu bağla (Ləğv düyməsini simulyasiya edərək - düzgün
-    // təmizləmə məntiqi işə düşsün deyə); heç nə açıq deyilsə, sifariş ekranından geri qayıt
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      const openModal = document.querySelector('.modal-bg.open');
-      if (openModal) {
-        const closeCtrl = openModal.querySelector('[data-cancel], [data-close-audit], [data-close]')
-          || openModal.querySelector('button[onclick*="close" i]');
-        if (closeCtrl) closeCtrl.click();
-        else openModal.classList.remove('open');
-        return;
-      }
-      if ($('orderScreen')?.classList.contains('active')) {
-        $('orderScreen').querySelector('[data-close-order]')?.click();
-      }
+    this.staffFilterEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-staff-filter]');
+      if (!btn) return;
+      const val = btn.dataset.staffFilter;
+      this.setStaffFilter(val === '_all' ? null : val);
     });
   }
 
-  _bindStaticButtons() {
-    // Masa aktivləşdirmə təsdiqi
-    $('confirmTableModal').querySelector('[data-confirm-activate]')?.addEventListener('click', () => {
-      const tableId = state.pendingTableId;
-      if (!tableId) return;
-      this.tableBoard.confirmActivate(tableId);
-      showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa aktiv edildi');
-      this._closeActivateModal();
+  _handleCardClick(tableId) {
+    const t = state.tables.find(x => x.id === tableId);
+    if (!t) return;
+    const isMine = t.occupant === state.user.id;
+    const isOther = t.occupant && !isMine;
+    if (!t.occupant) {
+      this.openActivateConfirm(tableId);
+    } else if (isOther && !hasPermission('waiter.view')) {
+      showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu masa başqa işçiyə aiddir');
+    } else {
+      // Aktiv masa - sifariş/qeydlər hub-unu aç (staff-app.js bunu billing.js ilə əlaqələndirir)
+      this.onTableOpen(tableId);
+    }
+  }
+
+  getCategories() {
+    const cats = new Set();
+    state.tables.forEach(t => cats.add(t.category || t.name.replace(/\s+\d+$/, '') || t.name));
+    return Array.from(cats);
+  }
+
+  renderCatTabs() {
+    const cats = this.getCategories();
+    const tabs = ['all', ...cats];
+    this.catTabsEl.innerHTML = tabs.map(c => `
+      <button class="category-rail__tab" style="white-space:nowrap;width:auto;${state._waiterCatFilter === c ? '' : ''}" data-cat="${esc(c)}">
+        ${c === 'all' ? 'Hamısı' : esc(c)}
+      </button>
+    `).join('');
+    this.catTabsEl.querySelectorAll('[data-cat]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.cat === state._waiterCatFilter);
     });
-    $('confirmTableModal').querySelector('[data-cancel]')?.addEventListener('click', () => this._closeActivateModal());
+  }
 
-    // Masa bağlama təsdiqi
-    $('confirmCloseTableModal').querySelector('[data-confirm-close]')?.addEventListener('click', () => this._handleConfirmClose());
-    $('confirmCloseTableModal').querySelector('[data-cancel]')?.addEventListener('click', () => this._closeCloseModal());
+  setCategory(cat) {
+    state._waiterCatFilter = cat;
+    this.render();
+  }
 
-    // Masa detalı ekranı (kateqoriya+mallar+bilet+idarəetmə - hamısı bir yerdə)
-    $('orderScreen').querySelector('[data-open-discount-hub]')?.addEventListener('click', () => this.confirmedOrder.openDiscountModal());
-    $('orderScreen').querySelector('[data-open-transfer-hub]')?.addEventListener('click', () => this.openTableTransferModal());
-    $('orderScreen').querySelector('[data-open-customer-charge-hub]')?.addEventListener('click', () => this.confirmedOrder.openCustomerChargeModal());
-    $('orderScreen').querySelector('[data-open-payment-hub]')?.addEventListener('click', () => this.payment.open(state.noteTableId));
-    $('orderScreen').querySelector('[data-close-table-hub]')?.addEventListener('click', () => this.requestCloseTable());
-    $('orderScreen').querySelector('[data-print-bill]')?.addEventListener('click', () => this.printBill(state.noteTableId));
-    $('orderScreen').querySelector('[data-open-audit]')?.addEventListener('click', () => this.audit.open(state.noteTableId));
-    $('orderScreen').querySelector('[data-close-order]')?.addEventListener('click', () => this.closeTableDetail());
-    $('orderScreen').querySelector('[data-send-order]')?.addEventListener('click', () => this.orderCart.send());
-    $('noteText').addEventListener('change', () => this.saveNote());
+  renderStaffFilter() {
+    if (!hasPermission('waiter.view')) {
+      this.staffFilterEl.style.display = 'none';
+      state._waiterStaffFilter = null;
+      return;
+    }
+    const activeStaffList = state.staff.filter(s => staffHasPermission(s, 'table.view'));
+    if (!activeStaffList.length) { this.staffFilterEl.style.display = 'none'; return; }
+    this.staffFilterEl.style.display = 'flex';
+    this.staffFilterEl.innerHTML = [
+      `<button class="log-filter ${!state._waiterStaffFilter ? 'active' : ''}" data-staff-filter="_all">Hamısı</button>`
+    ].concat(activeStaffList.map(s =>
+      `<button class="log-filter ${state._waiterStaffFilter === s.id ? 'active' : ''}" data-staff-filter="${s.id}">${esc(s.name)}</button>`
+    )).join('');
+  }
 
-    // İptal səbəbi modalı
-    $('cancelReasonModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeCancelReasonModal());
-    $('cancelReasonModal').querySelector('[data-confirm-cancel-reason]')?.addEventListener('click', () => this.confirmedOrder.confirmCancelWithReason());
-
-    // Endirim modalı
-    $('discountModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeDiscountModal());
-    $('discountModal').querySelector('[data-apply-discount]')?.addEventListener('click', () => this.confirmedOrder.applyDiscount());
-    $('disc_pct_btn').addEventListener('click', () => this.confirmedOrder.setDiscountType('percent'));
-    $('disc_fix_btn').addEventListener('click', () => this.confirmedOrder.setDiscountType('fixed'));
-    $('discountValue').addEventListener('input', () => this.confirmedOrder.previewDiscount());
-
-    // İkram modalı
-    $('complimentModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeComplimentModal());
-    $('complimentModal').querySelector('[data-confirm-compliment]')?.addEventListener('click', () => this.confirmedOrder.confirmCompliment());
-
-    // Nisyə (müştəriyə köçürmə) modalı
-    $('customerChargeModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeCustomerChargeModal());
-    $('customerChargeModal').querySelector('[data-confirm-customer-charge]')?.addEventListener('click', () => this.confirmedOrder.confirmCustomerCharge());
-    $('customerChargeModal').querySelector('[data-pick-charge-customer]')?.addEventListener('click', () => this.confirmedOrder.pickChargeCustomer());
-    $('customerChargeModal').querySelector('[data-back-charge-stage1]')?.addEventListener('click', () => this.confirmedOrder._showChargeStage(1));
-
-    // Mal köçürmə modalı
-    $('itemTransferModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeItemTransferModal());
-    $('itemTransferModal').querySelector('[data-confirm-item-transfer]')?.addEventListener('click', () => this.confirmedOrder.confirmItemTransfer());
-    $('itemTransferModal').querySelector('[data-pick-transfer-table]')?.addEventListener('click', () => this.confirmedOrder.openTransferTableGrid());
-    $('itemTransferModal').querySelector('[data-back-transfer-stage1]')?.addEventListener('click', () => this.confirmedOrder._showTransferStage(1));
-    $('itemTransferModal').querySelector('[data-back-transfer-stage2]')?.addEventListener('click', () => this.confirmedOrder._showTransferStage(2));
-
-    // Masa köçürmə modalı
-    $('transferModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.closeTableTransferModal());
-    $('transferModal').querySelector('[data-confirm-table-transfer]')?.addEventListener('click', () => this._handleConfirmTableTransfer());
-
-    // Tarixçə modalı
-    $('tableAuditModal').querySelector('[data-close-audit]')?.addEventListener('click', () => this.audit.close());
-
-    // Ödəniş modalı
-    $('paymentModal').querySelectorAll('[data-payment-type]').forEach(btn => {
-      btn.addEventListener('click', () => this.payment.selectType(btn.dataset.paymentType));
-    });
-    $('paymentCashGiven').addEventListener('input', () => this.payment.calcChange());
-    $('paymentModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.payment.close());
-    $('paymentModal').querySelector('[data-confirm-payment]')?.addEventListener('click', () => {
-      this.payment.confirm((fullyPaid) => { if (fullyPaid) this.closeTableDetail(); });
-    });
+  setStaffFilter(staffId) {
+    state._waiterStaffFilter = staffId;
+    this.render();
   }
 
   render() {
-    this.tableBoard.render();
-    // Masa detalı ekranı açıqdırsa, canlı sinxronizasiya üçün onu da yenilə
-    // (başqa cihazdan gələn dəyişiklik - məs. başqa kassir ödəniş alıbsa - dərhal görünsün)
-    if ($('orderScreen').classList.contains('active') && state.noteTableId) {
-      this.confirmedOrder.renderSummary(state.noteTableId);
-      this.orderCart.renderDraftList();
-      this._updatePaymentTrigger(state.noteTableId);
-    }
-  }
+    if (!state.user || state.user.role !== 'staff') return;
+    this.renderCatTabs();
+    this.renderStaffFilter();
 
-  stop() {
-    this.tableBoard.stopTimers();
-  }
-
-  _updatePaymentTrigger(tableId) {
-    const order = state.tableOrders[tableId];
-    const canPay = hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit');
-    const payBtn = $('notesPaymentBtn');
-    const paid = order?.paidAmount || 0;
-    const remaining = order?.total
-      ? ((order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total)
-      : 0;
-    if (canPay && order?.total > 0) {
-      payBtn.style.display = 'flex';
-      const subEl = $('notesPaymentSub');
-      if (remaining <= 0.01) {
-        payBtn.classList.remove('partial');
-        payBtn.classList.add('paid');
-        $('notesPaymentAmount').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Ödənilib';
-        subEl.style.display = 'none';
-      } else {
-        payBtn.classList.remove('paid');
-        payBtn.classList.toggle('partial', paid > 0);
-        $('notesPaymentAmount').textContent = remaining.toFixed(2) + ' ₼';
-        if (paid > 0) {
-          subEl.style.display = 'block';
-          subEl.textContent = `${paid.toFixed(2)} ₼ ödənilib, cəmi ${order.total.toFixed(2)} ₼`;
-        } else {
-          subEl.style.display = 'none';
-        }
-      }
-    } else {
-      payBtn.style.display = 'none';
-    }
-  }
-
-  // ── Aktivləşdirmə axını ──
-  _closeActivateModal() {
-    $('confirmTableModal').classList.remove('open');
-    state.pendingTableId = null;
-    this.tableBoard.render();
-  }
-
-  // ── Masa Detalı (kateqoriya + mallar + bilet — TƏK ekran) ──
-  openTableDetail(tableId) {
-    const t = state.tables.find(x => x.id === tableId);
-    if (!t) return;
-    if (state.noteTableId !== tableId) this.confirmedOrder.clearBatchSelection();
-    state.noteTableId = tableId;
-
-    this.orderCart.open(tableId); // title, kateqoriya tabları, mal grid-i, draft siyahısı, ekranı göstərir
-    $('ticketTableName').textContent = t.name;
-    $('noteText').value = t.notes || '';
-    this.confirmedOrder.renderSummary(tableId);
-
-    const setVis = (id, cond) => { const el = $(id); if (el) el.style.display = cond ? '' : 'none'; };
-    setVis('notesCloseTableBtn', hasPermission('table.close'));
-    setVis('notesDiscountBtn', hasPermission('order.discount'));
-    setVis('notesTransferBtn', hasPermission('table.transfer'));
-    setVis('notesCustomerChargeBtn', hasPermission('bill.credit'));
-
-    this._updatePaymentTrigger(tableId);
-  }
-
-  closeTableDetail() {
-    this.orderCart.close(); // ekranı gizlədir, orderTableId-i sıfırlayır, masa lövhəsini yeniləyir
-    state.noteTableId = null;
-    this.confirmedOrder.clearBatchSelection();
-  }
-
-  saveNote() {
-    if (!state.noteTableId) return;
-    const notes = $('noteText').value;
-    const t = state.tables.find(x => x.id === state.noteTableId);
-    R.tables.child(state.noteTableId).update({ notes });
-    addLog('table', `${state.user.name} "${t?.name}" masasına qeyd yazdı: ${notes.substring(0,40)}`, { waiterId: state.user.id, tableId: state.noteTableId });
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Qeyd saxlanıldı');
-  }
-
-  // ── Masa bağlama axını (balans + arxiv + müştəri chat/tələb təmizliyi) ──
-  requestCloseTable() {
-    if (!requirePermission('table.close')) return;
-    if (!state.noteTableId) return;
-    const t = state.tables.find(x => x.id === state.noteTableId);
-    if (!t) return;
-    state.pendingCloseTableId = state.noteTableId;
-    $('confirmCloseTableName').textContent = t.name;
-    $('confirmCloseTableModal').classList.add('open');
-  }
-
-  _handleConfirmClose() {
-    const tableId = state.pendingCloseTableId;
-    if (!tableId) return;
-    const ok = this.tableBoard.confirmDeactivate(tableId);
-    if (!ok) {
-      showToast('<svg class="icon"><use href="#i-error"></use></svg> Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.');
-      this._closeCloseModal();
+    if (!state.tables.length) {
+      this.el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
       return;
     }
-    // Qeyd: masa bağlananda HEÇ BİR qeyd (müştəri tələbləri, söhbət tarixçəsi) silinmir -
-    // hamısı tarixi məlumat kimi qalır. Aktiv "gözləyən" siqnallar artıq status dəyişdirilərək
-    // (accept/resolve) söndürülür, ona görə köhnə masa açılanda yenidən görünmür.
-    if (this.payment.payment.tableId === tableId) {
-      this.payment.payment.paidAmount = 0;
-      this.payment.payment.remainingAmount = 0;
-      this.payment.payment.tableId = null;
+
+    let filtered = state._waiterCatFilter === 'all'
+      ? state.tables
+      : state.tables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._waiterCatFilter);
+    if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>'; return; }
+
+    if (state._waiterStaffFilter) {
+      filtered = filtered.filter(t => t.occupant === state._waiterStaffFilter);
+      if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu işçinin xidmət etdiyi masa yoxdur.</p>'; return; }
     }
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa bağlandı');
-    this._closeCloseModal();
-    this.closeTableDetail();
+
+    const canViewOthers = hasPermission('waiter.view');
+
+    this.el.innerHTML = filtered.map(t => {
+      const isMine = t.occupant === state.user.id;
+      const isOther = t.occupant && !isMine;
+      const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
+      const tableOrder = state.tableOrders[t.id];
+      let cls = '', statusText = 'Boş masa';
+      if (isMine) { cls = 'mine'; statusText = 'Sizin masanız'; }
+      else if (isOther) {
+        cls = canViewOthers ? 'other-manage' : 'other';
+        statusText = canViewOthers ? esc(otherW.name) : 'Dolu';
+      } else { cls = 'empty'; }
+
+      const showTotal = (isMine || (isOther && canViewOthers)) && tableOrder?.total;
+      const showRemaining = showTotal && tableOrder.remainingAmount !== undefined && tableOrder.paidAmount > 0;
+
+      return `<div class="floor-card ${cls}" data-table-id="${t.id}">
+        <div class="floor-card__name">${esc(t.name)}</div>
+        <div class="floor-card__status">${statusText}</div>
+        ${t.occupant ? `<div class="floor-card__row"><svg class="icon"><use href="#i-clock"></use></svg><span class="floor-card__timer w-table-timer" data-since="${t.activatedAt||''}">--:--</span></div>` : ''}
+        ${showTotal ? `<div class="floor-card__total">${showRemaining ? tableOrder.remainingAmount.toFixed(2) : tableOrder.total.toFixed(2)} ₼${showRemaining ? ' <span style="font-size:10px;opacity:.7;">qalıq</span>' : ''}</div>` : ''}
+        ${isMine && t.notes ? `<div class="floor-card__note">${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    this.startTimers();
   }
 
-  _closeCloseModal() {
-    $('confirmCloseTableModal').classList.remove('open');
-    state.pendingCloseTableId = null;
-    this.tableBoard.render();
+  // ── Canlı taymer (yalnız təyin olunmuş .w-table-timer mətnini yeniləyir, tam render etmir) ──
+  startTimers() {
+    this.updateTimers();
+    if (state.tableTimerInterval) return;
+    state.tableTimerInterval = setInterval(() => this.updateTimers(), 1000);
   }
 
-  // ── Bütöv masa köçürmə ──
-  openTableTransferModal() {
-    if (!hasPermission('table.transfer')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Masa köçürmə icazəniz yoxdur'); return; }
-    const tableId = state.noteTableId;
-    if (!tableId) return;
+  stopTimers() {
+    if (state.tableTimerInterval) { clearInterval(state.tableTimerInterval); state.tableTimerInterval = null; }
+  }
+
+  updateTimers() {
+    document.querySelectorAll('.w-table-timer').forEach(elx => {
+      const since = parseInt(elx.dataset.since, 10);
+      if (!since) { elx.textContent = '--:--'; return; }
+      const totalSec = Math.max(0, Math.floor((Date.now() - since) / 1000));
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      elx.textContent = h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+    });
+    this.updateColors();
+  }
+
+  // Dolu masaların rəngini son sifariş əməliyyatından keçən vaxta görə yeniləyir:
+  // <30 dəq yaşıl, 30-60 dəq narıncı, 60+ dəq qırmızı; hesab çap olunubsa tünd göy (üstün gəlir).
+  updateColors() {
+    document.querySelectorAll('.floor-card[data-table-id]').forEach(card => {
+      const tableId = card.dataset.tableId;
+      const t = state.tables.find(x => x.id === tableId);
+      card.classList.remove('floor-card--fresh','floor-card--warning','floor-card--danger','floor-card--billed');
+      if (!t || !t.occupant) return;
+      const order = state.tableOrders[tableId];
+      if (order?.billPrintedAt) { card.classList.add('floor-card--billed'); return; }
+      const ref = order?.updatedAt || t.activatedAt || Date.now();
+      const mins = (Date.now() - ref) / 60000;
+      if (mins < 30) card.classList.add('floor-card--fresh');
+      else if (mins < 60) card.classList.add('floor-card--warning');
+      else card.classList.add('floor-card--danger');
+    });
+  }
+
+  // ── Aktivləşdirmə / bağlama (çağıran tərəf - staff-app.js - konfirmasiya modal-larını göstərir) ──
+  openActivateConfirm(tableId) {
+    state.pendingTableId = tableId;
+    document.dispatchEvent(new CustomEvent('table:activate-requested', { detail: { tableId } }));
+  }
+
+  confirmActivate(tableId) {
+    const sessionId = `${tableId}_${Date.now()}`;
+    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId, openedById: state.user.id, openedByName: state.user.name });
     const t = state.tables.find(x => x.id === tableId);
-    this._transferFromTableId = tableId;
-    const emptyTables = state.tables.filter(x => x.id !== tableId && !x.occupant);
-    if (!emptyTables.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Köçürüləcək boş masa yoxdur'); return; }
-    $('transferFromInfo').textContent = `"${t?.name||'Masa'}" masasından köçürülür`;
-    $('transferToTable').innerHTML = emptyTables.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
-    $('transferModal').classList.add('open');
+    addLog('table_open', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, sessionId, waiterId: state.user.id });
   }
 
-  closeTableTransferModal() { $('transferModal').classList.remove('open'); }
-
-  _handleConfirmTableTransfer() {
-    const toId = $('transferToTable').value;
-    this.confirmedOrder.confirmTableTransfer(this._transferFromTableId, toId);
-    this.closeTableTransferModal();
-    this.closeTableDetail();
-  }
-
-  // ── Hesab çapı ──
-  printBill(tableId) {
-    if (!tableId) return;
-    const t = state.tables.find(x => x.id === tableId);
+  openDeactivateConfirm(tableId) {
     const order = state.tableOrders[tableId];
-    const waiterName = state.user?.name || '—';
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('az-AZ', {hour:'2-digit', minute:'2-digit'});
-    const dateStr = now.toLocaleDateString('az-AZ');
-    const items = order?.items ? Object.values(order.items) : [];
-    const total = order?.total || 0;
-    const scAmount = order?.serviceChargeAmount || 0;
-    const scPercent = order?.serviceChargePercent || 0;
-    const itemsSubtotal = total - scAmount;
-    const itemRows = items.length ? items.map(it => {
-      const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
-      const tag = it.compliment ? ' [İKRAM]' : (it.discountPercent>0 ? ` [-${it.discountPercent}%]` : '');
-      return `<tr><td style="padding:4px 0;">${it.qty}x ${it.name}${tag}${it.note?` <em style="font-size:11px;color:#666;">(${it.note})</em>`:''}</td><td style="text-align:right;padding:4px 0;">${lineTotal.toFixed(2)} ₼</td></tr>`;
-    }).join('') : '<tr><td colspan="2" style="color:#999;font-style:italic;">Sifariş yoxdur</td></tr>';
-    const serviceChargeRowHtml = scAmount > 0
-      ? `<tr><td style="padding:2px 0;">Ara cəm:</td><td style="text-align:right;padding:2px 0;">${itemsSubtotal.toFixed(2)} ₼</td></tr>
-         <tr><td style="padding:2px 0;">Xidmət haqqı (${scPercent}%):</td><td style="text-align:right;padding:2px 0;">${scAmount.toFixed(2)} ₼</td></tr>`
-      : '';
+    document.dispatchEvent(new CustomEvent('table:close-requested', { detail: { tableId, order } }));
+  }
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table>${serviceChargeRowHtml}<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
-
-    const w = window.open('', '_blank', 'width=340,height=600');
-    if (w) {
-      w.document.write(html); w.document.close();
-      addLog('bill_print', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
-      if (order) R.tableOrders.child(tableId).update({ billPrintedAt: Date.now() });
-    } else {
-      showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
+  /** @returns {boolean} true = bağlandı, false = balans qapatmadı (çağıran tərəf toast göstərməlidir) */
+  confirmDeactivate(tableId) {
+    const order = state.tableOrders[tableId];
+    if (order?.total > 0) {
+      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null)
+        ? order.remainingAmount
+        : order.total;
+      if (remaining > 0.01) return false;
     }
+    const t = state.tables.find(x => x.id === tableId);
+    const sessionId = t?.sessionId || null;
+    const closeMsg = `${state.user?.name} "${t?.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`;
+
+    // Bu sessiyaya aid bütün tarixçəni topla (aktivləşmədən bağlanmaya qədər) və arxivə bük -
+    // masa bağlandıqdan sonra da bu qeydlər itmir, bağlanmış masa qeydi ilə birlikdə qalır.
+    const sessionLog = sessionId
+      ? state.logs.filter(l => l.details?.sessionId === sessionId).slice().reverse()
+          .map(l => ({ message: l.message, time: l.time, date: l.date, timestamp: l.timestamp }))
+      : [];
+    sessionLog.push({ message: closeMsg, time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'), timestamp: Date.now() });
+
+    const closedAtNow = Date.now();
+    // Sifarişi göndərən (satışı edən) işçi - masanı bağlayan işçidən FƏRQLİ ola bilər.
+    // İşçi performans hesabatı bu sahəyə görə aparılır ("kim satıb" sualının cavabı).
+    const orderedById = (order && order.waiterId) || t?.openedById || state.user?.id || null;
+    const orderedByStaff = state.staff.find(s => s.id === orderedById);
+    const orderedByName = orderedByStaff?.name || t?.openedByName || state.user?.name || '?';
+
+    const archiveData = {
+      tableId, tableName: t?.name || '?',
+      staffId: state.user?.id || null, staffName: state.user?.name || '?',
+      openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
+      orderedById, orderedByName,
+      items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
+      sessionId,
+      sessionLog,
+      restoreCount: t?.restoreCount || 0,
+      // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX) - saat 6-da
+      // açılıb 12-də bağlanan masa "6" saatına aid sayılsın deyə. Sifariş heç olmayıbsa,
+      // masanın açılma vaxtına düşür.
+      firstOrderAt: (order && order.firstOrderAt) || t?.activatedAt || closedAtNow,
+      closedAt: closedAtNow,
+      closedTime: new Date(closedAtNow).toLocaleTimeString('az-AZ'),
+      closedDate: new Date(closedAtNow).toLocaleDateString('az-AZ')
+    };
+    db.ref('closedOrders').push(archiveData);
+    checkReferralBonusOnClose(t?.loyaltyCustomerId, archiveData.total);
+
+    if (order) R.tableOrders.child(tableId).remove();
+    if (t?.isRestoredTemp) {
+      // Müvəqqəti bərpa masası: bağlananda tamamilə silinir - "Masalar" panelində
+      // boş xəyal masa kimi qalmasın. Tarixçəsi artıq yuxarıda arxivə köçürülüb.
+      R.tables.child(tableId).remove();
+    } else {
+      R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null, loyaltyCustomerId: null, loyaltyGuestId: null });
+    }
+    addLog('table_close', closeMsg, { tableId, sessionId, staffId: state.user?.id });
+    return true;
   }
 }
