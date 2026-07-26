@@ -33,5 +33,10 @@ export const R = {
   referrals:        db.ref('referrals'),
   // Təchizatçılar & Məhsul Alışları modulu
   suppliers: db.ref('suppliers'),
-  purchases: db.ref('purchases')
+  purchases: db.ref('purchases'),
+  // Banket və Tədbirlərin İdarə Edilməsi modulu - "tables" (gündəlik restoran
+  // masaları) və "menuItems" (a-la-cart menyu) ilə QARIŞDIRILMIR, tamam ayrıdır.
+  banquetHalls: db.ref('banquetHalls'),
+  banquetEventTypes: db.ref('banquetEventTypes'),
+  banquetEvents: db.ref('banquetEvents')
 };
