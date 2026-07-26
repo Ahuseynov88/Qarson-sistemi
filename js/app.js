@@ -15,6 +15,7 @@ import { StaffApp } from './staff-app.js';
 import { renderAdmin, renderLogs, initAdminTabDragDrop } from './admin.js';
 import { renderKitchen } from './kitchen.js';
 import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener, closeWaiterChat } from './customer.js';
+import { ensureDefaultEventTypes } from './banquet.js';
 
 let ADMIN_PIN = null;
 let staffApp = null;
@@ -171,6 +172,9 @@ function initListeners() {
   R.loyaltyCustomers.on('value', snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
   R.suppliers.on('value', snap => { state.suppliers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
   R.purchases.on('value', snap => { state.purchases = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.banquetHalls.on('value', snap => { state.banquetHalls = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.banquetEventTypes.on('value', snap => { state.banquetEventTypes = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.banquetEvents.on('value', snap => { state.banquetEvents = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
   R.payments.limitToLast(500).on('value', snap => { state.payments = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
   R.customerCharges.on('value', snap => { state.customerCharges = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
   R.tableOrders.on('value', snap => { state.tableOrders = snap.val() || {}; onDataChange(); });
@@ -190,7 +194,7 @@ function initListeners() {
 
 function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
   db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
 }
@@ -246,6 +250,7 @@ function bootstrap() {
   document.addEventListener('auth:pin-complete', doLogin);
 
   seedDemoData();
+  ensureDefaultEventTypes();
   checkCustomerMode();
   loadSavedTheme();
   const fab = document.getElementById('adminFab');
