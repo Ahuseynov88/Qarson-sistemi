@@ -8,6 +8,7 @@ import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
+import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 
 export function renderPermissionCheckboxes(existingPerms = []) {
   return ALL_PERMISSIONS.map(group => `
@@ -61,6 +62,10 @@ export function renderAdmin() {
   if (state.adminSection==='loyaltyCustomers') renderLoyaltyCustomers();
   if (state.adminSection==='suppliers') renderSuppliers();
   if (state.adminSection==='purchases') renderPurchases();
+  if (state.adminSection==='banquetDashboard') renderBanquetDashboard();
+  if (state.adminSection==='banquetCalendar') renderBanquetCalendar();
+  if (state.adminSection==='banquetHalls') renderBanquetHalls();
+  if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
 }
 
 export function adminTab(sec, el) {
@@ -72,7 +77,7 @@ export function adminTab(sec, el) {
   document.querySelector('.admin-body')?.classList.add('admin-section-open');
   _toggleSectionBackBtn(false);
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases') ? 'flex':'none';
+  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='banquetEventTypes') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -1121,6 +1126,14 @@ export function openAddModal() {
   }
   if (state.adminSection === 'purchases') {
     openPurchaseModal();
+    return;
+  }
+  if (state.adminSection === 'banquetHalls') {
+    openBanquetHallModal();
+    return;
+  }
+  if (state.adminSection === 'banquetEventTypes') {
+    openBanquetEventTypeModal();
     return;
   }
   if (state.adminSection === 'menu') {
