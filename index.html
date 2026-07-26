@@ -79,6 +79,10 @@
       <button class="admin-tab" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)"><svg class="icon"><use href="#i-star"></use></svg> Qeydiyyat Olunanlar</button>
       <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar</button>
       <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları</button>
+      <button class="admin-tab" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> Banket Dashboard</button>
+      <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)"><svg class="icon"><use href="#i-clock"></use></svg> Tədbirlər Təqvimi</button>
+      <button class="admin-tab" data-section="banquetHalls" onclick="adminTab('banquetHalls',this)"><svg class="icon"><use href="#i-chair"></use></svg> Zallar</button>
+      <button class="admin-tab" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -301,6 +305,28 @@
         <div class="tile-detail-back" onclick="selectPurchase(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
         <div class="tile-detail-body" id="purDetailBody"></div>
       </div>
+    </div>
+    <div class="admin-section" id="sec-banquetDashboard">
+      <div id="banquetDashboardBody"></div>
+    </div>
+    <div class="admin-section" id="sec-banquetCalendar">
+      <div id="banquetCalendarHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;"></div>
+      <div id="banquetCalendarGrid" class="banquet-calendar-grid"></div>
+      <div id="banquetDayEventsSection" style="margin-top:20px;"></div>
+      <div class="tile-detail-overlay" id="banquetEventDetailPanel">
+        <div class="tile-detail-back" onclick="closeBanquetEventDetail()"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="banquetEventDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetHalls">
+      <div class="tile-grid" id="banquetHallsGrid"></div>
+      <div class="tile-detail-overlay" id="banquetHallDetailPanel">
+        <div class="tile-detail-back" onclick="selectBanquetHall(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="banquetHallDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetEventTypes">
+      <div class="tile-grid" id="banquetEventTypesGrid"></div>
     </div>
     <div class="admin-section" id="sec-feedback">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -965,6 +991,94 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closePurchaseModal()">Ləğv</button>
       <button class="btn btn-green" onclick="savePurchase()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="banquetHallModal">
+  <div class="modal">
+    <h2 id="banquetHallModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-chair"></use></svg> Zal</h2>
+    <div class="form-group"><label>Zalın adı</label><input type="text" id="bh_name" placeholder="Məs: Böyük Zal"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Tutum (qonaq sayı)</label><input type="number" id="bh_capacity" min="1" placeholder="150"></div>
+      <div class="form-group"><label>Qiymət (₼)</label><input type="number" id="bh_price" min="0" step="1" placeholder="2000"></div>
+    </div>
+    <div class="form-group"><label>Qeyd</label><textarea id="bh_notes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBanquetHallModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveBanquetHall()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="banquetEventTypeModal">
+  <div class="modal" style="max-width:360px;">
+    <h2 style="margin-bottom:16px;"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növü</h2>
+    <div class="form-group"><label>Ad</label><input type="text" id="bet_name" placeholder="Məs: Toy"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBanquetEventTypeModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveBanquetEventType()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="banquetEventModal">
+  <div class="modal" style="max-width:640px;">
+    <h2 id="banquetEventModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-clock"></use></svg> Yeni Tədbir</h2>
+
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Müştəri</div>
+    <div class="form-row">
+      <div class="form-group"><label>Müştərinin adı</label><input type="text" id="be_clientName" placeholder="Ad Soyad"></div>
+      <div class="form-group"><label>Telefon</label><input type="tel" id="be_phone" placeholder="+994 XX XXX XX XX"></div>
+    </div>
+    <div class="form-group"><label>WhatsApp (istəyə görə)</label><input type="tel" id="be_whatsapp" placeholder="+994 XX XXX XX XX"></div>
+
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin:16px 0 8px;">Tədbir Məlumatı</div>
+    <div class="form-row">
+      <div class="form-group"><label>Tədbir növü</label><select id="be_eventType"></select></div>
+      <div class="form-group"><label>Zal</label><select id="be_hallId" onchange="checkBanquetConflict()"></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tarix</label><input type="date" id="be_date" onchange="checkBanquetConflict()"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="be_status">
+          <option value="pending">Sarı — İlkin rezerv</option>
+          <option value="confirmed">Mavi — Təsdiqlənmiş</option>
+          <option value="full">Qırmızı — Tam dolu</option>
+          <option value="cancelled">Boz — Ləğv edilmiş</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Başlama saatı</label><input type="time" id="be_startTime" onchange="checkBanquetConflict()"></div>
+      <div class="form-group"><label>Bitmə saatı</label><input type="time" id="be_endTime" onchange="checkBanquetConflict()"></div>
+    </div>
+    <p id="banquetConflictWarning" style="color:#e74c3c;font-size:12.5px;font-weight:600;min-height:16px;margin:2px 0 8px;"></p>
+
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="form-group"><label>Böyük qonaq</label><input type="number" id="be_adultsCount" min="0" placeholder="100"></div>
+      <div class="form-group"><label>Uşaq</label><input type="number" id="be_childrenCount" min="0" placeholder="10"></div>
+      <div class="form-group"><label>VIP qonaq</label><input type="number" id="be_vipCount" min="0" placeholder="5"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Masa düzülüşü</label>
+        <select id="be_tableLayout"><option value="Dairəvi">Dairəvi</option><option value="U-formalı">U-formalı</option><option value="Sıra">Sıra</option><option value="Qarışıq">Qarışıq</option></select>
+      </div>
+      <div class="form-group"><label>Xidmət növü</label>
+        <select id="be_serviceType"><option value="Tam menyu">Tam menyu</option><option value="Yalnız banket">Yalnız banket</option><option value="Yalnız içki">Yalnız içki</option><option value="Fərdi">Fərdi</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Qeyd</label><textarea id="be_notes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin:16px 0 8px;">Maliyyə</div>
+    <div class="form-row">
+      <div class="form-group"><label>Ümumi məbləğ (₼)</label><input type="number" id="be_totalAmount" min="0" step="1" placeholder="3000"></div>
+      <div class="form-group"><label>Avans (₼)</label><input type="number" id="be_advanceAmount" min="0" step="1" placeholder="1000"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBanquetEventModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveBanquetEvent()">Yadda Saxla</button>
     </div>
   </div>
 </div>
