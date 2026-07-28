@@ -276,6 +276,9 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .form-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
 .modal h2{font-size:20px;margin-bottom:20px;}
 .form-group{margin-bottom:16px;}
+.charge-select-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;}
+.charge-select-row:last-child{border-bottom:none;}
+.charge-select-row:hover{background:var(--card2);}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;outline:none;}
 .form-group input:focus,.form-group select:focus{border-color:var(--blue);}
