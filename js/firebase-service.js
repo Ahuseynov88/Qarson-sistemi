@@ -38,5 +38,8 @@ export const R = {
   // masaları) və "menuItems" (a-la-cart menyu) ilə QARIŞDIRILMIR, tamam ayrıdır.
   banquetHalls: db.ref('banquetHalls'),
   banquetEventTypes: db.ref('banquetEventTypes'),
-  banquetEvents: db.ref('banquetEvents')
+  banquetEvents: db.ref('banquetEvents'),
+  // Zal+tarix üzrə rezervasiya "slot reyestri" - konflikt-təhlükəsiz yoxlama üçün
+  // (bax: banquet.js -> saveBanquetEvent)
+  banquetHallBookings: db.ref('banquetHallBookings')
 };
