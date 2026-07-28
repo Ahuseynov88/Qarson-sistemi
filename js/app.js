@@ -5,7 +5,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state, setAdminPin } from './state.js';
-import { esc, toArr, showToast, addLog } from './utils.js';
+import { esc, toArr, showToast, addLog, confirmAction } from './utils.js';
 import { staffHasPermission, PERMISSION_PRESETS } from './permissions.js';
 import { injectIconSprite } from './icons.js';
 import { showScreen, loadSavedTheme } from './theme.js';
@@ -83,6 +83,19 @@ function doLogin() {
   }
 
   showErr('PIN kod səhvdir!');
+}
+
+// Ofisiantın ÖZ hesabından çıxması üçün - PIN TƏLƏB OLUNMUR (kiosk-dan çıxış ilə
+// QARIŞDIRILMIR). Bu, ortaq cihazda bir ofisiant sifarişini bitirib başqa ofisiantın
+// öz PIN-i ilə daxil ola bilməsi üçündür - tez-tez baş verən, normal bir əməliyyatdır.
+// DİQQƏT: logout() adi halda fullscreen-dən çıxarır (admin/mətbəx üçün doğru davranış),
+// AMMA istifadəçi DƏYİŞMƏ zamanı bunu İSTƏMİRİK - kiosk qorunması davam etməlidir,
+// ona görə logout()-dan DƏRHAL sonra fullscreen-i özümüz bərpa edirik.
+function confirmLogoutSelf() {
+  confirmAction('Hesabınızdan çıxmaq istəyirsiniz? Başqa işçi öz PIN-i ilə daxil ola biləcək.', () => {
+    logout();
+    lockScreen();
+  });
 }
 
 function logout() {
@@ -298,6 +311,7 @@ function bootstrap() {
   // bu funksiyalar qlobal əlçatan olmalıdır.
   window.doLogin = doLogin;
   window.logout = logout;
+  window.confirmLogoutSelf = confirmLogoutSelf;
   window.setRole = setRole;
   window.numPress = numPress;
   window.showExitModal = showExitModal;
