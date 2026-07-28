@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 
@@ -1480,12 +1480,6 @@ export function previewStaffPhoto(input) {
 // Masa kateqoriyasını təhlükəsiz təyin edir - t.name mətn olmaya bilər (köhnə/uyğunsuz
 // məlumat üçün), ona görə hər addımda yoxlama edilir ki, TƏK BİR səhv masa BÜTÜN
 // siyahını (hətta Firebase-də məlumat düzgün olsa belə) qırmasın.
-function tableCategoryOf(t) {
-  if (t.category) return t.category;
-  const name = typeof t.name === 'string' ? t.name : String(t.name ?? 'Masa');
-  return name.replace(/\s+\d+$/, '') || name;
-}
-
 export function renderTables() {
   const el = document.getElementById('tablesGrid');
   const tabEl = document.getElementById('tableCatTabs');
@@ -1953,6 +1947,7 @@ export function openCustomerHistoryModal(customerId) {
         return `<div class="audit-timeline-item">
           <div class="audit-timeline-text">
             <strong style="color:var(--green);"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Ödəniş qəbul edildi — ${(ch.amount||0).toFixed(2)} ₼</strong><br>
+            ${ch.note ? `<span style="color:var(--text2);font-size:12px;">${esc(ch.note)}</span><br>` : ''}
             <span style="color:var(--text2);font-size:12px;">${typeLabel}</span><br>
             <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
           </div>
@@ -1960,9 +1955,12 @@ export function openCustomerHistoryModal(customerId) {
         </div>`;
       }
       const itemsStr = (ch.items||[]).map(it => `${it.qty}x ${it.name}`).join(', ');
+      const paidAmount = ch.paidAmount || 0;
+      const chargeRemaining = Math.round(((ch.amount||0) - paidAmount) * 100) / 100;
+      const statusStr = paidAmount <= 0 ? '' : (chargeRemaining <= 0.01 ? '<span style="color:var(--green);font-size:11px;font-weight:700;"> ✓ Tam ödənilib</span>' : `<span style="color:var(--orange);font-size:11px;font-weight:700;"> (${paidAmount.toFixed(2)} ₼ ödənilib, ${chargeRemaining.toFixed(2)} ₼ qalıb)</span>`);
       return `<div class="audit-timeline-item">
         <div class="audit-timeline-text">
-          <strong>${esc(ch.tableName)}</strong> — <strong style="color:var(--red);">${(ch.amount||0).toFixed(2)} ₼</strong><br>
+          <strong>${esc(ch.tableName)}</strong> — <strong style="color:var(--red);">${(ch.amount||0).toFixed(2)} ₼</strong>${statusStr}<br>
           <span style="color:var(--text2);font-size:12px;">${esc(itemsStr)}</span><br>
           <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
         </div>
@@ -1977,6 +1975,10 @@ export function closeCustomerHistoryModal() {
   document.getElementById('customerHistoryModal').classList.remove('open');
 }
 
+// Ödəniş modalında seçilmiş konkret nisyə qeydlərini izləyir (modul-səviyyəli, çünki
+// checkbox-ların onchange-i birbaşa bunu yeniləyir)
+let _selectedChargeIds = [];
+
 export function openCustomerPaymentModal(customerId) {
   customerId = customerId || document.getElementById('customerHistoryModal').dataset.customerId;
   const c = state.customers.find(x=>x.id===customerId);
@@ -1988,7 +1990,48 @@ export function openCustomerPaymentModal(customerId) {
   document.getElementById('customerPaymentAmount').max = c.balance||0;
   document.getElementById('customerPaymentType').value = 'cash';
   document.getElementById('customerPaymentError').textContent = '';
+  _selectedChargeIds = [];
+
+  // Bu müştəriyə aid, hələ TAM ödənilməmiş nisyə qeydlərini (malları) göstərir - admin
+  // konkret birini (məs. yalnız "Tikə Kabab") seçib ONU ödəyə bilər, digərləri qalar.
+  const unpaidCharges = (state.customerCharges||[])
+    .filter(ch => ch.customerId === customerId && ch.type !== 'payment' && (((ch.amount||0) - (ch.paidAmount||0)) > 0.01))
+    .sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+
+  const listEl = document.getElementById('customerPaymentChargesList');
+  if (!unpaidCharges.length) {
+    listEl.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:10px;">Ayrıca nisyə qeydi tapılmadı.</p>';
+  } else {
+    listEl.innerHTML = unpaidCharges.map(ch => {
+      const remaining = Math.round(((ch.amount||0) - (ch.paidAmount||0)) * 100) / 100;
+      const itemsStr = (ch.items||[]).map(it => `${it.qty}x ${it.name}`).join(', ') || ch.tableName || 'Nisyə';
+      return `<label class="charge-select-row">
+        <input type="checkbox" onchange="toggleChargeSelection('${ch.id}', this.checked)" style="width:17px;height:17px;flex-shrink:0;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12.5px;font-weight:600;">${esc(itemsStr)}</div>
+          <div style="font-size:11px;color:var(--text3);">${esc(ch.date||'')}</div>
+        </div>
+        <div style="font-weight:700;color:var(--red);white-space:nowrap;font-size:13px;">${remaining.toFixed(2)} ₼</div>
+      </label>`;
+    }).join('');
+  }
+
   document.getElementById('customerPaymentModal').classList.add('open');
+}
+
+export function toggleChargeSelection(chargeId, checked) {
+  if (checked) {
+    if (!_selectedChargeIds.includes(chargeId)) _selectedChargeIds.push(chargeId);
+  } else {
+    _selectedChargeIds = _selectedChargeIds.filter(id => id !== chargeId);
+  }
+  // Seçilənlərin cəmini avtomatik məbləğ sahəsinə yazır - istifadəçi hələ də əl ilə
+  // dəyişdirə bilər (məs. seçilən 20 ₼-dən yalnız 10 ₼ ödəmək istəsə)
+  const total = _selectedChargeIds.reduce((sum, id) => {
+    const ch = state.customerCharges.find(c => c.id === id);
+    return sum + (ch ? Math.round(((ch.amount||0)-(ch.paidAmount||0))*100)/100 : 0);
+  }, 0);
+  document.getElementById('customerPaymentAmount').value = total > 0 ? total.toFixed(2) : '';
 }
 
 export function closeCustomerPaymentModal() {
@@ -2008,17 +2051,46 @@ export function submitCustomerPayment() {
   if (amount <= 0) { errEl.textContent = 'Məbləğ 0-dan böyük olmalıdır.'; return; }
   if (amount > balance) { errEl.textContent = `Ödəniş cari borcdan (${balance.toFixed(2)} ₼) çox ola bilməz.`; return; }
 
+  // Ödənişi konkret nisyə qeydlərinə bölüşdürür: ƏVVƏLCƏ seçilmiş qeydlərə (tam
+  // qalıqları qədər), sonra QALAN məbləği (əgər varsa, istifadəçi seçilən cəmdən çox
+  // yazıbsa) digər ödənilməmiş qeydlərə ən köhnədən başlayaraq (FIFO) bölüşdürür -
+  // beləliklə "yalnız kababın pulunu ödə, qalanı qalsın" TAM işləyir, eyni zamanda
+  // sərbəst/ümumi məbləğ daxil etmək imkanı da itmir.
+  const allUnpaidSorted = (state.customerCharges||[])
+    .filter(ch => ch.customerId === customerId && ch.type !== 'payment' && (((ch.amount||0)-(ch.paidAmount||0)) > 0.01))
+    .sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+
+  const orderedIds = [..._selectedChargeIds, ...allUnpaidSorted.map(ch=>ch.id).filter(id => !_selectedChargeIds.includes(id))];
+  let remainingToAllocate = amount;
+  const chargeUpdates = {};
+  orderedIds.forEach(chargeId => {
+    if (remainingToAllocate <= 0.001) return;
+    const ch = allUnpaidSorted.find(x => x.id === chargeId);
+    if (!ch) return;
+    const chargeRemaining = Math.round(((ch.amount||0)-(ch.paidAmount||0))*100)/100;
+    const applyAmount = Math.min(chargeRemaining, remainingToAllocate);
+    chargeUpdates[chargeId] = Math.round(((ch.paidAmount||0) + applyAmount)*100)/100;
+    remainingToAllocate = Math.round((remainingToAllocate - applyAmount)*100)/100;
+  });
+  Object.entries(chargeUpdates).forEach(([chargeId, newPaidAmount]) => {
+    db.ref('customerCharges/'+chargeId+'/paidAmount').set(newPaidAmount);
+  });
+
   // Borcu ödəniş məbləği qədər azaldır (mənfi olmasın deyə əlavə təhlükəsizlik yoxlaması)
   R.customers.child(customerId).child('balance').transaction(cur => Math.max(0, Math.round(((cur||0) - amount)*100)/100));
+
+  const paidItemsDesc = _selectedChargeIds.length
+    ? _selectedChargeIds.map(id => { const ch = state.customerCharges.find(x=>x.id===id); return ch ? (ch.items||[]).map(it=>it.name).join(', ') : ''; }).filter(Boolean).join(' + ')
+    : '';
 
   // Ödənişi HƏM ayrıca "customerCharges" jurnalına (ledger) əlavə edirik ki, tarixçədə
   // görünsün, HƏM DƏ ümumi tarixçəyə (Loglar) qeyd edirik.
   db.ref('customerCharges').push({
-    customerId, type: 'payment', amount, paymentType,
+    customerId, type: 'payment', amount, paymentType, note: paidItemsDesc || null,
     staffId: state.user?.id || null, staffName: state.user?.name || '?',
     createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
   });
-  addLog('credit_payment', `${state.user?.name} "${c.name}" adlı müştərinin nisyə borcundan ${amount.toFixed(2)} ₼ ödəniş qəbul etdi (${paymentType==='pos'?'POS':'Nağd'})`,
+  addLog('credit_payment', `${state.user?.name} "${c.name}" adlı müştərinin nisyə borcundan ${amount.toFixed(2)} ₼ ödəniş qəbul etdi${paidItemsDesc ? ' ('+paidItemsDesc+')' : ''} (${paymentType==='pos'?'POS':'Nağd'})`,
     { customerId, customerName: c.name, amount, paymentType, staffId: state.user?.id, staffName: state.user?.name });
 
   closeCustomerPaymentModal();
@@ -3133,5 +3205,6 @@ window.renderClosedOrders = renderClosedOrders;
 window.openCustomerHistoryModal = openCustomerHistoryModal;
 window.closeCustomerHistoryModal = closeCustomerHistoryModal;
 window.openCustomerPaymentModal = openCustomerPaymentModal;
+window.toggleChargeSelection = toggleChargeSelection;
 window.closeCustomerPaymentModal = closeCustomerPaymentModal;
 window.submitCustomerPayment = submitCustomerPayment;
