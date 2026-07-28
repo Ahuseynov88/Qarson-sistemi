@@ -1,273 +1,326 @@
 /* ═══════════════════════════════════════════
-   TABLE BOARD
-   Qarson ekranındakı masa grid-i: kateqoriya/işçi filtri,
-   masa aktivləşdirmə/bağlama, canlı taymer.
-   Hadisələr addEventListener ilə bağlanır (inline onclick yoxdur).
+   APP BOOTSTRAP
+   Bütün modulları birləşdirən giriş nöqtəsi: giriş/çıxış, Firebase
+   listener idarəsi, ekran keçidi, ilk yükləmə (demo data).
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
-import { state } from './state.js';
-import { esc, showToast, addLog } from './utils.js';
-import { hasPermission, staffHasPermission } from './permissions.js';
-import { checkReferralBonusOnClose } from './loyalty.js';
+import { state, setAdminPin } from './state.js';
+import { esc, toArr, showToast, addLog, confirmAction } from './utils.js';
+import { staffHasPermission, PERMISSION_PRESETS } from './permissions.js';
+import { injectIconSprite } from './icons.js';
+import { showScreen, loadSavedTheme } from './theme.js';
+import { setRole, numPress, clearPin, showErr } from './auth.js';
+import { stopAlarm, checkIncomingOrders } from './alarm.js';
+import { StaffApp } from './staff-app.js';
+import { renderAdmin, renderLogs, initAdminTabDragDrop } from './admin.js';
+import { renderKitchen } from './kitchen.js';
+import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener, closeWaiterChat } from './customer.js';
+import { ensureDefaultEventTypes } from './banquet.js';
 
-export class TableBoard {
-  /**
-   * @param {Object} els - { grid, catTabs, staffFilter }  DOM elementləri
-   * @param {Object} callbacks - { onTableOpen(tableId) }  masa üstünə klik ediləndə çağırılır
-   */
-  constructor(els, callbacks = {}) {
-    this.el = els.grid;
-    this.catTabsEl = els.catTabs;
-    this.staffFilterEl = els.staffFilter;
-    this.onTableOpen = callbacks.onTableOpen || (() => {});
-    this._bindEvents();
-  }
+let ADMIN_PIN = null;
+let staffApp = null;
 
-  _bindEvents() {
-    this.el.addEventListener('click', (e) => {
-      const card = e.target.closest('[data-table-id]');
-      if (!card) return;
-      this._handleCardClick(card.dataset.tableId);
-    });
-    this.catTabsEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-cat]');
-      if (!btn) return;
-      this.setCategory(btn.dataset.cat);
-    });
-    this.staffFilterEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-staff-filter]');
-      if (!btn) return;
-      const val = btn.dataset.staffFilter;
-      this.setStaffFilter(val === '_all' ? null : val);
-    });
-  }
+/* ── Giriş / Çıxış ── */
 
-  _handleCardClick(tableId) {
-    const t = state.tables.find(x => x.id === tableId);
-    if (!t) return;
-    const isMine = t.occupant === state.user.id;
-    const isOther = t.occupant && !isMine;
-    if (!t.occupant) {
-      this.openActivateConfirm(tableId);
-    } else if (isOther && !hasPermission('waiter.view')) {
-      showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu masa başqa işçiyə aiddir');
-    } else {
-      // Aktiv masa - sifariş/qeydlər hub-unu aç (staff-app.js bunu billing.js ilə əlaqələndirir)
-      this.onTableOpen(tableId);
-    }
-  }
+function doLogin() {
+  const pin = state.pinBuffer;
+  clearPin();
 
-  getCategories() {
-    const cats = new Set();
-    state.tables.forEach(t => cats.add(t.category || t.name.replace(/\s+\d+$/, '') || t.name));
-    return Array.from(cats);
-  }
-
-  renderCatTabs() {
-    const cats = this.getCategories();
-    const tabs = ['all', ...cats];
-    this.catTabsEl.innerHTML = tabs.map(c => `
-      <button class="category-rail__tab" style="white-space:nowrap;width:auto;${state._waiterCatFilter === c ? '' : ''}" data-cat="${esc(c)}">
-        ${c === 'all' ? 'Hamısı' : esc(c)}
-      </button>
-    `).join('');
-    this.catTabsEl.querySelectorAll('[data-cat]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.cat === state._waiterCatFilter);
-    });
-  }
-
-  setCategory(cat) {
-    state._waiterCatFilter = cat;
-    this.render();
-  }
-
-  renderStaffFilter() {
-    if (!hasPermission('waiter.view')) {
-      this.staffFilterEl.style.display = 'none';
-      state._waiterStaffFilter = null;
+  if (state.role === 'admin') {
+    if (ADMIN_PIN === null) { showErr('Sistem hazırlanır, bir saniyə gözləyin...'); return; }
+    if (String(pin) === String(ADMIN_PIN)) {
+      state.user = { role: 'admin', name: 'Admin' };
+      addLog('login', 'Admin sistemə daxil oldu', { type: 'admin' });
+      initListeners();
+      showScreen('adminScreen');
       return;
     }
-    const activeStaffList = state.staff.filter(s => staffHasPermission(s, 'table.view'));
-    if (!activeStaffList.length) { this.staffFilterEl.style.display = 'none'; return; }
-    this.staffFilterEl.style.display = 'flex';
-    this.staffFilterEl.innerHTML = [
-      `<button class="log-filter ${!state._waiterStaffFilter ? 'active' : ''}" data-staff-filter="_all">Hamısı</button>`
-    ].concat(activeStaffList.map(s =>
-      `<button class="log-filter ${state._waiterStaffFilter === s.id ? 'active' : ''}" data-staff-filter="${s.id}">${esc(s.name)}</button>`
-    )).join('');
   }
 
-  setStaffFilter(staffId) {
-    state._waiterStaffFilter = staffId;
-    this.render();
+  if (state.role === 'kitchen' && String(pin) === String(state.kitchenPin)) {
+    state.user = { role: 'kitchen', name: 'Mətbəx' };
+    addLog('login', 'Mətbəx sistemə daxil oldu', { type: 'kitchen' });
+    initListeners();
+    showScreen('kitchenScreen');
+    return;
   }
 
-  render() {
-    if (!state.user || state.user.role !== 'staff') return;
-    this.renderCatTabs();
-    this.renderStaffFilter();
+  if (state.role === 'staff') {
+    R.staff.once('value', snap => {
+      const data = snap.val() || {};
+      const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+      const s = list.find(x => x.pin === pin);
+      if (!s) { showErr('PIN kod tapılmadı!'); return; }
+      if (s.status === 'offline') { showErr('Hesabınız deaktivdir. Adminə müraciət edin.'); return; }
 
-    if (!state.tables.length) {
-      this.el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
-      return;
-    }
+      state.user = { ...s, role: 'staff', permissions: s.permissions || [] };
+      R.staff.child(s.id).update({ status: 'online', lastLogin: Date.now() });
+      addLog('login', `"${s.name}" sistemə daxil oldu`, { staffId: s.id });
+      initListeners();
 
-    let filtered = state._waiterCatFilter === 'all'
-      ? state.tables
-      : state.tables.filter(t => (t.category || t.name.replace(/\s+\d+$/, '') || t.name) === state._waiterCatFilter);
-    if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>'; return; }
+      if (staffHasPermission(state.user, 'table.view')) {
+        showScreen('waiterScreen');
+        document.getElementById('wName').textContent = s.name;
+        document.getElementById('wAvatar').src = s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
+        const roleBadge = document.getElementById('wRoleBadge');
+        if (roleBadge) roleBadge.textContent = esc(s.position || '');
+        lockScreen();
+      } else {
+        showScreen('adminScreen');
+        showToast('<svg class="icon"><use href="#i-check"></use></svg> Xoş gəldiniz, ' + s.name);
+      }
 
-    if (state._waiterStaffFilter) {
-      filtered = filtered.filter(t => t.occupant === state._waiterStaffFilter);
-      if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu işçinin xidmət etdiyi masa yoxdur.</p>'; return; }
-    }
-
-    const canViewOthers = hasPermission('waiter.view');
-
-    this.el.innerHTML = filtered.map(t => {
-      const isMine = t.occupant === state.user.id;
-      const isOther = t.occupant && !isMine;
-      const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
-      const tableOrder = state.tableOrders[t.id];
-      let cls = '', statusText = 'Boş masa';
-      if (isMine) { cls = 'mine'; statusText = 'Sizin masanız'; }
-      else if (isOther) {
-        cls = canViewOthers ? 'other-manage' : 'other';
-        statusText = canViewOthers ? esc(otherW.name) : 'Dolu';
-      } else { cls = 'empty'; }
-
-      const showTotal = (isMine || (isOther && canViewOthers)) && tableOrder?.total;
-      const showRemaining = showTotal && tableOrder.remainingAmount !== undefined && tableOrder.paidAmount > 0;
-
-      return `<div class="floor-card ${cls}" data-table-id="${t.id}">
-        <div class="floor-card__name">${esc(t.name)}</div>
-        <div class="floor-card__status">${statusText}</div>
-        ${t.occupant ? `<div class="floor-card__row"><svg class="icon"><use href="#i-clock"></use></svg><span class="floor-card__timer w-table-timer" data-since="${t.activatedAt||''}">--:--</span></div>` : ''}
-        ${showTotal ? `<div class="floor-card__total">${showRemaining ? tableOrder.remainingAmount.toFixed(2) : tableOrder.total.toFixed(2)} ₼${showRemaining ? ' <span style="font-size:10px;opacity:.7;">qalıq</span>' : ''}</div>` : ''}
-        ${isMine && t.notes ? `<div class="floor-card__note">${esc(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}</div>` : ''}
-      </div>`;
-    }).join('');
-
-    this.startTimers();
-  }
-
-  // ── Canlı taymer (yalnız təyin olunmuş .w-table-timer mətnini yeniləyir, tam render etmir) ──
-  startTimers() {
-    this.updateTimers();
-    if (state.tableTimerInterval) return;
-    state.tableTimerInterval = setInterval(() => this.updateTimers(), 1000);
-  }
-
-  stopTimers() {
-    if (state.tableTimerInterval) { clearInterval(state.tableTimerInterval); state.tableTimerInterval = null; }
-  }
-
-  updateTimers() {
-    document.querySelectorAll('.w-table-timer').forEach(elx => {
-      const since = parseInt(elx.dataset.since, 10);
-      if (!since) { elx.textContent = '--:--'; return; }
-      const totalSec = Math.max(0, Math.floor((Date.now() - since) / 1000));
-      const h = Math.floor(totalSec / 3600);
-      const m = Math.floor((totalSec % 3600) / 60);
-      const s = totalSec % 60;
-      elx.textContent = h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+      R.staff.child(state.user.id).onDisconnect().update({ status: 'ready', lastSeen: Date.now() });
+      const disconnectLogRef = R.logs.push();
+      disconnectLogRef.onDisconnect().set({
+        type: 'logout', message: `"${s.name}" sistemdən çıxdı (bağlantı kəsildi)`,
+        details: { staffId: s.id, method: 'disconnect' },
+        timestamp: Date.now(), time: new Date().toLocaleTimeString('az-AZ'),
+        date: new Date().toLocaleDateString('az-AZ')
+      });
     });
-    this.updateColors();
+    return;
   }
 
-  // Dolu masaların rəngini son sifariş əməliyyatından keçən vaxta görə yeniləyir:
-  // <30 dəq yaşıl, 30-60 dəq narıncı, 60+ dəq qırmızı; hesab çap olunubsa tünd göy (üstün gəlir).
-  updateColors() {
-    document.querySelectorAll('.floor-card[data-table-id]').forEach(card => {
-      const tableId = card.dataset.tableId;
-      const t = state.tables.find(x => x.id === tableId);
-      card.classList.remove('floor-card--fresh','floor-card--warning','floor-card--danger','floor-card--billed');
-      if (!t || !t.occupant) return;
-      const order = state.tableOrders[tableId];
-      if (order?.billPrintedAt) { card.classList.add('floor-card--billed'); return; }
-      const ref = order?.updatedAt || t.activatedAt || Date.now();
-      const mins = (Date.now() - ref) / 60000;
-      if (mins < 30) card.classList.add('floor-card--fresh');
-      else if (mins < 60) card.classList.add('floor-card--warning');
-      else card.classList.add('floor-card--danger');
-    });
-  }
+  showErr('PIN kod səhvdir!');
+}
 
-  // ── Aktivləşdirmə / bağlama (çağıran tərəf - staff-app.js - konfirmasiya modal-larını göstərir) ──
-  openActivateConfirm(tableId) {
-    state.pendingTableId = tableId;
-    document.dispatchEvent(new CustomEvent('table:activate-requested', { detail: { tableId } }));
-  }
+// Ofisiantın ÖZ hesabından çıxması üçün - PIN TƏLƏB OLUNMUR (kiosk-dan çıxış ilə
+// QARIŞDIRILMIR). Bu, ortaq cihazda bir ofisiant sifarişini bitirib başqa ofisiantın
+// öz PIN-i ilə daxil ola bilməsi üçündür - tez-tez baş verən, normal bir əməliyyatdır.
+// DİQQƏT: logout() adi halda fullscreen-dən çıxarır (admin/mətbəx üçün doğru davranış),
+// AMMA istifadəçi DƏYİŞMƏ zamanı bunu İSTƏMİRİK - kiosk qorunması davam etməlidir,
+// ona görə logout()-dan DƏRHAL sonra fullscreen-i özümüz bərpa edirik.
+function confirmLogoutSelf() {
+  confirmAction('Hesabınızdan çıxmaq istəyirsiniz? Başqa işçi öz PIN-i ilə daxil ola biləcək.', () => {
+    logout();
+    lockScreen();
+  });
+}
 
-  confirmActivate(tableId) {
-    const sessionId = `${tableId}_${Date.now()}`;
-    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId, openedById: state.user.id, openedByName: state.user.name });
-    const t = state.tables.find(x => x.id === tableId);
-    addLog('table_open', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, sessionId, waiterId: state.user.id });
+function logout() {
+  if (state.user?.role === 'staff') {
+    R.staff.child(state.user.id).update({ status: 'ready', lastActive: Date.now() });
+    addLog('logout', `"${state.user.name}" sistemdən çıxdı`, { staffId: state.user.id });
+    unlockScreen();
+    closeWaiterChat();
+  } else if (state.user?.role === 'admin') {
+    addLog('logout', 'Admin sistemdən çıxdı', { type: 'admin' });
+  } else if (state.user?.role === 'kitchen') {
+    addLog('logout', 'Mətbəx sistemdən çıxdı', { type: 'kitchen' });
   }
+  stopAlarm();
+  if (staffApp) staffApp.stop();
+  removeListeners();
+  state.user = null;
+  state.staff = [];
+  state.tables = [];
+  state.orders = [];
+  state.logs = [];
+  state._shownRequests = [];
+  state.activeChatTableId = null;
+  state.activeChatConvId = null;
+  state._batchSelection = {};
+  state._waiterStaffFilter = null;
+  showScreen('loginScreen');
+}
 
-  openDeactivateConfirm(tableId) {
-    const order = state.tableOrders[tableId];
-    document.dispatchEvent(new CustomEvent('table:close-requested', { detail: { tableId, order } }));
+function lockScreen() {
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+  history.pushState(null, '', location.href);
+}
+
+function unlockScreen() {
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+}
+
+function showExitModal() { document.getElementById('exitModal').classList.add('open'); }
+function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value = ''; }
+function confirmExit() {
+  const pin = document.getElementById('exitPin').value;
+  if (String(pin) === String(ADMIN_PIN) || String(pin) === String(state.kitchenPin)) {
+    closeExitModal();
+    logout();
+  } else {
+    showToast('<svg class="icon"><use href="#i-error"></use></svg> PIN səhvdir!');
   }
+}
 
-  /** @returns {boolean} true = bağlandı, false = balans qapatmadı (çağıran tərəf toast göstərməlidir) */
-  confirmDeactivate(tableId) {
-    const order = state.tableOrders[tableId];
-    if (order?.total > 0) {
-      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null)
-        ? order.remainingAmount
-        : order.total;
-      if (remaining > 0.01) return false;
+/* ── Firebase Listener İdarəsi ── */
+
+function initListeners() {
+  db.ref('settings/kitchenPin').on('value', snap => { if (snap.val()) state.kitchenPin = snap.val(); });
+  db.ref('settings/adminPin').on('value', snap => { if (snap.val()) { ADMIN_PIN = snap.val(); setAdminPin(snap.val()); } });
+  db.ref('settings/bizDayStartHour').on('value', snap => {
+    if (snap.val() !== null && snap.val() !== undefined) {
+      state._bizDayStartHour = snap.val();
+      const el = document.getElementById('repBizDayHour');
+      if (el && document.activeElement !== el) el.value = String(snap.val()).padStart(2,'0') + ':00';
     }
-    const t = state.tables.find(x => x.id === tableId);
-    const sessionId = t?.sessionId || null;
-    const closeMsg = `${state.user?.name} "${t?.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`;
+  });
+  db.ref('settings/serviceCharge').on('value', snap => {
+    state.serviceCharge = snap.val() || { enabled: false, percent: 0 };
+    if (state.user?.role === 'admin') onDataChange();
+  });
 
-    // Bu sessiyaya aid bütün tarixçəni topla (aktivləşmədən bağlanmaya qədər) və arxivə bük -
-    // masa bağlandıqdan sonra da bu qeydlər itmir, bağlanmış masa qeydi ilə birlikdə qalır.
-    const sessionLog = sessionId
-      ? state.logs.filter(l => l.details?.sessionId === sessionId).slice().reverse()
-          .map(l => ({ message: l.message, time: l.time, date: l.date, timestamp: l.timestamp }))
-      : [];
-    sessionLog.push({ message: closeMsg, time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'), timestamp: Date.now() });
+  R.staff.on('value', snap => {
+    state.staff = toArr(snap.val());
+    onDataChange();
+    if (state.user?.role === 'admin') renderAdmin();
+    if (state.user?.role === 'staff') {
+      const me = state.staff.find(w => w.id === state.user.id);
+      if (me && me.status === 'offline') {
+        document.getElementById('deactivatedOverlay').classList.add('show');
+        stopAlarm(); unlockScreen();
+        setTimeout(() => { document.getElementById('deactivatedOverlay').classList.remove('show'); logout(); }, 3000);
+      }
+    }
+  });
 
-    const closedAtNow = Date.now();
-    // Sifarişi göndərən (satışı edən) işçi - masanı bağlayan işçidən FƏRQLİ ola bilər.
-    // İşçi performans hesabatı bu sahəyə görə aparılır ("kim satıb" sualının cavabı).
-    const orderedById = (order && order.waiterId) || t?.openedById || state.user?.id || null;
-    const orderedByStaff = state.staff.find(s => s.id === orderedById);
-    const orderedByName = orderedByStaff?.name || t?.openedByName || state.user?.name || '?';
+  R.tables.on('value', snap => { state.tables = toArr(snap.val()); onDataChange(); });
+  R.menuItems.on('value', snap => { state.menuItems = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.customers.on('value', snap => { state.customers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.paymentMethods.on('value', snap => { state.paymentMethods = toArr(snap.val()); onDataChange(); });
+  R.closedOrders.limitToLast(200).on('value', snap => { state.closedOrders = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.loyaltyCustomers.on('value', snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.suppliers.on('value', snap => { state.suppliers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.purchases.on('value', snap => { state.purchases = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.banquetHalls.on('value', snap => { state.banquetHalls = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.banquetEventTypes.on('value', snap => { state.banquetEventTypes = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.banquetEvents.on('value', snap => { state.banquetEvents = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.payments.limitToLast(500).on('value', snap => { state.payments = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.customerCharges.on('value', snap => { state.customerCharges = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.tableOrders.on('value', snap => { state.tableOrders = snap.val() || {}; onDataChange(); });
+  R.orders.on('value', snap => {
+    state.orders = toArr(snap.val());
+    onDataChange();
+    if (state.user?.role === 'staff') checkIncomingOrders();
+  });
+  R.logs.limitToLast(300).on('value', snap => {
+    state.logs = toArr(snap.val()).reverse();
+    if (state.user?.role === 'admin') renderLogs();
+  });
 
-    const archiveData = {
-      tableId, tableName: t?.name || '?',
-      staffId: state.user?.id || null, staffName: state.user?.name || '?',
-      openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
-      orderedById, orderedByName,
-      items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
-      sessionId,
-      sessionLog,
-      restoreCount: t?.restoreCount || 0,
-      // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX) - saat 6-da
-      // açılıb 12-də bağlanan masa "6" saatına aid sayılsın deyə. Sifariş heç olmayıbsa,
-      // masanın açılma vaxtına düşür.
-      firstOrderAt: (order && order.firstOrderAt) || t?.activatedAt || closedAtNow,
-      closedAt: closedAtNow,
-      closedTime: new Date(closedAtNow).toLocaleTimeString('az-AZ'),
-      closedDate: new Date(closedAtNow).toLocaleDateString('az-AZ')
-    };
-    db.ref('closedOrders').push(archiveData);
-    checkReferralBonusOnClose(t?.loyaltyCustomerId, archiveData.total);
+  initCustomerRequestListener();
+  if (state.user?.role === 'staff') initWaiterChatListener();
+}
 
-    if (order) R.tableOrders.child(tableId).remove();
-    if (t?.isRestoredTemp) {
-      // Müvəqqəti bərpa masası: bağlananda tamamilə silinir - "Masalar" panelində
-      // boş xəyal masa kimi qalmasın. Tarixçəsi artıq yuxarıda arxivə köçürülüb.
-      R.tables.child(tableId).remove();
+function removeListeners() {
+  R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();
+  db.ref('customerRequests').off(); db.ref('feedbacks').off();
+  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
+}
+
+function onDataChange() {
+  const r = state.user?.role;
+  if (r === 'admin') renderAdmin();
+  if (r === 'kitchen') renderKitchen();
+  if (r === 'staff' && staffApp) staffApp.render();
+}
+
+/* ── İlk Yükləmə / Demo Data ── */
+
+function seedDemoData() {
+  R.tables.once('value', snap => {
+    if (snap.val()) return;
+    ['Masa 1', 'Masa 2', 'Masa 3', 'VIP Otaq', 'Terras', 'Bar'].forEach(name => {
+      R.tables.push({ name, capacity: 4, occupant: null, notes: '', createdAt: Date.now() });
+    });
+  });
+
+  db.ref('settings/adminPin').once('value', snap => {
+    if (snap.val()) {
+      ADMIN_PIN = snap.val();
+      setAdminPin(snap.val());
     } else {
-      R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null, loyaltyCustomerId: null, loyaltyGuestId: null });
+      ADMIN_PIN = '0000';
+      setAdminPin('0000');
+      db.ref('settings/adminPin').set('0000');
+      console.log('İlk admin PIN yaradıldı: 0000');
     }
-    addLog('table_close', closeMsg, { tableId, sessionId, staffId: state.user?.id });
-    return true;
-  }
+  });
+
+  R.staff.once('value', snap => {
+    if (snap.val()) return;
+    [
+      { name:'Əli Məmmədov', firstname:'Əli', lastname:'Məmmədov', position:'Qarson', pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200', status:'active', createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms },
+      { name:'Leyla Həsənli', firstname:'Leyla', lastname:'Həsənli', position:'Qarson', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'active', createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms },
+      { name:'Orxan Əliyev', firstname:'Orxan', lastname:'Əliyev', position:'Kassir', pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200', status:'offline', createdAt:Date.now(), permissions: PERMISSION_PRESETS.cashier.perms }
+    ].forEach(w => R.staff.push(w));
+  });
+}
+
+/* ── Bootstrap ── */
+
+// Bağlantı vəziyyətini izləyir - Firebase-in xüsusi ".info/connected" yolu HƏQİQİ
+// server bağlantısını göstərir (sadəcə navigator.onLine-dan daha etibarlıdır, çünki
+// WiFi ola bilər amma Firebase-ə çatmaya bilər). Oflayn olanda banner göstərir,
+// bərpa olananda bildiriş verir. QEYD: səhifə açıq qaldığı müddətdə Firebase SDK-nın
+// öz oflayn növbəsi artıq işləyir (yazılar avtomatik saxlanılıb sonra göndərilir) -
+// bu, sadəcə istifadəçiyə vəziyyəti GÖRSƏDİR.
+// QEYD: bu, YALNIZ istifadəçi ÖZÜ səhifəni bağlamaq/tərk etmək istəyəndə işə düşür
+// (brauzerin "beforeunload" hadisəsi). Telefonda başqa proqrama keçəndə (tab arxa
+// fonda qalır, BAĞLANMIR) bu, İŞƏ DÜŞMÜR - əməliyyat sistemi yaddaş azlığından
+// arxa fondakı vərəqi SONRADAN, JS-in heç bir müdaxilə imkanı olmadan söndürə bilər.
+// Bu barədə ən yaxşı qorunma - oflayn bannerini diqqətçəkən etməkdir (aşağıda).
+let _isCurrentlyOffline = false;
+let _wasOffline = false;
+
+function initConnectionMonitor() {
+  db.ref('.info/connected').on('value', snap => {
+    const connected = snap.val() === true;
+    _isCurrentlyOffline = !connected;
+    const banner = document.getElementById('connectionStatusBanner');
+    if (banner) banner.classList.toggle('show', !connected);
+    if (!connected) {
+      _wasOffline = true;
+    } else if (_wasOffline) {
+      _wasOffline = false;
+      showToast('<svg class="icon"><use href="#i-check"></use></svg> Bağlantı bərpa olundu, dəyişikliklər sinxronlaşdırıldı');
+    }
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (_isCurrentlyOffline) {
+      e.preventDefault();
+      e.returnValue = 'İnternet bağlantısı yoxdur! Bu səhifəni tərk etsəniz, göndərilməmiş dəyişikliklər itə bilər.';
+      return e.returnValue;
+    }
+  });
+}
+
+function bootstrap() {
+  injectIconSprite();
+  initAdminTabDragDrop();
+  initConnectionMonitor();
+
+  staffApp = new StaffApp();
+  window.staffApp = staffApp; // debug/konsol üçün əlçatan
+
+  document.addEventListener('auth:pin-complete', doLogin);
+
+  seedDemoData();
+  ensureDefaultEventTypes();
+  checkCustomerMode();
+  loadSavedTheme();
+  const fab = document.getElementById('adminFab');
+  if (fab) fab.style.display = 'none';
+
+  // Mövcud statik HTML `onclick="..."` atributları ilə işlədiyi üçün
+  // bu funksiyalar qlobal əlçatan olmalıdır.
+  window.doLogin = doLogin;
+  window.logout = logout;
+  window.confirmLogoutSelf = confirmLogoutSelf;
+  window.setRole = setRole;
+  window.numPress = numPress;
+  window.showExitModal = showExitModal;
+  window.closeExitModal = closeExitModal;
+  window.confirmExit = confirmExit;
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+  bootstrap();
 }
