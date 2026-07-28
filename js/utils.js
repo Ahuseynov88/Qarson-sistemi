@@ -9,6 +9,16 @@ export function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Masa kateqoriyasını təhlükəsiz təyin edir - t.name mətn olmaya bilər (köhnə/uyğunsuz
+// məlumat üçün), ona görə hər addımda yoxlama edilir ki, TƏK BİR səhv masa BÜTÜN
+// siyahını (həm admin, həm qarson tərəfdə) qırmasın. HƏM admin.js, HƏM tables.js
+// bunu istifadə edir - iki ayrı yerdə eyni riskli kodun təkrarlanmasının qarşısını alır.
+export function tableCategoryOf(t) {
+  if (t.category) return t.category;
+  const name = typeof t.name === 'string' ? t.name : String(t.name ?? 'Masa');
+  return name.replace(/\s+\d+$/, '') || name;
+}
+
 // Log mesajları üçün mal siyahısını qısa formatda birləşdirir: "2x Kabab, 1x Salat"
 export function formatItemsList(items) {
   const arr = Array.isArray(items) ? items : Object.values(items || {});
