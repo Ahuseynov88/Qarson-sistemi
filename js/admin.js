@@ -1943,7 +1943,8 @@ export function openCustomerHistoryModal(customerId) {
   } else {
     el.innerHTML = entries.map(ch => {
       if (ch.type === 'payment') {
-        const typeLabel = ch.paymentType === 'pos' ? 'POS' : 'Nağd';
+        const typeLabel = ch.paymentType === 'cash' ? 'Nağd' : ch.paymentType === 'pos' ? 'POS'
+          : (state.paymentMethods||[]).find(pm => pm.id === ch.paymentType)?.name || ch.paymentType || 'Nağd';
         return `<div class="audit-timeline-item">
           <div class="audit-timeline-text">
             <strong style="color:var(--green);"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Ödəniş qəbul edildi — ${(ch.amount||0).toFixed(2)} ₼</strong><br>
@@ -1988,7 +1989,12 @@ export function openCustomerPaymentModal(customerId) {
   document.getElementById('customerPaymentCurrentBalance').textContent = `Cari borc: ${(c.balance||0).toFixed(2)} ₼`;
   document.getElementById('customerPaymentAmount').value = '';
   document.getElementById('customerPaymentAmount').max = c.balance||0;
-  document.getElementById('customerPaymentType').value = 'cash';
+  // Ödəniş növü seçimini dinamik qururuq - sabit "Nağd"/"POS"-dan əlavə, admin
+  // "Ödəniş Növləri" bölməsində əlavə etdiyi HƏR bir xüsusi növü də göstərir.
+  const typeSel = document.getElementById('customerPaymentType');
+  typeSel.innerHTML = '<option value="cash">Nağd</option><option value="pos">POS</option>' +
+    (state.paymentMethods||[]).map(pm => `<option value="${esc(pm.id)}">${esc(pm.name)}</option>`).join('');
+  typeSel.value = 'cash';
   document.getElementById('customerPaymentError').textContent = '';
   _selectedChargeIds = [];
 
@@ -2036,6 +2042,7 @@ export function toggleChargeSelection(chargeId, checked) {
 
 export function closeCustomerPaymentModal() {
   document.getElementById('customerPaymentModal').classList.remove('open');
+  document.getElementById('customerPaymentAmount').value = '';
 }
 
 export function submitCustomerPayment() {
@@ -2090,15 +2097,20 @@ export function submitCustomerPayment() {
     staffId: state.user?.id || null, staffName: state.user?.name || '?',
     createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
   });
-  addLog('credit_payment', `${state.user?.name} "${c.name}" adlı müştərinin nisyə borcundan ${amount.toFixed(2)} ₼ ödəniş qəbul etdi${paidItemsDesc ? ' ('+paidItemsDesc+')' : ''} (${paymentType==='pos'?'POS':'Nağd'})`,
+  // Ödəniş növünün oxunaqlı adını tapır - sabit (Nağd/POS) və ya admin-in əlavə
+  // etdiyi xüsusi növ ola bilər
+  const paymentTypeLabel = paymentType === 'cash' ? 'Nağd' : paymentType === 'pos' ? 'POS'
+    : (state.paymentMethods||[]).find(pm => pm.id === paymentType)?.name || paymentType;
+
+  addLog('credit_payment', `${state.user?.name} "${c.name}" adlı müştərinin nisyə borcundan ${amount.toFixed(2)} ₼ ödəniş qəbul etdi${paidItemsDesc ? ' ('+paidItemsDesc+')' : ''} (${paymentTypeLabel})`,
     { customerId, customerName: c.name, amount, paymentType, staffId: state.user?.id, staffName: state.user?.name });
 
   closeCustomerPaymentModal();
   showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${amount.toFixed(2)} ₼ ödəniş qəbul edildi`);
-  // Tarixçə pəncərəsi açıqdırsa, yeni vəziyyəti əks etdirmək üçün yenidən açırıq
-  setTimeout(() => openCustomerHistoryModal(customerId), 150);
+  // Tarixçə pəncərəsi bu ödənişdən ƏVVƏL açıq idisə, onu da bağlayırıq - ödəniş
+  // təsdiqlənəndən sonra bütün pəncərələr bağlanıb əsas müştəri siyahısına qayıdılır.
+  closeCustomerHistoryModal();
 }
-
 /* ═══════════════════════════════════════════
    ÖDƏNİŞ NÖVLƏRİ (ADMİN TƏRƏFİNDƏN TƏNZİMLƏNİR)
 ═══════════════════════════════════════════ */
