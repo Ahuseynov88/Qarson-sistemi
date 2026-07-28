@@ -240,9 +240,47 @@ function seedDemoData() {
 
 /* ── Bootstrap ── */
 
+// Bağlantı vəziyyətini izləyir - Firebase-in xüsusi ".info/connected" yolu HƏQİQİ
+// server bağlantısını göstərir (sadəcə navigator.onLine-dan daha etibarlıdır, çünki
+// WiFi ola bilər amma Firebase-ə çatmaya bilər). Oflayn olanda banner göstərir,
+// bərpa olananda bildiriş verir. QEYD: səhifə açıq qaldığı müddətdə Firebase SDK-nın
+// öz oflayn növbəsi artıq işləyir (yazılar avtomatik saxlanılıb sonra göndərilir) -
+// bu, sadəcə istifadəçiyə vəziyyəti GÖRSƏDİR.
+// QEYD: bu, YALNIZ istifadəçi ÖZÜ səhifəni bağlamaq/tərk etmək istəyəndə işə düşür
+// (brauzerin "beforeunload" hadisəsi). Telefonda başqa proqrama keçəndə (tab arxa
+// fonda qalır, BAĞLANMIR) bu, İŞƏ DÜŞMÜR - əməliyyat sistemi yaddaş azlığından
+// arxa fondakı vərəqi SONRADAN, JS-in heç bir müdaxilə imkanı olmadan söndürə bilər.
+// Bu barədə ən yaxşı qorunma - oflayn bannerini diqqətçəkən etməkdir (aşağıda).
+let _isCurrentlyOffline = false;
+let _wasOffline = false;
+
+function initConnectionMonitor() {
+  db.ref('.info/connected').on('value', snap => {
+    const connected = snap.val() === true;
+    _isCurrentlyOffline = !connected;
+    const banner = document.getElementById('connectionStatusBanner');
+    if (banner) banner.classList.toggle('show', !connected);
+    if (!connected) {
+      _wasOffline = true;
+    } else if (_wasOffline) {
+      _wasOffline = false;
+      showToast('<svg class="icon"><use href="#i-check"></use></svg> Bağlantı bərpa olundu, dəyişikliklər sinxronlaşdırıldı');
+    }
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (_isCurrentlyOffline) {
+      e.preventDefault();
+      e.returnValue = 'İnternet bağlantısı yoxdur! Bu səhifəni tərk etsəniz, göndərilməmiş dəyişikliklər itə bilər.';
+      return e.returnValue;
+    }
+  });
+}
+
 function bootstrap() {
   injectIconSprite();
   initAdminTabDragDrop();
+  initConnectionMonitor();
 
   staffApp = new StaffApp();
   window.staffApp = staffApp; // debug/konsol üçün əlçatan
