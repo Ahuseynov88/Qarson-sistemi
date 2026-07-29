@@ -132,8 +132,11 @@ export class TableBoard {
       let cls = '', statusText = 'Boş masa';
       if (isMine) { cls = 'mine'; statusText = 'Sizin masanız'; }
       else if (isOther) {
+        // Xidmət edən işçinin ADI HƏR KƏSƏ göstərilir (kim harada işlədiyini bilmək
+        // faydalıdır) - AMMA masaya DAXİL OLMA hüququ yalnız "waiter.view" icazəsi
+        // olanlara aiddir (bax: _handleCardClick). Bunlar İKİ AYRI şeydir - görmə vs giriş.
         cls = canViewOthers ? 'other-manage' : 'other';
-        statusText = canViewOthers ? esc(otherW.name) : 'Dolu';
+        statusText = esc(otherW.name);
       } else { cls = 'empty'; }
 
       const showTotal = (isMine || (isOther && canViewOthers)) && tableOrder?.total;
