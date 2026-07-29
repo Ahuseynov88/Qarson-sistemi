@@ -497,32 +497,87 @@ function renderReportStaffView(orders, el) {
 
 function renderReportItemsView(orders, el) {
   const byItem = {};
+  let totalQty = 0, totalRevenue = 0;
   orders.forEach(o => {
     Object.values(o.items||{}).forEach(it => {
-      if (!byItem[it.name]) byItem[it.name] = { qty: 0, revenue: 0 };
+      if (!byItem[it.name]) byItem[it.name] = { qty: 0, revenue: 0, discountAmt: 0, discountQty: 0, complimentAmt: 0, complimentQty: 0 };
+      const rev = (it.price||0)*it.qty*(1-((it.discountPercent||0)/100)) + (it.extraFee||0);
       byItem[it.name].qty += it.qty || 0;
-      byItem[it.name].revenue += (it.price||0)*it.qty*(1-((it.discountPercent||0)/100)) + (it.extraFee||0);
+      byItem[it.name].revenue += rev;
+      totalQty += it.qty || 0; totalRevenue += rev;
+      if (it.compliment) { byItem[it.name].complimentAmt += (it.originalPrice||0)*it.qty + (it.originalExtraFee||0); byItem[it.name].complimentQty += it.qty||0; }
+      else if (it.discountPercent > 0) { byItem[it.name].discountAmt += (it.price||0)*it.qty*(it.discountPercent/100); byItem[it.name].discountQty += it.qty||0; }
     });
   });
-  const itemEntries = Object.entries(byItem).sort((a,b)=>b[1].revenue-a[1].revenue);
+  const itemEntries = Object.entries(byItem);
+  const byQtySorted = [...itemEntries].sort((a,b)=>b[1].qty-a[1].qty);
+  const byRevenueSorted = [...itemEntries].sort((a,b)=>b[1].revenue-a[1].revenue);
+  const topByQty = byQtySorted[0];
+  const topByRevenue = byRevenueSorted[0];
+
+  // Kateqoriya üzrə: hər kateqoriyanın cəmi + o kateqoriyadakı malların tək-tək bölgüsü
   const byCategory = {};
   itemEntries.forEach(([name,v]) => {
     const cat = state.menuItems.find(m=>m.name===name)?.category || 'Digər';
-    if (!byCategory[cat]) byCategory[cat] = { qty: 0, revenue: 0 };
+    if (!byCategory[cat]) byCategory[cat] = { qty: 0, revenue: 0, items: [] };
     byCategory[cat].qty += v.qty; byCategory[cat].revenue += v.revenue;
+    byCategory[cat].items.push([name, v]);
   });
   const catEntries = Object.entries(byCategory).sort((a,b)=>b[1].revenue-a[1].revenue);
 
+  // Ləğv olunmuş mallar - "logs"dan (order_cancel tipli), mala görə cəmlənir
+  const cancelledByItem = {};
+  (state.logs||[]).filter(l => l.type === 'order_cancel').forEach(l => {
+    const name = l.details?.itemName || 'Naməlum';
+    if (!cancelledByItem[name]) cancelledByItem[name] = { qty: 0, amount: 0 };
+    cancelledByItem[name].qty += l.details?.qty || 0;
+    cancelledByItem[name].amount += l.details?.amount || 0;
+  });
+  const cancelledEntries = Object.entries(cancelledByItem).sort((a,b)=>b[1].amount-a[1].amount);
+
+  const discountedEntries = itemEntries.filter(([,v]) => v.discountQty > 0).sort((a,b)=>b[1].discountAmt-a[1].discountAmt);
+  const complimentedEntries = itemEntries.filter(([,v]) => v.complimentQty > 0).sort((a,b)=>b[1].complimentAmt-a[1].complimentAmt);
+
   el.innerHTML = `
-    <div class="report-section-title"><svg class="icon"><use href="#i-tag"></use></svg> Kateqoriyaya görə satış</div>
-    <table class="report-table">
-      <thead><tr><th>Kateqoriya</th><th class="num">Ədəd</th><th class="num">Dövriyyə</th></tr></thead>
-      <tbody>${catEntries.map(([c,v]) => `<tr><td>${esc(c)}</td><td class="num">${v.qty}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${totalQty}</div><div class="stat-label">Ümumi Satış (ədəd)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div><div class="stat-label">Ümumi Gəlir</div></div>
+    </div>
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--purple);font-size:16px;">${topByQty?esc(topByQty[0]):'—'}</div><div class="stat-label">Ən Çox Satılan (${topByQty?topByQty[1].qty:0} ədəd)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--purple);font-size:16px;">${topByRevenue?esc(topByRevenue[0]):'—'}</div><div class="stat-label">Ən Yüksək Gəlir (${topByRevenue?topByRevenue[1].revenue.toFixed(2):0} ₼)</div></div>
+    </div>
+
+    <div class="report-section-title"><svg class="icon"><use href="#i-tag"></use></svg> Kateqoriya üzrə bölgü (hər kateqoriyanın öz malları ilə)</div>
+    ${catEntries.map(([cat,v]) => `
+      <table class="report-table" style="margin-bottom:10px;">
+        <thead><tr><th style="background:var(--card2);">${esc(cat)} — ${v.qty} ədəd, ${v.revenue.toFixed(2)} ₼</th><th class="num" style="background:var(--card2);">Ədəd</th><th class="num" style="background:var(--card2);">Gəlir</th></tr></thead>
+        <tbody>${v.items.sort((a,b)=>b[1].revenue-a[1].revenue).map(([name,iv]) => `<tr><td style="padding-left:20px;color:var(--text2);">${esc(name)}</td><td class="num">${iv.qty}</td><td class="num">${iv.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+      </table>
+    `).join('') || '<p class="report-empty">Bu aralıqda satış yoxdur.</p>'}
+
+    <div class="report-section-title"><svg class="icon"><use href="#i-trash"></use></svg> Ləğv olunmuş mallar</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Mal</th><th class="num">Ədəd</th><th class="num">Məbləğ</th></tr></thead>
+      <tbody>${cancelledEntries.length ? cancelledEntries.map(([name,v]) => `<tr><td>${esc(name)}</td><td class="num">${v.qty}</td><td class="num" style="color:var(--red);">${v.amount.toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda ləğv olunmuş mal yoxdur</td></tr>'}</tbody>
     </table>
-    <div class="report-section-title"><svg class="icon"><use href="#i-food"></use></svg> Ən çox satılan mallar</div>
+
+    <div class="report-section-title"><svg class="icon"><use href="#i-tag"></use></svg> Endirim olunmuş mallar</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Mal</th><th class="num">Ədəd</th><th class="num">Endirim Məbləği</th></tr></thead>
+      <tbody>${discountedEntries.length ? discountedEntries.map(([name,v]) => `<tr><td>${esc(name)}</td><td class="num">${v.discountQty}</td><td class="num" style="color:var(--orange);">${v.discountAmt.toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda endirim olunmuş mal yoxdur</td></tr>'}</tbody>
+    </table>
+
+    <div class="report-section-title"><svg class="icon"><use href="#i-tag"></use></svg> İkram olunmuş mallar</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Mal</th><th class="num">Ədəd</th><th class="num">İkram Dəyəri</th></tr></thead>
+      <tbody>${complimentedEntries.length ? complimentedEntries.map(([name,v]) => `<tr><td>${esc(name)}</td><td class="num">${v.complimentQty}</td><td class="num" style="color:var(--purple);">${v.complimentAmt.toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda ikram olunmuş mal yoxdur</td></tr>'}</tbody>
+    </table>
+
+    <div class="report-section-title"><svg class="icon"><use href="#i-food"></use></svg> Bütün mallar (gəlirə görə sıralanıb)</div>
     <table class="report-table">
-      <thead><tr><th>Mal</th><th class="num">Ədəd</th><th class="num">Dövriyyə</th></tr></thead>
-      <tbody>${itemEntries.map(([name,v],i) => `<tr class="${i<3?'report-table__top':''}"><td>${esc(name)}</td><td class="num">${v.qty}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('')}</tbody>
+      <thead><tr><th>Mal</th><th class="num">Ədəd</th><th class="num">Gəlir</th></tr></thead>
+      <tbody>${byRevenueSorted.map(([name,v],i) => `<tr class="${i<3?'report-table__top':''}"><td>${esc(name)}</td><td class="num">${v.qty}</td><td class="num">${v.revenue.toFixed(2)} ₼</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">—</td></tr>'}</tbody>
     </table>
   `;
 }
@@ -1697,7 +1752,9 @@ export function tableForm(name='', isEdit=false) {
 // həm göstərmə, həm "hamısını seç" EYNİ filtrlənmiş siyahı üzərində işləməlidir.
 function getFilteredLogs() {
   let list = state.logs;
-  if (state.logFilter!=='all') list = list.filter(l=>l.type===state.logFilter);
+  // state.logFilter indi bir QRUP ID-sidir (məs. 'table_ops'), tək bir tip DEYİL -
+  // həmin qrupa aid BÜTÜN tiplər birlikdə göstərilir.
+  if (state.logFilter!=='all') list = list.filter(l => LOG_TYPE_INFO[l.type]?.group === state.logFilter);
   const q = (document.getElementById('logSearchInput')?.value || '').trim().toLowerCase();
   if (q) list = list.filter(l => (l.message||'').toLowerCase().includes(q));
   const dateFrom = document.getElementById('logDateFrom')?.value || '';
@@ -1720,32 +1777,44 @@ function getFilteredLogs() {
 // Tarixçə üçün tam kateqoriya lüğəti - proqramdakı HƏR əməliyyat növü üçün ayrıca,
 // dəqiq kateqoriya (əvvəllər hər şey 7 ümumi tipə yığılmışdı, indi 23 dəqiq tipdir).
 // Digər hesabatlarda da (məs. Ləğvetmələr) bu etiket/rəng xəritəsi təkrar istifadə olunur.
+// Filtr düymələrini 24 ayrı-ayrı yerinə 7 MƏNTIQI QRUPA bölür - istifadəçi əvvəlcə
+// bölmə seçir (məs. "Masaya Aid"), bu bölmədəki BÜTÜN əlaqəli tiplər birlikdə göstərilir.
+export const LOG_GROUP_INFO = {
+  login_logout:     { label: 'Giriş/Çıxış' },
+  table_ops:        { label: 'Masaya Aid Əməliyyatlar' },
+  order_ops:        { label: 'Sifarişə Aid Əməliyyatlar' },
+  finance:          { label: 'Maliyyə Əməliyyatları' },
+  customer_contact: { label: 'Müştəri Əlaqəsi' },
+  management:       { label: 'İdarəetmə (Admin)' },
+  system:           { label: 'Sistemə Aid Əməliyyatlar' }
+};
+
 export const LOG_TYPE_INFO = {
-  login:                { label: 'GİRİŞ',               color: '#2ecc71' },
-  logout:                { label: 'ÇIXIŞ',               color: '#7f8c8d' },
-  table_open:            { label: 'MASA AÇILIŞI',         color: '#3498db' },
-  table_close:           { label: 'MASA BAĞLANIŞI',       color: '#2c5f8a' },
-  table:                 { label: 'MASA',                 color: '#3498db' },
-  table_transfer:        { label: 'MASA/MAL KÖÇÜRMƏ',     color: '#16a085' },
-  order_send:            { label: 'SİFARİŞ GÖNDƏRMƏ',     color: '#f39c12' },
-  order_cancel:          { label: 'SİFARİŞ LƏĞVİ',        color: '#e74c3c' },
-  discount:              { label: 'ENDİRİM/İKRAM',        color: '#9b59b6' },
-  payment:               { label: 'ÖDƏNİŞ',               color: '#27ae60' },
-  bill_print:            { label: 'HESAB ÇAPI',           color: '#1abc9c' },
-  credit:                { label: 'NİSYƏ',                color: '#d35400' },
-  credit_payment:        { label: 'NİSYƏ ÖDƏNİŞİ',        color: '#27ae60' },
-  customer_request:      { label: 'MÜŞTƏRİ TƏLƏBİ',       color: '#e74c3c' },
-  chat:                  { label: 'SÖHBƏT',               color: '#e67e22' },
-  feedback:              { label: 'ŞİKAYƏT/TƏKLİF',       color: '#c0392b' },
-  menu_mgmt:             { label: 'MENYU İDARƏSİ',        color: '#8e44ad' },
-  staff_mgmt:            { label: 'İŞÇİ İDARƏSİ',         color: '#8e44ad' },
-  table_mgmt:            { label: 'MASA İDARƏSİ',         color: '#8e44ad' },
-  supplier_mgmt:         { label: 'TƏCHİZATÇI İDARƏSİ',   color: '#8e44ad' },
-  purchase_mgmt:         { label: 'MAL ALIŞI İDARƏSİ',    color: '#8e44ad' },
-  loyalty_mgmt:          { label: 'LOYALLIQ İDARƏSİ',     color: '#8e44ad' },
-  payment_method_mgmt:   { label: 'ÖDƏNİŞ NÖVÜ İDARƏSİ',  color: '#8e44ad' },
-  customer_mgmt:         { label: 'NİSYƏ MÜŞTƏRİ İDARƏSİ',color: '#8e44ad' },
-  settings:              { label: 'SİSTEM AYARLARI',      color: '#5d6d7e' }
+  login:                { label: 'GİRİŞ',               color: '#2ecc71', group: 'login_logout' },
+  logout:                { label: 'ÇIXIŞ',               color: '#7f8c8d', group: 'login_logout' },
+  table_open:            { label: 'MASA AÇILIŞI',         color: '#3498db', group: 'table_ops' },
+  table_close:           { label: 'MASA BAĞLANIŞI',       color: '#2c5f8a', group: 'table_ops' },
+  table:                 { label: 'MASA',                 color: '#3498db', group: 'table_ops' },
+  table_transfer:        { label: 'MASA/MAL KÖÇÜRMƏ',     color: '#16a085', group: 'table_ops' },
+  order_send:            { label: 'SİFARİŞ GÖNDƏRMƏ',     color: '#f39c12', group: 'order_ops' },
+  order_cancel:          { label: 'SİFARİŞ LƏĞVİ',        color: '#e74c3c', group: 'order_ops' },
+  discount:              { label: 'ENDİRİM/İKRAM',        color: '#9b59b6', group: 'finance' },
+  payment:               { label: 'ÖDƏNİŞ',               color: '#27ae60', group: 'finance' },
+  bill_print:            { label: 'HESAB ÇAPI',           color: '#1abc9c', group: 'finance' },
+  credit:                { label: 'NİSYƏ',                color: '#d35400', group: 'finance' },
+  credit_payment:        { label: 'NİSYƏ ÖDƏNİŞİ',        color: '#27ae60', group: 'finance' },
+  customer_request:      { label: 'MÜŞTƏRİ TƏLƏBİ',       color: '#e74c3c', group: 'customer_contact' },
+  chat:                  { label: 'SÖHBƏT',               color: '#e67e22', group: 'customer_contact' },
+  feedback:              { label: 'ŞİKAYƏT/TƏKLİF',       color: '#c0392b', group: 'customer_contact' },
+  menu_mgmt:             { label: 'MENYU İDARƏSİ',        color: '#8e44ad', group: 'management' },
+  staff_mgmt:            { label: 'İŞÇİ İDARƏSİ',         color: '#8e44ad', group: 'management' },
+  table_mgmt:            { label: 'MASA İDARƏSİ',         color: '#8e44ad', group: 'management' },
+  supplier_mgmt:         { label: 'TƏCHİZATÇI İDARƏSİ',   color: '#8e44ad', group: 'management' },
+  purchase_mgmt:         { label: 'MAL ALIŞI İDARƏSİ',    color: '#8e44ad', group: 'management' },
+  loyalty_mgmt:          { label: 'LOYALLIQ İDARƏSİ',     color: '#8e44ad', group: 'management' },
+  payment_method_mgmt:   { label: 'ÖDƏNİŞ NÖVÜ İDARƏSİ',  color: '#8e44ad', group: 'management' },
+  customer_mgmt:         { label: 'NİSYƏ MÜŞTƏRİ İDARƏSİ',color: '#8e44ad', group: 'management' },
+  settings:              { label: 'SİSTEM AYARLARI',      color: '#5d6d7e', group: 'system' }
 };
 
 export function renderLogs() {
@@ -1755,8 +1824,8 @@ export function renderLogs() {
     // Filtr düymələri BİR DƏFƏ, ümumi kateqoriya lüğətindən dinamik qurulur - yeni
     // kateqoriya əlavə olunanda burada əl ilə düymə əlavə etməyə ehtiyac qalmır.
     filterBarEl.innerHTML = `<button class="log-filter ${state.logFilter==='all'?'active':''}" onclick="setLogFilter('all',this)">Hamısı</button>` +
-      Object.entries(LOG_TYPE_INFO).map(([type, info]) =>
-        `<button class="log-filter ${state.logFilter===type?'active':''}" onclick="setLogFilter('${type}',this)" style="border-color:${info.color}66;">${info.label}</button>`
+      Object.entries(LOG_GROUP_INFO).map(([groupId, info]) =>
+        `<button class="log-filter ${state.logFilter===groupId?'active':''}" onclick="setLogFilter('${groupId}',this)">${info.label}</button>`
       ).join('');
     filterBarEl.dataset.built = '1';
   }
