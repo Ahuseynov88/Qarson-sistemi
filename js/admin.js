@@ -157,13 +157,11 @@ function applySavedAdminTabOrder() {
 export function renderDashboard() {
   const activeStaff = state.staff.filter(s=>s.status!=='offline').length;
   const activeTbl = state.tables.filter(t=>t.occupant).length;
-  const pendingO  = state.orders.filter(o=>o.status==='pending').length;
   document.getElementById('statsRow').innerHTML = `
     <div class="stat-card"><div class="stat-num">${state.staff.length}</div><div class="stat-label">Cəmi İşçi</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--green)">${activeStaff}</div><div class="stat-label">Aktiv İşçi</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${state.tables.length}</div><div class="stat-label">Cəmi Masa</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${activeTbl}</div><div class="stat-label">Dolu Masa</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--red)">${pendingO}</div><div class="stat-label">Gözləyən Sifariş</div></div>
   `;
   const bizHourEl = document.getElementById('repBizDayHour');
   if (bizHourEl && !bizHourEl.value) bizHourEl.value = String(state._bizDayStartHour||5).padStart(2,'0') + ':00';
@@ -354,24 +352,126 @@ function renderReportSummaryView(orders, el) {
   `;
 }
 
+// KASSA ƏMƏLİYYATLARI - proqramdakı BÜTÜN pul hərəkətini (mədaxil + məxaric) bir yerə
+// toplayır: masa ödənişləri, nisyə ödənişləri, banket ödənişləri (mədaxil) və
+// təchizatçı ödənişləri (məxaric). Seçilmiş tarix/saat aralığına görə filtrlənir.
+function buildKassaLedger(orders) {
+  const dateFrom = document.getElementById('repDateFrom')?.value || '';
+  const dateTo = document.getElementById('repDateTo')?.value || '';
+  const timeFrom = document.getElementById('repTimeFrom')?.value || '';
+  const timeTo = document.getElementById('repTimeTo')?.value || '';
+  const inRange = (ts) => {
+    if (dateFrom) { const b = new Date(dateFrom); if (timeFrom) { const [h,m]=timeFrom.split(':'); b.setHours(+h,+m,0,0);} else b.setHours(0,0,0,0); if (ts < b.getTime()) return false; }
+    if (dateTo) { const b = new Date(dateTo); if (timeTo) { const [h,m]=timeTo.split(':'); b.setHours(+h,+m,59,999);} else b.setHours(23,59,59,999); if (ts > b.getTime()) return false; }
+    return true;
+  };
+
+  const income = [];
+  const expense = [];
+
+  // 1) Masa ödənişləri
+  orders.forEach(o => {
+    getOrderPayments(o).forEach(p => {
+      const ts = o.firstOrderAt || o.closedAt || 0;
+      if (p.type === 'split' && p.splitBreakdown) {
+        Object.entries(p.splitBreakdown).forEach(([mid, amt]) => {
+          income.push({ ts, category: 'Masa Ödənişi', method: p.splitMethodNames?.[mid] || resolvePaymentMethodName(mid), amount: amt||0, source: o.tableName||'Masa', who: o.staffName||o.orderedByName||'?' });
+        });
+      } else {
+        income.push({ ts, category: 'Masa Ödənişi', method: p.typeLabel || resolvePaymentMethodName(p.type), amount: p.thisPay||0, source: o.tableName||'Masa', who: o.staffName||o.orderedByName||'?' });
+      }
+    });
+  });
+
+  // 2) Nisyə (kredit) ödənişləri
+  (state.customerCharges||[]).filter(ch => ch.type === 'payment' && inRange(ch.createdAt||0)).forEach(ch => {
+    income.push({ ts: ch.createdAt||0, category: 'Nisyə Ödənişi', method: ch.paymentType==='pos'?'POS':(ch.paymentType==='cash'?'Nağd':(state.paymentMethods||[]).find(pm=>pm.id===ch.paymentType)?.name||ch.paymentType), amount: ch.amount||0, source: state.customers.find(c=>c.id===ch.customerId)?.name || 'Müştəri', who: ch.staffName||'?' });
+  });
+
+  // 3) Banket ödənişləri
+  (state.banquetEvents||[]).forEach(ev => {
+    (ev.paymentHistory||[]).forEach(p => {
+      if (!inRange(p.date||0)) return;
+      income.push({ ts: p.date||0, category: 'Banket Ödənişi', method: p.method==='cash'?'Nağd':p.method==='card'?'Kart':p.method==='transfer'?'Köçürmə':p.method, amount: p.amount||0, source: ev.clientName||'Tədbir', who: ev.staffName||'?' });
+    });
+  });
+
+  // 4) Təchizatçı ödənişləri (məxaric) - alışın YARADILMA tarixinə görə (paidAmount
+  // faktiki ödənilən hissədir, tam məbləğ deyil)
+  (state.purchases||[]).filter(p => inRange(p.createdAt||0) && (p.paidAmount||0) > 0).forEach(p => {
+    expense.push({ ts: p.createdAt||0, category: 'Təchizatçı Ödənişi', method: p.paymentType==='cash'?'Nağd':p.paymentType==='transfer'?'Köçürmə':p.paymentType==='card'?'Kart':p.paymentType, amount: p.paidAmount||0, source: p.supplierName||'Təchizatçı', who: p.staffName||'?' });
+  });
+
+  income.sort((a,b) => b.ts - a.ts);
+  expense.sort((a,b) => b.ts - a.ts);
+  return { income, expense };
+}
+
 function renderReportPaymentsView(orders, el) {
-  const breakdown = buildPaymentTypeBreakdown(orders);
-  const entries = Object.entries(breakdown).sort((a,b)=>b[1].amount-a[1].amount);
-  if (!entries.length) { el.innerHTML = '<p class="report-empty">Bu aralıqda ödəniş qeydi tapılmadı.</p>'; return; }
-  const total = entries.reduce((s,[,v])=>s+v.amount,0);
-  const maxAmt = Math.max(...entries.map(([,v])=>v.amount), 1);
+  const { income, expense } = buildKassaLedger(orders);
+  const totalIncome = income.reduce((s,e) => s+e.amount, 0);
+  const totalExpense = expense.reduce((s,e) => s+e.amount, 0);
+  const net = Math.round((totalIncome - totalExpense)*100)/100;
+
+  // Mədaxili növünə görə cəmləyir (Masa/Nisyə/Banket)
+  const incomeByCategory = {};
+  income.forEach(e => { incomeByCategory[e.category] = (incomeByCategory[e.category]||0) + e.amount; });
+  // Məxaric mənbəyinə görə cəmləyir
+  const expenseByCategory = {};
+  expense.forEach(e => { expenseByCategory[e.category] = (expenseByCategory[e.category]||0) + e.amount; });
+
+  // Nağd üzrə gün sonu hesablaması (kassada faktiki olmalı olan pul)
+  const cashIncome = income.filter(e => e.method==='Nağd').reduce((s,e)=>s+e.amount,0);
+  const cashExpense = expense.filter(e => e.method==='Nağd').reduce((s,e)=>s+e.amount,0);
+  const cashNet = Math.round((cashIncome-cashExpense)*100)/100;
+
+  // Gözlənilən daxilolmalar - tarix filtrindən ASILI DEYİL, HAZIRKI ümumi borc vəziyyəti
+  const pendingCredit = (state.customers||[]).reduce((s,c) => s + (c.balance||0), 0);
+  const pendingBanquet = (state.banquetEvents||[]).filter(e=>e.status!=='cancelled').reduce((s,e) => {
+    const paid = (e.paymentHistory||[]).reduce((s2,p)=>s2+p.amount,0);
+    return s + Math.max(0, (e.totalAmount||0)-paid);
+  }, 0);
+  const totalPending = Math.round((pendingCredit+pendingBanquet)*100)/100;
+
+  const fmtTime = (ts) => ts ? new Date(ts).toLocaleString('az-AZ', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
   el.innerHTML = `
-    <div class="report-bar-chart">
-      ${entries.map(([label,v]) => `
-        <div class="report-bar-chart__col">
-          <span class="report-bar-chart__val">${v.amount.toFixed(0)}₼</span>
-          <div class="report-bar-chart__bar" style="height:${Math.max(4,(v.amount/maxAmt)*130)}px;"></div>
-          <span class="report-bar-chart__label">${esc(label)}</span>
-        </div>`).join('')}
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${totalIncome.toFixed(2)} ₼</div><div class="stat-label">Ümumi Mədaxil</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${totalExpense.toFixed(2)} ₼</div><div class="stat-label">Ümumi Məxaric</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:${net>=0?'var(--green)':'var(--red)'};">${net.toFixed(2)} ₼</div><div class="stat-label">Xalis Fərq</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${totalPending.toFixed(2)} ₼</div><div class="stat-label">Gözlənilən Daxilolma (nisyə+banket)</div></div>
     </div>
-    <table class="report-table" style="margin-top:18px;">
-      <thead><tr><th>Ödəniş növü</th><th class="num">Sayı</th><th class="num">Məbləğ</th><th class="num">Pay</th></tr></thead>
-      <tbody>${entries.map(([label,v]) => `<tr><td>${esc(label)}</td><td class="num">${v.count}</td><td class="num">${v.amount.toFixed(2)} ₼</td><td class="num">${total?((v.amount/total)*100).toFixed(1):0}%</td></tr>`).join('')}</tbody>
+
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-cash"></use></svg> Gün Sonu — Nağd Kassa Hesablaması</div>
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);font-size:20px;">${cashIncome.toFixed(2)} ₼</div><div class="stat-label">Nağd Mədaxil</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);font-size:20px;">${cashExpense.toFixed(2)} ₼</div><div class="stat-label">Nağd Məxaric</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);font-size:20px;">${cashNet.toFixed(2)} ₼</div><div class="stat-label">Kassada Olmalı Nağd</div></div>
+    </div>
+
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-check"></use></svg> Mədaxil növünə görə</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Növ</th><th class="num">Məbləğ</th><th class="num">Pay</th></tr></thead>
+      <tbody>${Object.entries(incomeByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt]) => `<tr><td>${esc(cat)}</td><td class="num">${amt.toFixed(2)} ₼</td><td class="num">${totalIncome?((amt/totalIncome)*100).toFixed(1):0}%</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda mədaxil yoxdur</td></tr>'}</tbody>
+    </table>
+
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-cash"></use></svg> Məxaric mənbəyinə görə</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Növ</th><th class="num">Məbləğ</th><th class="num">Pay</th></tr></thead>
+      <tbody>${Object.entries(expenseByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt]) => `<tr><td>${esc(cat)}</td><td class="num">${amt.toFixed(2)} ₼</td><td class="num">${totalExpense?((amt/totalExpense)*100).toFixed(1):0}%</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda məxaric yoxdur</td></tr>'}</tbody>
+    </table>
+
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Ətraflı Mədaxil Siyahısı</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Tarix/Saat</th><th>Növ</th><th>Ödəniş üsulu</th><th>Haradan/Kimdən</th><th>İşçi</th><th class="num">Məbləğ</th></tr></thead>
+      <tbody>${income.slice(0,300).map(e => `<tr><td>${fmtTime(e.ts)}</td><td>${esc(e.category)}</td><td>${esc(e.method)}</td><td>${esc(e.source)}</td><td>${esc(e.who)}</td><td class="num" style="color:var(--green);">+${e.amount.toFixed(2)} ₼</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);">Bu aralıqda mədaxil yoxdur</td></tr>'}</tbody>
+    </table>
+
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Ətraflı Məxaric Siyahısı</div>
+    <table class="report-table">
+      <thead><tr><th>Tarix/Saat</th><th>Növ</th><th>Ödəniş üsulu</th><th>Haraya/Kimə</th><th>İşçi</th><th class="num">Məbləğ</th></tr></thead>
+      <tbody>${expense.slice(0,300).map(e => `<tr><td>${fmtTime(e.ts)}</td><td>${esc(e.category)}</td><td>${esc(e.method)}</td><td>${esc(e.source)}</td><td>${esc(e.who)}</td><td class="num" style="color:var(--red);">-${e.amount.toFixed(2)} ₼</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);">Bu aralıqda məxaric yoxdur</td></tr>'}</tbody>
     </table>
   `;
 }
