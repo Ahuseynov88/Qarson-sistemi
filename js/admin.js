@@ -293,6 +293,9 @@ export function renderReports() {
   // ƏLAQƏLİ DEYİL, ona görə aşağıdakı "bağlanan masa yoxdursa boş göstər" yoxlamasından
   // TAMAMİLƏ keçib bunu birbaşa göstəririk.
   if (view === 'openTables') { renderReportOpenTablesView(el); return; }
+  if (view === 'credit') { renderReportCreditView(el); return; }
+  if (view === 'stock') { renderReportStockView(el); return; }
+  if (view === 'suppliers') { renderReportSuppliersView(el); return; }
 
   const orders = getReportFilteredOrders();
   const summaryEl = document.getElementById('reportRangeSummary');
@@ -871,6 +874,109 @@ function renderReportOpenTablesView(el) {
     <table class="report-table">
       <thead><tr><th>Masa</th><th>İşçi</th><th class="num">Cəmi</th><th class="num">Qalıq</th><th class="num">Neçə vaxtdır açıqdır</th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.waiter)}</td><td class="num">${r.total.toFixed(2)} ₼</td><td class="num" style="color:${r.remaining>0?'var(--orange)':'var(--green)'};">${r.remaining.toFixed(2)} ₼</td><td class="num">${fmtDuration(r.durationMin)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);">Hazırda açıq masa yoxdur</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+// NİSYƏ VƏZİYYƏTİ - tarix filtrindən ASILI DEYİL, HAZIRKI borc vəziyyətini göstərir.
+// Hansı müştəri nə qədər borcludur, ən uzun müddət ödənilməmiş kim - "aging" məntiqi.
+function renderReportCreditView(el) {
+  const debtors = (state.customers||[]).filter(c => (c.balance||0) > 0.01);
+  const totalDebt = debtors.reduce((s,c) => s+(c.balance||0), 0);
+
+  const rows = debtors.map(c => {
+    const charges = (state.customerCharges||[]).filter(ch => ch.customerId === c.id && ch.type !== 'payment').sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    const oldestUnpaid = charges.find(ch => ((ch.amount||0)-(ch.paidAmount||0)) > 0.01);
+    const daysSince = oldestUnpaid ? Math.floor((Date.now()-(oldestUnpaid.createdAt||Date.now()))/86400000) : 0;
+    return { name: c.name, phone: c.phone||'—', balance: c.balance||0, daysSince };
+  }).sort((a,b) => b.daysSince - a.daysSince);
+
+  const overdue7 = rows.filter(r => r.daysSince >= 7).length;
+  const overdue30 = rows.filter(r => r.daysSince >= 30).length;
+
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${totalDebt.toFixed(2)} ₼</div><div class="stat-label">Ümumi Nisyə Borcu</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${debtors.length}</div><div class="stat-label">Borclu Müştəri</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${overdue7}</div><div class="stat-label">7+ gündür gözləyən</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${overdue30}</div><div class="stat-label">30+ gündür gözləyən</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Bu hesabat tarix filtrindən asılı deyil - hazırkı borc vəziyyətini göstərir. Ən uzun gözləyənlər öndədir.</p>
+    <table class="report-table">
+      <thead><tr><th>Müştəri</th><th>Telefon</th><th class="num">Borc</th><th class="num">Neçə gündür</th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td class="num" style="color:var(--red);">${r.balance.toFixed(2)} ₼</td><td class="num" style="color:${r.daysSince>=30?'var(--red)':r.daysSince>=7?'var(--orange)':'var(--text2)'};font-weight:${r.daysSince>=7?'700':'400'};">${r.daysSince} gün</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);">Hazırda borclu müştəri yoxdur</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+// ANBAR/STOK - tarix filtrindən ASILI DEYİL, HAZIRKI stok vəziyyətini göstərir.
+// Azalan mallar (≤5) xəbərdarlıq rəngi ilə önə çıxarılır.
+function renderReportStockView(el) {
+  const trackable = (state.menuItems||[]).filter(m => m.isTrackable);
+  const lowStock = trackable.filter(m => (m.stock||0) <= 5);
+  const outOfStock = trackable.filter(m => (m.stock||0) <= 0);
+  const totalStockValue = trackable.reduce((s,m) => s + (m.stock||0)*(m.price||0), 0);
+
+  const rows = [...trackable].sort((a,b) => (a.stock||0)-(b.stock||0));
+
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${trackable.length}</div><div class="stat-label">İzlənən Mal Sayı</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${lowStock.length}</div><div class="stat-label">Azalan Mal (≤5)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${outOfStock.length}</div><div class="stat-label">Bitən Mal</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green);">${totalStockValue.toFixed(2)} ₼</div><div class="stat-label">Anbarın Satış Dəyəri</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Bu hesabat tarix filtrindən asılı deyil - hazırkı anbar vəziyyətini göstərir. Ən az qalanlar öndədir.</p>
+    <table class="report-table">
+      <thead><tr><th>Mal</th><th>Kateqoriya</th><th class="num">Qalıq</th><th class="num">Satış Qiyməti</th></tr></thead>
+      <tbody>${rows.length ? rows.map(m => `<tr><td>${esc(m.name)}</td><td>${esc(m.category||'Digər')}</td><td class="num" style="color:${(m.stock||0)<=0?'var(--red)':(m.stock||0)<=5?'var(--orange)':'var(--text)'};font-weight:${(m.stock||0)<=5?'700':'400'};">${m.stock||0}</td><td class="num">${(m.price||0).toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);">İzlənən (sayıla bilən) mal yoxdur</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+// TƏCHİZATÇI/ALIŞ - borc vəziyyəti HAZIRKI anı göstərir (tarix filtrindən asılı deyil),
+// alış fəaliyyəti isə seçilmiş tarix aralığına görə filtrlənir.
+function renderReportSuppliersView(el) {
+  const dateFrom = document.getElementById('repDateFrom')?.value || '';
+  const dateTo = document.getElementById('repDateTo')?.value || '';
+  const timeFrom = document.getElementById('repTimeFrom')?.value || '';
+  const timeTo = document.getElementById('repTimeTo')?.value || '';
+  const inRange = (ts) => {
+    if (dateFrom) { const b = new Date(dateFrom); if (timeFrom) { const [h,m]=timeFrom.split(':'); b.setHours(+h,+m,0,0);} else b.setHours(0,0,0,0); if (ts < b.getTime()) return false; }
+    if (dateTo) { const b = new Date(dateTo); if (timeTo) { const [h,m]=timeTo.split(':'); b.setHours(+h,+m,59,999);} else b.setHours(23,59,59,999); if (ts > b.getTime()) return false; }
+    return true;
+  };
+
+  const purchasesInRange = (state.purchases||[]).filter(p => inRange(p.createdAt||0));
+  const totalPurchased = purchasesInRange.reduce((s,p) => s+(p.totalAmount||0), 0);
+  const totalSupplierDebt = (state.suppliers||[]).reduce((s,sup) => s+(sup.totalDebt||0), 0);
+
+  const bySupplier = {};
+  purchasesInRange.forEach(p => {
+    if (!bySupplier[p.supplierName]) bySupplier[p.supplierName] = { count: 0, amount: 0 };
+    bySupplier[p.supplierName].count++; bySupplier[p.supplierName].amount += p.totalAmount||0;
+  });
+  const supplierEntries = Object.entries(bySupplier).sort((a,b)=>b[1].amount-a[1].amount);
+
+  const debtEntries = (state.suppliers||[]).filter(s=>(s.totalDebt||0)>0.01).sort((a,b)=>(b.totalDebt||0)-(a.totalDebt||0));
+
+  el.innerHTML = `
+    <div class="ct-report__stats" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue);">${totalPurchased.toFixed(2)} ₼</div><div class="stat-label">Bu Aralıqda Alınan (cəmi)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red);">${totalSupplierDebt.toFixed(2)} ₼</div><div class="stat-label">Təchizatçılara Ümumi Borc</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange);">${purchasesInRange.length}</div><div class="stat-label">Alış Sayı</div></div>
+    </div>
+
+    <div class="report-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-users"></use></svg> Təchizatçıya görə alış (seçilmiş aralıqda)</div>
+    <table class="report-table" style="margin-bottom:18px;">
+      <thead><tr><th>Təchizatçı</th><th class="num">Alış sayı</th><th class="num">Məbləğ</th></tr></thead>
+      <tbody>${supplierEntries.length ? supplierEntries.map(([name,v]) => `<tr><td>${esc(name)}</td><td class="num">${v.count}</td><td class="num">${v.amount.toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda alış yoxdur</td></tr>'}</tbody>
+    </table>
+
+    <div class="report-section-title" style="color:var(--red);"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-warning"></use></svg> Təchizatçılara olan borc (hazırkı vəziyyət)</div>
+    <table class="report-table">
+      <thead><tr><th>Təchizatçı</th><th class="num">Borc</th></tr></thead>
+      <tbody>${debtEntries.length ? debtEntries.map(s => `<tr><td>${esc(s.name)}</td><td class="num" style="color:var(--red);">${(s.totalDebt||0).toFixed(2)} ₼</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text3);">Heç bir təchizatçıya borc yoxdur</td></tr>'}</tbody>
     </table>
   `;
 }
