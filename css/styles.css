@@ -368,25 +368,24 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .category-rail__tab.active{background:var(--blue);color:#fff;}
 
 /* ── ÜRÜN (PRODUCT) KARTLARI (konteyner: .order-items-grid, artıq responsiv qaydalarla təyin olunub) ── */
-.product-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:10px;
-  cursor:pointer;transition:.12s;overflow:hidden;aspect-ratio:1/1;display:flex;align-items:flex-end;}
-.product-card:hover{border-color:var(--blue);}
-.product-card:active{transform:scale(.97);}
+.product-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:var(--r-sm);
+  cursor:pointer;transition:.12s;overflow:hidden;aspect-ratio:1/1;display:flex;align-items:flex-end;box-shadow:var(--shadow-sm);}
+.product-card:active{transform:scale(.96);border-color:var(--gold);}
 .product-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .product-card__overlay{position:relative;z-index:1;width:100%;background:linear-gradient(transparent,rgba(0,0,0,.72) 60%);
   padding:18px 7px 6px;}
-.product-card__name{font-size:12px;font-weight:700;color:#fff;line-height:1.25;text-shadow:0 1px 3px rgba(0,0,0,.6);}
-.product-card__price{color:#fff;font-weight:700;margin-top:3px;font-size:12.5px;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.product-card__name{font-family:var(--font-display);font-size:13px;font-weight:600;color:#fff;line-height:1.25;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.product-card__price{color:var(--gold);font-weight:700;margin-top:3px;font-size:12.5px;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6);}
 .product-card.out-of-stock{opacity:.45;pointer-events:none;}
 .product-card__oos{font-size:9.5px;color:#ffb4b0;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 .product-card__stock{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:7px;z-index:2;}
 .product-card__stock--low{background:rgba(211,84,0,.85);}
-/* Şəkli olmayan mallar üçün sadə mətn kartı */
+/* Şəkli olmayan mallar üçün - çap olunmuş menyu vərəqi kimi zərif mətn kartı */
 .product-card.no-photo{align-items:center;justify-content:center;background:var(--card);aspect-ratio:auto;padding:14px 8px;}
-.product-card.no-photo:hover{background:var(--overlay-soft);}
+.product-card.no-photo:active{background:var(--card2);}
 .product-card.no-photo .product-card__overlay{position:static;background:none;padding:0;width:100%;}
 .product-card.no-photo .product-card__name{color:var(--text);text-shadow:none;min-height:2.4em;display:flex;align-items:center;justify-content:center;}
-.product-card.no-photo .product-card__price{color:var(--blue);text-shadow:none;}
+.product-card.no-photo .product-card__price{color:var(--gold-dark);text-shadow:none;}
 .product-card.no-photo .product-card__oos{color:var(--red);}
 
 /* ── TİCKET (SƏBƏT) PANELİ — təmiz, işıqlı ── */
