@@ -1184,8 +1184,8 @@ export function renderMenuItems() {
     const available = m.available !== false;
     return `<div class="tile-card" onclick="selectMenuItem('${m.id}')">
       <div class="tile-card__icon"><img src="${m.photo || fallback}" alt="" onerror="this.src='${fallback}'" style="${!available?'opacity:.4;':''}"></div>
-      <div class="tile-card__name">${esc(m.name)}</div>
-      <div class="tile-card__meta">${Number(m.price||0).toFixed(2)} ₼</div>
+      <div class="tile-card__name" style="font-family:var(--font-display);">${esc(m.name)}</div>
+      <div class="tile-card__meta" style="color:var(--gold-dark);font-weight:700;">${Number(m.price||0).toFixed(2)} ₼</div>
       <span class="status-badge ${available?'badge-green':'badge-red'} tile-card__badge">${available?'Var':'Tükənib'}</span>
     </div>`;
   }).join('');
