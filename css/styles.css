@@ -97,6 +97,21 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .admin-tab.dragging{opacity:.35;cursor:grabbing;}
 .admin-tab.drag-over{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue) inset;}
 .admin-tab.active{background:var(--gold);color:#1f0a12;border-color:var(--gold);font-weight:700;}
+
+/* ── KOMPÜTER: SOL SABİT NAVİQASİYA (SIDEBAR) ──
+   Telefonda admin-tabs kafel/siyahı kimi yuxarıda qalır (heç nə dəyişmir).
+   Kompüterdə (≥900px) isə klassik SaaS panel strukturuna keçir: sol tərəfdə
+   sabit, şaquli naviqasiya + sağda tam-hündürlükdə məzmun sahəsi. */
+@media (min-width:900px){
+  .admin-body{display:flex;flex-direction:row;align-items:stretch;padding:0;gap:0;height:calc(100vh - 61px);overflow:hidden;}
+  .admin-tabs{flex-direction:column;flex-wrap:nowrap;width:250px;flex-shrink:0;height:100%;overflow-y:auto;
+    border-bottom:none;border-right:1px solid var(--border);padding:16px 10px;margin-bottom:0;background:var(--card);gap:3px;}
+  .admin-tab{width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;text-align:left;
+    padding:11px 14px;border-radius:var(--r-sm);}
+  .admin-tab.active{box-shadow:var(--shadow-sm);}
+  .admin-section{height:100%;overflow-y:auto;padding:28px 32px;flex:1;min-width:0;}
+  #adminFab{right:32px;bottom:32px;}
+}
 .admin-section{display:none;}
 .admin-section.active{display:block;}
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-5);}
