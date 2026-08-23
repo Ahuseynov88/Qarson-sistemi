@@ -83,6 +83,7 @@
       <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)"><svg class="icon"><use href="#i-clock"></use></svg> Tədbirlər Təqvimi</button>
       <button class="admin-tab" data-section="banquetHalls" onclick="adminTab('banquetHalls',this)"><svg class="icon"><use href="#i-chair"></use></svg> Zallar</button>
       <button class="admin-tab" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri</button>
+      <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -331,6 +332,9 @@
     <div class="admin-section" id="sec-banquetEventTypes">
       <div class="tile-grid" id="banquetEventTypesGrid"></div>
     </div>
+    <div class="admin-section" id="sec-kitchenStations">
+  <div class="tile-grid" id="kitchenStationsGrid"></div>
+</div>
     <div class="admin-section" id="sec-feedback">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h3 style="color:var(--text2);font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
@@ -345,7 +349,7 @@
 <!-- ═══ KITCHEN ═══ -->
 <div class="screen" id="kitchenScreen">
   <div class="topbar">
-    <h2><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx Paneli</h2>
+    <h2><svg class="icon"><use href="#i-chef"></use></svg> <span id="kitchenPanelTitle">Mətbəx Paneli</span></h2>
     <div class="topbar-right">
       <button class="theme-toggle-btn" id="themeToggleBtnKitchen" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
       <button class="btn btn-red" onclick="logout()">Çıxış</button>
@@ -388,7 +392,36 @@
     <button onclick="sendWaiterReply()">Göndər</button>
   </div>
 </div>
+<!-- ═══ KİTCHEN STANSİYA MODALI ═══ -->
+<div class="modal-bg" id="kitchenStationModal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</h3>
+      <button onclick="closeKitchenStationModal()"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <input type="hidden" id="kitchenStationModalId">
+    <div class="modal-body" id="kitchenStationModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeKitchenStationModal()">Ləğv et</button>
+      <button class="btn btn-green" onclick="saveKitchenStation()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+    </div>
+  </div>
+</div>
 
+<!-- ═══ KİTCHEN MENYU TƏYİN MODALI ═══ -->
+<div class="modal-bg" id="kitchenMenuAssignModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3><svg class="icon"><use href="#i-food"></use></svg> Məhsul Təyinatı</h3>
+      <button onclick="closeKitchenMenuAssign()"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="modal-body" id="kitchenMenuAssignBody" style="overflow-y:auto;max-height:55vh;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeKitchenMenuAssign()">Ləğv et</button>
+      <button class="btn btn-green" onclick="saveKitchenMenuAssign()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+    </div>
+  </div>
+</div>
 <!-- ═══ OVERLAYS ═══ -->
 <div id="alarmOverlay">
   <div class="alarm-icon" id="alarmIcon"><svg class="icon"><use href="#i-bell"></use></svg></div>
@@ -479,6 +512,7 @@
           <span class="ticket-total-row__label">Cəmi</span>
           <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
         </div>
+        <textarea id="orderGlobalNote" rows="2" placeholder="Ümumi qeyd (məs: saat 17:00-da hazır olsun, paket sifarişdir...)" style="width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:8px 10px;font-size:12px;margin-bottom:8px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
         <button class="btn btn-green" style="width:100%;padding:13px;font-size:14px;margin-bottom:8px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə Göndər</button>
 
         <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-bottom:10px;" data-open-payment-hub>
