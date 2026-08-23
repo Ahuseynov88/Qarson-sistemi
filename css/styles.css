@@ -336,6 +336,29 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .k-tables-under{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:8px;min-height:20px;}
 .k-table-chip{background:rgba(52,152,219,.2);border:1px solid rgba(52,152,219,.4);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--blue);}
 .k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
+/* Yeni sifariş kartları */
+.kitchen-orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.ko-card{background:var(--card);border-radius:var(--r-lg);padding:18px;border:2px solid var(--border);transition:.2s;box-shadow:var(--shadow-sm);}
+.ko-card--pending{border-color:var(--red);background:rgba(231,76,60,.06);}
+.ko-card--ready{border-color:var(--orange);background:rgba(196,176,46,.08);animation:ko-pulse 1.4s ease-in-out infinite;}
+.ko-card--accepted{border-color:var(--green);background:rgba(46,204,113,.07);opacity:.75;}
+@keyframes ko-pulse{0%,100%{box-shadow:0 0 0 0 rgba(196,176,46,.4);}50%{box-shadow:0 0 0 8px rgba(196,176,46,0);}}
+.ko-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.ko-table-name{font-size:18px;font-weight:700;color:var(--text);}
+.ko-time{font-size:12px;color:var(--text3);background:var(--card2);padding:2px 8px;border-radius:8px;}
+.ko-waiter-name{font-size:13px;color:var(--text2);margin-bottom:8px;}
+.ko-status{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;margin-bottom:10px;}
+.ko-status--pending{color:var(--red);background:rgba(231,76,60,.1);}
+.ko-status--ready{color:var(--orange);background:rgba(196,176,46,.15);}
+.ko-status--accepted{color:var(--green);background:rgba(46,204,113,.12);}
+.ko-items{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding-top:10px;margin-top:4px;}
+.ko-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:var(--card2);transition:.15s;}
+.ko-item--ready{opacity:.55;text-decoration:line-through;}
+.ko-item-qty{font-size:13px;font-weight:700;color:var(--blue);min-width:24px;}
+.ko-item-name{flex:1;font-size:14px;color:var(--text);}
+.ko-item-btn{background:var(--red);color:#fff;border:none;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s;}
+.ko-item-btn:hover{filter:brightness(1.15);}
+.ko-item-done{color:var(--green);font-size:16px;display:flex;align-items:center;}
 
 /* ── WAITER ── */
 #waiterScreen{background:var(--bg);position:fixed;inset:0;z-index:500;}
