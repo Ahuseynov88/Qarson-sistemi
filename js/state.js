@@ -71,6 +71,10 @@ export const state = {
   _orderDetailItemId: null,
   _batchSelection: {},
     tableTimerInterval: null,
-  kitchenOrders: [],
-  _shownKitchenOrders: []
+    kitchenOrders: [],
+  _shownKitchenOrders: [],
+  kitchenStations: [],
+  _activeKitchen: null,
+  _selectedKitchenId: null,
+  kitchenNotifs: []
 };
