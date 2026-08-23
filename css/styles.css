@@ -843,3 +843,29 @@ img,svg.icon{max-width:100%;}
   .floor-card{padding:9px 8px 8px 10px;}
   .floor-card__name{font-size:12px;}
 }
+/* ── Kitchen v2 item styles ── */
+.ko-item-main{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
+.ko-item-info{flex:1;display:flex;flex-direction:column;gap:2px;}
+.ko-item-note{font-size:11px;color:var(--orange);font-style:italic;}
+.ko-item-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+.ko-item-status--new{background:rgba(52,152,219,.15);color:var(--blue);}
+.ko-item-status--cooking{background:rgba(243,156,18,.18);color:var(--orange);}
+.ko-item-status--ready{background:rgba(46,204,113,.15);color:var(--green);}
+.ko-item-status--accepted{background:rgba(46,204,113,.08);color:var(--green);text-decoration:line-through;}
+.ko-item-actions{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.ko-item-action{border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;}
+.ko-item-action--cook{background:rgba(243,156,18,.2);color:var(--orange);}
+.ko-item-action--cook:hover{background:var(--orange);color:#fff;}
+.ko-item-action--ready{background:var(--green);color:#fff;}
+.ko-item-action--ready:hover{filter:brightness(1.12);}
+.ko-item-time{font-size:11px;color:var(--text3);white-space:nowrap;}
+.ko-item--done .ko-item-name{text-decoration:line-through;opacity:.6;}
+.ko-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+.ko-badge--pending{background:rgba(231,76,60,.12);color:var(--red);}
+.ko-badge--ready{background:rgba(196,176,46,.18);color:#b8a000;}
+.ko-badge--accepted{background:rgba(46,204,113,.12);color:var(--green);}
+.ko-change-notice{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--red);font-weight:600;margin-bottom:8px;}
+.ko-order-note{background:rgba(52,152,219,.08);border:1px solid rgba(52,152,219,.2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--blue);margin-bottom:8px;}
+.ko-elapsed{font-size:11px;padding:2px 6px;border-radius:8px;background:var(--card2);}
+.ko-elapsed--warn{background:rgba(231,76,60,.15);color:var(--red);}
+.tile-card--disabled{opacity:.55;border-style:dashed;}
