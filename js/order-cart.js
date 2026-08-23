@@ -62,6 +62,8 @@ export class OrderCart {
     if (this.els.searchInput) this.els.searchInput.value = '';
     const t = state.tables.find(x => x.id === tableId);
     this.els.title.innerHTML = `<svg class="icon"><use href="#i-food"></use></svg> ${esc(t?.name || 'Sifariş')}`;
+         const gnEl = document.getElementById('orderGlobalNote');
+    if (gnEl) gnEl.value = '';
     this.renderCatTabs();
     this.renderItemsList();
     this.renderDraftList();
@@ -280,18 +282,50 @@ export class OrderCart {
         const m = state.menuItems.find(x => x.id === draft?.menuItemId);
         return m ? { name: m.name, qty: draft.qty } : null;
       }).filter(Boolean);
-      addLog('order_send', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi: ${formatItemsList(sentItemsSummary)} (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
+            addLog('order_send', ...);
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Sifariş göndərildi');
-             const koRef = R.kitchenOrders.push();
-      koRef.set({
-        tableId, tableName: t?.name || 'Masa',
-        waiterId, waiterName,
-        items: sentItemsSummary.map(i=>({ name:i.name, qty:i.qty, ready:false })),
-        status: 'pending',
-        allReady: false,
-        waiterAccepted: false,
-        createdAt: Date.now(),
-        time: new Date().toLocaleTimeString('az-AZ')
+
+      const now = Date.now();
+      const timeStr = new Date().toLocaleTimeString('az-AZ');
+      const orderNote = (document.getElementById('orderGlobalNote')?.value || '').trim();
+
+      const kitchenGroups = {};
+      sentItemsSummary.forEach(si => {
+        const draftEntry = Object.values(draftSnapshot).find(d => {
+          const m = state.menuItems.find(x => x.id === d.menuItemId);
+          return m && m.name === si.name;
+        });
+        const menuItem = state.menuItems.find(x => x.id === draftEntry?.menuItemId);
+        const kitchenId = menuItem?.kitchenId || 'default';
+        const station = (state.kitchenStations || []).find(k => k.id === kitchenId);
+        const kitchenName = station?.name || 'Mətbəx';
+        if (!kitchenGroups[kitchenId]) kitchenGroups[kitchenId] = { kitchenId, kitchenName, items: [] };
+        kitchenGroups[kitchenId].items.push({
+          name: si.name,
+          qty: si.qty,
+          note: draftEntry?.note || '',
+          ready: false,
+          cooking: false,
+          waiterAccepted: false,
+          addedAt: now
+        });
+      });
+
+      Object.values(kitchenGroups).forEach(group => {
+        const koRef = R.kitchenOrders.push();
+        koRef.set({
+          tableId, tableName: t?.name || 'Masa',
+          waiterId, waiterName,
+          kitchenId: group.kitchenId,
+          kitchenName: group.kitchenName,
+          items: group.items,
+          orderNote,
+          status: 'pending',
+          allReady: false,
+          waiterAccepted: false,
+          createdAt: now,
+          time: timeStr
+        });
       });
     });
 
