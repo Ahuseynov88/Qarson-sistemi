@@ -123,13 +123,32 @@ export function acceptAlarm() {
   if (state.alarmType === 'order') {
     R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
     addLog('order_send',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
-       } else if (state.alarmType === 'kitchen_ready') {
-    const koId = window._currentKitchenOrderId;
-    if (koId) {
-      R.kitchenOrders.child(koId).update({ waiterAccepted:true, waiterAcceptedAt:Date.now() });
-      addLog('kitchen_ready',`${state.user.name} mətbəx bildirişini qəbul etdi`,{ kitchenOrderId:koId, waiterId:state.user.id });
+         } else if (state.alarmType === 'kitchen_ready') {
+    const notifId = window._currentKitchenNotifId;
+    if (notifId) {
+      const notif = (state.kitchenNotifs || []).find(n => n.id === notifId);
+      R.kitchenNotifs.child(notifId).update({ status: 'accepted', acceptedAt: Date.now() });
+      if (notif) {
+        const ko = (state.kitchenOrders || []).find(x => x.id === notif.kitchenOrderId);
+        if (ko) {
+          const items = (ko.items || []).map((item, i) =>
+            i === notif.itemIdx ? { ...item, waiterAccepted: true, waiterAcceptedAt: Date.now() } : item
+          );
+          const allAccepted = items.every(i => !i.ready || i.waiterAccepted);
+          R.kitchenOrders.child(notif.kitchenOrderId).update({ items, waiterAccepted: allAccepted });
+        }
+        addLog('kitchen_accepted', `${state.user.name} qəbul etdi — ${notif.tableName}: ${notif.itemName}`, { notifId, waiterId: state.user.id });
+      }
     }
+    window._currentKitchenNotifId = null;
     window._currentKitchenOrderId = null;
+    setTimeout(() => {
+      const next = (state.kitchenNotifs || []).filter(n =>
+        n.waiterId === state.user?.id && n.status === 'pending' && !state._shownKitchenOrders?.includes(n.id)
+      );
+      if (next.length) triggerKitchenItemAlarm(next[0]);
+    }, 600);
+  }
   } else if (state.alarmType === 'customer') {
     const reqType = window._currentRequestId;
     if (reqType) {
