@@ -10,7 +10,7 @@ import { staffHasPermission, PERMISSION_PRESETS } from './permissions.js';
 import { injectIconSprite } from './icons.js';
 import { showScreen, loadSavedTheme } from './theme.js';
 import { setRole, numPress, clearPin, showErr } from './auth.js';
-import { stopAlarm, checkIncomingOrders, checkKitchenReadyOrders } from './alarm.js';
+import { stopAlarm, checkIncomingOrders, checkKitchenReadyOrders, checkKitchenNotifs } from './alarm.js';
 import { StaffApp } from './staff-app.js';
 import { renderAdmin, renderLogs, initAdminTabDragDrop } from './admin.js';
 import { renderKitchen } from './kitchen.js';
@@ -37,11 +37,27 @@ function doLogin() {
     }
   }
 
-  if (state.role === 'kitchen' && String(pin) === String(state.kitchenPin)) {
-    state.user = { role: 'kitchen', name: 'Mətbəx' };
-    addLog('login', 'Mətbəx sistemə daxil oldu', { type: 'kitchen' });
-    initListeners();
-    showScreen('kitchenScreen');
+    if (state.role === 'kitchen') {
+    if (String(pin) === String(state.kitchenPin)) {
+      state.user = { role: 'kitchen', name: 'Mətbəx' };
+      state._activeKitchen = null;
+      addLog('login', 'Mətbəx sistemə daxil oldu', { type: 'kitchen' });
+      initListeners();
+      showScreen('kitchenScreen');
+      return;
+    }
+    const matchStation = (state.kitchenStations || []).find(s => s.active !== false && String(s.pin) === String(pin));
+    if (matchStation) {
+      state.user = { role: 'kitchen', name: matchStation.name };
+      state._activeKitchen = matchStation;
+      addLog('login', `"${matchStation.name}" mətbəxi daxil oldu`, { kitchenId: matchStation.id });
+      initListeners();
+      const ttl = document.getElementById('kitchenPanelTitle');
+      if (ttl) ttl.textContent = matchStation.name;
+      showScreen('kitchenScreen');
+      return;
+    }
+    showErr('PIN kod səhvdir!');
     return;
   }
 
@@ -118,6 +134,8 @@ function logout() {
   state.orders = [];
   state.logs = [];
   state._shownRequests = [];
+     state._activeKitchen = null;
+  state._shownKitchenOrders = [];
   state.activeChatTableId = null;
   state.activeChatConvId = null;
   state._batchSelection = {};
@@ -196,10 +214,18 @@ function initListeners() {
     onDataChange();
     if (state.user?.role === 'staff') checkIncomingOrders();
   });
+     R.kitchenStations.on('value', snap => {
+    state.kitchenStations = toArr(snap.val());
+    if (state.user?.role === 'admin') renderAdmin();
+  });
      R.kitchenOrders.limitToLast(50).on('value', snap => {
     state.kitchenOrders = toArr(snap.val());
     if (state.user?.role === 'kitchen') renderKitchen();
     if (state.user?.role === 'staff') checkKitchenReadyOrders();
+  });
+     R.kitchenNotifs.on('value', snap => {
+    state.kitchenNotifs = toArr(snap.val());
+    if (state.user?.role === 'staff') checkKitchenNotifs();
   });
   R.logs.limitToLast(300).on('value', snap => {
     state.logs = toArr(snap.val()).reverse();
@@ -212,7 +238,7 @@ function initListeners() {
 
 function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();  R.kitchenOrders.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();    R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
   db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
 }
