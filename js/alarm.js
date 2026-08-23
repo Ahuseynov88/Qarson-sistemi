@@ -148,7 +148,7 @@ export function acceptAlarm() {
       );
       if (next.length) triggerKitchenItemAlarm(next[0]);
     }, 600);
-  }
+  
   } else if (state.alarmType === 'customer') {
     const reqType = window._currentRequestId;
     if (reqType) {
