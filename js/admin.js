@@ -66,6 +66,7 @@ export function renderAdmin() {
   if (state.adminSection==='banquetCalendar') renderBanquetCalendar();
   if (state.adminSection==='banquetHalls') renderBanquetHalls();
   if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
+     if (state.adminSection==='kitchenStations') renderKitchenStations();
 }
 
 export function adminTab(sec, el) {
@@ -77,7 +78,7 @@ export function adminTab(sec, el) {
   document.querySelector('.admin-body')?.classList.add('admin-section-open');
   _toggleSectionBackBtn(false);
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='banquetEventTypes') ? 'flex':'none';
+  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -1389,11 +1390,15 @@ export function openAddModal() {
     openPurchaseModal();
     return;
   }
-  if (state.adminSection === 'banquetHalls') {
-    openBanquetHallModal();
+    if (state.adminSection === 'banquetEventTypes') {
+    openBanquetEventTypeModal();
     return;
   }
-  if (state.adminSection === 'banquetEventTypes') {
+  if (state.adminSection === 'kitchenStations') {
+    openKitchenStationModal();
+    return;
+  }
+  if (state.adminSection === 'menu') {
     openBanquetEventTypeModal();
     return;
   }
@@ -3495,3 +3500,138 @@ window.openCustomerPaymentModal = openCustomerPaymentModal;
 window.toggleChargeSelection = toggleChargeSelection;
 window.closeCustomerPaymentModal = closeCustomerPaymentModal;
 window.submitCustomerPayment = submitCustomerPayment;
+/* ═══════════════════════════════════════════
+   MƏTBƏX STANSİYALARI
+═══════════════════════════════════════════ */
+function renderKitchenStations() {
+  const el = document.getElementById('kitchenStationsGrid');
+  if (!el) return;
+  const list = state.kitchenStations || [];
+  if (!list.length) {
+    el.innerHTML = '<p style="color:var(--text2);grid-column:1/-1;">Hələ mətbəx yaradılmayıb. "+" düyməsinə basın.</p>';
+    return;
+  }
+  el.innerHTML = list.map(k => `
+    <div class="tile-card ${k.active===false?'tile-card--disabled':''}">
+      <div class="tile-card__title">${esc(k.name)}</div>
+      <div style="font-size:12px;color:var(--text2);margin:4px 0;">
+        PIN: <strong style="color:var(--orange);">${esc(k.pin)}</strong> &nbsp;·&nbsp;
+        Məhsul: <strong>${(k.menuItemIds||[]).length}</strong> &nbsp;·&nbsp;
+        <span style="color:${k.active===false?'var(--red)':'var(--green)'};">${k.active===false?'Passiv':'Aktiv'}</span>
+      </div>
+      ${k.responsible?`<div style="font-size:12px;color:var(--text3);">Məsul: ${esc(k.responsible)}</div>`:''}
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-blue" style="padding:5px 12px;font-size:12px;" onclick="openKitchenStationModal('${k.id}')"><svg class="icon"><use href="#i-edit"></use></svg> Redaktə</button>
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="openKitchenMenuAssign('${k.id}')"><svg class="icon"><use href="#i-food"></use></svg> Məhsullar</button>
+        <button class="btn btn-red" style="padding:5px 12px;font-size:12px;" onclick="deleteKitchenStation('${k.id}')"><svg class="icon"><use href="#i-trash"></use></svg></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openKitchenStationModal(id) {
+  const s = id ? (state.kitchenStations||[]).find(x=>x.id===id) : null;
+  const body = document.getElementById('kitchenStationModalBody');
+  if (!body) return;
+  body.innerHTML = `
+    <div class="form-group"><label>Mətbəx adı</label>
+      <input type="text" id="ksName" value="${esc(s?.name||'')}" placeholder="məs: Kabab Mətbəxi">
+    </div>
+    <div class="form-group"><label>Məsul şəxs</label>
+      <input type="text" id="ksResponsible" value="${esc(s?.responsible||'')}" placeholder="Ad Soyad">
+    </div>
+    <div class="form-group"><label>PIN kodu (ən az 4 rəqəm)</label>
+      <input type="number" id="ksPin" value="${esc(s?.pin||'')}" placeholder="1234">
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;">
+      <input type="checkbox" id="ksActive" ${s?.active!==false?'checked':''} style="width:18px;height:18px;"> Aktiv
+    </label>`;
+  document.getElementById('kitchenStationModalId').value = id || '';
+  document.getElementById('kitchenStationModal').classList.add('open');
+}
+
+function closeKitchenStationModal() {
+  document.getElementById('kitchenStationModal').classList.remove('open');
+}
+
+function saveKitchenStation() {
+  const id = document.getElementById('kitchenStationModalId').value;
+  const name = document.getElementById('ksName').value.trim();
+  const pin  = document.getElementById('ksPin').value.trim();
+  const responsible = document.getElementById('ksResponsible').value.trim();
+  const active = document.getElementById('ksActive').checked;
+  if (!name) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad daxil edin'); return; }
+  if (!pin || pin.length < 4) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ən az 4 rəqəmli PIN'); return; }
+  const dup = (state.kitchenStations||[]).find(s => s.pin===pin && s.id!==id);
+  if (dup) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN "${dup.name}"-ə aiddir`); return; }
+  const data = { name, pin, responsible, active, updatedAt: Date.now() };
+  if (id) {
+    R.kitchenStations.child(id).update(data);
+  } else {
+    data.createdAt = Date.now(); data.menuItemIds = [];
+    R.kitchenStations.push(data);
+  }
+  addLog('kitchen_station', `"${name}" mətbəxi ${id?'yeniləndi':'yaradıldı'}`, { id });
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı');
+  closeKitchenStationModal();
+}
+
+function deleteKitchenStation(id) {
+  const s = (state.kitchenStations||[]).find(x=>x.id===id);
+  if (!s) return;
+  confirmAction(`"${s.name}" mətbəxini silmək istəyirsiniz?`, () => {
+    R.kitchenStations.child(id).remove();
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Silindi');
+  });
+}
+
+let _ksAssignId = null;
+function openKitchenMenuAssign(kitchenId) {
+  _ksAssignId = kitchenId;
+  const s = (state.kitchenStations||[]).find(x=>x.id===kitchenId);
+  const body = document.getElementById('kitchenMenuAssignBody');
+  if (!body) return;
+  const assigned = s?.menuItemIds || [];
+  const items = state.menuItems.filter(m=>m.available!==false);
+  const cats = {};
+  items.forEach(m => { const c=m.category||'Digər'; if(!cats[c]) cats[c]=[]; cats[c].push(m); });
+  body.innerHTML = `<p style="font-size:12px;color:var(--text2);margin-bottom:12px;">"${esc(s?.name)}" mətbəxinə aid məhsulları seçin.</p>
+    ${Object.entries(cats).map(([cat,ms])=>`
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:5px;border-bottom:1px solid var(--border);padding-bottom:3px;">${esc(cat)}</div>
+        ${ms.map(m=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;cursor:pointer;margin-bottom:2px;background:var(--bg);">
+          <input type="checkbox" class="km-check" value="${m.id}" ${assigned.includes(m.id)?'checked':''} style="width:16px;height:16px;accent-color:var(--green);">
+          <span style="flex:1;font-size:13px;">${esc(m.name)}</span>
+          <span style="font-size:12px;color:var(--text3);">${(m.price||0).toFixed(2)} ₼</span>
+        </label>`).join('')}
+      </div>`).join('')}`;
+  document.getElementById('kitchenMenuAssignModal').classList.add('open');
+}
+
+function closeKitchenMenuAssign() {
+  document.getElementById('kitchenMenuAssignModal').classList.remove('open');
+  _ksAssignId = null;
+}
+
+function saveKitchenMenuAssign() {
+  if (!_ksAssignId) return;
+  const ids = Array.from(document.querySelectorAll('.km-check:checked')).map(c=>c.value);
+  R.kitchenStations.child(_ksAssignId).update({ menuItemIds: ids });
+  (state.menuItems||[]).forEach(m => {
+    if (ids.includes(m.id) && m.kitchenId !== _ksAssignId) R.menuItems.child(m.id).update({ kitchenId: _ksAssignId });
+    else if (!ids.includes(m.id) && m.kitchenId === _ksAssignId) R.menuItems.child(m.id).update({ kitchenId: null });
+  });
+  const s = (state.kitchenStations||[]).find(x=>x.id===_ksAssignId);
+  addLog('kitchen_station', `"${s?.name}" — ${ids.length} məhsul təyin edildi`, { kitchenId: _ksAssignId });
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> Məhsullar yadda saxlanıldı');
+  closeKitchenMenuAssign();
+}
+
+window.renderKitchenStations   = renderKitchenStations;
+window.openKitchenStationModal = openKitchenStationModal;
+window.closeKitchenStationModal= closeKitchenStationModal;
+window.saveKitchenStation      = saveKitchenStation;
+window.deleteKitchenStation    = deleteKitchenStation;
+window.openKitchenMenuAssign   = openKitchenMenuAssign;
+window.closeKitchenMenuAssign  = closeKitchenMenuAssign;
+window.saveKitchenMenuAssign   = saveKitchenMenuAssign;
