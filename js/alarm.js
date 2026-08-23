@@ -40,7 +40,34 @@ export function checkKitchenReadyOrders() {
   );
   if (pending.length && !state.alarm) triggerKitchenReadyAlarm(pending[0]);
 }
+export function checkKitchenNotifs() {
+  if (!state.user?.id) return;
+  const pending = (state.kitchenNotifs || []).filter(n =>
+    n.waiterId === state.user.id &&
+    n.status === 'pending' &&
+    !state._shownKitchenOrders?.includes(n.id)
+  );
+  if (pending.length && !state.alarm) triggerKitchenItemAlarm(pending[0]);
+}
 
+export function triggerKitchenItemAlarm(notif) {
+  if (state.alarm) return;
+  if (!state._shownKitchenOrders) state._shownKitchenOrders = [];
+  state._shownKitchenOrders.push(notif.id);
+  state.alarm = notif.id;
+  state.alarmType = 'kitchen_ready';
+  window._currentKitchenNotifId = notif.id;
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
+  const subText = `${notif.tableName} — ${notif.itemQty}x ${notif.itemName}${notif.allReady ? ' (Hamısı hazırdır)' : ''}`;
+  showAlarmOverlay('kitchen_ready', subText);
+  playBeep();
+  state.alarmInterval = setInterval(playBeep, 700);
+  if ('vibrate' in navigator) navigator.vibrate([400, 200, 400, 200, 400]);
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(`${notif.tableName}, ${notif.itemName} hazırdır`);
+    u.lang = 'az-AZ'; window.speechSynthesis.speak(u);
+  }
+}
 export function triggerKitchenReadyAlarm(ko) {
   if (state.alarm) return;
   if (!state._shownKitchenOrders) state._shownKitchenOrders = [];
