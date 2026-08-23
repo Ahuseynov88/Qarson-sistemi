@@ -70,5 +70,7 @@ export const state = {
   _orderDraft: {},
   _orderDetailItemId: null,
   _batchSelection: {},
-  tableTimerInterval: null
+    tableTimerInterval: null,
+  kitchenOrders: [],
+  _shownKitchenOrders: []
 };
