@@ -41,5 +41,6 @@ export const R = {
   banquetEvents: db.ref('banquetEvents'),
   // Zal+tarix üzrə rezervasiya "slot reyestri" - konflikt-təhlükəsiz yoxlama üçün
   // (bax: banquet.js -> saveBanquetEvent)
-  banquetHallBookings: db.ref('banquetHallBookings')
+    banquetHallBookings: db.ref('banquetHallBookings'),
+  kitchenOrders: db.ref('kitchenOrders')
 };
