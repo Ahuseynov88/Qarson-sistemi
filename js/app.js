@@ -10,7 +10,7 @@ import { staffHasPermission, PERMISSION_PRESETS } from './permissions.js';
 import { injectIconSprite } from './icons.js';
 import { showScreen, loadSavedTheme } from './theme.js';
 import { setRole, numPress, clearPin, showErr } from './auth.js';
-import { stopAlarm, checkIncomingOrders } from './alarm.js';
+import { stopAlarm, checkIncomingOrders, checkKitchenReadyOrders } from './alarm.js';
 import { StaffApp } from './staff-app.js';
 import { renderAdmin, renderLogs, initAdminTabDragDrop } from './admin.js';
 import { renderKitchen } from './kitchen.js';
@@ -196,6 +196,11 @@ function initListeners() {
     onDataChange();
     if (state.user?.role === 'staff') checkIncomingOrders();
   });
+     R.kitchenOrders.limitToLast(50).on('value', snap => {
+    state.kitchenOrders = toArr(snap.val());
+    if (state.user?.role === 'kitchen') renderKitchen();
+    if (state.user?.role === 'staff') checkKitchenReadyOrders();
+  });
   R.logs.limitToLast(300).on('value', snap => {
     state.logs = toArr(snap.val()).reverse();
     if (state.user?.role === 'admin') renderLogs();
@@ -207,7 +212,7 @@ function initListeners() {
 
 function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();  R.kitchenOrders.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
   db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
 }
