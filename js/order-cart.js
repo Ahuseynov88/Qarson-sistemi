@@ -282,6 +282,17 @@ export class OrderCart {
       }).filter(Boolean);
       addLog('order_send', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi: ${formatItemsList(sentItemsSummary)} (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Sifariş göndərildi');
+             const koRef = R.kitchenOrders.push();
+      koRef.set({
+        tableId, tableName: t?.name || 'Masa',
+        waiterId, waiterName,
+        items: sentItemsSummary.map(i=>({ name:i.name, qty:i.qty, ready:false })),
+        status: 'pending',
+        allReady: false,
+        waiterAccepted: false,
+        createdAt: Date.now(),
+        time: new Date().toLocaleTimeString('az-AZ')
+      });
     });
 
     this.close();
