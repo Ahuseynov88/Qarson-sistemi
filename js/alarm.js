@@ -7,7 +7,8 @@ import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
 
 export const ALARM_THEMES = {
-  order:     { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-utensils"></use></svg>', title:'Sifariş Hazırdır!', btnColor:'#e74c3c' },
+   kitchen_ready: { bg:'rgba(46,204,113,.97)', icon:'<svg class="icon"><use href="#i-chef"></use></svg>', title:'Mətbəxdən Hazırdır!', btnColor:'#27ae60' },
+   order:     { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-utensils"></use></svg>', title:'Sifariş Hazırdır!', btnColor:'#e74c3c' },
   call:      { bg:'rgba(241,196,15,.97)', icon:'<svg class="icon"><use href="#i-bell"></use></svg>', title:'Müştəri Sizi Çağırır!', btnColor:'#f39c12' },
   bill_cash: { bg:'rgba(46,204,113,.97)', icon:'<svg class="icon"><use href="#i-cash"></use></svg>', title:'Hesab İstəyi (Nağd)', btnColor:'#27ae60' },
   bill_pos:  { bg:'rgba(52,152,219,.97)', icon:'<svg class="icon"><use href="#i-card"></use></svg>', title:'Hesab İstəyi (POS)', btnColor:'#2980b9' },
@@ -32,7 +33,33 @@ export function checkIncomingOrders() {
   const pending = state.orders.filter(o=>o.waiterId===state.user?.id&&o.status==='pending');
   if (pending.length && !state.alarm) triggerOrderAlarm(pending[0]);
 }
+export function checkKitchenReadyOrders() {
+  if (!state.user?.id) return;
+  const pending = (state.kitchenOrders||[]).filter(ko=>
+    ko.waiterId===state.user.id && ko.status==='ready' && !ko.waiterAccepted && !state._shownKitchenOrders?.includes(ko.id)
+  );
+  if (pending.length && !state.alarm) triggerKitchenReadyAlarm(pending[0]);
+}
 
+export function triggerKitchenReadyAlarm(ko) {
+  if (state.alarm) return;
+  if (!state._shownKitchenOrders) state._shownKitchenOrders = [];
+  state._shownKitchenOrders.push(ko.id);
+  state.alarm = ko.id;
+  state.alarmType = 'kitchen_ready';
+  window._currentKitchenOrderId = ko.id;
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
+  const tableName = ko.tableName || 'Masa';
+  const itemsText = (ko.readyItems||[]).map(i=>`${i.qty}x ${i.name}`).join(', ');
+  showAlarmOverlay('kitchen_ready', `${tableName}: ${itemsText}`);
+  playBeep();
+  state.alarmInterval = setInterval(playBeep, 700);
+  if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance('Mətbəxdən hazırdır');
+    u.lang='az-AZ'; window.speechSynthesis.speak(u);
+  }
+}
 export function triggerOrderAlarm(order) {
   if (state.alarm) return;
   state.alarm = order.id;
@@ -69,6 +96,13 @@ export function acceptAlarm() {
   if (state.alarmType === 'order') {
     R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
     addLog('order_send',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
+       } else if (state.alarmType === 'kitchen_ready') {
+    const koId = window._currentKitchenOrderId;
+    if (koId) {
+      R.kitchenOrders.child(koId).update({ waiterAccepted:true, waiterAcceptedAt:Date.now() });
+      addLog('kitchen_ready',`${state.user.name} mətbəx bildirişini qəbul etdi`,{ kitchenOrderId:koId, waiterId:state.user.id });
+    }
+    window._currentKitchenOrderId = null;
   } else if (state.alarmType === 'customer') {
     const reqType = window._currentRequestId;
     if (reqType) {
