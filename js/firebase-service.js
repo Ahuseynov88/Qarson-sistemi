@@ -44,5 +44,6 @@ export const R = {
     banquetHallBookings: db.ref('banquetHallBookings'),
     kitchenOrders:   db.ref('kitchenOrders'),
   kitchenStations: db.ref('kitchenStations'),
-  kitchenNotifs:   db.ref('kitchenNotifs')
+   kitchenNotifs:   db.ref('kitchenNotifs'),
+  notifSounds:     db.ref('notifSounds')
 };
