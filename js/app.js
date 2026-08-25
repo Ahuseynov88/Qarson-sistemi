@@ -37,27 +37,54 @@ function doLogin() {
     }
   }
 
-    if (state.role === 'kitchen') {
-    if (String(pin) === String(state.kitchenPin)) {
-      state.user = { role: 'kitchen', name: 'Mətbəx' };
-      state._activeKitchen = null;
-      addLog('login', 'Mətbəx sistemə daxil oldu', { type: 'kitchen' });
-      initListeners();
-      showScreen('kitchenScreen');
-      return;
-    }
-    const matchStation = (state.kitchenStations || []).find(s => s.active !== false && String(s.pin) === String(pin));
-    if (matchStation) {
-      state.user = { role: 'kitchen', name: matchStation.name };
-      state._activeKitchen = matchStation;
-      addLog('login', `"${matchStation.name}" mətbəxi daxil oldu`, { kitchenId: matchStation.id });
-      initListeners();
-      const ttl = document.getElementById('kitchenPanelTitle');
-      if (ttl) ttl.textContent = matchStation.name;
-      showScreen('kitchenScreen');
-      return;
-    }
-    showErr('PIN kod səhvdir!');
+        if (state.role === 'kitchen') {
+    // Hər iki mənbəyi eyni anda Firebase-dən birbaşa oxu (cache-ə arxalanma)
+    Promise.all([
+      db.ref('settings/kitchenPin').once('value'),
+      db.ref('kitchenStations').once('value')
+    ]).then(([pinSnap, stationsSnap]) => {
+      const liveKitchenPin = pinSnap.val() || state.kitchenPin;
+      const liveStations = toArr(stationsSnap.val());
+
+      console.log('[KitchenLogin] PIN daxil edildi:', String(pin));
+      console.log('[KitchenLogin] Köhnə mətbəx PIN:', String(liveKitchenPin));
+      console.log('[KitchenLogin] Stansiyalar:', liveStations.map(s => ({ name: s.name, pin: s.pin, active: s.active })));
+
+      // Köhnə tək mətbəx PIN-i
+      if (String(pin) === String(liveKitchenPin)) {
+        console.log('[KitchenLogin] Köhnə sistem PIN ilə giriş.');
+        state.kitchenPin = liveKitchenPin;
+        state.kitchenStations = liveStations;
+        state.user = { role: 'kitchen', name: 'Mətbəx' };
+        state._activeKitchen = null;
+        addLog('login', 'Mətbəx sistemə daxil oldu', { type: 'kitchen' });
+        initListeners();
+        showScreen('kitchenScreen');
+        return;
+      }
+
+      // Çoxlu mətbəx stansiyaları
+      const matchStation = liveStations.find(s => s.active !== false && String(s.pin) === String(pin));
+      if (matchStation) {
+        console.log('[KitchenLogin] Stansiya ilə giriş:', matchStation.name);
+        state.kitchenPin = liveKitchenPin;
+        state.kitchenStations = liveStations;
+        state.user = { role: 'kitchen', name: matchStation.name };
+        state._activeKitchen = matchStation;
+        addLog('login', `"${matchStation.name}" mətbəxi daxil oldu`, { kitchenId: matchStation.id });
+        initListeners();
+        const ttl = document.getElementById('kitchenPanelTitle');
+        if (ttl) ttl.textContent = matchStation.name;
+        showScreen('kitchenScreen');
+        return;
+      }
+
+      console.warn('[KitchenLogin] PIN uyğun gəlmədi. Daxil edilən:', String(pin), '| Sistem PIN:', String(liveKitchenPin), '| Stansiyalar:', liveStations.map(s=>s.pin));
+      showErr('PIN kod səhvdir!');
+    }).catch(err => {
+      console.error('[KitchenLogin] Firebase oxuma xətası:', err);
+      showErr('Bağlantı xətası, yenidən cəhd edin');
+    });
     return;
   }
 
