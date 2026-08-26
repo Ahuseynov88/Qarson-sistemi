@@ -23,7 +23,6 @@ const STATUS_INFO = {
   full:      { label: 'Tam dolu',       color: '#e74c3c' },
   cancelled: { label: 'Ləğv edilmiş',   color: '#7f8c8d' }
 };
-
 function dateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmtMoney(n) { return (n||0).toFixed(2) + ' ₼'; }
 
