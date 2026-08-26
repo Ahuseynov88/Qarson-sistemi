@@ -9,7 +9,7 @@ import { state } from './state.js';
 import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
-
+import { renderNotifSounds } from './notifSounds.js';
 export function renderPermissionCheckboxes(existingPerms = []) {
   return ALL_PERMISSIONS.map(group => `
     <div style="margin-bottom:16px;">
