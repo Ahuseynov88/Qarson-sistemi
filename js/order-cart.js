@@ -348,9 +348,7 @@ export class OrderCart {
             waiterAccepted: false,
             createdAt: now,
             time: timeStr
-          });
-        }
-            });
+               });
       this.close();
     });
   }
