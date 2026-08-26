@@ -278,7 +278,8 @@ export class ConfirmedOrder {
           }
         }
       }
-}
+    });
+  }
   // ── Endirim (seçilmişlərə və ya bütün hesaba) ──
   openDiscountModal() {
     if (!hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Endirim icazəniz yoxdur'); return; }
