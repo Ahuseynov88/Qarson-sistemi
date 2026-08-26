@@ -37,7 +37,6 @@ export function renderKitchen() {
           delete _alerts[ko.id];
           return;
         }
-
         playNotifSound('kitchen_new_order');
       }, (state.kitchenAlertIntervalSec || 15) * 1000);
     }
