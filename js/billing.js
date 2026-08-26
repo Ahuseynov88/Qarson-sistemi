@@ -28,6 +28,7 @@ export class ConfirmedOrder {
     this._bindEvents();
   }
 
+   
   _bindEvents() {
     this.els.summaryEl.addEventListener('click', (e) => {
       const qtyBtn = e.target.closest('[data-qty-change]');
