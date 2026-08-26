@@ -351,5 +351,4 @@ export class OrderCart {
       });
 
     this.close();
-  }
 }
