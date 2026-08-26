@@ -21,6 +21,7 @@ export class OrderCart {
     this._bindEvents();
   }
 
+   
   _bindEvents() {
     if (this.els.searchInput) {
       this.els.searchInput.addEventListener('input', (e) => this.setSearchQuery(e.target.value));
