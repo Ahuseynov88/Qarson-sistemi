@@ -13,6 +13,7 @@ export const ALARM_THEMES = {
   bill_cash: { bg:'rgba(46,204,113,.97)', icon:'<svg class="icon"><use href="#i-cash"></use></svg>', title:'Hesab İstəyi (Nağd)', btnColor:'#27ae60' },
   bill_pos:  { bg:'rgba(52,152,219,.97)', icon:'<svg class="icon"><use href="#i-card"></use></svg>', title:'Hesab İstəyi (POS)', btnColor:'#2980b9' },
   message:   { bg:'rgba(243,156,18,.97)', icon:'<svg class="icon"><use href="#i-chat"></use></svg>', title:'Yeni Mesaj!', btnColor:'#e67e22' },
+     kitchen_problem: { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-warning"></use></svg>', title:'Mətbəxdən Problem!', btnColor:'#e74c3c' },
   default:   { bg:'rgba(142,68,173,.97)', icon:'<svg class="icon"><use href="#i-megaphone"></use></svg>', title:'Bildiriş!', btnColor:'#8e44ad' }
 };
 
@@ -47,7 +48,27 @@ export function checkKitchenNotifs() {
     n.status === 'pending' &&
     !state._shownKitchenOrders?.includes(n.id)
   );
-  if (pending.length && !state.alarm) triggerKitchenItemAlarm(pending[0]);
+  if (!pending.length || state.alarm) return;
+  // Problem bildirişini fərqli alarm ilə göstər
+  if (pending[0].type === 'kitchen_problem') triggerKitchenProblemAlarm(pending[0]);
+  else triggerKitchenItemAlarm(pending[0]);
+}
+
+export function triggerKitchenProblemAlarm(notif) {
+  if (state.alarm) return;
+  if (!state._shownKitchenOrders) state._shownKitchenOrders = [];
+  state._shownKitchenOrders.push(notif.id);
+  state.alarm = notif.id;
+  state.alarmType = 'kitchen_problem';
+  window._currentKitchenNotifId = notif.id;
+  if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
+  showAlarmOverlay('kitchen_problem', notif.problemKey === 'not_enough'
+    ? `${notif.tableName}: ${notif.itemQty}× ${notif.itemName} — yalnız ${notif.availQty} ədəd var`
+    : `${notif.tableName}: ${notif.itemName} — ${notif.problemLabel}`
+  );
+  playNotifSound('waiter_kitchen_ready');
+  state.alarmInterval = setInterval(() => playNotifSound('waiter_kitchen_ready'), 4000);
+  if ('vibrate' in navigator) navigator.vibrate([600, 100, 600]);
 }
 
 export function triggerKitchenItemAlarm(notif) {
@@ -123,6 +144,14 @@ export function acceptAlarm() {
   if (state.alarmType === 'order') {
     R.orders.child(state.alarm).update({ status:'accepted', acceptedAt:Date.now() });
     addLog('order_send',`${state.user.name} sifarişi qəbul etdi`,{ orderId:state.alarm, waiterId:state.user.id });
+       } else if (state.alarmType === 'kitchen_problem') {
+    const notifId = window._currentKitchenNotifId;
+    if (notifId) {
+      R.kitchenNotifs.child(notifId).update({ status: 'accepted', acceptedAt: Date.now() });
+      addLog('kitchen_problem_accepted', `${state.user.name} mətbəx problem bildirişini qəbul etdi`, { notifId, waiterId: state.user.id });
+    }
+    window._currentKitchenNotifId = null;
+    setTimeout(() => { const n=(state.kitchenNotifs||[]).filter(x=>x.waiterId===state.user?.id&&x.status==='pending'&&!state._shownKitchenOrders?.includes(x.id)); if(n.length) checkKitchenNotifs(); }, 600);
          } else if (state.alarmType === 'kitchen_ready') {
     const notifId = window._currentKitchenNotifId;
     if (notifId) {
