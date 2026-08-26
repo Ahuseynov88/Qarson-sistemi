@@ -311,23 +311,44 @@ export class OrderCart {
         });
       });
 
-      Object.values(kitchenGroups).forEach(group => {
-        const koRef = R.kitchenOrders.push();
-        koRef.set({
-          tableId, tableName: t?.name || 'Masa',
-          waiterId, waiterName,
-          kitchenId: group.kitchenId,
-          kitchenName: group.kitchenName,
-          items: group.items,
-          orderNote,
-          status: 'pending',
-          allReady: false,
-          waiterAccepted: false,
-          createdAt: now,
-          time: timeStr
-        });
+                  Object.values(kitchenGroups).forEach(group => {
+        // Eyni masa + eyni mətbəx üçün hələ aktiv (bütün mallar hazır deyil) kart var mı?
+        const existingKo = (state.kitchenOrders || []).find(ko =>
+          ko.tableId === tableId &&
+          ko.kitchenId === group.kitchenId &&
+          !ko.allReady &&
+          !ko.waiterAccepted
+        );
+
+        if (existingKo) {
+          // Mövcud karta yeni malları əlavə et
+          const mergedItems = [...(existingKo.items || []), ...group.items];
+          R.kitchenOrders.child(existingKo.id).update({
+            items: mergedItems,
+            allReady: false,
+            kitchenAccepted: false,
+            changeNote: `Yeni əlavə: ${group.items.map(i => i.qty + '× ' + i.name).join(', ')}`,
+            orderNote: orderNote || existingKo.orderNote || ''
+          });
+          addLog('kitchen_order_update', `Masa "${t?.name}" — mövcud mətbəx kartına əlavə edildi: ${group.items.map(i=>i.qty+'× '+i.name).join(', ')}`, { kitchenOrderId: existingKo.id, tableId });
+        } else {
+          // Yeni kart yarat
+          const koRef = R.kitchenOrders.push();
+          koRef.set({
+            tableId, tableName: t?.name || 'Masa',
+            waiterId, waiterName,
+            kitchenId: group.kitchenId,
+            kitchenName: group.kitchenName,
+            items: group.items,
+            orderNote,
+            status: 'pending',
+            allReady: false,
+            waiterAccepted: false,
+            createdAt: now,
+            time: timeStr
+          });
+        }
       });
-    });
 
     this.close();
   }
