@@ -72,31 +72,12 @@ export function renderKitchen() {
 }
 
 function itemStatusLabel(item) {
-  if (item.waiterAccepted) {
-    return {
-      cls: 'ko-item-status--accepted',
-      text: 'Qəbul etdi'
-    };
-  }
-
-  if (item.ready) {
-    return {
-      cls: 'ko-item-status--ready',
-      text: 'Hazırdır ✓'
-    };
-  }
-
-  if (item.cooking) {
-    return {
-      cls: 'ko-item-status--cooking',
-      text: 'Hazırlanır'
-    };
-  }
-
-  return {
-    cls: 'ko-item-status--new',
-    text: 'Yeni'
-  };
+  if (item.cancelled)      return { cls: 'ko-item-status--cancelled', text: 'Ləğv edildi' };
+  if (item.problem)        return { cls: 'ko-item-status--problem',   text: item.problem };
+  if (item.waiterAccepted) return { cls: 'ko-item-status--accepted',  text: 'Qəbul etdi' };
+  if (item.ready)          return { cls: 'ko-item-status--ready',     text: 'Hazırdır ✓' };
+  if (item.cooking)        return { cls: 'ko-item-status--cooking',   text: 'Hazırlanır' };
+  return                          { cls: 'ko-item-status--new',       text: 'Yeni' };
 }
 
 function renderKitchenCard(ko) {
