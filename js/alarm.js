@@ -16,7 +16,6 @@ export const ALARM_THEMES = {
      kitchen_problem: { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-warning"></use></svg>', title:'Mətbəxdən Problem!', btnColor:'#e74c3c' },
   default:   { bg:'rgba(142,68,173,.97)', icon:'<svg class="icon"><use href="#i-megaphone"></use></svg>', title:'Bildiriş!', btnColor:'#8e44ad' }
 };
-
 let _audioCtx = null;
 
 export function showAlarmOverlay(type, subText) {
