@@ -880,3 +880,8 @@ img,svg.icon{max-width:100%;}
 .ko-badge--new-pulse{background:rgba(52,152,219,.18);color:var(--blue);animation:ko-badge-pulse .8s ease-in-out infinite;}
 @keyframes ko-badge-pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 .ko-card--unaccepted{border-color:var(--blue)!important;background:rgba(52,152,219,.05)!important;}
+.ko-item--cancelled{opacity:.6;background:rgba(231,76,60,.06)!important;}
+.ko-item-status--cancelled{background:rgba(231,76,60,.15);color:var(--red);}
+.ko-item-status--problem{background:rgba(231,76,60,.2);color:var(--red);font-weight:700;}
+.ko-item-action--problem{background:rgba(231,76,60,.15);color:var(--red);}
+.ko-item-action--problem:hover{background:var(--red);color:#fff;}
