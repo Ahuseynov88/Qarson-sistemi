@@ -103,7 +103,7 @@ function renderKitchenCard(ko) {
     </div>
     <div class="ko-waiter-name"><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-user"></use></svg> ${esc(ko.waiterName || '')}</div>
       const acceptBtn = !kitchenAccepted
-    ? `<button class="ko-accept-btn" onclick="kitchenAcceptOrder('${esc(ko.id)}')">✓ Qəbul et</button>` : '';
+    <button class="ko-accept-btn" onclick="kitchenAcceptOrder('${esc(ko.id)}')">✓ Qəbul et</button>` : '';
         ${acceptBtn}${headerStatus}${changeNotice}${orderNote}
     <div class="ko-items">${itemsHtml}</div>
   </div>`;
