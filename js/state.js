@@ -76,5 +76,8 @@ export const state = {
   kitchenStations: [],
   _activeKitchen: null,
   _selectedKitchenId: null,
-  kitchenNotifs: []
+   kitchenNotifs: [],
+  notifSounds: [],
+  notifSoundMap: {},
+  kitchenAlertIntervalSec: 15
 };
