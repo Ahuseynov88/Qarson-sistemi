@@ -227,6 +227,7 @@ function renderKitchenCard(ko) {
           </div>
         </div>
       `;
+          }).join('');
   return `
     <div class="${cardClass}">
 
