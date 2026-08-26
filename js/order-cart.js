@@ -331,7 +331,8 @@ export class OrderCart {
             changeNote: `Yeni əlavə: ${group.items.map(i => i.qty + '× ' + i.name).join(', ')}`,
             orderNote: orderNote || existingKo.orderNote || ''
           });
-          addLog('kitchen_order_update', `Masa "${t?.name}" — mövcud mətbəx kartına əlavə edildi: ${group.items.map(i=>i.qty+'× '+i.name).join(', ')}`, { kitchenOrderId: existingKo.id, tableId });
+                    const addedNames = group.items.map(i => i.qty + 'x ' + i.name).join(', ');
+          addLog('kitchen_order_update', 'Masa ' + (t?.name||'') + ' — mövcud mətbəx kartına elave edildi: ' + addedNames, { kitchenOrderId: existingKo.id, tableId });
         } else {
           // Yeni kart yarat
           const koRef = R.kitchenOrders.push();
