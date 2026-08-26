@@ -67,6 +67,7 @@ export function renderAdmin() {
   if (state.adminSection==='banquetHalls') renderBanquetHalls();
   if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
      if (state.adminSection==='kitchenStations') renderKitchenStations();
+     if (state.adminSection==='notifSounds') renderNotifSounds();
 }
 
 export function adminTab(sec, el) {
@@ -3635,3 +3636,11 @@ window.deleteKitchenStation    = deleteKitchenStation;
 window.openKitchenMenuAssign   = openKitchenMenuAssign;
 window.closeKitchenMenuAssign  = closeKitchenMenuAssign;
 window.saveKitchenMenuAssign   = saveKitchenMenuAssign;
+function saveKitchenAlertInterval(val) {
+  const n = parseInt(val);
+  if (isNaN(n) || n < 5) return;
+  db.ref('settings/kitchenAlertIntervalSec').set(n);
+  const el = document.getElementById('kitchenAlertStatus');
+  if (el) { el.textContent = 'Yadda saxlanıldı ✓'; setTimeout(()=>el.textContent='', 2000); }
+}
+window.saveKitchenAlertInterval = saveKitchenAlertInterval;
