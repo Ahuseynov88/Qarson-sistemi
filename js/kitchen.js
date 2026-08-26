@@ -167,16 +167,20 @@ function renderKitchenCard(ko) {
     .map((item, idx) => {
       const st = itemStatusLabel(item);
 
-            const cookBtn = (!item.cancelled && !item.ready && !item.cooking)
+                // Düymələr yalnız sifariş qəbul edildikdən sonra aktiv olur
+      const cookBtn = (kitchenAccepted && !item.cancelled && !item.ready && !item.cooking)
         ? `<button class="ko-item-action ko-item-action--cook" onclick="kitchenItemCook('${esc(ko.id)}',${idx})">Hazırlanır</button>`
-        : '';
-      const readyBtn = (!item.cancelled && !item.ready)
+        : (!item.cancelled && !item.ready && !item.cooking && !kitchenAccepted)
+          ? `<button class="ko-item-action ko-item-action--cook" disabled style="opacity:.35;cursor:not-allowed;">Hazırlanır</button>`
+          : '';
+      const readyBtn = (kitchenAccepted && !item.cancelled && !item.ready)
         ? `<button class="ko-item-action ko-item-action--ready" onclick="kitchenItemReady('${esc(ko.id)}',${idx})">Hazırdır</button>`
-        : '';
-      const problemBtn = (!item.cancelled && !item.ready)
+        : (!item.cancelled && !item.ready && !kitchenAccepted)
+          ? `<button class="ko-item-action ko-item-action--ready" disabled style="opacity:.35;cursor:not-allowed;">Hazırdır</button>`
+          : '';
+      const problemBtn = (kitchenAccepted && !item.cancelled && !item.ready)
         ? `<button class="ko-item-action ko-item-action--problem" onclick="kitchenItemProblem('${esc(ko.id)}',${idx})">⚠ Problem</button>`
         : '';
-
       let timeLine = '';
 
       if (item.readyAt && item.addedAt) {
@@ -192,22 +196,9 @@ function renderKitchenCard(ko) {
       }
 
            // Ləğv edilmiş mal — üstü xəttli
-      if (item.cancelled) {
-        return `<div class="ko-item ko-item--cancelled">
-          <div class="ko-item-main">
-            <span class="ko-item-qty" style="text-decoration:line-through;opacity:.5;">${item.qty}×</span>
-            <div class="ko-item-info">
-              <span class="ko-item-name" style="text-decoration:line-through;opacity:.5;">${esc(item.name)}</span>
-              <span class="ko-item-note" style="color:var(--red);">❌ Ləğv: ${esc(item.cancelReason||'')}</span>
-            </div>
-            <span class="ko-item-status ko-item-status--cancelled">Ləğv edildi</span>
-          </div>
-        </div>`;
-      }
-      // Qismən ləğv varsa miqdar göstər
-      const cancelledQtyNote = item.cancelledQty
-        ? `<span class="ko-item-note" style="color:var(--red);">~~${item.cancelledQty}× ləğv~~</span>` : '';
-
+            // Tam ləğv edilmiş item artıq siyahıya düşmür (billing.js-də silinir)
+      // cancelledQty artıq istifadə edilmir — miqdar birbaşa azaldılır
+      const cancelledQtyNote = '';
             return `
         <div class="ko-item ${item.ready ? 'ko-item--done' : ''}">
           <div class="ko-item-main">
