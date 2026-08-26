@@ -5,7 +5,7 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
-
+import { playNotifSound } from './notifSounds.js';
 export const ALARM_THEMES = {
    kitchen_ready: { bg:'rgba(46,204,113,.97)', icon:'<svg class="icon"><use href="#i-chef"></use></svg>', title:'Mətbəxdən Hazırdır!', btnColor:'#27ae60' },
    order:     { bg:'rgba(231,76,60,.97)', icon:'<svg class="icon"><use href="#i-utensils"></use></svg>', title:'Sifariş Hazırdır!', btnColor:'#e74c3c' },
@@ -167,6 +167,7 @@ export function acceptAlarm() {
 
 export function stopAlarm(clearAll=true) {
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
+  window._stopActiveSoundSrc?.();
   window.speechSynthesis?.cancel();
   if (clearAll) {
     state.alarm = null;
@@ -204,3 +205,4 @@ export function playBeep() {
 
 // Mövcud HTML-də onclick="acceptAlarm()" istifadə olunur
 window.acceptAlarm = acceptAlarm;
+window._stopActiveSoundSrc = function() {};
