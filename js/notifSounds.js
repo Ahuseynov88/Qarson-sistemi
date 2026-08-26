@@ -9,7 +9,7 @@ export const NOTIF_EVENTS = {
   waiter_bill_cash:     'Nağd hesab istəyi (ofisianta)',
   waiter_bill_pos:      'POS hesab istəyi (ofisianta)',
   waiter_message:       'Müştəri mesajı (ofisianta)',
-  waiter_order_ready:   'Sifariş hazırdır (köhnə sistem)',
+
   kitchen_new_order:    'Yeni sifariş (mətbəxə)',
   kitchen_order_changed:'Sifariş dəyişdirildi (mətbəxə)',
   kitchen_order_cancel: 'Sifariş ləğv edildi (mətbəxə)',
