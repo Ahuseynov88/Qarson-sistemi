@@ -350,8 +350,8 @@ export class OrderCart {
             time: timeStr
           });
         }
-      });
-
-       this.close();
+            });
+      this.close();
+    });
   }
 }
