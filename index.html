@@ -405,6 +405,37 @@
     <button onclick="sendWaiterReply()">Göndər</button>
   </div>
 </div>
+  <!-- ═══ KİTCHEN PROBLEM MODALI ═══ -->
+<div class="modal-bg" id="kitchenProblemModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <h3>⚠ Problem Bildir</h3>
+      <button onclick="document.getElementById('kitchenProblemModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="kpModalKoId">
+      <input type="hidden" id="kpModalItemIdx">
+      <p style="font-weight:600;margin-bottom:12px;" id="kpModalItemName"></p>
+      <div class="form-group">
+        <label>Problem növü</label>
+        <select id="kpModalProblemType" onchange="kitchenProblemTypeChanged(this.value)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
+          <option value="out_of_stock">Məhsul bitib</option>
+          <option value="not_enough">Miqdar kifayət etmir</option>
+          <option value="cannot_prepare">Hazırlamaq mümkün deyil</option>
+          <option value="other">Digər səbəb</option>
+        </select>
+      </div>
+      <div class="form-group" id="kpModalAvailQtyRow" style="display:none;">
+        <label>Mövcud miqdar</label>
+        <input type="number" id="kpModalAvailQty" min="0" placeholder="məs: 2">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('kitchenProblemModal').classList.remove('open')">Ləğv et</button>
+      <button class="btn btn-red" onclick="confirmKitchenProblem()">⚠ Göndər</button>
+    </div>
+  </div>
+</div>
 <!-- ═══ KİTCHEN STANSİYA MODALI ═══ -->
 <div class="modal-bg" id="kitchenStationModal">
   <div class="modal" style="max-width:420px;">
