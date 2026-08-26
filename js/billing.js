@@ -244,42 +244,45 @@ export class ConfirmedOrder {
         { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText,
           staffId: state.user?.id, staffName: state.user?.name, orderOwnerId: order.waiterId||null, orderOwnerName });
                    // Mətbəx kartını yenilə
-      const menuItem = state.menuItems.find(x => x.id === cancelledMenuItemId);
+            const menuItem = state.menuItems.find(x => x.id === cancelledMenuItemId);
       const kitchenId = menuItem?.kitchenId;
       if (kitchenId) {
         const activeKo = (state.kitchenOrders || []).find(ko =>
           ko.tableId === tableId && ko.kitchenId === kitchenId &&
-          !ko.allReady && (ko.items || []).some(i => i.name === cancelledName)
+          !ko.allReady && (ko.items || []).some(i => i.name === cancelledName && i.qty > 0)
         );
         if (activeKo) {
-          const koItems = (activeKo.items || []).map(i => {
-            if (i.name !== cancelledName) return i;
-            if (isPartial) {
-              // Qismən ləğv — miqdarı azalt, ləğv miqdarını göstər
-              return { ...i, qty: i.qty - qtyToCancel, cancelledQty: (i.cancelledQty || 0) + qtyToCancel, cancelReason: reasonText };
-            } else {
-              // Tam ləğv — itemi ləğv edilmiş kimi işarələ
-              return { ...i, cancelled: true, cancelReason: reasonText };
-            }
-          });
-          const activeItems = koItems.filter(i => !i.cancelled);
-          if (activeItems.length === 0) {
-            // Kartda heç bir aktiv mal qalmadı — kartı sil
+          // LIFO: eyni adlı item-ləri addedAt-a görə ən yenidən ən köhnəyə sırala
+          let remaining = qtyToCancel;
+          const koItems = [...(activeKo.items || [])]
+            .map((item, idx) => ({ ...item, _idx: idx }))
+            .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
+            .reduce((acc, item) => {
+              if (item.name !== cancelledName || remaining <= 0) {
+                acc.push(item); return acc;
+              }
+              const canCancel = Math.min(item.qty, remaining);
+              remaining -= canCancel;
+              const newQty = item.qty - canCancel;
+              if (newQty > 0) acc.push({ ...item, qty: newQty });
+              // newQty === 0 olduqda item siyahıdan çıxır (göstərilmir)
+              return acc;
+            }, [])
+            .sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0)); // orijinal sıraya qayıt
+
+          if (koItems.length === 0) {
             R.kitchenOrders.child(activeKo.id).remove();
           } else {
-            const allReady = activeItems.every(i => i.ready);
+            const activeItems = koItems.filter(i => !i.cancelled);
+            const allReady = activeItems.length > 0 && activeItems.every(i => i.ready);
             R.kitchenOrders.child(activeKo.id).update({
               items: koItems,
               allReady,
-              changeNote: isPartial
-                ? `QISMİ LƏĞV: ${cancelledName} — ${qtyToCancel} ədəd. Səbəb: ${reasonText}`
-                : `LƏĞV: ${cancelledName}. Səbəb: ${reasonText}`
+              changeNote: 'LƏĞV: ' + cancelledName + ' — ' + qtyToCancel + ' ədəd. Səbəb: ' + reasonText
             });
           }
         }
       }
-    });
-  }
   // ── Endirim (seçilmişlərə və ya bütün hesaba) ──
   openDiscountModal() {
     if (!hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Endirim icazəniz yoxdur'); return; }
