@@ -242,7 +242,7 @@ export class ConfirmedOrder {
       addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Sifarişi vermiş: ${orderOwnerName} — Səbəb: ${reasonText}`,
         { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText,
           staffId: state.user?.id, staffName: state.user?.name, orderOwnerId: order.waiterId||null, orderOwnerName });
-             // Mətbəxə ləğv bildirişi göndər
+                   // Mətbəx kartını yenilə
       const menuItem = state.menuItems.find(x => x.id === cancelledMenuItemId);
       const kitchenId = menuItem?.kitchenId;
       if (kitchenId) {
@@ -251,15 +251,32 @@ export class ConfirmedOrder {
           !ko.allReady && (ko.items || []).some(i => i.name === cancelledName)
         );
         if (activeKo) {
-          R.kitchenOrders.child(activeKo.id).update({
-            changeNote: `LƏĞV: ${cancelledName} — ${qtyToCancel} ədəd. Səbəb: ${reasonText}`
+          const koItems = (activeKo.items || []).map(i => {
+            if (i.name !== cancelledName) return i;
+            if (isPartial) {
+              // Qismən ləğv — miqdarı azalt, ləğv miqdarını göstər
+              return { ...i, qty: i.qty - qtyToCancel, cancelledQty: (i.cancelledQty || 0) + qtyToCancel, cancelReason: reasonText };
+            } else {
+              // Tam ləğv — itemi ləğv edilmiş kimi işarələ
+              return { ...i, cancelled: true, cancelReason: reasonText };
+            }
           });
+          const activeItems = koItems.filter(i => !i.cancelled);
+          if (activeItems.length === 0) {
+            // Kartda heç bir aktiv mal qalmadı — kartı sil
+            R.kitchenOrders.child(activeKo.id).remove();
+          } else {
+            const allReady = activeItems.every(i => i.ready);
+            R.kitchenOrders.child(activeKo.id).update({
+              items: koItems,
+              allReady,
+              changeNote: isPartial
+                ? `QISMİ LƏĞV: ${cancelledName} — ${qtyToCancel} ədəd. Səbəb: ${reasonText}`
+                : `LƏĞV: ${cancelledName}. Səbəb: ${reasonText}`
+            });
+          }
         }
       }
-      showToast(`<svg class="icon"><use href="#i-trash"></use></svg> ${cancelledName} (${qtyToCancel} ədəd) sifarişdən silindi`);
-      this.renderSummary(tableId);
-    });
-  }
 
   // ── Endirim (seçilmişlərə və ya bütün hesaba) ──
   openDiscountModal() {
