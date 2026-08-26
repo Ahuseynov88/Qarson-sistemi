@@ -1,7 +1,25 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
-import { getAudioCtx, playBeep } from './alarm.js';
+// getAudioCtx və playBeep — alarm.js ilə circular import olmaması üçün burada birbaşa yazılır
+function getAudioCtx() {
+  if (!window._sharedAudioCtx || window._sharedAudioCtx.state === 'closed') {
+    window._sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (window._sharedAudioCtx.state === 'suspended') window._sharedAudioCtx.resume();
+  return window._sharedAudioCtx;
+}
+function playBeep() {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.85, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+}
 
 export const NOTIF_EVENTS = {
   waiter_kitchen_ready: 'Mətbəxdən hazırdır (ofisianta)',
