@@ -350,5 +350,6 @@ export class OrderCart {
         }
       });
 
-    this.close();
-
+       this.close();
+  }
+}
