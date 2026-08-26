@@ -1,8 +1,9 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog } from './utils.js';
-
-export function renderKitchen() {
+import { playNotifSound } from './notifSounds.js';
+export function renderKitchen() {  // Qəbul edilməmiş sifarişlər üçün periodik siqnal
+  const _alerts = window._kitchenAlerts = window._kitchenAlerts || {};
   const el = document.getElementById('kitchenGrid');
   if (!el) return;
   const kitchen = state._activeKitchen;
@@ -13,6 +14,19 @@ export function renderKitchen() {
     })
     .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   if (!orders.length) {
+      orders.forEach(ko => {
+    if (!ko.kitchenAccepted && !_alerts[ko.id]) {
+      playNotifSound('kitchen_new_order');
+      _alerts[ko.id] = setInterval(() => {
+        const live = (state.kitchenOrders||[]).find(x=>x.id===ko.id);
+        if (!live || live.kitchenAccepted) { clearInterval(_alerts[ko.id]); delete _alerts[ko.id]; return; }
+        playNotifSound('kitchen_new_order');
+      }, (state.kitchenAlertIntervalSec||15) * 1000);
+    }
+    if (ko.kitchenAccepted && _alerts[ko.id]) {
+      clearInterval(_alerts[ko.id]); delete _alerts[ko.id];
+    }
+  });
     el.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;grid-column:1/-1;">Aktiv sifariş yoxdur.</p>';
     return;
   }
@@ -32,13 +46,17 @@ function renderKitchenCard(ko) {
   const waiterAccepted = allReady && items.every(i => i.waiterAccepted);
 
   let cardClass = 'ko-card';
+    const kitchenAccepted = !!ko.kitchenAccepted;
   let headerStatus = '';
-  if (waiterAccepted) {
+    if (waiterAccepted) {
     cardClass += ' ko-card--accepted';
     headerStatus = '<span class="ko-badge ko-badge--accepted">Ofisiant qəbul etdi</span>';
   } else if (allReady) {
     cardClass += ' ko-card--ready';
     headerStatus = '<span class="ko-badge ko-badge--ready">Ofisiant gözlənilir...</span>';
+  } else if (!kitchenAccepted) {
+    cardClass += ' ko-card--pending ko-card--unaccepted';
+    headerStatus = '<span class="ko-badge ko-badge--new-pulse">🔔 Yeni sifariş!</span>';
   } else {
     cardClass += ' ko-card--pending';
     headerStatus = '<span class="ko-badge ko-badge--pending">Hazırlanır</span>';
@@ -84,7 +102,9 @@ function renderKitchenCard(ko) {
       <div style="display:flex;align-items:center;gap:6px;">${elapsedHtml}<div class="ko-time">${esc(ko.time || '')}</div></div>
     </div>
     <div class="ko-waiter-name"><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-user"></use></svg> ${esc(ko.waiterName || '')}</div>
-    ${headerStatus}${changeNotice}${orderNote}
+      const acceptBtn = !kitchenAccepted
+    ? `<button class="ko-accept-btn" onclick="kitchenAcceptOrder('${esc(ko.id)}')">✓ Qəbul et</button>` : '';
+        ${acceptBtn}${headerStatus}${changeNotice}${orderNote}
     <div class="ko-items">${itemsHtml}</div>
   </div>`;
 }
@@ -142,3 +162,16 @@ export function callWaiter(waiterId) {
   showToast(`<svg class="icon"><use href="#i-bell"></use></svg> ${w.name}-ə bildiriş göndərildi`);
 }
 window.callWaiter = callWaiter;
+export function kitchenAcceptOrder(kitchenOrderId) {
+  const ko = (state.kitchenOrders||[]).find(x=>x.id===kitchenOrderId);
+  if (!ko) return;
+  const now = Date.now();
+  const waitSec = ko.createdAt ? Math.round((now - ko.createdAt)/1000) : 0;
+  const kitchenName = state._activeKitchen?.name || ko.kitchenName || 'Mətbəx';
+  R.kitchenOrders.child(kitchenOrderId).update({ kitchenAccepted:true, kitchenAcceptedAt:now, kitchenAcceptedBy:kitchenName, kitchenWaitSec:waitSec });
+  const _alerts = window._kitchenAlerts || {};
+  if (_alerts[kitchenOrderId]) { clearInterval(_alerts[kitchenOrderId]); delete _alerts[kitchenOrderId]; }
+  addLog('kitchen_accept', `"${kitchenName}" sifarişi qəbul etdi — ${ko.tableName} (${waitSec<60?waitSec+' san':Math.floor(waitSec/60)+' dəq'} sonra)`, { kitchenOrderId, waitSec });
+  showToast('✓ Sifariş qəbul edildi');
+}
+window.kitchenAcceptOrder = kitchenAcceptOrder;
