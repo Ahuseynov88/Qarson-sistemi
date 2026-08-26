@@ -885,4 +885,3 @@ img,svg.icon{max-width:100%;}
 .ko-item-status--problem{background:rgba(231,76,60,.2);color:var(--red);font-weight:700;}
 .ko-item-action--problem{background:rgba(231,76,60,.15);color:var(--red);}
 .ko-item-action--problem:hover{background:var(--red);color:#fff;}
-
