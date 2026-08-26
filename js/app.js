@@ -13,7 +13,8 @@ import { setRole, numPress, clearPin, showErr } from './auth.js';
 import { stopAlarm, checkIncomingOrders, checkKitchenReadyOrders, checkKitchenNotifs } from './alarm.js';
 import { StaffApp } from './staff-app.js';
 import { renderAdmin, renderLogs, initAdminTabDragDrop } from './admin.js';
-import { renderKitchen } from './kitchen.js';
+import { renderKitchen, kitchenAcceptOrder } from './kitchen.js';
+import { renderNotifSounds } from './notifSounds.js';
 import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener, closeWaiterChat } from './customer.js';
 import { ensureDefaultEventTypes } from './banquet.js';
 
@@ -250,6 +251,16 @@ function initListeners() {
     if (state.user?.role === 'kitchen') renderKitchen();
     if (state.user?.role === 'staff') checkKitchenReadyOrders();
   });
+     R.notifSounds.on('value', snap => {
+    state.notifSounds = toArr(snap.val());
+    if (state.user?.role === 'admin') renderAdmin();
+  });
+  db.ref('settings/notifSoundMap').on('value', snap => {
+    state.notifSoundMap = snap.val() || {};
+  });
+  db.ref('settings/kitchenAlertIntervalSec').on('value', snap => {
+    if (snap.val()) state.kitchenAlertIntervalSec = snap.val();
+  });
      R.kitchenNotifs.on('value', snap => {
     state.kitchenNotifs = toArr(snap.val());
     if (state.user?.role === 'staff') checkKitchenNotifs();
@@ -265,8 +276,9 @@ function initListeners() {
 
 function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();    R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
+   db.ref('settings/notifSoundMap').off(); db.ref('settings/kitchenAlertIntervalSec').off();
   db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
 }
 
