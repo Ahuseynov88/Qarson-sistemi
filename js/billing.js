@@ -242,6 +242,20 @@ export class ConfirmedOrder {
       addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Sifarişi vermiş: ${orderOwnerName} — Səbəb: ${reasonText}`,
         { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText,
           staffId: state.user?.id, staffName: state.user?.name, orderOwnerId: order.waiterId||null, orderOwnerName });
+             // Mətbəxə ləğv bildirişi göndər
+      const menuItem = state.menuItems.find(x => x.id === cancelledMenuItemId);
+      const kitchenId = menuItem?.kitchenId;
+      if (kitchenId) {
+        const activeKo = (state.kitchenOrders || []).find(ko =>
+          ko.tableId === tableId && ko.kitchenId === kitchenId &&
+          !ko.allReady && (ko.items || []).some(i => i.name === cancelledName)
+        );
+        if (activeKo) {
+          R.kitchenOrders.child(activeKo.id).update({
+            changeNote: `LƏĞV: ${cancelledName} — ${qtyToCancel} ədəd. Səbəb: ${reasonText}`
+          });
+        }
+      }
       showToast(`<svg class="icon"><use href="#i-trash"></use></svg> ${cancelledName} (${qtyToCancel} ədəd) sifarişdən silindi`);
       this.renderSummary(tableId);
     });
