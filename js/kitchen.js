@@ -168,27 +168,14 @@ function renderKitchenCard(ko) {
     .map((item, idx) => {
       const st = itemStatusLabel(item);
 
-      const cookBtn =
-        !item.ready && !item.cooking
-          ? `
-            <button
-              class="ko-item-action ko-item-action--cook"
-              onclick="kitchenItemCook('${esc(ko.id)}', ${idx})"
-            >
-              Hazırlanır
-            </button>
-          `
-          : '';
-
-      const readyBtn = !item.ready
-        ? `
-          <button
-            class="ko-item-action ko-item-action--ready"
-            onclick="kitchenItemReady('${esc(ko.id)}', ${idx})"
-          >
-            Hazırdır
-          </button>
-        `
+            const cookBtn = (!item.cancelled && !item.ready && !item.cooking)
+        ? `<button class="ko-item-action ko-item-action--cook" onclick="kitchenItemCook('${esc(ko.id)}',${idx})">Hazırlanır</button>`
+        : '';
+      const readyBtn = (!item.cancelled && !item.ready)
+        ? `<button class="ko-item-action ko-item-action--ready" onclick="kitchenItemReady('${esc(ko.id)}',${idx})">Hazırdır</button>`
+        : '';
+      const problemBtn = (!item.cancelled && !item.ready)
+        ? `<button class="ko-item-action ko-item-action--problem" onclick="kitchenItemProblem('${esc(ko.id)}',${idx})">⚠ Problem</button>`
         : '';
 
       let timeLine = '';
@@ -205,10 +192,25 @@ function renderKitchenCard(ko) {
         `;
       }
 
+           // Ləğv edilmiş mal — üstü xəttli
+      if (item.cancelled) {
+        return `<div class="ko-item ko-item--cancelled">
+          <div class="ko-item-main">
+            <span class="ko-item-qty" style="text-decoration:line-through;opacity:.5;">${item.qty}×</span>
+            <div class="ko-item-info">
+              <span class="ko-item-name" style="text-decoration:line-through;opacity:.5;">${esc(item.name)}</span>
+              <span class="ko-item-note" style="color:var(--red);">❌ Ləğv: ${esc(item.cancelReason||'')}</span>
+            </div>
+            <span class="ko-item-status ko-item-status--cancelled">Ləğv edildi</span>
+          </div>
+        </div>`;
+      }
+      // Qismən ləğv varsa miqdar göstər
+      const cancelledQtyNote = item.cancelledQty
+        ? `<span class="ko-item-note" style="color:var(--red);">~~${item.cancelledQty}× ləğv~~</span>` : '';
+
       return `
-        <div class="ko-item ${
-          item.ready ? 'ko-item--done' : ''
-        }">
+        <div class="ko-item ${item.ready ? 'ko-item--done' : ''}">div class="ko-item-info
 
           <div class="ko-item-main">
 
@@ -216,11 +218,11 @@ function renderKitchenCard(ko) {
               ${item.qty}×
             </span>
 
-            <div class="ko-item-info">
-
-              <span class="ko-item-name">
-                ${esc(item.name)}
-              </span>
+                        <div class="ko-item-info">
+              <span class="ko-item-name">${esc(item.name)}</span>
+              ${item.note ? `<span class="ko-item-note">${esc(item.note)}</span>` : ''}
+              ${cancelledQtyNote}
+            </div>
 
               ${
                 item.note
@@ -242,9 +244,10 @@ function renderKitchenCard(ko) {
 
           </div>
 
-          <div class="ko-item-actions">
+                    <div class="ko-item-actions">
             ${cookBtn}
             ${readyBtn}
+            ${problemBtn}
           </div>
 
         </div>
@@ -567,3 +570,115 @@ export function kitchenAcceptOrder(
 
 window.kitchenAcceptOrder =
   kitchenAcceptOrder;
+// Problem bildirişi
+const _problemLabels = {
+  out_of_stock:   'Məhsul bitib',
+  not_enough:     'Miqdar kifayət etmir',
+  cannot_prepare: 'Hazırlamaq mümkün deyil',
+  other:          'Digər səbəb'
+};
+
+export function kitchenItemProblem(kitchenOrderId, itemIdx) {
+  const ko = (state.kitchenOrders || []).find(x => x.id === kitchenOrderId);
+  if (!ko) return;
+  const item = (ko.items || [])[itemIdx];
+  if (!item) return;
+
+  // Sadə seçim dialoqunu göstər
+  const modal = document.getElementById('kitchenProblemModal');
+  if (!modal) {
+    // Modal yoxdursa inline prompt istifadə et
+    const keys = Object.keys(_problemLabels);
+    const choice = prompt(
+      `Problem növü seçin:\n${keys.map((k,i)=>`${i+1}. ${_problemLabels[k]}`).join('\n')}\n\nNömrəni daxil edin:`
+    );
+    const idx2 = parseInt(choice) - 1;
+    const problemKey = keys[idx2];
+    if (!problemKey) return;
+    let availQty = null;
+    if (problemKey === 'not_enough') {
+      availQty = parseInt(prompt(`Mövcud miqdar (sifariş: ${item.qty}):`));
+      if (isNaN(availQty) || availQty < 0) return;
+    }
+    _sendKitchenProblem(ko, itemIdx, problemKey, availQty);
+    return;
+  }
+
+  // Modal varsa onu aç
+  document.getElementById('kpModalKoId').value = kitchenOrderId;
+  document.getElementById('kpModalItemIdx').value = itemIdx;
+  document.getElementById('kpModalItemName').textContent = `${item.qty}× ${item.name}`;
+  document.getElementById('kpModalAvailQtyRow').style.display = 'none';
+  modal.classList.add('open');
+}
+window.kitchenItemProblem = kitchenItemProblem;
+
+export function kitchenProblemTypeChanged(val) {
+  const row = document.getElementById('kpModalAvailQtyRow');
+  if (row) row.style.display = val === 'not_enough' ? 'block' : 'none';
+}
+window.kitchenProblemTypeChanged = kitchenProblemTypeChanged;
+
+export function confirmKitchenProblem() {
+  const koId = document.getElementById('kpModalKoId').value;
+  const itemIdx = parseInt(document.getElementById('kpModalItemIdx').value);
+  const problemKey = document.getElementById('kpModalProblemType').value;
+  const availQty = problemKey === 'not_enough'
+    ? parseInt(document.getElementById('kpModalAvailQty').value) : null;
+  const ko = (state.kitchenOrders || []).find(x => x.id === koId);
+  if (!ko) return;
+  _sendKitchenProblem(ko, itemIdx, problemKey, availQty);
+  document.getElementById('kitchenProblemModal').classList.remove('open');
+}
+window.confirmKitchenProblem = confirmKitchenProblem;
+
+function _sendKitchenProblem(ko, itemIdx, problemKey, availQty) {
+  const item = (ko.items || [])[itemIdx];
+  if (!item) return;
+  const now = Date.now();
+  const label = _problemLabels[problemKey] || problemKey;
+  const kitchenName = state._activeKitchen?.name || ko.kitchenName || 'Mətbəx';
+
+  let notifText = '';
+  if (problemKey === 'not_enough' && availQty !== null) {
+    notifText = `${ko.tableName} — ${item.qty}× ${item.name} sifariş edilib, mətbəxdə yalnız ${availQty} ədəd var.`;
+  } else {
+    notifText = `${ko.tableName} — ${item.name}: ${label}.`;
+  }
+
+  // Ofisianta bildiriş göndər
+  const notifRef = R.kitchenNotifs.push();
+  notifRef.set({
+    type: 'kitchen_problem',
+    waiterId: ko.waiterId,
+    waiterName: ko.waiterName,
+    kitchenOrderId: ko.id,
+    kitchenId: ko.kitchenId,
+    kitchenName,
+    tableName: ko.tableName,
+    tableId: ko.tableId,
+    itemName: item.name,
+    itemQty: item.qty,
+    availQty: availQty ?? null,
+    problemKey,
+    problemLabel: label,
+    itemIdx,
+    allReady: false,
+    status: 'pending',
+    createdAt: now,
+    time: new Date().toLocaleTimeString('az-AZ')
+  });
+
+  // Mətbəx kartındakı item-ə problem statusu yaz
+  const items = (ko.items || []).map((it, i) =>
+    i === itemIdx ? { ...it, problem: label, problemKey, availQty: availQty ?? undefined } : it
+  );
+  R.kitchenOrders.child(ko.id).update({ items });
+
+  addLog('kitchen_problem',
+    `"${kitchenName}" — ${ko.tableName}: "${item.name}" — ${label}${availQty!==null?' (mövcud: '+availQty+')':''}`,
+    { kitchenOrderId: ko.id, itemIdx, itemName: item.name, itemQty: item.qty, availQty, problemKey, kitchenName, waiterId: ko.waiterId }
+  );
+
+  showToast(`⚠ Problem bildirişi ofisianta göndərildi`);
+}
