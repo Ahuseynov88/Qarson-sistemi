@@ -208,52 +208,25 @@ function renderKitchenCard(ko) {
       const cancelledQtyNote = item.cancelledQty
         ? `<span class="ko-item-note" style="color:var(--red);">~~${item.cancelledQty}× ləğv~~</span>` : '';
 
-      return `
-        <div class="ko-item ${item.ready ? 'ko-item--done' : ''}">div class="ko-item-info
-
+            return `
+        <div class="ko-item ${item.ready ? 'ko-item--done' : ''}">
           <div class="ko-item-main">
-
-            <span class="ko-item-qty">
-              ${item.qty}×
-            </span>
-
-                        <div class="ko-item-info">
+            <span class="ko-item-qty">${item.qty}×</span>
+            <div class="ko-item-info">
               <span class="ko-item-name">${esc(item.name)}</span>
               ${item.note ? `<span class="ko-item-note">${esc(item.note)}</span>` : ''}
               ${cancelledQtyNote}
             </div>
-
-              ${
-                item.note
-                  ? `
-                    <span class="ko-item-note">
-                      ${esc(item.note)}
-                    </span>
-                  `
-                  : ''
-              }
-
-            </div>
-
-            <span class="ko-item-status ${st.cls}">
-              ${st.text}
-            </span>
-
+            <span class="ko-item-status ${st.cls}">${st.text}</span>
             ${timeLine}
-
           </div>
-
-                    <div class="ko-item-actions">
+          <div class="ko-item-actions">
             ${cookBtn}
             ${readyBtn}
             ${problemBtn}
           </div>
-
         </div>
       `;
-    })
-    .join('');
-
   return `
     <div class="${cardClass}">
 
