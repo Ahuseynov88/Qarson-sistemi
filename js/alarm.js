@@ -60,8 +60,8 @@ export function triggerKitchenItemAlarm(notif) {
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
   const subText = `${notif.tableName} — ${notif.itemQty}x ${notif.itemName}${notif.allReady ? ' (Hamısı hazırdır)' : ''}`;
   showAlarmOverlay('kitchen_ready', subText);
-  playBeep();
-  state.alarmInterval = setInterval(playBeep, 700);
+    playNotifSound('waiter_kitchen_ready');
+  state.alarmInterval = setInterval(() => playNotifSound('waiter_kitchen_ready'), 4000);
   if ('vibrate' in navigator) navigator.vibrate([400, 200, 400, 200, 400]);
   if ('speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance(`${notif.tableName}, ${notif.itemName} hazırdır`);
@@ -79,8 +79,8 @@ export function triggerKitchenReadyAlarm(ko) {
   const tableName = ko.tableName || 'Masa';
   const itemsText = (ko.readyItems||[]).map(i=>`${i.qty}x ${i.name}`).join(', ');
   showAlarmOverlay('kitchen_ready', `${tableName}: ${itemsText}`);
-  playBeep();
-  state.alarmInterval = setInterval(playBeep, 700);
+    playNotifSound('waiter_kitchen_ready');
+  state.alarmInterval = setInterval(() => playNotifSound('waiter_kitchen_ready'), 4000);
   if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
   if ('speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance('Mətbəxdən hazırdır');
@@ -93,8 +93,8 @@ export function triggerOrderAlarm(order) {
   state.alarmType = 'order';
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
   showAlarmOverlay('order', 'Sifarişiniz hazırdır!');
-  playBeep();
-  state.alarmInterval = setInterval(playBeep, 700);
+   playNotifSound('waiter_order_ready');
+  state.alarmInterval = setInterval(() => playNotifSound('waiter_order_ready'), 4000);
   if ('vibrate' in navigator) navigator.vibrate([400,200,400,200,400]);
   if ('speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance('Sifariş hazırdır');
@@ -112,8 +112,8 @@ export function triggerCustomerAlarm(request) {
   window._currentRequestId = request.id;
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval=null; }
   showAlarmOverlay(request.type || 'default', request.message);
-  playBeep();
-  state.alarmInterval = setInterval(playBeep, 700);
+    playNotifSound('waiter_customer_call');
+  state.alarmInterval = setInterval(() => playNotifSound('waiter_customer_call'), 4000);
   if ('vibrate' in navigator) navigator.vibrate([600,200,600,200,600]);
   if (request.type === 'message') document.dispatchEvent(new CustomEvent('alarm:open-chat', { detail: { tableId: request.tableId, requestId: request.id } }));
 }
