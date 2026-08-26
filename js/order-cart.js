@@ -347,8 +347,11 @@ export class OrderCart {
             allReady: false,
             waiterAccepted: false,
             createdAt: now,
-            time: timeStr
-               });
+                        time: timeStr
+          });
+        }
+      });
+
       this.close();
     });
   }
