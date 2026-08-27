@@ -51,24 +51,86 @@ h1,h2,.login-box h1,.topbar h1{font-family:var(--font-display);letter-spacing:.0
 .screen.active{display:flex;flex-direction:column;}
 
 /* ── LOGIN ── */
-#loginScreen{align-items:center;justify-content:center;background:var(--brand-gradient);position:relative;overflow:hidden;}
-#loginScreen::before{content:'';position:absolute;top:0;right:0;width:60%;height:60%;background:var(--brand-glow);pointer-events:none;}
-.login-box{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--gold);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35);}
-.login-logo{font-size:44px;margin-bottom:12px;color:var(--gold);}
-.login-box h1{font-size:26px;font-weight:600;margin-bottom:6px;}
-.login-box p{color:var(--text2);margin-bottom:28px;font-size:14px;}
-.role-tabs{display:flex;gap:8px;margin-bottom:24px;background:var(--bg);border-radius:12px;padding:4px;}
-.role-tab{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--text2);border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;}
-.role-tab.active{background:var(--card2);color:var(--text);}
+#loginScreen{flex-direction:row !important;align-items:stretch;min-height:100vh;background:#0d0d1a;}
+
+.lp-left{width:40%;min-height:100vh;background:linear-gradient(160deg,#1a0838 0%,#35106f 30%,#59138f 55%,#8a246f 78%,#b74a54 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;position:relative;overflow:hidden;box-sizing:border-box;}
+.lp-left::before{content:'';position:absolute;top:-80px;right:-80px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(139,36,111,.35) 0%,transparent 70%);pointer-events:none;}
+.lp-left::after{content:'';position:absolute;bottom:-60px;left:-60px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(183,74,84,.2) 0%,transparent 70%);pointer-events:none;}
+
+.lp-logo-wrap{width:160px;height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+.lp-logo{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(0,0,0,.4));}
+.lp-logo-fallback{width:100%;height:100%;align-items:center;justify-content:center;opacity:.85;}
+
+.lp-subtitle{color:rgba(255,255,255,.65);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;text-align:center;}
+
+.lp-roles{display:flex;gap:6px;margin-bottom:28px;background:rgba(0,0,0,.25);border-radius:14px;padding:4px;width:100%;}
+.lp-roles .role-tab{flex:1;padding:10px 4px;border:none;background:transparent;color:rgba(255,255,255,.5);border-radius:10px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.5px;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.lp-roles .role-tab .icon{width:18px;height:18px;}
+.lp-roles .role-tab.active{background:linear-gradient(135deg,#8a246f,#b74a54);color:#fff;box-shadow:0 4px 16px rgba(183,74,84,.4);}
+
+.lp-pin-display{display:flex;justify-content:center;gap:14px;margin-bottom:24px;}
+.lp-pin-display .pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent;transition:.2s;}
+.lp-pin-display .pin-dot.filled{background:#fff;border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.6);}
+
+.lp-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;width:100%;}
+.lp-numpad .num-btn{padding:16px 8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;color:#fff;font-size:20px;font-weight:600;cursor:pointer;transition:.15s;}
+.lp-numpad .num-btn:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);}
+.lp-numpad .num-btn:active{transform:scale(.94);background:rgba(255,255,255,.2);}
+.lp-clear-btn{font-size:12px !important;font-weight:700 !important;color:rgba(255,255,255,.6) !important;}
+.lp-back-btn{font-size:18px !important;}
+
+.lp-login-btn{width:100%;padding:16px;border:none;border-radius:16px;background:linear-gradient(135deg,#6b21a8 0%,#a855f7 40%,#ec4899 75%,#f97316 100%);color:#fff;font-size:15px;font-weight:800;letter-spacing:2px;cursor:pointer;transition:.2s;margin-bottom:10px;box-shadow:0 6px 24px rgba(168,85,247,.4);}
+.lp-login-btn:active{transform:scale(.98);}
+
+.lp-right{width:60%;position:relative;overflow:hidden;background:#0a0a14;}
+.lp-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.lp-media-img{z-index:1;}
+video.lp-media{z-index:2;}
+.lp-overlay{position:absolute;inset:0;z-index:3;background:linear-gradient(135deg,rgba(13,13,26,.7) 0%,rgba(13,13,26,.3) 50%,rgba(13,13,26,.5) 100%);}
+
+.lp-datetime{position:absolute;top:32px;right:32px;z-index:4;text-align:right;}
+.lp-clock{font-size:56px;font-weight:800;color:#fff;line-height:1;letter-spacing:-1px;text-shadow:0 2px 20px rgba(0,0,0,.5);}
+.lp-date{font-size:14px;color:rgba(255,255,255,.65);margin-top:4px;font-weight:500;}
+
+.lp-weather{position:absolute;bottom:80px;right:32px;z-index:4;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,.3);}
+.lp-weather-icon{font-size:32px;line-height:1;}
+.lp-weather-info{display:flex;flex-direction:column;gap:2px;}
+.lp-weather-temp{font-size:28px;font-weight:700;color:#fff;line-height:1;}
+.lp-weather-desc{font-size:13px;color:rgba(255,255,255,.65);}
+
+.lp-slogan{position:absolute;bottom:32px;right:32px;z-index:4;color:rgba(255,255,255,.45);font-size:13px;font-style:italic;letter-spacing:.5px;}
+
+/* Köhnə login stillər — digər yerlər üçün saxlanılır */
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
 .pin-display{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
 .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:.2s;}
 .pin-dot.filled{background:var(--green);border-color:var(--green);}
 .numpad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px;}
 .num-btn{padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:22px;font-weight:600;cursor:pointer;transition:.15s;}
-.num-btn:active{transform:scale(0.93);background:var(--border);}
+.num-btn:active{transform:scale(0.93);}
+.role-tabs{display:flex;gap:8px;margin-bottom:24px;background:var(--bg);border-radius:12px;padding:4px;}
+.role-tab{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--text2);border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;}
+.role-tab.active{background:var(--card2);color:var(--text);}
 .login-btn{width:100%;padding:16px;background:var(--green);border:none;border-radius:12px;color:white;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:10px;}
-.login-btn:active{background:var(--green-dark);}
-.err-msg{color:var(--red);font-size:13px;min-height:20px;}
+.login-btn:active{transform:scale(.98);}
+.err-msg{color:var(--red);font-size:13px;min-height:20px;text-align:center;}
+
+/* Responsive */
+@media(max-width:900px){
+  #loginScreen{flex-direction:column !important;}
+  .lp-left{width:100%;min-height:auto;padding:28px 20px;order:2;}
+  .lp-right{width:100%;height:200px;order:1;flex-shrink:0;}
+  .lp-clock{font-size:36px;}
+  .lp-weather{bottom:12px;right:12px;padding:10px 14px;}
+  .lp-weather-temp{font-size:20px;}
+  .lp-slogan{display:none;}
+  .lp-datetime{top:12px;right:12px;}
+}
+@media(max-width:600px){
+  .lp-right{height:140px;}
+  .lp-clock{font-size:28px;}
+  .lp-logo-wrap{width:120px;height:90px;margin-bottom:12px;}
+}
 
 /* ── TOPBAR ── */
 .topbar{background:var(--brand-gradient);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:relative;overflow:hidden;}
