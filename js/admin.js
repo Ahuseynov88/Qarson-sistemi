@@ -1399,10 +1399,7 @@ export function openAddModal() {
     openKitchenStationModal();
     return;
   }
-  if (state.adminSection === 'menu') {
-    openBanquetEventTypeModal();
-    return;
-  }
+  
   if (state.adminSection === 'menu') {
     document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Mal';
     document.getElementById('addModalBody').innerHTML = menuItemForm({});
