@@ -20,22 +20,39 @@
 
 <!-- ═══ LOGIN ═══ -->
 <div class="screen active" id="loginScreen">
-  <div class="login-box">
-    <div class="login-logo"><svg class="icon"><use href="#i-utensils"></use></svg></div>
-    <h1>Restoran Sistemi</h1>
-    <p>Rol seçin və PIN daxil edin</p>
-    <div class="role-tabs">
-      <button class="role-tab active" onclick="setRole('admin',this)"><svg class="icon"><use href="#i-admin"></use></svg> Admin</button>
-      <button class="role-tab" onclick="setRole('staff',this)"><svg class="icon"><use href="#i-user"></use></svg> Əməkdaş</button>
-      <button class="role-tab" onclick="setRole('kitchen',this)"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</button>
+
+  <!-- SOL HİSSƏ -->
+  <div class="lp-left">
+    <div class="lp-logo-wrap">
+      <img src="assets/logo.png" class="lp-logo" alt="Logo"
+           onerror="this.style.display='none';document.getElementById('lp-logo-fallback').style.display='flex'">
+      <div id="lp-logo-fallback" class="lp-logo-fallback" style="display:none;">
+        <svg class="icon" style="width:64px;height:64px;color:#fff;"><use href="#i-utensils"></use></svg>
+      </div>
     </div>
-    <div class="pin-display" id="pinDots">
+
+    <p class="lp-subtitle">SİSTEMƏ DAXİL OLUN</p>
+
+    <div class="role-tabs lp-roles">
+      <button class="role-tab active" onclick="setRole('admin',this)">
+        <svg class="icon"><use href="#i-admin"></use></svg> ADMIN
+      </button>
+      <button class="role-tab" onclick="setRole('staff',this)">
+        <svg class="icon"><use href="#i-user"></use></svg> İşçi
+      </button>
+      <button class="role-tab" onclick="setRole('kitchen',this)">
+        <svg class="icon"><use href="#i-chef"></use></svg> MƏTBƏX
+      </button>
+    </div>
+
+    <div class="pin-display lp-pin-display" id="pinDots">
       <div class="pin-dot" id="d0"></div>
       <div class="pin-dot" id="d1"></div>
       <div class="pin-dot" id="d2"></div>
       <div class="pin-dot" id="d3"></div>
     </div>
-    <div class="numpad">
+
+    <div class="numpad lp-numpad">
       <button class="num-btn" onclick="numPress('1')">1</button>
       <button class="num-btn" onclick="numPress('2')">2</button>
       <button class="num-btn" onclick="numPress('3')">3</button>
@@ -45,14 +62,68 @@
       <button class="num-btn" onclick="numPress('7')">7</button>
       <button class="num-btn" onclick="numPress('8')">8</button>
       <button class="num-btn" onclick="numPress('9')">9</button>
-      <button class="num-btn" onclick="numPress('clear')" style="font-size:14px;color:var(--text2);">SİL</button>
+      <button class="num-btn lp-clear-btn" onclick="numPress('clear')">SİL</button>
       <button class="num-btn" onclick="numPress('0')">0</button>
-      <button class="num-btn" onclick="numPress('back')" style="font-size:20px;">⌫</button>
+      <button class="num-btn lp-back-btn" onclick="numPress('back')">⌫</button>
     </div>
-    <button class="login-btn" onclick="doLogin()">Daxil Ol</button>
+
+    <button class="login-btn lp-login-btn" onclick="doLogin()">DAXİL OL</button>
     <div class="err-msg" id="loginErr"></div>
   </div>
+
+  <!-- SAĞ HİSSƏ -->
+  <div class="lp-right">
+    <video class="lp-media" autoplay muted loop playsinline
+           onerror="this.style.display='none'">
+      <source src="assets/login-video.mp4" type="video/mp4">
+    </video>
+    <img src="assets/login-bg.jpg" class="lp-media lp-media-img" alt=""
+         onerror="this.style.display='none'">
+    <div class="lp-overlay"></div>
+
+    <div class="lp-datetime">
+      <div class="lp-clock" id="lpClock">00:00</div>
+      <div class="lp-date" id="lpDate"></div>
+    </div>
+
+    <div class="lp-weather">
+      <div class="lp-weather-icon">☀️</div>
+      <div class="lp-weather-info">
+        <span class="lp-weather-temp" id="lpTemp">—°</span>
+        <span class="lp-weather-desc">Naxçıvan</span>
+      </div>
+    </div>
+
+    <div class="lp-slogan">Ənənədən gələn dad </div>
+  </div>
+
 </div>
+
+<script>
+(function(){
+  var days=['Bazar','Bazar ertəsi','Çərşənbə axşamı','Çərşənbə','Cümə axşamı','Cümə','Şənbə'];
+  var months=['yanvar','fevral','mart','aprel','may','iyun','iyul','avqust','sentyabr','oktyabr','noyabr','dekabr'];
+  function tick(){
+    var now=new Date();
+    var h=String(now.getHours()).padStart(2,'0');
+    var m=String(now.getMinutes()).padStart(2,'0');
+    var cl=document.getElementById('lpClock');
+    var dt=document.getElementById('lpDate');
+    if(cl) cl.textContent=h+':'+m;
+    if(dt) dt.textContent=days[now.getDay()]+', '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();
+  }
+  tick(); setInterval(tick,1000);
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=39.2092&longitude=45.4112&current_weather=true')
+    .then(function(r){return r.json();}).then(function(d){
+      var t=document.getElementById('lpTemp');
+      var wc=d.current_weather&&d.current_weather.weathercode;
+      if(t) t.textContent=Math.round(d.current_weather.temperature)+'°C';
+      var icons={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',51:'🌦',61:'🌧',71:'❄️',80:'🌦',95:'⛈'};
+      var wp=document.querySelector('.lp-weather-icon');
+      if(wp) wp.textContent=icons[wc]||'🌡';
+    }).catch(function(){});
+})();
+</script>
 
 <!-- ═══ ADMIN ═══ -->
 <div class="screen" id="adminScreen">
