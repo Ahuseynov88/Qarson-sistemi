@@ -538,6 +538,26 @@
     </div>
   </div>
 </div>
+  <!-- ═══ İSP MİQDAR MODALI ═══ -->
+<div class="modal-bg" id="ispQtyModal">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-header">
+      <h3 id="ispQtyModalTitle">Miqdar seçin</h3>
+      <button onclick="document.getElementById('ispQtyModal').classList.remove('open')"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <p id="ispQtyModalDesc" style="color:var(--text2);font-size:13px;margin-bottom:14px;"></p>
+      <div class="form-group">
+        <label id="ispQtyModalLabel">Miqdar</label>
+        <input type="number" id="ispQtyModalInput" min="1" value="1" style="font-size:18px;font-weight:700;text-align:center;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('ispQtyModal').classList.remove('open')">Ləğv et</button>
+      <button class="btn btn-green" id="ispQtyModalConfirm">Təsdiq et</button>
+    </div>
+  </div>
+</div>
   <!-- ═══ İTEM SAĞ PANELİ ═══ -->
 <div id="itemSidePanel" class="item-side-panel">
   <div class="isp-header">
