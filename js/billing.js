@@ -763,7 +763,46 @@ export class ConfirmedOrder {
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
 }
+  openItemSidePanel(tableId, itemKey) {
+    const order = state.tableOrders[tableId];
+    const it = order?.items?.[itemKey];
+    if (!it) return;
+    state._batchSelection = { [itemKey]: it.qty };
+    const panel = document.getElementById('itemSidePanel');
+    if (!panel) return;
+    if (panel._outsideHandler) { document.removeEventListener('click', panel._outsideHandler); panel._outsideHandler = null; }
+    document.getElementById('ispItemName').textContent  = it.name;
+    document.getElementById('ispItemQty').textContent   = it.qty + ' ədəd';
+    document.getElementById('ispItemPrice').textContent = ((it.price||0)*it.qty).toFixed(2) + ' ₼';
+    const badges = document.getElementById('ispBadges');
+    if (badges) badges.innerHTML = [
+      it.compliment        ? '<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>' : '',
+      it.discountPercent>0 ? `<span class="discount-badge">-${it.discountPercent}%</span>` : '',
+      it.note              ? `<span class="discount-badge" style="border-color:var(--border);color:var(--text3);">📝 ${esc(it.note)}</span>` : ''
+    ].join('');
+    const cancelBtn   = document.getElementById('ispCancelBtn');
+    const transferBtn = document.getElementById('ispTransferBtn');
+    const giftBtn     = document.getElementById('ispGiftBtn');
+    const discountBtn = document.getElementById('ispDiscountBtn');
+    const closeBtn    = document.getElementById('ispCloseBtn');
+    if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
+    if (transferBtn) { transferBtn.style.display  = hasPermission('table.transfer')   ? '' : 'none'; transferBtn.onclick  = () => { this.closeItemSidePanel(); this.openItemTransferModal(); }; }
+    if (giftBtn)     { giftBtn.style.display      = hasPermission('order.discount')   ? '' : 'none'; giftBtn.onclick      = () => { this.closeItemSidePanel(); this.openComplimentModal(); }; }
+    if (discountBtn) { discountBtn.style.display  = hasPermission('order.discount')   ? '' : 'none'; discountBtn.onclick  = () => { this.closeItemSidePanel(); this.openDiscountModal(); }; }
+    if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
+    panel.classList.add('open');
+  }
 
+  closeItemSidePanel() {
+    const panel = document.getElementById('itemSidePanel');
+    if (!panel) return;
+    panel.classList.remove('open');
+    this.clearBatchSelection();
+    this.renderSummary(state.noteTableId);
+  }
+}
+
+/* ───────────────────────── PAYMENT PROCESSOR ───────────────────────── */
 /* ───────────────────────── PAYMENT PROCESSOR ───────────────────────── */
 
 export class PaymentProcessor {
@@ -980,62 +1019,4 @@ export class PaymentProcessor {
       if (onSettled) onSettled(fullyPaid);
     });
   }
-       openItemSidePanel(tableId, itemKey) {
-    const order = state.tableOrders[tableId];
-    const it = order?.items?.[itemKey];
-    if (!it) return;
-
-    state._batchSelection = { [itemKey]: it.qty };
-
-    const panel = document.getElementById('itemSidePanel');
-    if (!panel) return;
-
-    // Köhnə outsideHandler-i sil
-    if (panel._outsideHandler) {
-      document.removeEventListener('click', panel._outsideHandler);
-      panel._outsideHandler = null;
-    }
-
-    // Məlumatları doldur
-    document.getElementById('ispItemName').textContent  = it.name;
-    document.getElementById('ispItemQty').textContent   = it.qty + ' ədəd';
-    document.getElementById('ispItemPrice').textContent = ((it.price||0)*it.qty).toFixed(2) + ' ₼';
-
-    const badges = document.getElementById('ispBadges');
-    if (badges) badges.innerHTML = [
-      it.compliment    ? '<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>' : '',
-      it.discountPercent>0 ? `<span class="discount-badge">-${it.discountPercent}%</span>` : '',
-      it.note          ? `<span class="discount-badge" style="border-color:var(--border);color:var(--text3);">📝 ${esc(it.note)}</span>` : ''
-    ].join('');
-
-    // Düymə event-lərini birbaşa onclick ilə set et (cloneNode lazım deyil)
-    const cancelBtn   = document.getElementById('ispCancelBtn');
-    const transferBtn = document.getElementById('ispTransferBtn');
-    const giftBtn     = document.getElementById('ispGiftBtn');
-    const discountBtn = document.getElementById('ispDiscountBtn');
-    const closeBtn    = document.getElementById('ispCloseBtn');
-
-    if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
-    if (transferBtn) { transferBtn.style.display  = hasPermission('table.transfer')   ? '' : 'none'; transferBtn.onclick  = () => { this.closeItemSidePanel(); this.openItemTransferModal(); }; }
-    if (giftBtn)     { giftBtn.style.display      = hasPermission('order.discount')   ? '' : 'none'; giftBtn.onclick      = () => { this.closeItemSidePanel(); this.openComplimentModal(); }; }
-    if (discountBtn) { discountBtn.style.display  = hasPermission('order.discount')   ? '' : 'none'; discountBtn.onclick  = () => { this.closeItemSidePanel(); this.openDiscountModal(); }; }
-    if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
-
-    panel.classList.add('open');
-
-    setTimeout(() => {
-      panel._outsideHandler = (e) => {
-        if (!panel.contains(e.target)) this.closeItemSidePanel();
-      };
-      document.addEventListener('click', panel._outsideHandler);
-    }, 100);
-  }
-  closeItemSidePanel() {
-    const panel = document.getElementById('itemSidePanel');
-    if (!panel) return;
-    panel.classList.remove('open');
-    if (panel._outsideHandler) { document.removeEventListener('click', panel._outsideHandler); panel._outsideHandler = null; }
-    this.clearBatchSelection();
-    this.renderSummary(state.noteTableId);
-  }
-}
+ 
