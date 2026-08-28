@@ -980,57 +980,56 @@ export class PaymentProcessor {
       if (onSettled) onSettled(fullyPaid);
     });
   }
-     openItemSidePanel(tableId, itemKey) {
+       openItemSidePanel(tableId, itemKey) {
     const order = state.tableOrders[tableId];
     const it = order?.items?.[itemKey];
     if (!it) return;
-    // Mövcud batch selection-ı bu item-ə set et ki funksiyalar işləsin
+
     state._batchSelection = { [itemKey]: it.qty };
 
     const panel = document.getElementById('itemSidePanel');
-    const nameEl = document.getElementById('ispItemName');
-    const qtyEl  = document.getElementById('ispItemQty');
-    const priceEl= document.getElementById('ispItemPrice');
     if (!panel) return;
 
-    if (nameEl)  nameEl.textContent  = it.name;
-    if (qtyEl)   qtyEl.textContent   = it.qty + ' ədəd';
-    if (priceEl) priceEl.textContent = ((it.price||0)*it.qty).toFixed(2) + ' ₼';
+    // Köhnə outsideHandler-i sil
+    if (panel._outsideHandler) {
+      document.removeEventListener('click', panel._outsideHandler);
+      panel._outsideHandler = null;
+    }
 
-    // Badge-lər
+    // Məlumatları doldur
+    document.getElementById('ispItemName').textContent  = it.name;
+    document.getElementById('ispItemQty').textContent   = it.qty + ' ədəd';
+    document.getElementById('ispItemPrice').textContent = ((it.price||0)*it.qty).toFixed(2) + ' ₼';
+
     const badges = document.getElementById('ispBadges');
     if (badges) badges.innerHTML = [
-      it.compliment ? '<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>' : '',
+      it.compliment    ? '<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>' : '',
       it.discountPercent>0 ? `<span class="discount-badge">-${it.discountPercent}%</span>` : '',
-      it.note ? `<span class="discount-badge" style="border-color:var(--border);color:var(--text3);">📝 ${esc(it.note)}</span>` : ''
+      it.note          ? `<span class="discount-badge" style="border-color:var(--border);color:var(--text3);">📝 ${esc(it.note)}</span>` : ''
     ].join('');
 
-    // Düymə görünürlüyü — mövcud icazələrə görə
-    document.getElementById('ispCancelBtn').style.display  = hasPermission('order.cancel_item') ? '' : 'none';
-    document.getElementById('ispTransferBtn').style.display= hasPermission('table.transfer')    ? '' : 'none';
-    document.getElementById('ispGiftBtn').style.display    = hasPermission('order.discount')    ? '' : 'none';
-    document.getElementById('ispDiscountBtn').style.display= hasPermission('order.discount')    ? '' : 'none';
+    // Düymə event-lərini birbaşa onclick ilə set et (cloneNode lazım deyil)
+    const cancelBtn   = document.getElementById('ispCancelBtn');
+    const transferBtn = document.getElementById('ispTransferBtn');
+    const giftBtn     = document.getElementById('ispGiftBtn');
+    const discountBtn = document.getElementById('ispDiscountBtn');
+    const closeBtn    = document.getElementById('ispCloseBtn');
 
-    // Event-lər — hər açılışda yenidən bağla
-    const rebind = (id, fn) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const clone = el.cloneNode(true);
-      el.parentNode.replaceChild(clone, el);
-      clone.addEventListener('click', fn);
-    };
-    rebind('ispCancelBtn',   () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); });
-    rebind('ispTransferBtn', () => { this.closeItemSidePanel(); this.openItemTransferModal(); });
-    rebind('ispGiftBtn',     () => { this.closeItemSidePanel(); this.openComplimentModal(); });
-    rebind('ispDiscountBtn', () => { this.closeItemSidePanel(); this.openDiscountModal(); });
-    rebind('ispCloseBtn',    () => { this.closeItemSidePanel(); });
+    if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
+    if (transferBtn) { transferBtn.style.display  = hasPermission('table.transfer')   ? '' : 'none'; transferBtn.onclick  = () => { this.closeItemSidePanel(); this.openItemTransferModal(); }; }
+    if (giftBtn)     { giftBtn.style.display      = hasPermission('order.discount')   ? '' : 'none'; giftBtn.onclick      = () => { this.closeItemSidePanel(); this.openComplimentModal(); }; }
+    if (discountBtn) { discountBtn.style.display  = hasPermission('order.discount')   ? '' : 'none'; discountBtn.onclick  = () => { this.closeItemSidePanel(); this.openDiscountModal(); }; }
+    if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
 
     panel.classList.add('open');
-    // Kənara klik — bağla
-    panel._outsideHandler = (e) => { if (!panel.contains(e.target)) this.closeItemSidePanel(); };
-    setTimeout(() => document.addEventListener('click', panel._outsideHandler), 50);
-  }
 
+    setTimeout(() => {
+      panel._outsideHandler = (e) => {
+        if (!panel.contains(e.target)) this.closeItemSidePanel();
+      };
+      document.addEventListener('click', panel._outsideHandler);
+    }, 100);
+  }
   closeItemSidePanel() {
     const panel = document.getElementById('itemSidePanel');
     if (!panel) return;
