@@ -30,14 +30,13 @@ export class ConfirmedOrder {
 
    
   _bindEvents() {
-    this.els.summaryEl.addEventListener('click', (e) => {
-      const qtyBtn = e.target.closest('[data-qty-change]');
-      if (qtyBtn) { return; } // göndərilmiş mallarda artıq +/- düyməsi yoxdur (yalnız iptal, səbəblə)
-      const cancelBtn = e.target.closest('[data-cancel-item]');
-      if (cancelBtn) { this.openCancelReasonModal(state.noteTableId, cancelBtn.dataset.cancelItem); return; }
+        this.els.summaryEl.addEventListener('click', (e) => {
+      if (e.target.closest('#sentCollapseBar')) { this._sentExpanded = false; this.renderSummary(state.noteTableId); return; }
       const batchBtn = e.target.closest('[data-batch-qty]');
       if (batchBtn) { this.setBatchQty(batchBtn.dataset.itemKey, parseInt(batchBtn.dataset.batchQty, 10)); return; }
-      if (e.target.closest('#sentCollapseBar')) { this._sentExpanded = false; this.renderSummary(state.noteTableId); return; }
+      // Item sətrinə klik — sağ panel aç
+      const line = e.target.closest('[data-item-key]');
+      if (line) { this.openItemSidePanel(state.noteTableId, line.dataset.itemKey); return; }
     });
     this.els.itemTransferTableGrid.addEventListener('click', (e) => {
       const card = e.target.closest('[data-transfer-target]');
@@ -121,37 +120,20 @@ export class ConfirmedOrder {
         const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
         const selQty = sel[itemKey] || 0;
         const isSelected = selQty > 0;
-        return `<div class="ticket-line sent ${isSelected?'selected':''}">
+                return `<div class="ticket-line sent ${isSelected?'selected':''}" data-item-key="${itemKey}" style="cursor:pointer;">
           <div class="ticket-line__main">
-            ${canBatch ? `<div class="qty-stepper batch-select" style="margin-right:2px;">
-              <button data-batch-qty="-1" data-item-key="${itemKey}">−</button>
-              <span class="qty-stepper__val">${selQty}</span>
-              <button data-batch-qty="1" data-item-key="${itemKey}">+</button>
-            </div>` : ''}
             <span class="ticket-line__name">${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
             <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
-            ${canEdit ? `<button data-cancel-item="${itemKey}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;flex-shrink:0;"><svg class="icon"><use href="#i-close"></use></svg></button>` : ''}
+            <svg class="icon" style="width:14px;height:14px;color:var(--text3);flex-shrink:0;"><use href="#i-chevron-right"></use></svg>
           </div>
-          <div class="ticket-line__tags" style="${canBatch?'padding-left:56px;':''}">
+          <div class="ticket-line__tags">
             ${it.note ? `<span class="discount-badge" style="background:transparent;border-color:var(--border);color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(it.note)}</span>` : ''}
             ${it.compliment ? `<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>` : ''}
             ${(it.discountPercent>0) ? `<span class="discount-badge">-${it.discountPercent}%</span>` : ''}
-            ${isSelected ? `<span class="discount-badge" style="background:rgba(52,152,219,.15);color:var(--blue);border-color:var(--blue);">${selQty}/${it.qty} seçili</span>` : ''}
           </div>
         </div>`;
       }).join('')}
       ${canBatch ? `
-      <div id="batchActionBar" class="batch-bar" style="display:${selectedCount?'flex':'none'};">
-        <span class="batch-bar__count">${selectedCount} mal seçildi (${selectedEntries.reduce((s,[,q])=>s+q,0)} ədəd)</span>
-        ${hasPermission('order.discount') ? `<button class="batch-chip batch-chip--discount" data-open-discount><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>` : ''}
-        ${hasPermission('order.discount') ? `<button class="batch-chip batch-chip--gift" data-open-compliment><svg class="icon"><use href="#i-gift"></use></svg> İkram</button>` : ''}
-        ${hasPermission('table.transfer') ? `<button class="batch-chip batch-chip--transfer" data-open-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>` : ''}
-        ${hasPermission('bill.credit') ? `<button class="batch-chip" style="border-color:var(--blue);color:var(--blue);" data-open-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Nisyə</button>` : ''}
-        ${hasPermission('order.discount') && selectedEntries.some(([k])=>order.items[k]?.discountPercent>0||order.items[k]?.compliment)
-          ? `<button class="batch-chip" style="border-color:var(--red);color:var(--red);" data-reset-discount><svg class="icon"><use href="#i-refresh"></use></svg> Sıfırla</button>` : ''}
-        <button class="batch-chip batch-chip--clear" data-clear-selection>Ləğv et</button>
-      </div>` : ''}
-    `;
 
     // batch bar düymələri (dinamik yaradıldığı üçün burada bağlanır)
     el.querySelector('[data-open-discount]')?.addEventListener('click', () => this.openDiscountModal());
@@ -998,5 +980,64 @@ export class PaymentProcessor {
         : `<svg class="icon"><use href="#i-check"></use></svg> ${thisPay.toFixed(2)} ₼ ödənildi. Qalan: ${p.remainingAmount.toFixed(2)} ₼`);
       if (onSettled) onSettled(fullyPaid);
     });
+  }
+     openItemSidePanel(tableId, itemKey) {
+    const order = state.tableOrders[tableId];
+    const it = order?.items?.[itemKey];
+    if (!it) return;
+    // Mövcud batch selection-ı bu item-ə set et ki funksiyalar işləsin
+    state._batchSelection = { [itemKey]: it.qty };
+
+    const panel = document.getElementById('itemSidePanel');
+    const nameEl = document.getElementById('ispItemName');
+    const qtyEl  = document.getElementById('ispItemQty');
+    const priceEl= document.getElementById('ispItemPrice');
+    if (!panel) return;
+
+    if (nameEl)  nameEl.textContent  = it.name;
+    if (qtyEl)   qtyEl.textContent   = it.qty + ' ədəd';
+    if (priceEl) priceEl.textContent = ((it.price||0)*it.qty).toFixed(2) + ' ₼';
+
+    // Badge-lər
+    const badges = document.getElementById('ispBadges');
+    if (badges) badges.innerHTML = [
+      it.compliment ? '<span class="discount-badge" style="background:rgba(28,107,53,.15);color:var(--green);border-color:var(--green);">İKRAM</span>' : '',
+      it.discountPercent>0 ? `<span class="discount-badge">-${it.discountPercent}%</span>` : '',
+      it.note ? `<span class="discount-badge" style="border-color:var(--border);color:var(--text3);">📝 ${esc(it.note)}</span>` : ''
+    ].join('');
+
+    // Düymə görünürlüyü — mövcud icazələrə görə
+    document.getElementById('ispCancelBtn').style.display  = hasPermission('order.cancel_item') ? '' : 'none';
+    document.getElementById('ispTransferBtn').style.display= hasPermission('table.transfer')    ? '' : 'none';
+    document.getElementById('ispGiftBtn').style.display    = hasPermission('order.discount')    ? '' : 'none';
+    document.getElementById('ispDiscountBtn').style.display= hasPermission('order.discount')    ? '' : 'none';
+
+    // Event-lər — hər açılışda yenidən bağla
+    const rebind = (id, fn) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const clone = el.cloneNode(true);
+      el.parentNode.replaceChild(clone, el);
+      clone.addEventListener('click', fn);
+    };
+    rebind('ispCancelBtn',   () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); });
+    rebind('ispTransferBtn', () => { this.closeItemSidePanel(); this.openItemTransferModal(); });
+    rebind('ispGiftBtn',     () => { this.closeItemSidePanel(); this.openComplimentModal(); });
+    rebind('ispDiscountBtn', () => { this.closeItemSidePanel(); this.openDiscountModal(); });
+    rebind('ispCloseBtn',    () => { this.closeItemSidePanel(); });
+
+    panel.classList.add('open');
+    // Kənara klik — bağla
+    panel._outsideHandler = (e) => { if (!panel.contains(e.target)) this.closeItemSidePanel(); };
+    setTimeout(() => document.addEventListener('click', panel._outsideHandler), 50);
+  }
+
+  closeItemSidePanel() {
+    const panel = document.getElementById('itemSidePanel');
+    if (!panel) return;
+    panel.classList.remove('open');
+    if (panel._outsideHandler) { document.removeEventListener('click', panel._outsideHandler); panel._outsideHandler = null; }
+    this.clearBatchSelection();
+    this.renderSummary(state.noteTableId);
   }
 }
