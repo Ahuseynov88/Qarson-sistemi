@@ -1014,3 +1014,22 @@ img,svg.icon{max-width:100%;}
 .isp-action-btn--transfer{border-color:var(--blue);background:rgba(52,152,219,.08);color:var(--blue);}
 .isp-action-btn--cancel{border-color:var(--red);background:rgba(163,42,36,.08);color:var(--red);}
 .isp-action-btn--credit{border-color:#8b5cf6;background:rgba(139,92,246,.08);color:#8b5cf6;}
+/* ── Batch seçim checkbox ── */
+.bsel-check{display:flex;align-items:center;padding:4px;cursor:pointer;flex-shrink:0;}
+.bsel-box{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);background:var(--bg);transition:.15s;flex-shrink:0;}
+.bsel-box--on{background:var(--blue);border-color:var(--blue);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:12px;background-repeat:no-repeat;background-position:center;}
+.ticket-line.bsel{background:rgba(52,152,219,.06);border-color:var(--blue);}
+
+/* ── Action bar ── */
+.bsel-bar{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-top:8px;}
+.bsel-bar-info{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--text);}
+.bsel-clear{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;}
+.bsel-action-btn{display:flex;align-items:center;justify-content:center;gap:6px;}
+
+/* ── Batch action modal item ── */
+.bam-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.bam-item-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.bam-item-qty-row{display:flex;align-items:center;gap:8px;}
+.bam-qty-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.bam-qty-input{width:56px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;font-weight:700;text-align:center;}
+.bam-qty-max{font-size:12px;color:var(--text3);}
