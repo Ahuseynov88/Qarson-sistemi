@@ -538,6 +538,39 @@
     </div>
   </div>
 </div>
+  <!-- ═══ İTEM SAĞ PANELİ ═══ -->
+<div id="itemSidePanel" class="item-side-panel">
+  <div class="isp-header">
+    <div>
+      <div class="isp-name" id="ispItemName"></div>
+      <div class="isp-meta">
+        <span id="ispItemQty"></span>
+        <span id="ispItemPrice" style="color:var(--green);font-weight:700;"></span>
+      </div>
+      <div id="ispBadges" style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;"></div>
+    </div>
+    <button id="ispCloseBtn" class="isp-close-btn">✕</button>
+  </div>
+  <div class="isp-actions">
+    <button id="ispDiscountBtn" class="isp-action-btn isp-action-btn--discount">
+      <svg class="icon"><use href="#i-tag"></use></svg>
+      <span>Endirim</span>
+    </button>
+    <button id="ispGiftBtn" class="isp-action-btn isp-action-btn--gift">
+      <svg class="icon"><use href="#i-gift"></use></svg>
+      <span>İkram et</span>
+    </button>
+    <button id="ispTransferBtn" class="isp-action-btn isp-action-btn--transfer">
+      <svg class="icon"><use href="#i-shuffle"></use></svg>
+      <span>Köçür</span>
+    </button>
+    <button id="ispCancelBtn" class="isp-action-btn isp-action-btn--cancel">
+      <svg class="icon"><use href="#i-close"></use></svg>
+      <span>Ləğv et</span>
+    </button>
+  </div>
+</div>
+<div id="itemSidePanelBg" class="item-side-panel-bg" onclick="document.getElementById('itemSidePanel').classList.remove('open')"></div>
 <!-- ═══ OVERLAYS ═══ -->
 <div id="alarmOverlay">
   <div class="alarm-icon" id="alarmIcon"><svg class="icon"><use href="#i-bell"></use></svg></div>
