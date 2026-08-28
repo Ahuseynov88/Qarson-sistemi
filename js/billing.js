@@ -132,9 +132,8 @@ export class ConfirmedOrder {
             ${(it.discountPercent>0) ? `<span class="discount-badge">-${it.discountPercent}%</span>` : ''}
           </div>
         </div>`;
-      }).join('')}
-      ${canBatch ? `
-
+       }).join('')}
+    `;
     // batch bar düymələri (dinamik yaradıldığı üçün burada bağlanır)
     el.querySelector('[data-open-discount]')?.addEventListener('click', () => this.openDiscountModal());
     el.querySelector('[data-open-compliment]')?.addEventListener('click', () => this.openComplimentModal());
