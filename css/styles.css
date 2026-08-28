@@ -946,3 +946,70 @@ img,svg.icon{max-width:100%;}
 .ko-item-status--problem{background:rgba(231,76,60,.2);color:var(--red);font-weight:700;}
 .ko-item-action--problem{background:rgba(231,76,60,.15);color:var(--red);}
 .ko-item-action--problem:hover{background:var(--red);color:#fff;}
+/* ── İTEM SAĞ PANELİ ── */
+.item-side-panel{
+  position:fixed;
+  top:0;right:0;
+  height:100%;
+  width:220px;
+  background:var(--card);
+  border-left:1px solid var(--border);
+  box-shadow:-8px 0 32px rgba(0,0,0,.18);
+  z-index:1200;
+  display:flex;
+  flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .22s cubic-bezier(.4,0,.2,1);
+  border-radius:20px 0 0 20px;
+}
+.item-side-panel.open{transform:translateX(0);}
+.item-side-panel-bg{
+  position:fixed;inset:0;
+  z-index:1199;
+  display:none;
+}
+.item-side-panel.open ~ .item-side-panel-bg{display:block;}
+
+.isp-header{
+  padding:20px 16px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:8px;
+}
+.isp-name{font-size:15px;font-weight:700;color:var(--text);line-height:1.3;}
+.isp-meta{display:flex;gap:8px;margin-top:4px;font-size:13px;color:var(--text2);}
+.isp-close-btn{background:var(--card2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+
+.isp-actions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:16px;
+  flex:1;
+}
+.isp-action-btn{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:13px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--card2);
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.15s;
+  width:100%;
+  text-align:left;
+}
+.isp-action-btn:hover{filter:brightness(.96);}
+.isp-action-btn:active{transform:scale(.97);}
+.isp-action-btn .icon{width:18px;height:18px;flex-shrink:0;}
+
+.isp-action-btn--discount{border-color:var(--orange);background:rgba(196,176,46,.08);color:var(--orange);}
+.isp-action-btn--gift{border-color:var(--green);background:rgba(28,107,53,.08);color:var(--green);}
+.isp-action-btn--transfer{border-color:var(--blue);background:rgba(52,152,219,.08);color:var(--blue);}
+.isp-action-btn--cancel{border-color:var(--red);background:rgba(163,42,36,.08);color:var(--red);}
