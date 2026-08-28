@@ -1019,4 +1019,4 @@ export class PaymentProcessor {
       if (onSettled) onSettled(fullyPaid);
     });
   }
- 
+} 
