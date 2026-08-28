@@ -786,19 +786,52 @@ export class ConfirmedOrder {
     const discountBtn = document.getElementById('ispDiscountBtn');
     const closeBtn    = document.getElementById('ispCloseBtn');
     if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
-    if (transferBtn) { transferBtn.style.display  = hasPermission('table.transfer')   ? '' : 'none'; transferBtn.onclick  = () => { this.closeItemSidePanel(); this.openItemTransferModal(); }; }
-    if (giftBtn)     { giftBtn.style.display      = hasPermission('order.discount')   ? '' : 'none'; giftBtn.onclick      = () => { this.closeItemSidePanel(); this.openComplimentModal(); }; }
-    if (discountBtn) { discountBtn.style.display  = hasPermission('order.discount')   ? '' : 'none'; discountBtn.onclick  = () => { this.closeItemSidePanel(); this.openDiscountModal(); }; }
+        if (transferBtn) {
+      transferBtn.style.display = hasPermission('table.transfer') ? '' : 'none';
+      transferBtn.onclick = () => {
+        if (it.qty > 1) {
+          const n = parseInt(prompt(`Neçə ədəd köçürülsün? (maks: ${it.qty})`));
+          if (isNaN(n) || n < 1 || n > it.qty) return;
+          state._batchSelection = { [itemKey]: n };
+        }
+        this.closeItemSidePanel();
+        this.openItemTransferModal();
+      };
+    }
+        if (giftBtn)     {
+      giftBtn.style.display = hasPermission('order.discount') ? '' : 'none';
+      giftBtn.onclick = () => {
+        if (it.qty > 1) {
+          const n = parseInt(prompt(`Neçə ədəd ikram edilsin? (maks: ${it.qty})`));
+          if (isNaN(n) || n < 1 || n > it.qty) return;
+          state._batchSelection = { [itemKey]: n };
+        }
+        this.closeItemSidePanel();
+        this.openComplimentModal();
+      };
+    }
+    if (discountBtn) {
+      discountBtn.style.display = hasPermission('order.discount') ? '' : 'none';
+      discountBtn.onclick = () => {
+        if (it.qty > 1) {
+          const n = parseInt(prompt(`Neçə ədəd üçün endirim edilsin? (maks: ${it.qty})`));
+          if (isNaN(n) || n < 1 || n > it.qty) return;
+          state._batchSelection = { [itemKey]: n };
+        }
+        this.closeItemSidePanel();
+        this.openDiscountModal();
+      };
+    }
     if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
     panel.classList.add('open');
   }
 
-  closeItemSidePanel() {
+    closeItemSidePanel() {
     const panel = document.getElementById('itemSidePanel');
     if (!panel) return;
     panel.classList.remove('open');
-    this.clearBatchSelection();
-    this.renderSummary(state.noteTableId);
+    // clearBatchSelection burada çağırılmır — selection açılan modal üçün lazımdır
+    // Modal öz işini bitirəndən sonra clearBatchSelection çağırılır
   }
 }
 
