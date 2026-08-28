@@ -762,7 +762,7 @@ export class ConfirmedOrder {
     addLog('table_transfer', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü: ${formatItemsList(order?.items||{})}`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
-}
+
   openItemSidePanel(tableId, itemKey) {
     const order = state.tableOrders[tableId];
     const it = order?.items?.[itemKey];
