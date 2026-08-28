@@ -538,6 +538,34 @@
     </div>
   </div>
 </div>
+  <!-- ═══ BATCH ACTION MODALI ═══ -->
+<div class="modal-bg" id="batchActionModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>Əməliyyat seç</h3>
+      <button id="bamCancelBtn"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Seçilmiş mallar və miqdarları:</p>
+      <div id="batchActionList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:40vh;overflow-y:auto;"></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600;">Əməliyyat:</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button id="bamTransferBtn" class="btn" style="background:rgba(52,152,219,.1);border:1px solid var(--blue);color:var(--blue);justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-shuffle"></use></svg> Köçür
+        </button>
+        <button id="bamCreditBtn" class="btn" style="background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-user"></use></svg> Müştəriyə yaz
+        </button>
+        <button id="bamGiftBtn" class="btn" style="background:rgba(46,204,113,.1);border:1px solid var(--green);color:var(--green);justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-gift"></use></svg> İkram et
+        </button>
+        <button id="bamDiscountBtn" class="btn" style="background:rgba(243,156,18,.1);border:1px solid var(--orange);color:var(--orange);justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-tag"></use></svg> Endirim et
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- ═══ İSP MİQDAR MODALI ═══ -->
 <div class="modal-bg" id="ispQtyModal">
   <div class="modal" style="max-width:320px;">
