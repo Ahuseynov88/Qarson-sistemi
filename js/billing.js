@@ -784,6 +784,7 @@ export class ConfirmedOrder {
     const transferBtn = document.getElementById('ispTransferBtn');
     const giftBtn     = document.getElementById('ispGiftBtn');
     const discountBtn = document.getElementById('ispDiscountBtn');
+    const creditBtn   = document.getElementById('ispCreditBtn');
     const closeBtn    = document.getElementById('ispCloseBtn');
     if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
             if (transferBtn) {
@@ -827,6 +828,21 @@ export class ConfirmedOrder {
             state._batchSelection = { [itemKey]: n };
             this.closeItemSidePanel();
             this.openDiscountModal();
+          }
+        });
+      };
+    }
+         if (creditBtn) {
+      creditBtn.style.display = hasPermission('bill.credit') ? '' : 'none';
+      creditBtn.onclick = () => {
+        this._openIspQtyModal({
+          title: 'Müştəriyə yaz',
+          desc: it.name,
+          max: it.qty,
+          onConfirm: (n) => {
+            state._batchSelection = { [itemKey]: n };
+            this.closeItemSidePanel();
+            this.openCustomerChargeModal();
           }
         });
       };
