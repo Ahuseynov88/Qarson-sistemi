@@ -786,46 +786,88 @@ export class ConfirmedOrder {
     const discountBtn = document.getElementById('ispDiscountBtn');
     const closeBtn    = document.getElementById('ispCloseBtn');
     if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
-        if (transferBtn) {
+            if (transferBtn) {
       transferBtn.style.display = hasPermission('table.transfer') ? '' : 'none';
       transferBtn.onclick = () => {
-        if (it.qty > 1) {
-          const n = parseInt(prompt(`Neçə ədəd köçürülsün? (maks: ${it.qty})`));
-          if (isNaN(n) || n < 1 || n > it.qty) return;
-          state._batchSelection = { [itemKey]: n };
-        }
-        this.closeItemSidePanel();
-        this.openItemTransferModal();
+        this._openIspQtyModal({
+          title: 'Köçür',
+          desc: it.name,
+          max: it.qty,
+          onConfirm: (n) => {
+            state._batchSelection = { [itemKey]: n };
+            this.closeItemSidePanel();
+            this.openItemTransferModal();
+          }
+        });
       };
     }
-        if (giftBtn)     {
+            if (giftBtn) {
       giftBtn.style.display = hasPermission('order.discount') ? '' : 'none';
       giftBtn.onclick = () => {
-        if (it.qty > 1) {
-          const n = parseInt(prompt(`Neçə ədəd ikram edilsin? (maks: ${it.qty})`));
-          if (isNaN(n) || n < 1 || n > it.qty) return;
-          state._batchSelection = { [itemKey]: n };
-        }
-        this.closeItemSidePanel();
-        this.openComplimentModal();
+        this._openIspQtyModal({
+          title: 'İkram et',
+          desc: it.name,
+          max: it.qty,
+          onConfirm: (n) => {
+            state._batchSelection = { [itemKey]: n };
+            this.closeItemSidePanel();
+            this.openComplimentModal();
+          }
+        });
       };
     }
     if (discountBtn) {
       discountBtn.style.display = hasPermission('order.discount') ? '' : 'none';
       discountBtn.onclick = () => {
-        if (it.qty > 1) {
-          const n = parseInt(prompt(`Neçə ədəd üçün endirim edilsin? (maks: ${it.qty})`));
-          if (isNaN(n) || n < 1 || n > it.qty) return;
-          state._batchSelection = { [itemKey]: n };
-        }
-        this.closeItemSidePanel();
-        this.openDiscountModal();
+        this._openIspQtyModal({
+          title: 'Endirim et',
+          desc: it.name,
+          max: it.qty,
+          onConfirm: (n) => {
+            state._batchSelection = { [itemKey]: n };
+            this.closeItemSidePanel();
+            this.openDiscountModal();
+          }
+        });
       };
     }
     if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
     panel.classList.add('open');
   }
+  _openIspQtyModal({ title, desc, max, onConfirm }) {
+    const modal    = document.getElementById('ispQtyModal');
+    const titleEl  = document.getElementById('ispQtyModalTitle');
+    const descEl   = document.getElementById('ispQtyModalDesc');
+    const input    = document.getElementById('ispQtyModalInput');
+    const confirmBtn = document.getElementById('ispQtyModalConfirm');
+    if (!modal) return;
 
+    titleEl.textContent = title;
+    descEl.textContent  = desc;
+    input.max   = max;
+    input.min   = 1;
+    input.value = max; // default: hamısı
+
+    // Əgər yalnız 1 ədəd varsa modal açmadan birbaşa davam et
+    if (max === 1) { onConfirm(1); return; }
+
+    // Köhnə listener-i sil
+    const newBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+    newBtn.addEventListener('click', () => {
+      const n = parseInt(input.value);
+      if (isNaN(n) || n < 1 || n > max) {
+        input.style.borderColor = 'var(--red)';
+        return;
+      }
+      input.style.borderColor = '';
+      modal.classList.remove('open');
+      onConfirm(n);
+    });
+
+    modal.classList.add('open');
+    setTimeout(() => input.focus(), 100);
+  }
     closeItemSidePanel() {
     const panel = document.getElementById('itemSidePanel');
     if (!panel) return;
