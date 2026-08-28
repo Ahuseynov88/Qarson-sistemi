@@ -120,11 +120,13 @@ export class ConfirmedOrder {
         const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
         const selQty = sel[itemKey] || 0;
         const isSelected = selQty > 0;
-                return `<div class="ticket-line sent ${isSelected?'selected':''}" data-item-key="${itemKey}" style="cursor:pointer;">
+                return `<div class="ticket-line sent ${isSelected?'bsel':''}" data-item-key="${itemKey}">
           <div class="ticket-line__main">
-            <span class="ticket-line__name">${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
+            <label class="bsel-check" data-check-key="${itemKey}">
+              <div class="bsel-box ${isSelected?'bsel-box--on':''}"></div>
+            </label>
+            <span class="ticket-line__name" style="flex:1;cursor:pointer;" data-open-panel="${itemKey}">${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
             <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
-            <svg class="icon" style="width:14px;height:14px;color:var(--text3);flex-shrink:0;"><use href="#i-chevron-right"></use></svg>
           </div>
           <div class="ticket-line__tags">
             ${it.note ? `<span class="discount-badge" style="background:transparent;border-color:var(--border);color:var(--text3);"><svg class="icon"><use href="#i-note"></use></svg> ${esc(it.note)}</span>` : ''}
@@ -134,13 +136,43 @@ export class ConfirmedOrder {
         </div>`;
        }).join('')}
     `;
-    // batch bar düymələri (dinamik yaradıldığı üçün burada bağlanır)
-    el.querySelector('[data-open-discount]')?.addEventListener('click', () => this.openDiscountModal());
-    el.querySelector('[data-open-compliment]')?.addEventListener('click', () => this.openComplimentModal());
-    el.querySelector('[data-open-item-transfer]')?.addEventListener('click', () => this.openItemTransferModal());
-    el.querySelector('[data-open-customer-charge]')?.addEventListener('click', () => this.openCustomerChargeModal());
-    el.querySelector('[data-reset-discount]')?.addEventListener('click', () => this.resetDiscount(state.noteTableId));
-    el.querySelector('[data-clear-selection]')?.addEventListener('click', () => { this.clearBatchSelection(); this.renderSummary(tableId); });
+    // Checkbox klik
+    el.querySelectorAll('[data-check-key]').forEach(lbl => {
+      lbl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = lbl.dataset.checkKey;
+        const it = order.items[key];
+        if (!it) return;
+        const s = { ...(state._batchSelection || {}) };
+        if (s[key]) delete s[key]; else s[key] = it.qty;
+        state._batchSelection = s;
+        this.renderSummary(tableId);
+      });
+    });
+
+    // Mal adına klik → yan panel
+    el.querySelectorAll('[data-open-panel]').forEach(span => {
+      span.addEventListener('click', () => {
+        this.openItemSidePanel(tableId, span.dataset.openPanel);
+      });
+    });
+
+    // Seçim varsa — action bar göstər
+    if (selectedCount > 0) {
+      const bar = document.createElement('div');
+      bar.className = 'bsel-bar';
+      bar.innerHTML = `
+        <div class="bsel-bar-info">
+          <span>${selectedCount} mal seçilib</span>
+          <button class="bsel-clear" data-clear>✕ Sıfırla</button>
+        </div>
+        <button class="btn btn-blue bsel-action-btn" data-open-batch-modal style="width:100%;margin-top:8px;">
+          <svg class="icon"><use href="#i-check"></use></svg> Əməliyyat seç
+        </button>`;
+      el.appendChild(bar);
+      bar.querySelector('[data-clear]').addEventListener('click', () => { this.clearBatchSelection(); this.renderSummary(tableId); });
+      bar.querySelector('[data-open-batch-modal]').addEventListener('click', () => this.openBatchActionModal());
+    }
   }
 
   // ── İptal (səbəblə) ──
@@ -805,6 +837,74 @@ export class ConfirmedOrder {
             if (giftBtn) {
       giftBtn.style.display = hasPermission('order.discount') ? '' : 'none';
       giftBtn.onclick = () => {
+         openBatchActionModal() {
+    const tableId = state.noteTableId;
+    const order = state.tableOrders[tableId];
+    if (!order?.items) return;
+    const sel = state._batchSelection || {};
+    const selEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
+    if (!selEntries.length) return;
+
+    const modal = document.getElementById('batchActionModal');
+    if (!modal) return;
+
+    // Malları render et
+    const listEl = document.getElementById('batchActionList');
+    listEl.innerHTML = selEntries.map(([key, qty]) => {
+      const it = order.items[key];
+      return `<div class="bam-item" data-key="${key}">
+        <div class="bam-item-name">${esc(it.name)}</div>
+        <div class="bam-item-qty-row">
+          <button class="bam-qty-btn" data-bam-minus data-key="${key}" data-max="${it.qty}">−</button>
+          <input class="bam-qty-input" type="number" min="1" max="${it.qty}" value="${qty}" data-key="${key}">
+          <button class="bam-qty-btn" data-bam-plus data-key="${key}" data-max="${it.qty}">+</button>
+          <span class="bam-qty-max">/ ${it.qty}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // İcazəyə görə əməliyyat düymələrini göstər/gizlət
+    document.getElementById('bamTransferBtn').style.display = hasPermission('table.transfer') ? '' : 'none';
+    document.getElementById('bamCreditBtn').style.display   = hasPermission('bill.credit')    ? '' : 'none';
+    document.getElementById('bamGiftBtn').style.display     = hasPermission('order.discount') ? '' : 'none';
+    document.getElementById('bamDiscountBtn').style.display = hasPermission('order.discount') ? '' : 'none';
+
+    // −/+ düymələri
+    listEl.querySelectorAll('[data-bam-minus]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
+        const v = Math.max(1, parseInt(inp.value) - 1);
+        inp.value = v;
+      });
+    });
+    listEl.querySelectorAll('[data-bam-plus]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
+        const v = Math.min(parseInt(btn.dataset.max), parseInt(inp.value) + 1);
+        inp.value = v;
+      });
+    });
+
+    // Əməliyyat düymələri
+    const doAction = (fn) => {
+      // Input-lardan miqdarları oxu, _batchSelection-u yenilə
+      listEl.querySelectorAll('.bam-qty-input').forEach(inp => {
+        const key = inp.dataset.key;
+        const v = parseInt(inp.value);
+        if (v > 0) state._batchSelection[key] = v;
+      });
+      modal.classList.remove('open');
+      fn();
+    };
+
+    document.getElementById('bamTransferBtn').onclick = () => doAction(() => this.openItemTransferModal());
+    document.getElementById('bamCreditBtn').onclick   = () => doAction(() => this.openCustomerChargeModal());
+    document.getElementById('bamGiftBtn').onclick     = () => doAction(() => this.openComplimentModal());
+    document.getElementById('bamDiscountBtn').onclick = () => doAction(() => this.openDiscountModal());
+    document.getElementById('bamCancelBtn').onclick   = () => modal.classList.remove('open');
+
+    modal.classList.add('open');
+         }
         this._openIspQtyModal({
           title: 'İkram et',
           desc: it.name,
