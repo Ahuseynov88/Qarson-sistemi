@@ -951,7 +951,7 @@ img,svg.icon{max-width:100%;}
   position:fixed;
   top:0;right:0;
   height:100%;
-  width:220px;
+  width:150px;
   background:var(--card);
   border-left:1px solid var(--border);
   box-shadow:-8px 0 32px rgba(0,0,0,.18);
@@ -1013,3 +1013,4 @@ img,svg.icon{max-width:100%;}
 .isp-action-btn--gift{border-color:var(--green);background:rgba(28,107,53,.08);color:var(--green);}
 .isp-action-btn--transfer{border-color:var(--blue);background:rgba(52,152,219,.08);color:var(--blue);}
 .isp-action-btn--cancel{border-color:var(--red);background:rgba(163,42,36,.08);color:var(--red);}
+.isp-action-btn--credit{border-color:#8b5cf6;background:rgba(139,92,246,.08);color:#8b5cf6;}
