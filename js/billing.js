@@ -956,7 +956,9 @@ export class ConfirmedOrder {
     document.getElementById('bamDiscountBtn').onclick = () => doAction(() => this.openDiscountModal());
     document.getElementById('bamCancelBtn').onclick   = () => modal.classList.remove('open');
 
-    modal.classList.add('open');
+        modal.classList.add('open');
+  }
+
   _openIspQtyModal({ title, desc, max, onConfirm }) {
     const modal    = document.getElementById('ispQtyModal');
     const titleEl  = document.getElementById('ispQtyModalTitle');
