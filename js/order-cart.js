@@ -183,9 +183,9 @@ export class OrderCart {
           <button class="ticket-line__note-btn ${(hasNote||hasFee)?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd / əlavə ödəniş">
             <svg class="icon"><use href="#i-edit"></use></svg>
           </button>
-          <div class="qty-stepper">
+                   <div class="qty-stepper">
             <button data-qty-change="-1" data-line-key="${lineKey}">−</button>
-            <span class="qty-stepper__val">${line.qty}</span>
+            <input class="qty-stepper__val qty-stepper__input" type="number" min="1" value="${line.qty}" data-line-key="${lineKey}" style="width:40px;text-align:center;border:none;background:transparent;font-size:inherit;font-weight:inherit;color:inherit;">
             <button data-qty-change="1" data-line-key="${lineKey}">+</button>
           </div>
           <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
