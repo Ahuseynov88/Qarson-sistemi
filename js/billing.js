@@ -183,9 +183,12 @@ export class ConfirmedOrder {
   }
 
   // ── İptal (səbəblə) ──
-  openCancelReasonModal(tableId, itemKey) {
+    openCancelReasonModal(tableId, itemKey) {
     if (!hasPermission('order.cancel_item')) return;
     const order = state.tableOrders[tableId];
+    if (!order) return;
+    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
     const it = order?.items?.[itemKey];
     if (!it) return;
     this._cancelCtx = { tableId, itemKey };
@@ -423,14 +426,13 @@ export class ConfirmedOrder {
   }
 
   // ── Nisyəyə köçürmə (seçilmiş mallar və ya bütün masa) ──
-  openCustomerChargeModal() {
+    openCustomerChargeModal() {
     if (!hasPermission('bill.credit')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Nisyə icazəniz yoxdur'); return; }
     const tableId = state.noteTableId;
     if (!tableId) return;
     const order = state.tableOrders[tableId];
-    if (!order?.items || !order.total) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Sifariş yoxdur'); return; }
-    if (!state.customers || !state.customers.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Əvvəlcə admin paneldə müştəri qeydə alın'); return; }
-
+    const isPaid = order?.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
     const t = state.tables.find(x => x.id === tableId);
     const sel0 = state._batchSelection || {};
     const selection = {};
@@ -556,12 +558,16 @@ export class ConfirmedOrder {
   }
 
   // ── İkram (seçilmişlərə və ya tək mala) ──
-  openComplimentModal() {
-       if (!hasPermission('order.gift') && !hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İkram icazəniz yoxdur'); return; }
+     openComplimentModal() {
+    if (!hasPermission('order.gift') && !hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İkram icazəniz yoxdur'); return; }
     const tableId = state.noteTableId;
     if (!tableId) return;
     const order = state.tableOrders[tableId];
     if (!order?.items) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Sifariş yoxdur'); return; }
+    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
+    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
 
     const sel0 = state._batchSelection || {};
     const selection = {};
@@ -650,12 +656,16 @@ export class ConfirmedOrder {
   }
 
   // ── Mal köçürmə (seçilmişlərə və ya tək mala, 2 masa arasında) ──
-  openItemTransferModal() {
+      openItemTransferModal() {
     if (!hasPermission('table.transfer')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İcazəniz yoxdur'); return; }
     const tableId = state.noteTableId;
     if (!tableId) return;
     const order = state.tableOrders[tableId];
     if (!order?.items) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu masada sifariş yoxdur'); return; }
+    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
+    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
 
     const sel0 = state._batchSelection || {};
     const selection = {};
