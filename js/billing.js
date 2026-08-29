@@ -395,7 +395,7 @@ export class ConfirmedOrder {
 
     const subtotal = selKeys.reduce((s,k)=>{ const it=order.items[k]; const q=selection[k]; return it ? s+(it.price*q)+(it.extraFee||0)*(q/it.qty) : s; },0);
     if (this._discountType==='percent' && val>100) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Faiz 100-dən çox ola bilməz'); return; }
-    if (this._discountType==='fixed' && val>=subtotal) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim məbləğdən çox ola bilməz'); return; }
+       if (this._discountType==='fixed' && val>subtotal) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Endirim məbləğdən çox ola bilməz'); return; }
     const equivPercent = this._discountType==='percent' ? val : (val/subtotal*100);
     let appliedQty = 0;
     let appliedItemsList = [];
