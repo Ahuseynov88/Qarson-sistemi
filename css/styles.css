@@ -1035,3 +1035,7 @@ img,svg.icon{max-width:100%;}
 .bam-qty-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
 .bam-qty-input{width:56px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;font-weight:700;text-align:center;}
 .bam-qty-max{font-size:12px;color:var(--text3);}
+.qty-stepper__input::-webkit-inner-spin-button,
+.qty-stepper__input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.qty-stepper__input{-moz-appearance:textfield;outline:none;cursor:text;}
+.qty-stepper__input:focus{background:rgba(255,255,255,.1) !important;border-radius:4px;}
