@@ -39,10 +39,24 @@ export class OrderCart {
     this.els.draftList.addEventListener('click', (e) => {
       const qtyBtn = e.target.closest('[data-qty-change]');
       if (qtyBtn) { this.changeDraftQty(qtyBtn.dataset.lineKey, parseInt(qtyBtn.dataset.qtyChange, 10)); return; }
+             const qtyInput = e.target.closest('.qty-stepper__input');
+      if (qtyInput) { qtyInput.select(); return; }
       const noteToggle = e.target.closest('[data-note-toggle]');
       if (noteToggle) { this.toggleNoteInput(noteToggle.dataset.noteToggle); return; }
       const removeBtn = e.target.closest('[data-remove-line]');
       if (removeBtn) { state._orderDraft[removeBtn.dataset.removeLine] && (delete state._orderDraft[removeBtn.dataset.removeLine], this.renderDraftList()); return; }
+    });
+         this.els.draftEl.addEventListener('change', (e) => {
+      const inp = e.target.closest('.qty-stepper__input');
+      if (!inp) return;
+      const lineKey = inp.dataset.lineKey;
+      const newQty = parseInt(inp.value);
+      if (!lineKey || isNaN(newQty) || newQty < 1) { this.renderDraft(); return; }
+      const line = state._orderDraft[lineKey];
+      if (!line) return;
+      line.qty = newQty;
+      if (line.qty <= 0) delete state._orderDraft[lineKey];
+      this.renderDraft();
     });
     this.els.draftList.addEventListener('change', (e) => {
       const noteInput = e.target.closest('[data-note-line]');
