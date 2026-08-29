@@ -846,6 +846,7 @@ export class ConfirmedOrder {
     const giftBtn     = document.getElementById('ispGiftBtn');
     const discountBtn = document.getElementById('ispDiscountBtn');
     const creditBtn   = document.getElementById('ispCreditBtn');
+       const resetBtn    = document.getElementById('ispResetBtn');
     const closeBtn    = document.getElementById('ispCloseBtn');
     if (cancelBtn)   { cancelBtn.style.display   = hasPermission('order.cancel_item') ? '' : 'none'; cancelBtn.onclick   = () => { this.closeItemSidePanel(); this.openCancelReasonModal(tableId, itemKey); }; }
             if (transferBtn) {
@@ -906,6 +907,15 @@ export class ConfirmedOrder {
             this.openCustomerChargeModal();
           }
         });
+      };
+    }
+         if (resetBtn) {
+      const hasDiscount = it.discountPercent > 0 || it.compliment;
+      resetBtn.style.display = (hasDiscount && !isPaid2 && hasPermission('order.discount')) ? '' : 'none';
+      resetBtn.onclick = () => {
+        state._batchSelection = { [itemKey]: it.qty };
+        this.closeItemSidePanel();
+        this.resetDiscount(tableId);
       };
     }
     if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
