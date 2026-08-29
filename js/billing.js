@@ -834,77 +834,9 @@ export class ConfirmedOrder {
         });
       };
     }
-            if (giftBtn) {
+                if (giftBtn) {
       giftBtn.style.display = hasPermission('order.discount') ? '' : 'none';
       giftBtn.onclick = () => {
-         openBatchActionModal() {
-    const tableId = state.noteTableId;
-    const order = state.tableOrders[tableId];
-    if (!order?.items) return;
-    const sel = state._batchSelection || {};
-    const selEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
-    if (!selEntries.length) return;
-
-    const modal = document.getElementById('batchActionModal');
-    if (!modal) return;
-
-    // Malları render et
-    const listEl = document.getElementById('batchActionList');
-    listEl.innerHTML = selEntries.map(([key, qty]) => {
-      const it = order.items[key];
-      return `<div class="bam-item" data-key="${key}">
-        <div class="bam-item-name">${esc(it.name)}</div>
-        <div class="bam-item-qty-row">
-          <button class="bam-qty-btn" data-bam-minus data-key="${key}" data-max="${it.qty}">−</button>
-          <input class="bam-qty-input" type="number" min="1" max="${it.qty}" value="${qty}" data-key="${key}">
-          <button class="bam-qty-btn" data-bam-plus data-key="${key}" data-max="${it.qty}">+</button>
-          <span class="bam-qty-max">/ ${it.qty}</span>
-        </div>
-      </div>`;
-    }).join('');
-
-    // İcazəyə görə əməliyyat düymələrini göstər/gizlət
-    document.getElementById('bamTransferBtn').style.display = hasPermission('table.transfer') ? '' : 'none';
-    document.getElementById('bamCreditBtn').style.display   = hasPermission('bill.credit')    ? '' : 'none';
-    document.getElementById('bamGiftBtn').style.display     = hasPermission('order.discount') ? '' : 'none';
-    document.getElementById('bamDiscountBtn').style.display = hasPermission('order.discount') ? '' : 'none';
-
-    // −/+ düymələri
-    listEl.querySelectorAll('[data-bam-minus]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
-        const v = Math.max(1, parseInt(inp.value) - 1);
-        inp.value = v;
-      });
-    });
-    listEl.querySelectorAll('[data-bam-plus]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
-        const v = Math.min(parseInt(btn.dataset.max), parseInt(inp.value) + 1);
-        inp.value = v;
-      });
-    });
-
-    // Əməliyyat düymələri
-    const doAction = (fn) => {
-      // Input-lardan miqdarları oxu, _batchSelection-u yenilə
-      listEl.querySelectorAll('.bam-qty-input').forEach(inp => {
-        const key = inp.dataset.key;
-        const v = parseInt(inp.value);
-        if (v > 0) state._batchSelection[key] = v;
-      });
-      modal.classList.remove('open');
-      fn();
-    };
-
-    document.getElementById('bamTransferBtn').onclick = () => doAction(() => this.openItemTransferModal());
-    document.getElementById('bamCreditBtn').onclick   = () => doAction(() => this.openCustomerChargeModal());
-    document.getElementById('bamGiftBtn').onclick     = () => doAction(() => this.openComplimentModal());
-    document.getElementById('bamDiscountBtn').onclick = () => doAction(() => this.openDiscountModal());
-    document.getElementById('bamCancelBtn').onclick   = () => modal.classList.remove('open');
-
-    modal.classList.add('open');
-         }
         this._openIspQtyModal({
           title: 'İkram et',
           desc: it.name,
@@ -949,6 +881,66 @@ export class ConfirmedOrder {
     }
     if (closeBtn)    { closeBtn.onclick = () => this.closeItemSidePanel(); }
     panel.classList.add('open');
+  }
+     openBatchActionModal() {
+    const tableId = state.noteTableId;
+    const order = state.tableOrders[tableId];
+    if (!order?.items) return;
+    const sel = state._batchSelection || {};
+    const selEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
+    if (!selEntries.length) return;
+
+    const modal = document.getElementById('batchActionModal');
+    if (!modal) return;
+
+    const listEl = document.getElementById('batchActionList');
+    listEl.innerHTML = selEntries.map(([key, qty]) => {
+      const it = order.items[key];
+      return `<div class="bam-item" data-key="${key}">
+        <div class="bam-item-name">${esc(it.name)}</div>
+        <div class="bam-item-qty-row">
+          <button class="bam-qty-btn" data-bam-minus data-key="${key}" data-max="${it.qty}">−</button>
+          <input class="bam-qty-input" type="number" min="1" max="${it.qty}" value="${qty}" data-key="${key}">
+          <button class="bam-qty-btn" data-bam-plus data-key="${key}" data-max="${it.qty}">+</button>
+          <span class="bam-qty-max">/ ${it.qty}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('bamTransferBtn').style.display = hasPermission('table.transfer') ? '' : 'none';
+    document.getElementById('bamCreditBtn').style.display   = hasPermission('bill.credit')    ? '' : 'none';
+    document.getElementById('bamGiftBtn').style.display     = hasPermission('order.discount') ? '' : 'none';
+    document.getElementById('bamDiscountBtn').style.display = hasPermission('order.discount') ? '' : 'none';
+
+    listEl.querySelectorAll('[data-bam-minus]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
+        inp.value = Math.max(1, parseInt(inp.value) - 1);
+      });
+    });
+    listEl.querySelectorAll('[data-bam-plus]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
+        inp.value = Math.min(parseInt(btn.dataset.max), parseInt(inp.value) + 1);
+      });
+    });
+
+    const doAction = (fn) => {
+      listEl.querySelectorAll('.bam-qty-input').forEach(inp => {
+        const v = parseInt(inp.value);
+        if (v > 0) state._batchSelection[inp.dataset.key] = v;
+      });
+      modal.classList.remove('open');
+      fn();
+    };
+
+    document.getElementById('bamTransferBtn').onclick = () => doAction(() => this.openItemTransferModal());
+    document.getElementById('bamCreditBtn').onclick   = () => doAction(() => this.openCustomerChargeModal());
+    document.getElementById('bamGiftBtn').onclick     = () => doAction(() => this.openComplimentModal());
+    document.getElementById('bamDiscountBtn').onclick = () => doAction(() => this.openDiscountModal());
+    document.getElementById('bamCancelBtn').onclick   = () => modal.classList.remove('open');
+
+    modal.classList.add('open');
   }
   _openIspQtyModal({ title, desc, max, onConfirm }) {
     const modal    = document.getElementById('ispQtyModal');
