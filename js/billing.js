@@ -150,10 +150,14 @@ export class ConfirmedOrder {
       });
     });
 
-    // Mal adına klik → yan panel
+        // Mal adına klik → yalnız batch seçim yoxdursa yan panel aç
     el.querySelectorAll('[data-open-panel]').forEach(span => {
       span.addEventListener('click', () => {
-        this.openItemSidePanel(tableId, span.dataset.openPanel);
+        const hasBatch = Object.keys(state._batchSelection || {}).length > 0;
+        if (!hasBatch) {
+          this.openItemSidePanel(tableId, span.dataset.openPanel);
+        }
+        // Batch varsa klik heç nə etmir — istifadəçi checkbox-dan istifadə edir
       });
     });
 
@@ -799,7 +803,12 @@ export class ConfirmedOrder {
     const order = state.tableOrders[tableId];
     const it = order?.items?.[itemKey];
     if (!it) return;
-    state._batchSelection = { [itemKey]: it.qty };
+        // Əgər artıq batch seçim varsa — onu qoruy, tək mal paneli üçün selection dəyişmə
+    const existingSel = state._batchSelection || {};
+    const hasBatchSel = Object.keys(existingSel).length > 0;
+    if (!hasBatchSel) {
+      state._batchSelection = { [itemKey]: it.qty };
+    }
     const panel = document.getElementById('itemSidePanel');
     if (!panel) return;
     if (panel._outsideHandler) { document.removeEventListener('click', panel._outsideHandler); panel._outsideHandler = null; }
@@ -894,15 +903,18 @@ export class ConfirmedOrder {
     if (!modal) return;
 
     const listEl = document.getElementById('batchActionList');
-    listEl.innerHTML = selEntries.map(([key, qty]) => {
+       listEl.innerHTML = selEntries.map(([key, qty]) => {
       const it = order.items[key];
       return `<div class="bam-item" data-key="${key}">
-        <div class="bam-item-name">${esc(it.name)}</div>
+        <div class="bam-item-header">
+          <span class="bam-item-name">${esc(it.name)}</span>
+          <span class="bam-item-total">Cəmi: ${it.qty} ədəd</span>
+        </div>
         <div class="bam-item-qty-row">
           <button class="bam-qty-btn" data-bam-minus data-key="${key}" data-max="${it.qty}">−</button>
-          <input class="bam-qty-input" type="number" min="1" max="${it.qty}" value="${qty}" data-key="${key}">
+          <input class="bam-qty-input" type="number" min="1" max="${it.qty}" value="${Math.min(qty, it.qty)}" data-key="${key}">
           <button class="bam-qty-btn" data-bam-plus data-key="${key}" data-max="${it.qty}">+</button>
-          <span class="bam-qty-max">/ ${it.qty}</span>
+          <span class="bam-qty-max">/ ${it.qty} ədəd</span>
         </div>
       </div>`;
     }).join('');
@@ -925,11 +937,15 @@ export class ConfirmedOrder {
       });
     });
 
+        // Miqdar input-larını state._batchSelection-a yaz, sonra əməliyyatı aç
     const doAction = (fn) => {
       listEl.querySelectorAll('.bam-qty-input').forEach(inp => {
+        const key = inp.dataset.key;
         const v = parseInt(inp.value);
-        if (v > 0) state._batchSelection[inp.dataset.key] = v;
+        if (!isNaN(v) && v > 0) state._batchSelection[key] = v;
+        else delete state._batchSelection[key];
       });
+      // Boş qalan keylər selection-dan çıxarıldı, qalan keylər qorunur
       modal.classList.remove('open');
       fn();
     };
@@ -941,7 +957,6 @@ export class ConfirmedOrder {
     document.getElementById('bamCancelBtn').onclick   = () => modal.classList.remove('open');
 
     modal.classList.add('open');
-  }
   _openIspQtyModal({ title, desc, max, onConfirm }) {
     const modal    = document.getElementById('ispQtyModal');
     const titleEl  = document.getElementById('ispQtyModalTitle');
