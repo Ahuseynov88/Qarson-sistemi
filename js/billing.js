@@ -104,7 +104,7 @@ export class ConfirmedOrder {
     }
 
     const canEdit = hasPermission('order.cancel_item');
-    const canBatch = hasPermission('order.discount') || hasPermission('table.transfer');
+        const canBatch = hasPermission('order.batch_ops') || hasPermission('order.discount') || hasPermission('order.gift') || hasPermission('table.transfer') || hasPermission('bill.credit_batch');
     const sel = state._batchSelection || {};
     const selectedEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
     const selectedCount = selectedEntries.length;
@@ -554,7 +554,7 @@ export class ConfirmedOrder {
 
   // ── İkram (seçilmişlərə və ya tək mala) ──
   openComplimentModal() {
-    if (!hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İkram icazəniz yoxdur'); return; }
+       if (!hasPermission('order.gift') && !hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İkram icazəniz yoxdur'); return; }
     const tableId = state.noteTableId;
     if (!tableId) return;
     const order = state.tableOrders[tableId];
@@ -844,7 +844,7 @@ export class ConfirmedOrder {
       };
     }
                 if (giftBtn) {
-      giftBtn.style.display = hasPermission('order.discount') ? '' : 'none';
+      giftBtn.style.display = hasPermission('order.gift') ? '' : 'none';
       giftBtn.onclick = () => {
         this._openIspQtyModal({
           title: 'İkram et',
@@ -874,7 +874,7 @@ export class ConfirmedOrder {
       };
     }
          if (creditBtn) {
-      creditBtn.style.display = hasPermission('bill.credit') ? '' : 'none';
+            creditBtn.style.display = hasPermission('bill.credit') || hasPermission('bill.credit_batch') ? '' : 'none';
       creditBtn.onclick = () => {
         this._openIspQtyModal({
           title: 'Müştəriyə yaz',
@@ -919,11 +919,10 @@ export class ConfirmedOrder {
       </div>`;
     }).join('');
 
-    document.getElementById('bamTransferBtn').style.display = hasPermission('table.transfer') ? '' : 'none';
-    document.getElementById('bamCreditBtn').style.display   = hasPermission('bill.credit')    ? '' : 'none';
-    document.getElementById('bamGiftBtn').style.display     = hasPermission('order.discount') ? '' : 'none';
-    document.getElementById('bamDiscountBtn').style.display = hasPermission('order.discount') ? '' : 'none';
-
+       document.getElementById('bamTransferBtn').style.display = hasPermission('table.transfer')  ? '' : 'none';
+    document.getElementById('bamCreditBtn').style.display   = hasPermission('bill.credit_batch') || hasPermission('bill.credit') ? '' : 'none';
+    document.getElementById('bamGiftBtn').style.display     = hasPermission('order.gift')      || hasPermission('order.discount') ? '' : 'none';
+    document.getElementById('bamDiscountBtn').style.display = hasPermission('order.batch_ops') || hasPermission('order.discount') ? '' : 'none';
     listEl.querySelectorAll('[data-bam-minus]').forEach(btn => {
       btn.addEventListener('click', () => {
         const inp = listEl.querySelector(`.bam-qty-input[data-key="${btn.dataset.key}"]`);
