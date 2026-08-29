@@ -566,9 +566,7 @@ export class ConfirmedOrder {
     if (!order?.items) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Sifariş yoxdur'); return; }
     const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
     if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
-    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
-    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
-
+    
     const sel0 = state._batchSelection || {};
     const selection = {};
     Object.entries(sel0).forEach(([k, q]) => { if (q > 0 && order.items[k]) selection[k] = q; });
