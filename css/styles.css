@@ -1039,3 +1039,4 @@ img,svg.icon{max-width:100%;}
 .qty-stepper__input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 .qty-stepper__input{-moz-appearance:textfield;outline:none;cursor:text;}
 .qty-stepper__input:focus{background:rgba(255,255,255,.1) !important;border-radius:4px;}
+.isp-action-btn--reset{border-color:var(--text3);background:rgba(142,68,173,.08);color:#8e44ad;}
