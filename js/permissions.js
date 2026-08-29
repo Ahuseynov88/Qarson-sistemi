@@ -26,8 +26,10 @@ export const ALL_PERMISSIONS = [
       { key: 'order.add_item',    label: 'Sifarişə mal əlavə etmək' },
       { key: 'order.cancel_item', label: 'Sifarişdən mal silmək' },
       { key: 'order.cancel_all',  label: 'Bütün sifarişi ləğv etmək' },
-      { key: 'order.discount',    label: 'Endirim vermək' },
-      { key: 'order.refund',      label: 'Geri qaytarma' },
+      { key: 'order.discount',       label: 'Endirim vermək (tək mal)' },
+      { key: 'order.gift',           label: 'İkram etmək (tək mal)' },
+      { key: 'order.batch_ops',      label: 'Toplu əməliyyat (çoxlu mal seçimi)' },
+      { key: 'order.refund',         label: 'Geri qaytarma' },
     ]
   },
   {
@@ -37,7 +39,8 @@ export const ALL_PERMISSIONS = [
       { key: 'bill.print',          label: 'Hesab çap etmək' },
       { key: 'bill.payment_cash',   label: 'Nağd ödəniş qəbul etmək' },
       { key: 'bill.payment_pos',    label: 'POS ödəniş qəbul etmək' },
-      { key: 'bill.credit',         label: 'Nisyəyə yazmaq' },
+      { key: 'bill.credit',         label: 'Nisyəyə yazmaq (tək mal)' },
+      { key: 'bill.credit_batch',   label: 'Toplu nisyəyə yazmaq' },
       { key: 'bill.payment_credit', label: 'Nisyə ödənişi qəbul etmək' },
     ]
   },
@@ -84,15 +87,15 @@ export const PERMISSION_PRESETS = {
   },
   head_waiter: {
     label: '<svg class="icon"><use href="#i-star"></use></svg> Baş Qarson',
-    perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','bill.print','bill.credit','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
+    perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','order.gift','bill.print','bill.credit','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
   },
   cashier: {
     label: '<svg class="icon"><use href="#i-money"></use></svg> Kassir',
-    perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','bill.print','bill.credit','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
+        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','order.gift','order.batch_ops','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
   },
   manager: {
     label: '<svg class="icon"><use href="#i-staff"></use></svg> Müdir',
-    perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.refund','bill.print','bill.credit','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view']
+        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.gift','order.batch_ops','order.refund','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view']
   }
 };
 
