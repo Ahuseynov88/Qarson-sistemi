@@ -103,8 +103,11 @@ export class ConfirmedOrder {
       return;
     }
 
-    const canEdit = hasPermission('order.cancel_item');
-        const canBatch = hasPermission('order.batch_ops') || hasPermission('order.discount') || hasPermission('order.gift') || hasPermission('table.transfer') || hasPermission('bill.credit_batch');
+        const isPaid = (order.remainingAmount !== undefined && order.remainingAmount !== null)
+      ? order.remainingAmount <= 0.01
+      : false;
+    const canEdit  = !isPaid && hasPermission('order.cancel_item');
+    const canBatch = !isPaid && (hasPermission('order.batch_ops') || hasPermission('order.discount') || hasPermission('order.gift') || hasPermission('table.transfer') || hasPermission('bill.credit_batch'));
     const sel = state._batchSelection || {};
     const selectedEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
     const selectedCount = selectedEntries.length;
@@ -804,6 +807,13 @@ export class ConfirmedOrder {
     const it = order?.items?.[itemKey];
     if (!it) return;
         // Əgər artıq batch seçim varsa — onu qoruy, tək mal paneli üçün selection dəyişmə
+         const order2 = state.tableOrders[tableId];
+    const isPaid2 = order2 && order2.remainingAmount !== undefined
+      ? order2.remainingAmount <= 0.01 : false;
+    if (isPaid2) {
+      showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz');
+      return;
+    }
     const existingSel = state._batchSelection || {};
     const hasBatchSel = Object.keys(existingSel).length > 0;
     if (!hasBatchSel) {
