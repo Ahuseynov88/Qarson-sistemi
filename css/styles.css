@@ -1028,7 +1028,9 @@ img,svg.icon{max-width:100%;}
 
 /* ── Batch action modal item ── */
 .bam-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
-.bam-item-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.bam-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.bam-item-name{font-size:13px;font-weight:600;color:var(--text);}
+.bam-item-total{font-size:11px;color:var(--text3);}
 .bam-item-qty-row{display:flex;align-items:center;gap:8px;}
 .bam-qty-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
 .bam-qty-input{width:56px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;font-weight:700;text-align:center;}
