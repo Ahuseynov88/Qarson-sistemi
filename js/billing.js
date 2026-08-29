@@ -610,7 +610,7 @@ export class ConfirmedOrder {
     this.closeComplimentModal();
   }
 
-  // ── Endirim/İkramı geri qaytarma (səhvən tətbiq olunubsa) ──
+   // ── Endirim/İkramı geri qaytarma (səhvən tətbiq olunubsa) ──
   resetDiscount(tableId) {
     if (!hasPermission('order.discount')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İcazəniz yoxdur'); return; }
     const order = state.tableOrders[tableId];
@@ -624,8 +624,10 @@ export class ConfirmedOrder {
     let resetItemsList = [];
     R.tableOrders.child(tableId).transaction(current => {
       if (!current || !current.items) return current;
-      const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
-      targetKeys.forEach(k => {
+      let items = { ...current.items };
+
+      // 1. Seçilmiş itemləri sıfırla (split etmədən birbaşa)
+      Object.keys(selection).forEach(k => {
         if (!items[k]) return;
         const it = items[k];
         items[k] = {
@@ -633,15 +635,29 @@ export class ConfirmedOrder {
           discountPercent: 0,
           compliment: false,
           price: it.compliment ? (it.originalPrice ?? it.price) : it.price,
-          extraFee: it.compliment ? (it.originalExtraFee ?? it.extraFee) : it.extraFee,
-          originalPrice: null, originalExtraFee: null
+          extraFee: it.compliment ? (it.originalExtraFee ?? (it.extraFee||0)) : (it.extraFee||0),
+          originalPrice: null,
+          originalExtraFee: null
         };
+        resetItemsList.push({ name: items[k].name, qty: items[k].qty });
       });
-      const _tot = computeOrderTotals(items);
 
+      // 2. Eyni menuItemId + note + extraFee olan itemləri birləşdir
+      // (split zamanı yaranmış _x... açarlı itemləri orijinalı ilə birləşdir)
+      const merged = {};
+      Object.entries(items).forEach(([k, it]) => {
+        const baseKey = makeLineKey(it.menuItemId, it.note, it.extraFee);
+        if (merged[baseKey]) {
+          merged[baseKey] = { ...merged[baseKey], qty: merged[baseKey].qty + it.qty };
+        } else {
+          merged[baseKey] = { ...it };
+        }
+      });
+      items = merged;
+
+      const _tot = computeOrderTotals(items);
       const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
-      resetItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
       return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
@@ -652,7 +668,6 @@ export class ConfirmedOrder {
       this.renderSummary(tableId);
     });
   }
-
   // ── Mal köçürmə (seçilmişlərə və ya tək mala, 2 masa arasında) ──
       openItemTransferModal() {
     if (!hasPermission('table.transfer')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> İcazəniz yoxdur'); return; }
