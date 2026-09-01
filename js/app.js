@@ -17,6 +17,7 @@ import { renderKitchen, kitchenAcceptOrder } from './kitchen.js';
 import { renderNotifSounds } from './notifSounds.js';
 import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener, closeWaiterChat } from './customer.js';
 import { ensureDefaultEventTypes } from './banquet.js';
+import { renderPrinters, renderReceiptTemplateSettings } from './printer-settings.js';
 
 let ADMIN_PIN = null;
 let staffApp = null;
@@ -265,6 +266,10 @@ function initListeners() {
     state.kitchenNotifs = toArr(snap.val());
     if (state.user?.role === 'staff') checkKitchenNotifs();
   });
+  R.printers.on('value', snap => {
+    state.printers = toArr(snap.val());
+    if (state.user?.role === 'admin' && state.adminSection === 'printers') renderPrinters();
+  });
   R.logs.limitToLast(300).on('value', snap => {
     state.logs = toArr(snap.val()).reverse();
     if (state.user?.role === 'admin') renderLogs();
@@ -276,7 +281,7 @@ function initListeners() {
 
 function removeListeners() {
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off(); R.printers.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
    db.ref('settings/notifSoundMap').off(); db.ref('settings/kitchenAlertIntervalSec').off();
   db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
