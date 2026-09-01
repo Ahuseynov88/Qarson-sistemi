@@ -156,6 +156,7 @@
       <button class="admin-tab" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri</button>
       <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər</button>
       <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">🔔 Bildiriş Səsləri</button>
+      <button class="admin-tab" data-section="printers" onclick="adminTab('printers',this)"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -426,8 +427,50 @@
       </div>
       <div id="feedbackList" class="log-list"></div>
     </div>
+
+    <!-- ═══ PRİNTERLƏR BÖLMƏSI ═══ -->
+    <div class="admin-section" id="sec-printers">
+      <div style="max-width:680px;">
+        <!-- Printer siyahısı -->
+        <div class="table-card" style="margin-bottom:20px;">
+          <h3 style="margin-bottom:12px;"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">
+            Aktiv "Hesab printeri" tapıldıqda "Hesab" düyməsi avtomatik onu istifadə edir. Printer tapılmazsa çap pəncərəsi açılır.
+          </p>
+          <div class="tile-grid" id="printersGrid"></div>
+        </div>
+        <!-- Çek Şablonu -->
+        <div class="table-card">
+          <div id="receiptTemplateSettings"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
+</div>
+
+<!-- ═══ PRİNTER MODAL ═══ -->
+<div class="modal-bg" id="printerModal">
+  <div class="modal" style="max-width:400px;">
+    <h2 id="printerModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-printer"></use></svg> Yeni Printer</h2>
+    <div class="form-group">
+      <label>Printer adı</label>
+      <input type="text" id="printerName" placeholder="Məs: Kassa Printeri, Mətbəx Printer 1">
+    </div>
+    <div class="form-group">
+      <label>Printer növü</label>
+      <select id="printerType"></select>
+    </div>
+    <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
+      <span style="font-weight:600;">Aktiv</span>
+      <input type="checkbox" id="printerActive" checked style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePrinterModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="savePrinter()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ KITCHEN ═══ -->
