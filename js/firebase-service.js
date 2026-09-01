@@ -46,4 +46,5 @@ export const R = {
   kitchenStations: db.ref('kitchenStations'),
    kitchenNotifs:   db.ref('kitchenNotifs'),
   notifSounds:     db.ref('notifSounds')
+   printers:        db.ref('printers')
 };
