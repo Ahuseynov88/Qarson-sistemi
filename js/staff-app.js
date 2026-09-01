@@ -316,8 +316,8 @@ export class StaffApp {
     this.closeTableDetail();
   }
 
-  // ── Hesab çapı ──
-     async printBill(tableId) {
+   // ── Hesab çapı ──
+  async printBill(tableId) {
     if (!tableId) return;
     const t = state.tables.find(x => x.id === tableId);
     const order = state.tableOrders[tableId];
@@ -341,45 +341,37 @@ export class StaffApp {
         return left.substring(0, w - right.length - 1) + ' '.repeat(sp) + right;
       };
       const lines = [
-        '\x1B\x40',                    // reset
-        '\x1B\x61\x01',               // mərkəz
-        '\x1B\x45\x01',               // bold
-        '\x1D\x21\x11',               // 2x ölçü
+        '\x1B\x40',
+        '\x1B\x61\x01',
+        '\x1B\x45\x01',
         (state.restaurantName || 'Restoran') + '\n',
-        '\x1D\x21\x00',               // normal ölçü
-        '\x1B\x45\x00',               // bold off
+        '\x1B\x45\x00',
         dateStr + '  ' + timeStr + '\n',
-        '\x1B\x61\x00',               // sol
+        '\x1B\x61\x00',
         '--------------------------------\n',
         'Masa: ' + (t?.name || '—') + '\n',
         'Qarson: ' + waiterName + '\n',
         '--------------------------------\n',
       ];
-
       items.forEach(it => {
         const lineTotal = (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0);
         const tag = it.compliment ? '[IKRAM]' : (it.discountPercent > 0 ? `[-${it.discountPercent}%]` : '');
         const left = `${it.qty}x ${it.name}${tag ? ' ' + tag : ''}`;
-        const right = lineTotal.toFixed(2) + ' AZN';
-        lines.push(row(left, right) + '\n');
+        lines.push(row(left, lineTotal.toFixed(2) + ' AZN') + '\n');
         if (it.note) lines.push('  (' + it.note + ')\n');
       });
-
       lines.push('--------------------------------\n');
       if (scAmount > 0) {
         lines.push(row('Ara cem:', itemsSubtotal.toFixed(2) + ' AZN') + '\n');
         lines.push(row('Xidmet (' + scPercent + '%):', scAmount.toFixed(2) + ' AZN') + '\n');
         lines.push('--------------------------------\n');
       }
-      lines.push('\x1B\x45\x01');     // bold
+      lines.push('\x1B\x45\x01');
       lines.push(row('CEMI:', total.toFixed(2) + ' AZN') + '\n');
-      lines.push('\x1B\x45\x00');     // bold off
-      lines.push('--------------------------------\n');
-      lines.push('\x1B\x61\x01');     // mərkəz
-      lines.push('Tesekkur edirik!\n');
-      lines.push('\n\n\n');
-      lines.push('\x1D\x56\x42\x00'); // kəs
-
+      lines.push('\x1B\x45\x00');
+      lines.push('\x1B\x61\x01');
+      lines.push('Tesekkur edirik!\n\n\n');
+      lines.push('\x1D\x56\x42\x00');
       const ok = await window.qzPrintReceipt(lines);
       if (ok) { showToast('<svg class="icon"><use href="#i-check"></use></svg> Çap edildi'); return; }
     }
@@ -397,6 +389,7 @@ export class StaffApp {
     const w = window.open('', '_blank', 'width=340,height=600');
     if (w) { w.document.write(html); w.document.close(); }
     else showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı');
+  }
   }
 
   async _printThermal({ t, waiterName, dateStr, timeStr, items, total, scAmount, scPercent, itemsSubtotal }) {
