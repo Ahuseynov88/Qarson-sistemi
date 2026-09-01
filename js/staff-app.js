@@ -398,15 +398,6 @@ export class StaffApp {
     if (w) { w.document.write(html); w.document.close(); }
     else showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı');
   }
-    // Standart brauzer çapı
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table>${serviceChargeRowHtml}<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
-    const w = window.open('', '_blank', 'width=340,height=600');
-    if (w) {
-      w.document.write(html); w.document.close();
-    } else {
-      showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
-    }
-  }
 
   async _printThermal({ t, waiterName, dateStr, timeStr, items, total, scAmount, scPercent, itemsSubtotal }) {
     try {
