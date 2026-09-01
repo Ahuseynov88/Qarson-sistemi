@@ -317,7 +317,7 @@ export class StaffApp {
   }
 
   // ── Hesab çapı ──
-   printBill(tableId) {
+     async printBill(tableId) {
     if (!tableId) return;
     const t = state.tables.find(x => x.id === tableId);
     const order = state.tableOrders[tableId];
@@ -330,25 +330,74 @@ export class StaffApp {
     const scAmount = order?.serviceChargeAmount || 0;
     const scPercent = order?.serviceChargePercent || 0;
     const itemsSubtotal = total - scAmount;
-    const itemRows = items.length ? items.map(it => {
-      const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
-      const tag = it.compliment ? ' [İKRAM]' : (it.discountPercent>0 ? ` [-${it.discountPercent}%]` : '');
-      return `<tr><td style="padding:4px 0;">${it.qty}x ${it.name}${tag}${it.note?` <em style="font-size:11px;color:#666;">(${it.note})</em>`:''}</td><td style="text-align:right;padding:4px 0;">${lineTotal.toFixed(2)} ₼</td></tr>`;
-    }).join('') : '<tr><td colspan="2" style="color:#999;font-style:italic;">Sifariş yoxdur</td></tr>';
-    const serviceChargeRowHtml = scAmount > 0
-      ? `<tr><td style="padding:2px 0;">Ara cəm:</td><td style="text-align:right;padding:2px 0;">${itemsSubtotal.toFixed(2)} ₼</td></tr>
-         <tr><td style="padding:2px 0;">Xidmət haqqı (${scPercent}%):</td><td style="text-align:right;padding:2px 0;">${scAmount.toFixed(2)} ₼</td></tr>`
-      : '';
 
-    addLog('bill_print', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
+    addLog('bill_print', `${waiterName} "${t?.name}" masası üçün hesab çap etdi (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
     if (order) R.tableOrders.child(tableId).update({ billPrintedAt: Date.now() });
 
-    // Thermal printer qoşulubsa — ESC/POS ilə çap et
-    if (window._thermalPort) {
-      this._printThermal({ t, waiterName, dateStr, timeStr, items, total, scAmount, scPercent, itemsSubtotal });
-      return;
+    // QZ Tray ilə thermal çap
+    if (window._qzPrinterName && typeof qz !== 'undefined') {
+      const row = (left, right, w=32) => {
+        const sp = Math.max(1, w - left.length - right.length);
+        return left.substring(0, w - right.length - 1) + ' '.repeat(sp) + right;
+      };
+      const lines = [
+        '\x1B\x40',                    // reset
+        '\x1B\x61\x01',               // mərkəz
+        '\x1B\x45\x01',               // bold
+        '\x1D\x21\x11',               // 2x ölçü
+        (state.restaurantName || 'Restoran') + '\n',
+        '\x1D\x21\x00',               // normal ölçü
+        '\x1B\x45\x00',               // bold off
+        dateStr + '  ' + timeStr + '\n',
+        '\x1B\x61\x00',               // sol
+        '--------------------------------\n',
+        'Masa: ' + (t?.name || '—') + '\n',
+        'Qarson: ' + waiterName + '\n',
+        '--------------------------------\n',
+      ];
+
+      items.forEach(it => {
+        const lineTotal = (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0);
+        const tag = it.compliment ? '[IKRAM]' : (it.discountPercent > 0 ? `[-${it.discountPercent}%]` : '');
+        const left = `${it.qty}x ${it.name}${tag ? ' ' + tag : ''}`;
+        const right = lineTotal.toFixed(2) + ' AZN';
+        lines.push(row(left, right) + '\n');
+        if (it.note) lines.push('  (' + it.note + ')\n');
+      });
+
+      lines.push('--------------------------------\n');
+      if (scAmount > 0) {
+        lines.push(row('Ara cem:', itemsSubtotal.toFixed(2) + ' AZN') + '\n');
+        lines.push(row('Xidmet (' + scPercent + '%):', scAmount.toFixed(2) + ' AZN') + '\n');
+        lines.push('--------------------------------\n');
+      }
+      lines.push('\x1B\x45\x01');     // bold
+      lines.push(row('CEMI:', total.toFixed(2) + ' AZN') + '\n');
+      lines.push('\x1B\x45\x00');     // bold off
+      lines.push('--------------------------------\n');
+      lines.push('\x1B\x61\x01');     // mərkəz
+      lines.push('Tesekkur edirik!\n');
+      lines.push('\n\n\n');
+      lines.push('\x1D\x56\x42\x00'); // kəs
+
+      const ok = await window.qzPrintReceipt(lines);
+      if (ok) { showToast('<svg class="icon"><use href="#i-check"></use></svg> Çap edildi'); return; }
     }
 
+    // Fallback — brauzer çapı
+    const itemRows = items.map(it => {
+      const lineTotal = (it.price * it.qty * (1-((it.discountPercent||0)/100))) + (it.extraFee||0);
+      const tag = it.compliment ? ' [İKRAM]' : (it.discountPercent>0 ? ` [-${it.discountPercent}%]` : '');
+      return `<tr><td style="padding:4px 0;">${it.qty}x ${it.name}${tag}</td><td style="text-align:right;">${lineTotal.toFixed(2)} ₼</td></tr>`;
+    }).join('');
+    const scHtml = scAmount > 0
+      ? `<tr><td>Ara cəm:</td><td style="text-align:right;">${itemsSubtotal.toFixed(2)} ₼</td></tr>
+         <tr><td>Xidmət (${scPercent}%):</td><td style="text-align:right;">${scAmount.toFixed(2)} ₼</td></tr>` : '';
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:10px;font-size:13px;}h2{text-align:center;}.c{text-align:center;}.l{border-top:1px dashed #000;margin:8px 0;}table{width:100%;}.tot{font-weight:bold;font-size:16px;}@media print{body{padding:0;}}</style></head><body><h2>${state.restaurantName||'Restoran'}</h2><p class="c" style="margin:0;font-size:11px;">${dateStr} ${timeStr}</p><div class="l"></div><p style="margin:3px 0;"><b>Masa:</b> ${t?.name||'—'}</p><p style="margin:3px 0;"><b>Qarson:</b> ${waiterName}</p><div class="l"></div><table>${itemRows}</table><div class="l"></div><table>${scHtml}<tr class="tot"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="l"></div><p class="c" style="font-size:11px;">Təşəkkür edirik!</p><script>window.onload=()=>window.print();<\/script></body></html>`;
+    const w = window.open('', '_blank', 'width=340,height=600');
+    if (w) { w.document.write(html); w.document.close(); }
+    else showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı');
+  }
     // Standart brauzer çapı
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table>${serviceChargeRowHtml}<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
     const w = window.open('', '_blank', 'width=340,height=600');
