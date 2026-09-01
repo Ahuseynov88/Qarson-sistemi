@@ -10,6 +10,7 @@ import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirm
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 import { renderNotifSounds } from './notifSounds.js';
+import { renderPrinters, openPrinterModal, closePrinterModal, savePrinter, deletePrinter, testPrinter, renderReceiptTemplateSettings, saveReceiptTemplate, saveRestaurantInfo } from './printer-settings.js';
 export function renderPermissionCheckboxes(existingPerms = []) {
   return ALL_PERMISSIONS.map(group => `
     <div style="margin-bottom:16px;">
@@ -68,6 +69,7 @@ export function renderAdmin() {
   if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
      if (state.adminSection==='kitchenStations') renderKitchenStations();
      if (state.adminSection==='notifSounds') renderNotifSounds();
+     if (state.adminSection==='printers') { renderPrinters(); renderReceiptTemplateSettings(); }
 }
 
 export function adminTab(sec, el) {
@@ -79,7 +81,7 @@ export function adminTab(sec, el) {
   document.querySelector('.admin-body')?.classList.add('admin-section-open');
   _toggleSectionBackBtn(false);
   renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes') ? 'flex':'none';
+  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes'||sec==='printers') ? 'flex':'none';
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -1397,6 +1399,10 @@ export function openAddModal() {
   }
   if (state.adminSection === 'kitchenStations') {
     openKitchenStationModal();
+    return;
+  }
+  if (state.adminSection === 'printers') {
+    openPrinterModal();
     return;
   }
   
@@ -3641,3 +3647,12 @@ function saveKitchenAlertInterval(val) {
   if (el) { el.textContent = 'Yadda saxlanıldı ✓'; setTimeout(()=>el.textContent='', 2000); }
 }
 window.saveKitchenAlertInterval = saveKitchenAlertInterval;
+
+// Printer idarəsi
+window.openPrinterModal      = openPrinterModal;
+window.closePrinterModal     = closePrinterModal;
+window.savePrinter           = savePrinter;
+window.deletePrinter         = deletePrinter;
+window.testPrinter           = testPrinter;
+window.saveReceiptTemplate   = saveReceiptTemplate;
+window.saveRestaurantInfo    = saveRestaurantInfo;
