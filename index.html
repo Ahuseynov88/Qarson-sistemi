@@ -15,7 +15,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
-<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 </head>
 <body>
 
@@ -298,28 +297,7 @@
             <input type="number" id="referralMinOrderAmount" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
           </div>
           <p id="loyaltySettingsStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
-        <div class="table-card" style="margin-bottom:16px;">
-  <h3 style="margin-bottom:12px;">🖨 Thermal Printer (QZ Tray)</h3>
-  <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">
-    XP-80H / JP-80H üçün. QZ Tray proqramı kompüterdə işləməlidir.
-  </p>
-  <div class="form-group">
-    <label>Printer adı</label>
-    <div style="display:flex;gap:8px;">
-      <select id="qzPrinterSelect" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
-        <option value="">— Əvvəlcə qoş —</option>
-      </select>
-      <button class="btn btn-blue" onclick="qzConnect()">Qoş</button>
-    </div>
-  </div>
-  <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;">
-    <span id="qzStatus" style="font-size:13px;color:var(--text3);">QZ Tray qoşulmayıb</span>
-    <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="qzTestPrint()">Test Çap</button>
-  </div>
-  <p style="font-size:12px;color:var(--text3);margin-top:8px;">
-    Printer seçildikdən sonra "Hesabı Çap Et" avtomatik printerə göndərəcək.
-  </p>
-</div>
+        </div>
         <div class="table-card">
           <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-clipboard"></use></svg> Sistem Məlumatları</h3>
           <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
@@ -639,10 +617,6 @@
       <svg class="icon"><use href="#i-close"></use></svg>
       <span>Ləğv et</span>
     </button>
-        <button id="ispResetBtn" class="isp-action-btn isp-action-btn--reset">
-      <svg class="icon"><use href="#i-refresh"></use></svg>
-      <span>Endirimi/İkramı sıfırla</span>
-    </button>
         <button id="ispCreditBtn" class="isp-action-btn isp-action-btn--credit">
       <svg class="icon"><use href="#i-user"></use></svg>
       <span>Müştəriyə yaz</span>
@@ -740,7 +714,7 @@
           <span class="ticket-total-row__label">Cəmi</span>
           <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
         </div>
-        <textarea id="orderGlobalNote" rows="2" placeholder="Mətbəxt üçün qeyd (məs: saat 17:00-da hazır olsun)" style="width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:8px 10px;font-size:12px;margin-bottom:8px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
+        <textarea id="orderGlobalNote" rows="2" placeholder="Ümumi qeyd (məs: saat 17:00-da hazır olsun, paket sifarişdir...)" style="width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:8px 10px;font-size:12px;margin-bottom:8px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
         <button class="btn btn-green" style="width:100%;padding:13px;font-size:14px;margin-bottom:8px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə Göndər</button>
 
         <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-bottom:10px;" data-open-payment-hub>
@@ -1415,80 +1389,5 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module" src="js/app.js"></script>
-  <script>
-// ── QZ Tray inteqrasiyası ──
-window._qzPrinterName = localStorage.getItem('qzPrinterName') || '';
-
-async function qzConnect() {
-  const statusEl = document.getElementById('qzStatus');
-  const selectEl = document.getElementById('qzPrinterSelect');
-  try {
-    if (!qz.websocket.isActive()) {
-      statusEl.textContent = 'QZ Tray-ə qoşulur...';
-      statusEl.style.color = 'var(--text3)';
-      await qz.websocket.connect();
-    }
-    statusEl.textContent = '✓ QZ Tray qoşuldu. Printerlər yüklənir...';
-    statusEl.style.color = 'var(--green)';
-
-    const printers = await qz.printers.find();
-    selectEl.innerHTML = '<option value="">— Printer seçin —</option>' +
-      printers.map(p => `<option value="${p}" ${p === window._qzPrinterName ? 'selected' : ''}>${p}</option>`).join('');
-
-    if (window._qzPrinterName) {
-      statusEl.textContent = '✓ Hazırdır: ' + window._qzPrinterName;
-    } else {
-      statusEl.textContent = '✓ Printer seçin';
-    }
-
-    selectEl.onchange = () => {
-      window._qzPrinterName = selectEl.value;
-      localStorage.setItem('qzPrinterName', selectEl.value);
-      if (selectEl.value) {
-        statusEl.textContent = '✓ Seçildi: ' + selectEl.value;
-        statusEl.style.color = 'var(--green)';
-      }
-    };
-  } catch(e) {
-    statusEl.textContent = 'Xəta: ' + (e.message || e);
-    statusEl.style.color = 'var(--red)';
-    console.error('[QZ]', e);
-  }
-}
-
-async function qzTestPrint() {
-  if (!window._qzPrinterName) { alert('Əvvəlcə printer seçin'); return; }
-  try {
-    if (!qz.websocket.isActive()) await qz.websocket.connect();
-    const cfg = qz.configs.create(window._qzPrinterName);
-    const data = [
-      '\x1B\x40',
-      '\x1B\x61\x01',
-      'Test Cekim\n',
-      'Printer isledir!\n',
-      '\x1B\x61\x00',
-      '--------------------------------\n',
-      '\x1D\x56\x42\x00'
-    ];
-    await qz.print(cfg, data);
-    alert('Test çapı göndərildi!');
-  } catch(e) {
-    alert('Xəta: ' + (e.message || e));
-  }
-}
-
-window.qzPrintReceipt = async function(lines) {
-  if (!window._qzPrinterName) return false;
-  try {
-    if (!qz.websocket.isActive()) await qz.websocket.connect();
-    const cfg = qz.configs.create(window._qzPrinterName);
-    await qz.print(cfg, lines);
-    return true;
-  } catch(e) {
-    console.error('[QZ Print]', e);
-    return false;
-  }
-};
-</script>
 </body>
 </html>
