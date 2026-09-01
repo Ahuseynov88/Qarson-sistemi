@@ -317,7 +317,7 @@ export class StaffApp {
   }
 
   // ── Hesab çapı ──
-  printBill(tableId) {
+   printBill(tableId) {
     if (!tableId) return;
     const t = state.tables.find(x => x.id === tableId);
     const order = state.tableOrders[tableId];
@@ -340,15 +340,103 @@ export class StaffApp {
          <tr><td style="padding:2px 0;">Xidmət haqqı (${scPercent}%):</td><td style="text-align:right;padding:2px 0;">${scAmount.toFixed(2)} ₼</td></tr>`
       : '';
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table>${serviceChargeRowHtml}<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
+    addLog('bill_print', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
+    if (order) R.tableOrders.child(tableId).update({ billPrintedAt: Date.now() });
 
+    // Thermal printer qoşulubsa — ESC/POS ilə çap et
+    if (window._thermalPort) {
+      this._printThermal({ t, waiterName, dateStr, timeStr, items, total, scAmount, scPercent, itemsSubtotal });
+      return;
+    }
+
+    // Standart brauzer çapı
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hesab — ${t?.name||'Masa'}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;font-size:14px;}h2{text-align:center;font-size:18px;margin:0 0 4px;}.center{text-align:center;}.line{border-top:1px dashed #000;margin:10px 0;}table{width:100%;border-collapse:collapse;}.total{font-size:18px;font-weight:bold;}@media print{body{padding:0;}}</style></head><body><h2>Restoran</h2><p class="center" style="margin:0;font-size:12px;">${dateStr} ${timeStr}</p><div class="line"></div><p style="margin:4px 0;"><strong>Masa:</strong> ${t?.name||'—'}</p><p style="margin:4px 0;"><strong>Qarson:</strong> ${waiterName}</p><div class="line"></div><table>${itemRows}</table><div class="line"></div><table>${serviceChargeRowHtml}<tr class="total"><td>CƏMİ:</td><td style="text-align:right;">${total.toFixed(2)} ₼</td></tr></table><div class="line"></div><p class="center" style="font-size:12px;margin-top:10px;">Təşəkkür edirik!</p><script>window.onload=()=>{window.print();}<\/script></body></html>`;
     const w = window.open('', '_blank', 'width=340,height=600');
     if (w) {
       w.document.write(html); w.document.close();
-      addLog('bill_print', `${waiterName} "${t?.name}" masası üçün hesab çap etdi: ${formatItemsList(items)} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
-      if (order) R.tableOrders.child(tableId).update({ billPrintedAt: Date.now() });
     } else {
       showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
+    }
+  }
+
+  async _printThermal({ t, waiterName, dateStr, timeStr, items, total, scAmount, scPercent, itemsSubtotal }) {
+    try {
+      const ESC = 0x1B, GS = 0x1D;
+      const enc = new TextEncoder();
+      const lines = [];
+
+      const cmd = (...bytes) => lines.push(new Uint8Array(bytes));
+      const text = (str) => lines.push(enc.encode(str + '\n'));
+      const center = (str, width=32) => {
+        const pad = Math.max(0, Math.floor((width - str.length) / 2));
+        return ' '.repeat(pad) + str;
+      };
+      const row = (left, right, width=32) => {
+        const space = Math.max(1, width - left.length - right.length);
+        return left + ' '.repeat(space) + right;
+      };
+      const divider = () => text('-'.repeat(32));
+
+      // Printer sıfırla
+      cmd(ESC, 0x40);
+      // Mərkəzləşdir
+      cmd(ESC, 0x61, 0x01);
+      // Bold + böyük
+      cmd(ESC, 0x45, 0x01);
+      cmd(GS, 0x21, 0x11);
+      text(state.restaurantName || 'Restoran');
+      cmd(GS, 0x21, 0x00);
+      cmd(ESC, 0x45, 0x00);
+      text(center(dateStr + ' ' + timeStr));
+      // Sol hizala
+      cmd(ESC, 0x61, 0x00);
+      divider();
+      text('Masa: ' + (t?.name || '—'));
+      text('Qarson: ' + waiterName);
+      divider();
+
+      // Mallar
+      items.forEach(it => {
+        const lineTotal = (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0);
+        const tag = it.compliment ? '[İKRAM]' : (it.discountPercent > 0 ? `[-${it.discountPercent}%]` : '');
+        const left = `${it.qty}x ${it.name}${tag ? ' ' + tag : ''}`;
+        const right = lineTotal.toFixed(2) + ' AZN';
+        text(row(left.substring(0, 22), right));
+        if (it.note) text('  (' + it.note + ')');
+      });
+
+      divider();
+
+      // Xidmət haqqı
+      if (scAmount > 0) {
+        text(row('Ara cem:', itemsSubtotal.toFixed(2) + ' AZN'));
+        text(row(`Xidmet (${scPercent}%):`, scAmount.toFixed(2) + ' AZN'));
+      }
+
+      // Cəmi — bold
+      cmd(ESC, 0x45, 0x01);
+      cmd(GS, 0x21, 0x11);
+      cmd(ESC, 0x61, 0x02); // sağ hizala
+      text('CEMI: ' + total.toFixed(2) + ' AZN');
+      cmd(GS, 0x21, 0x00);
+      cmd(ESC, 0x45, 0x00);
+      cmd(ESC, 0x61, 0x01); // mərkəz
+
+      divider();
+      text(center('Tesekkur edirik!'));
+
+      // Kəs
+      cmd(GS, 0x56, 0x42, 0x00);
+
+      // Printerə göndər
+      const writer = window._thermalPort.writable.getWriter();
+      for (const chunk of lines) await writer.write(chunk);
+      writer.releaseLock();
+      showToast('<svg class="icon"><use href="#i-check"></use></svg> Çap edildi');
+    } catch(e) {
+      console.error('[Thermal Print]', e);
+      showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap xətası: ' + e.message);
+      window._thermalPort = null;
     }
   }
 }
