@@ -452,16 +452,42 @@
 
 <!-- ═══ PRİNTER MODAL ═══ -->
 <div class="modal-bg" id="printerModal">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal" style="max-width:480px;">
     <h2 id="printerModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-printer"></use></svg> Yeni Printer</h2>
+
     <div class="form-group">
       <label>Printer adı</label>
-      <input type="text" id="printerName" placeholder="Məs: Kassa Printeri, Mətbəx Printer 1">
+      <input type="text" id="printerName" placeholder="Məs: Bar Printer, Mətbəx Printer 1">
     </div>
-    <div class="form-group">
-      <label>Printer növü</label>
-      <select id="printerType"></select>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Printer növü</label>
+        <select id="printerType" onchange="_toggleReceiptFields()"></select>
+      </div>
+      <div class="form-group">
+        <label>Kağız eni</label>
+        <select id="printerPaper"></select>
+      </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>IP ünvan <small style="color:var(--text3);">(USB üçün boş burax)</small></label>
+        <input type="text" id="printerIp" placeholder="192.168.1.101">
+      </div>
+      <div class="form-group">
+        <label>Port</label>
+        <input type="number" id="printerPort" value="9100" placeholder="9100">
+      </div>
+    </div>
+
+    <!-- Kateqoriya seçimi — yalnız mətbəx/bar printerində -->
+    <div id="printerCatWrap" style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px;">
+        Bu printerdən hansı kateqoriyalar çap olunsun?
+      </div>
+      <div id="printerCatList" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
     <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
       <span style="font-weight:600;">Aktiv</span>
       <input type="checkbox" id="printerActive" checked style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
