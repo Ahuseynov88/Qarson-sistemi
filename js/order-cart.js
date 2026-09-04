@@ -8,6 +8,7 @@ import { state } from './state.js';
 import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals } from './utils.js';
 import { hasPermission } from './permissions.js';
 import { showScreen } from './theme.js';
+import { printKitchenJobs } from './printer-service.js';
 
 export class OrderCart {
   /**
@@ -325,6 +326,19 @@ export class OrderCart {
           addedAt: now
         });
       });
+
+      /* ── Printer sistemi: kateqoriyaya görə çap işləri yarat ── */
+      const printGroups = {};
+      printGroups._orderNote = orderNote;
+      draftKeys.forEach(lineKey => {
+        const draft = draftSnapshot[lineKey];
+        const m = state.menuItems.find(x => x.id === draft?.menuItemId);
+        if (!m) return;
+        const cat = m.category || 'Digər';
+        if (!printGroups[cat]) printGroups[cat] = [];
+        printGroups[cat].push({ name: m.name, qty: draft.qty, note: draft.note || '' });
+      });
+      printKitchenJobs(tableId, printGroups).catch(() => {});
 
                   Object.values(kitchenGroups).forEach(group => {
         // Eyni masa + eyni mətbəx üçün hələ aktiv (bütün mallar hazır deyil) kart var mı?
