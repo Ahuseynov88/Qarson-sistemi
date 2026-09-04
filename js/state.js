@@ -79,5 +79,7 @@ export const state = {
    kitchenNotifs: [],
   notifSounds: [],
   notifSoundMap: {},
-  kitchenAlertIntervalSec: 15
+  kitchenAlertIntervalSec: 15,
+  printers: [],
+  printJobs: []
 };
