@@ -10,7 +10,7 @@ import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirm
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 import { renderNotifSounds } from './notifSounds.js';
-import { renderPrinters, openPrinterModal, closePrinterModal, savePrinter, deletePrinter, testPrinter, renderReceiptTemplateSettings, saveReceiptTemplate, saveRestaurantInfo } from './printer-settings.js';
+import { renderPrinters, openPrinterModal, closePrinterModal, savePrinter, deletePrinter, testPrinter, renderReceiptTemplateSettings, saveReceiptTemplate, saveKitchenTemplate, uploadReceiptLogo, removeReceiptLogo, _toggleReceiptFields } from './printer-settings.js';
 export function renderPermissionCheckboxes(existingPerms = []) {
   return ALL_PERMISSIONS.map(group => `
     <div style="margin-bottom:16px;">
@@ -3655,4 +3655,7 @@ window.savePrinter           = savePrinter;
 window.deletePrinter         = deletePrinter;
 window.testPrinter           = testPrinter;
 window.saveReceiptTemplate   = saveReceiptTemplate;
-window.saveRestaurantInfo    = saveRestaurantInfo;
+window.saveKitchenTemplate   = saveKitchenTemplate;
+window.uploadReceiptLogo     = uploadReceiptLogo;
+window.removeReceiptLogo     = removeReceiptLogo;
+window._toggleReceiptFields  = _toggleReceiptFields;
