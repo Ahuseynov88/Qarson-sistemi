@@ -13,7 +13,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 export const db = firebase.database();
-
 export const R = {
   payments:    db.ref('payments'),
   staff:       db.ref('staff'),
