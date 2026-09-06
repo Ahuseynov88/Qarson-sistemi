@@ -7,7 +7,6 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
-import { buildReceiptHtml, buildKitchenHtml } from './print-template.js';
 
 /* ─── Şablon ayarlarını cache-ləyib oxu ─── */
 let _tplCache = null;
@@ -77,26 +76,16 @@ export async function printReceipt(tableId) {
     });
   }
 
-  /* HTML çeki brauzer pəncərəsində göstər (Agent hazır olana qədər) */
-  const html = buildReceiptHtml({
-    table: t, order, waiterName, now,
-    settings:          { ...tpl.settings, paperWidth: receiptPrinter?.paperWidth || '80mm' },
-    restaurantName:    tpl.restaurantName,
-    restaurantAddress: tpl.restaurantAddress,
-    restaurantPhone:   tpl.restaurantPhone,
-    restaurantLogo:    tpl.restaurantLogo
-  });
+  /* Log + billPrintedAt yaz */
+  const total = order?.total || 0;
+  const lbl   = receiptPrinter ? ` [${receiptPrinter.name}]` : ' [Hesab printeri tapılmadı]';
+  addLog('bill_print', `${waiterName} "${t?.name||'?'}" masası üçün hesab göndərildi${lbl} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
+  if (order) db.ref('tableOrders').child(tableId).update({ billPrintedAt: Date.now() });
 
-  const w = window.open('', '_blank', 'width=360,height=640');
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-    const total = order?.total || 0;
-    const lbl   = receiptPrinter ? ` [${receiptPrinter.name}]` : ' [Printer təyin edilməyib]';
-    addLog('bill_print', `${waiterName} "${t?.name||'?'}" masası üçün hesab çap etdi${lbl} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
-    if (order) db.ref('tableOrders').child(tableId).update({ billPrintedAt: Date.now() });
+  if (!receiptPrinter) {
+    showToast('<svg class="icon"><use href="#i-warning"></use></svg> Aktiv hesab printeri tapılmadı. Admin → Printerlər bölməsini yoxlayın.');
   } else {
-    showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı. Brauzer icazəsini yoxlayın.');
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesab printerə göndərildi');
   }
 }
 
@@ -161,19 +150,6 @@ export async function printKitchenJobs(tableId, kitchenGroups) {
       createdAt:   Date.now()
     });
 
-    /* Brauzer çapı (Agent hazır olana qədər) */
-    const html = buildKitchenHtml({
-      printerName: printer.name,
-      tableName:   t?.name || '—',
-      waiterName,
-      items,
-      orderNote: kitchenGroups._orderNote || '',
-      now,
-      settings: { ...kTpl, paperWidth: printer.paperWidth || '80mm' }
-    });
-
-    const w = window.open('', '_blank', 'width=360,height=500');
-    if (w) { w.document.write(html); w.document.close(); }
   }
 }
 
