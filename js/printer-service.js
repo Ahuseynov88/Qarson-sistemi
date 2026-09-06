@@ -52,27 +52,64 @@ export async function printReceipt(tableId) {
   /* Şablon ayarlarını yüklə */
   const tpl = await getTemplateSettings();
 
-  /* printJob Firebase-ə yaz (Agent oxuyacaq) */
+  /* printJob Firebase-ə yaz — şablon ayarları da içindədir */
   if (receiptPrinter) {
     const items = order?.items ? Object.values(order.items) : [];
+    const tplSettings = tpl.settings || {};
     R.printJobs.push({
-      type:      'receipt',
-      printerId: receiptPrinter.id,
+      type:        'receipt',
+      printerId:   receiptPrinter.id,
       printerName: receiptPrinter.name,
       printerIp:   receiptPrinter.ip   || '',
       printerPort: receiptPrinter.port || 9100,
       paperWidth:  receiptPrinter.paperWidth || '80mm',
       tableId,
-      tableName: t?.name || '—',
+      tableName:   t?.name || '—',
       waiterName,
       items,
-      total:     order?.total || 0,
+      total:                order?.total || 0,
       serviceChargeAmount:  order?.serviceChargeAmount  || 0,
       serviceChargePercent: order?.serviceChargePercent || 0,
-      discountValue: order?.discountValue || 0,
-      paymentType:   order?.paymentType  || '',
+      discountValue:        order?.discountValue || 0,
+      paymentType:          order?.paymentType  || '',
       status:    'pending',
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      /* ── Şablon ayarları — Agent birbaşa buradan oxuyur ── */
+      tplShow: {
+        logo:           tplSettings.logo          !== false,
+        restaurantName: tplSettings.restaurantName !== false,
+        address:        tplSettings.address        !== false,
+        phone:          !!tplSettings.phone,
+        datetime:       tplSettings.datetime       !== false,
+        table:          tplSettings.table          !== false,
+        waiter:         tplSettings.waiter         !== false,
+        customerName:   !!tplSettings.customerName,
+        itemName:       tplSettings.itemName       !== false,
+        itemQty:        tplSettings.itemQty        !== false,
+        itemPrice:      !!tplSettings.itemPrice,
+        lineTotal:      tplSettings.lineTotal      !== false,
+        discount:       tplSettings.discount       !== false,
+        serviceCharge:  tplSettings.serviceCharge  !== false,
+        vat:            !!tplSettings.vat,
+        totalAmount:    tplSettings.totalAmount    !== false,
+        paymentType:    !!tplSettings.paymentType,
+        footer:         tplSettings.footer         !== false,
+      },
+      tplData: {
+        restaurantName:      tpl.restaurantName    || '',
+        restaurantAddress:   tpl.restaurantAddress || '',
+        restaurantPhone:     tpl.restaurantPhone   || '',
+        currency:            tplSettings.currency        || 'AZN',
+        dividerType:         tplSettings.dividerType     || 'dash',
+        bottomLines:         tplSettings.bottomLines     || 5,
+        vatPercent:          tplSettings.vatPercent      || 0,
+        footerMessage:       tplSettings.footerMessage   || 'Tesekkur edirik!',
+        restaurantNameSize:  tplSettings.restaurantNameSize  || 'large',
+        restaurantNameBold:  tplSettings.restaurantNameBold  !== false,
+        restaurantNameUpper: !!tplSettings.restaurantNameUpper,
+        itemNameBold:        !!tplSettings.itemNameBold,
+        totalUpper:          tplSettings.totalUpper !== false,
+      }
     });
   }
 
