@@ -194,10 +194,33 @@ export async function renderReceiptTemplateSettings() {
   const sel = (key, opt, def) => v(key, def) === opt ? 'selected' : '';
   const logoUrl = logoSnap.val() || '';
 
+  // Font sahəsi: siyahıdan seçilə bilər və ya Windows-da quraşdırılmış font adı əl ilə yazıla bilər.
+  const fontInput = (id, key, def = 'Arial') => `
+    <input type="text" id="${id}" list="receiptFontList" value="${esc(v(key,def))}"
+      placeholder="Məs: Cinzel Decorative" autocomplete="off">`;
+
+  const fontList = `
+    <datalist id="receiptFontList">
+      <option value="Arial"></option>
+      <option value="Segoe UI"></option>
+      <option value="Georgia"></option>
+      <option value="Times New Roman"></option>
+      <option value="Courier New"></option>
+      <option value="Verdana"></option>
+      <option value="Tahoma"></option>
+      <option value="Trebuchet MS"></option>
+      <option value="Calibri"></option>
+      <option value="Cambria"></option>
+      <option value="Garamond"></option>
+      <option value="Cinzel"></option>
+      <option value="Cinzel Decorative"></option>
+    </datalist>`;
+
   container.innerHTML = `
     <h3 style="margin-bottom:20px;font-size:16px;">
       <svg class="icon"><use href="#i-printer"></use></svg> Hesab Çeki Şablonu
     </h3>
+    ${fontList}
 
     <!-- ═══ BÖLMƏ 1: OBYEKTİN MƏLUMATLARI ═══ -->
     ${_section('🏢 1. Obyektin Məlumatları')}
@@ -214,6 +237,13 @@ export async function renderReceiptTemplateSettings() {
           <option value="xlarge" ${sel('restaurantNameSize','xlarge','large')}>Çox böyük</option>
         </select>
       </div>
+      <div class="form-group">
+        <label>Restoran adı fontu</label>
+        ${fontInput('tplRestNameFont','restaurantNameFont','Arial')}
+        <small style="color:var(--text3);font-size:11px;">Siyahıdan seçin və ya font adını özünüz yazın.</small>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label>Hizalanma</label>
         <select id="tplRestNameAlign">
@@ -254,6 +284,10 @@ export async function renderReceiptTemplateSettings() {
       ${_chkField('address',       'Ünvan',          chk('address'))}
       ${_chkField('phone',         'Telefon',        chk('phone',false))}
     </div>
+    <div class="form-group">
+      <label>Ünvan / telefon fontu</label>
+      ${fontInput('tplHeaderInfoFont','headerInfoFont','Arial')}
+    </div>
 
     <!-- ═══ BÖLMƏ 2: TARİX / SAAT ═══ -->
     ${_section('🕐 2. Tarix və Saat')}
@@ -268,6 +302,10 @@ export async function renderReceiptTemplateSettings() {
       ${_chkField('waiter',       'Qarson adı',      chk('waiter'))}
       ${_chkField('customerName', 'Müştəri adı',     chk('customerName',false))}
     </div>
+    <div class="form-group">
+      <label>Tarix / Masa / Qarson / Müştəri fontu</label>
+      ${fontInput('tplInfoFont','infoFont','Arial')}
+    </div>
 
     <!-- ═══ BÖLMƏ 4: MƏHSULLAR ═══ -->
     ${_section('🍽 4. Məhsul Siyahısı')}
@@ -276,10 +314,21 @@ export async function renderReceiptTemplateSettings() {
       ${_chkField('itemQty',   'Miqdar',         chk('itemQty'))}
       ${_chkField('itemPrice', 'Vahid qiymət',   chk('itemPrice',false))}
       ${_chkField('lineTotal', 'Sətir cəmi',     chk('lineTotal'))}
+      ${_chkField('itemNote',  'Məhsul qeydi',    chk('itemNote',true))}
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Məhsul adı font</label>
+        <label>Məhsul adı yazı fontu</label>
+        ${fontInput('tplItemFont','itemFont','Arial')}
+      </div>
+      <div class="form-group">
+        <label>Miqdar / Qiymət / Məbləğ fontu</label>
+        ${fontInput('tplNumberFont','numberFont','Arial')}
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Məhsul adı font ölçüsü</label>
         <select id="tplItemFontSize">
           <option value="small"  ${sel('itemFontSize','small','normal')}>Kiçik</option>
           <option value="normal" ${sel('itemFontSize','normal','normal')}>Normal</option>
@@ -324,6 +373,10 @@ export async function renderReceiptTemplateSettings() {
         </select>
       </div>
     </div>
+    <div class="form-group">
+      <label>Yekun / maliyyə hissəsi fontu</label>
+      ${fontInput('tplTotalFont','totalFont','Arial')}
+    </div>
     <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">
       ${_toggle('tplTotalBold',  chk('totalBold',true),  'Yekun qalın')}
       ${_toggle('tplTotalUpper', chk('totalUpper',true), 'Yekun böyük hərf')}
@@ -337,6 +390,10 @@ export async function renderReceiptTemplateSettings() {
     <div class="form-group">
       <label>Footer mətni</label>
       <input type="text" id="tplFooterMessage" value="${esc(v('footerMessage','Təşəkkür edirik!'))}" placeholder="Təşəkkür edirik! Yenidən gəlin.">
+    </div>
+    <div class="form-group">
+      <label>Footer yazı fontu</label>
+      ${fontInput('tplFooterFont','footerFont','Arial')}
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -488,17 +545,24 @@ export function saveReceiptTemplate() {
 
   // Stil
   data.restaurantNameSize  = document.getElementById('tplRestNameSize')?.value  || 'large';
+  data.restaurantNameFont  = document.getElementById('tplRestNameFont')?.value.trim() || 'Arial';
+  data.headerInfoFont      = document.getElementById('tplHeaderInfoFont')?.value.trim() || 'Arial';
+  data.infoFont            = document.getElementById('tplInfoFont')?.value.trim() || 'Arial';
   data.restaurantNameAlign = document.getElementById('tplRestNameAlign')?.value || 'center';
   data.restaurantNameBold  = document.getElementById('tplRestNameBold')?.checked  ?? true;
   data.restaurantNameUpper = document.getElementById('tplRestNameUpper')?.checked ?? false;
+  data.itemFont            = document.getElementById('tplItemFont')?.value.trim() || 'Arial';
+  data.numberFont          = document.getElementById('tplNumberFont')?.value.trim() || 'Arial';
   data.itemFontSize        = document.getElementById('tplItemFontSize')?.value  || 'normal';
   data.itemNameBold        = document.getElementById('tplItemNameBold')?.checked ?? false;
+  data.totalFont           = document.getElementById('tplTotalFont')?.value.trim() || 'Arial';
   data.totalFontSize       = document.getElementById('tplTotalFontSize')?.value  || 'large';
   data.totalBold           = document.getElementById('tplTotalBold')?.checked    ?? true;
   data.totalUpper          = document.getElementById('tplTotalUpper')?.checked   ?? true;
 
   // Footer
   data.footerMessage  = document.getElementById('tplFooterMessage')?.value.trim() || '';
+  data.footerFont     = document.getElementById('tplFooterFont')?.value.trim() || 'Arial';
   data.footerFontSize = document.getElementById('tplFooterFontSize')?.value || 'small';
   data.footerAlign    = document.getElementById('tplFooterAlign')?.value    || 'center';
 
