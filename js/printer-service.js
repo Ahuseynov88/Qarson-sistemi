@@ -29,6 +29,20 @@ function getActivePrinters() {
   return (state.printers || []).filter(p => p.active);
 }
 
+async function getReceiptCustomerName(table, order) {
+  // Əvvəl mövcud order/table sahələrinə bax; sonra QR/Loyallıq müştərisini tap.
+  const direct = order?.customerName || table?.customerName || '';
+  if (direct) return String(direct).trim();
+  if (table?.loyaltyCustomerId) {
+    try {
+      const snap = await R.loyaltyCustomers.child(table.loyaltyCustomerId).once('value');
+      const c = snap.val();
+      if (c) return [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
+    } catch (e) { console.warn('[PrinterCustomer]', e); }
+  }
+  return '';
+}
+
 /* ══════════════════════════════════════════
    HESAB ÇEKİ — "Hesab" düyməsi basılanda
 ══════════════════════════════════════════ */
@@ -44,6 +58,7 @@ export async function printReceipt(tableId) {
 
   /* Şablon ayarlarını yüklə */
   const tpl = await getTemplateSettings();
+  const customerName = await getReceiptCustomerName(t, order);
 
   /* printJob Firebase-ə yaz — şablon ayarları da içindədir */
   if (receiptPrinter) {
@@ -59,6 +74,7 @@ export async function printReceipt(tableId) {
       tableId,
       tableName:   t?.name || '—',
       waiterName,
+      customerName,
       items,
       total:                order?.total || 0,
       serviceChargeAmount:  order?.serviceChargeAmount  || 0,
@@ -81,6 +97,7 @@ export async function printReceipt(tableId) {
         itemQty:        tplSettings.itemQty        !== false,
         itemPrice:      !!tplSettings.itemPrice,
         lineTotal:      tplSettings.lineTotal      !== false,
+        itemNote:       tplSettings.itemNote       !== false,
         discount:       tplSettings.discount       !== false,
         serviceCharge:  tplSettings.serviceCharge  !== false,
         vat:            !!tplSettings.vat,
@@ -98,10 +115,23 @@ export async function printReceipt(tableId) {
         vatPercent:          tplSettings.vatPercent      || 0,
         footerMessage:       tplSettings.footerMessage   || 'Tesekkur edirik!',
         restaurantNameSize:  tplSettings.restaurantNameSize  || 'large',
+        restaurantNameFont:  tplSettings.restaurantNameFont  || 'Arial',
+        headerInfoFont:      tplSettings.headerInfoFont      || 'Arial',
+        infoFont:            tplSettings.infoFont            || 'Arial',
+        itemFont:            tplSettings.itemFont            || 'Arial',
+        numberFont:          tplSettings.numberFont          || 'Arial',
+        totalFont:           tplSettings.totalFont           || 'Arial',
+        footerFont:          tplSettings.footerFont          || 'Arial',
         restaurantNameBold:  tplSettings.restaurantNameBold  !== false,
         restaurantNameUpper: !!tplSettings.restaurantNameUpper,
+        itemFontSize:        tplSettings.itemFontSize        || 'normal',
         itemNameBold:        !!tplSettings.itemNameBold,
+        totalFontSize:       tplSettings.totalFontSize       || 'large',
+        totalBold:           tplSettings.totalBold           !== false,
         totalUpper:          tplSettings.totalUpper !== false,
+        footerFontSize:      tplSettings.footerFontSize      || 'small',
+        footerAlign:         tplSettings.footerAlign         || 'center',
+        restaurantNameAlign: tplSettings.restaurantNameAlign || 'center',
       }
     });
   }
