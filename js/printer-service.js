@@ -8,27 +8,20 @@ import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
 
-/* ─── Şablon ayarlarını cache-ləyib oxu ─── */
-let _tplCache = null;
-let _tplCacheTime = 0;
+/* ─── Şablon ayarlarını hər dəfə fresh oxu ─── */
 async function getTemplateSettings() {
-  if (_tplCache && Date.now() - _tplCacheTime < 30000) return _tplCache;
-  const [tplSnap, nameSnap, addrSnap, phoneSnap, logoSnap] = await Promise.all([
+  const [tplSnap, nameSnap, addrSnap, phoneSnap] = await Promise.all([
     db.ref('settings/receiptTemplate').once('value'),
     db.ref('settings/restaurantName').once('value'),
     db.ref('settings/restaurantAddress').once('value'),
-    db.ref('settings/restaurantPhone').once('value'),
-    db.ref('settings/restaurantLogo').once('value')
+    db.ref('settings/restaurantPhone').once('value')
   ]);
-  _tplCache = {
+  return {
     settings:          tplSnap.val()  || {},
     restaurantName:    nameSnap.val() || '',
     restaurantAddress: addrSnap.val() || '',
-    restaurantPhone:   phoneSnap.val()|| '',
-    restaurantLogo:    logoSnap.val() || ''
+    restaurantPhone:   phoneSnap.val()|| ''
   };
-  _tplCacheTime = Date.now();
-  return _tplCache;
 }
 
 /* ─── Mövcud aktiv printerləri tap ─── */
