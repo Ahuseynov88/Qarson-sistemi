@@ -7,6 +7,7 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
+import { buildReceiptHtml } from './print-template.js';
 
 /* ─── Şablon ayarlarını hər dəfə fresh oxu ─── */
 async function getTemplateSettings() {
@@ -112,10 +113,34 @@ export async function printReceipt(tableId) {
   addLog('bill_print', `${waiterName} "${t?.name||'?'}" masası üçün hesab göndərildi${lbl} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
   if (order) db.ref('tableOrders').child(tableId).update({ billPrintedAt: Date.now() });
 
+  /* Brauzer çapı — UTF-8 + tam şablon dəstəyi */
+  try {
+    const tplSettings = tpl.settings || {};
+    const html = buildReceiptHtml({
+      table: t,
+      order,
+      waiterName,
+      now,
+      settings: {
+        ...tplSettings,
+        paperWidth: receiptPrinter?.paperWidth || '80mm'
+      },
+      restaurantName:    tpl.restaurantName    || '',
+      restaurantAddress: tpl.restaurantAddress || '',
+      restaurantPhone:   tpl.restaurantPhone   || '',
+      restaurantLogo:    ''
+    });
+    const pw = window.open('', '_blank', 'width=380,height=660,toolbar=no,menubar=no');
+    if (pw) {
+      pw.document.write(html);
+      pw.document.close();
+    }
+  } catch (e) { /* brauzer çapı uğursuz olsa Firebase job işləyər */ }
+
   if (!receiptPrinter) {
     showToast('<svg class="icon"><use href="#i-warning"></use></svg> Aktiv hesab printeri tapılmadı. Admin → Printerlər bölməsini yoxlayın.');
   } else {
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesab printerə göndərildi');
+    showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesab göndərildi');
   }
 }
 
