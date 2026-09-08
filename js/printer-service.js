@@ -7,6 +7,7 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, showToast } from './utils.js';
+import { buildReceiptHtml } from './print-template.js';
 
 /* ─── Şablon ayarlarını hər dəfə fresh oxu ─── */
 async function getTemplateSettings() {
@@ -29,20 +30,6 @@ function getActivePrinters() {
   return (state.printers || []).filter(p => p.active);
 }
 
-async function getReceiptCustomerName(table, order) {
-  // Əvvəl mövcud order/table sahələrinə bax; sonra QR/Loyallıq müştərisini tap.
-  const direct = order?.customerName || table?.customerName || '';
-  if (direct) return String(direct).trim();
-  if (table?.loyaltyCustomerId) {
-    try {
-      const snap = await R.loyaltyCustomers.child(table.loyaltyCustomerId).once('value');
-      const c = snap.val();
-      if (c) return [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
-    } catch (e) { console.warn('[PrinterCustomer]', e); }
-  }
-  return '';
-}
-
 /* ══════════════════════════════════════════
    HESAB ÇEKİ — "Hesab" düyməsi basılanda
 ══════════════════════════════════════════ */
@@ -58,7 +45,6 @@ export async function printReceipt(tableId) {
 
   /* Şablon ayarlarını yüklə */
   const tpl = await getTemplateSettings();
-  const customerName = await getReceiptCustomerName(t, order);
 
   /* printJob Firebase-ə yaz — şablon ayarları da içindədir */
   if (receiptPrinter) {
@@ -74,7 +60,6 @@ export async function printReceipt(tableId) {
       tableId,
       tableName:   t?.name || '—',
       waiterName,
-      customerName,
       items,
       total:                order?.total || 0,
       serviceChargeAmount:  order?.serviceChargeAmount  || 0,
@@ -97,7 +82,6 @@ export async function printReceipt(tableId) {
         itemQty:        tplSettings.itemQty        !== false,
         itemPrice:      !!tplSettings.itemPrice,
         lineTotal:      tplSettings.lineTotal      !== false,
-        itemNote:       tplSettings.itemNote       !== false,
         discount:       tplSettings.discount       !== false,
         serviceCharge:  tplSettings.serviceCharge  !== false,
         vat:            !!tplSettings.vat,
@@ -114,25 +98,11 @@ export async function printReceipt(tableId) {
         bottomLines:         tplSettings.bottomLines     || 5,
         vatPercent:          tplSettings.vatPercent      || 0,
         footerMessage:       tplSettings.footerMessage   || 'Tesekkur edirik!',
-        headerFont:          tplSettings.headerFont          || tplSettings.restaurantNameFont || 'Arial',
-        headerFontSize:      tplSettings.headerFontSize      || tplSettings.restaurantNameSize || 'large',
-        headerAlign:         tplSettings.headerAlign         || tplSettings.restaurantNameAlign || 'center',
-        headerBold:          tplSettings.headerBold          !== false,
+        restaurantNameSize:  tplSettings.restaurantNameSize  || 'large',
+        restaurantNameBold:  tplSettings.restaurantNameBold  !== false,
         restaurantNameUpper: !!tplSettings.restaurantNameUpper,
-        infoFont:            tplSettings.infoFont            || 'Arial',
-        infoFontSize:        tplSettings.infoFontSize        || 'normal',
-        infoAlign:           tplSettings.infoAlign           || 'left',
-        infoBold:            !!tplSettings.infoBold,
-        productFont:         tplSettings.productFont         || tplSettings.itemFont || 'Arial',
-        productFontSize:     tplSettings.productFontSize     || tplSettings.itemFontSize || 'normal',
-        productAlign:        tplSettings.productAlign        || 'left',
-        productBold:         !!tplSettings.productBold,
-        totalFontSize:       tplSettings.totalFontSize       || 'large',
-        totalBold:           tplSettings.totalBold           !== false,
+        itemNameBold:        !!tplSettings.itemNameBold,
         totalUpper:          tplSettings.totalUpper !== false,
-        footerFontSize:      tplSettings.footerFontSize      || 'small',
-        footerAlign:         tplSettings.footerAlign         || 'center',
-        footerBold:          !!tplSettings.footerBold,
       }
     });
   }
@@ -143,10 +113,37 @@ export async function printReceipt(tableId) {
   addLog('bill_print', `${waiterName} "${t?.name||'?'}" masası üçün hesab göndərildi${lbl} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
   if (order) db.ref('tableOrders').child(tableId).update({ billPrintedAt: Date.now() });
 
-  if (!receiptPrinter) {
-    showToast('<svg class="icon"><use href="#i-warning"></use></svg> Aktiv hesab printeri tapılmadı. Admin → Printerlər bölməsini yoxlayın.');
+  /* Brauzer çapı — UTF-8, Azərbaycan hərfləri tam dəstəklənir */
+  const tplSettings = tpl.settings || {};
+  const html = buildReceiptHtml({
+    table: t,
+    order,
+    waiterName,
+    now,
+    settings: { ...tplSettings, paperWidth: receiptPrinter?.paperWidth || '80mm' },
+    restaurantName:    tpl.restaurantName    || '',
+    restaurantAddress: tpl.restaurantAddress || '',
+    restaurantPhone:   tpl.restaurantPhone   || '',
+    restaurantLogo:    ''
+  });
+
+  /* afterprint — çap bitdikdən sonra pəncərə avtomatik bağlanır */
+  const printHtml = html.replace(
+    'window.onload=()=>{window.print();}',
+    'window.onload=()=>{window.print();window.addEventListener("afterprint",()=>{setTimeout(()=>window.close(),300);});}'
+  );
+
+  const pw = window.open('', '_blank', 'width=400,height=680,toolbar=no,menubar=no');
+  if (pw) {
+    pw.document.write(printHtml);
+    pw.document.close();
+    if (!receiptPrinter) {
+      showToast('<svg class="icon"><use href="#i-warning"></use></svg> Hesab printeri tapılmadı, brauzer çapı istifadə edilir.');
+    } else {
+      showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesab çap edilir...');
+    }
   } else {
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesab printerə göndərildi');
+    showToast('<svg class="icon"><use href="#i-warning"></use></svg> Popup bloklandı. Ünvan çubuğundakı popup ikonuna klikləyin.');
   }
 }
 
@@ -218,28 +215,34 @@ export async function printKitchenJobs(tableId, kitchenGroups) {
    TEST ÇAP
 ══════════════════════════════════════════ */
 export function testPrintReceipt(printer) {
-  if (!printer) {
-    showToast('<svg class="icon"><use href="#i-warning"></use></svg> Printer tapılmadı');
-    return;
-  }
+  const now     = new Date();
+  const dateStr = now.toLocaleDateString('az-AZ');
+  const timeStr = now.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+  const maxW    = printer?.paperWidth === '58mm' ? '220px' : '300px';
 
-  // Brauzer/Windows çap pəncərəsi AÇILMIR.
-  // Test işi də normal hesab/mətbəx çeki kimi Print Agent növbəsinə göndərilir.
-  R.printJobs.push({
-    type:        'test',
-    printerId:   printer.id,
-    printerName: printer.name || 'Printer',
-    printerIp:   printer.ip || '',
-    printerPort: printer.port || 9100,
-    paperWidth:  printer.paperWidth || '80mm',
-    status:      'pending',
-    createdAt:   Date.now()
-  }).then(() => {
-    showToast('<svg class="icon"><use href="#i-check"></use></svg> Test çapı agentə göndərildi');
-  }).catch(err => {
-    console.error('[PrinterTest]', err);
-    showToast('<svg class="icon"><use href="#i-error"></use></svg> Test çapı göndərilmədi');
-  });
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Test Çapı</title>
+<style>
+  body{font-family:'Courier New',monospace;width:${maxW};margin:0 auto;padding:12px 8px;font-size:13px;}
+  @media print{body{padding:4px 2px;width:100%;}}
+</style></head><body>
+<div style="text-align:center;font-size:18px;font-weight:bold;">🖨 TEST ÇAPI</div>
+<div style="text-align:center;font-size:11px;color:#666;">${dateStr} ${timeStr}</div>
+<div style="border-top:1px dashed #000;margin:8px 0;"></div>
+<div><b>Printer:</b> ${esc(printer?.name || '—')}</div>
+<div><b>Növ:</b> ${_printerTypeLabel(printer?.type)}</div>
+<div><b>Kağız:</b> ${printer?.paperWidth || '80mm'}</div>
+<div><b>IP:</b> ${esc(printer?.ip || 'USB')}</div>
+<div><b>Status:</b> ${printer?.active ? '✅ Aktiv' : '❌ Passiv'}</div>
+<div style="border-top:1px dashed #000;margin:8px 0;"></div>
+<div style="text-align:center;font-size:13px;">Printer işləyir!</div>
+<br><br><br>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=360,height=420');
+  if (w) { w.document.write(html); w.document.close(); }
+  else showToast('<svg class="icon"><use href="#i-error"></use></svg> Çap pəncərəsi bloklandı.');
 }
 
 function _printerTypeLabel(type) {
