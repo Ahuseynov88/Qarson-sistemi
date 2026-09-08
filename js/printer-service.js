@@ -23,7 +23,6 @@ async function getTemplateSettings() {
     restaurantPhone:   phoneSnap.val()|| ''
   };
 }
-
 /* ─── Mövcud aktiv printerləri tap ─── */
 function getActivePrinters() {
   return (state.printers || []).filter(p => p.active);
