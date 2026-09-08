@@ -225,8 +225,8 @@ export async function renderReceiptTemplateSettings() {
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;"><input type="file" id="tplLogoFile" accept="image/png,image/jpeg"><button class="btn btn-blue" onclick="uploadReceiptLogo()">Logo yüklə</button>${logoUrl?`<button class="btn btn-ghost" onclick="removeReceiptLogo()">Sil</button>`:''}</div>
   <div class="form-row"><div class="form-group"><label>Yalnız obyekt adının fontu</label>${fontInput('tplRestNameFont','restaurantNameFont',v('headerFont','Arial'))}</div><div class="form-group"><label>Yalnız obyekt adının ölçüsü</label>${sizeSel('tplRestNameSize','restaurantNameFontSize',v('headerFontSize','large'))}</div></div>
   <div class="form-row"><div class="form-group"><label>Obyekt adının hizalanması</label>${alignSel('tplRestNameAlign','restaurantNameAlign',v('headerAlign','center'))}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplRestNameBold',chk('restaurantNameBold',v('headerBold',true)),'Obyekt adı qalın')}</div></div>
-  <p style="font-size:11px;color:var(--text3);margin:-4px 0 12px;">Ünvan və telefon aşağıdakı “Hesab məlumatları” bölməsinin font, ölçü, qalınlıq və hizalanmasını istifadə edir.</p>
-  <div style="display:flex;gap:16px;margin-bottom:12px;">${_toggle('tplRestNameUpper',chk('restaurantNameUpper',false),'Restoran adını böyük hərflə')}</div>
+  <p style="font-size:11px;color:var(--text3);margin:-4px 0 8px;">Ünvan və telefon aşağıdakı “Hesab məlumatları” bölməsinin font, ölçü və qalınlığını istifadə edir. Hizalanması isə ayrıca seçilir.</p>
+  <div class="form-row"><div class="form-group"><label>Ünvan / telefon hizalanması</label>${alignSel('tplContactAlign','contactAlign','center')}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplRestNameUpper',chk('restaurantNameUpper',false),'Restoran adını böyük hərflə')}</div></div>
 
   ${_section('👤 2. HESAB MƏLUMATLARI — Tarix, saat, masa, ofisiant, müştəri')}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -347,6 +347,7 @@ export function saveReceiptTemplate() {
   data.restaurantNameAlign=document.getElementById('tplRestNameAlign')?.value||'center';
   data.restaurantNameBold=document.getElementById('tplRestNameBold')?.checked??true;
   data.restaurantNameUpper=document.getElementById('tplRestNameUpper')?.checked??false;
+  data.contactAlign=document.getElementById('tplContactAlign')?.value||'center';
 
   data.infoFont=document.getElementById('tplInfoFont')?.value.trim()||'Arial';
   data.infoFontSize=document.getElementById('tplInfoSize')?.value||'normal';
