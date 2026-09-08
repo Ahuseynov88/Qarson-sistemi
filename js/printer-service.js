@@ -122,6 +122,7 @@ export async function printReceipt(tableId) {
         infoFont:            tplSettings.infoFont            || 'Arial',
         infoFontSize:        tplSettings.infoFontSize        || 'normal',
         infoAlign:           tplSettings.infoAlign           || 'left',
+        contactAlign:        tplSettings.contactAlign        || 'center',
         infoBold:            !!tplSettings.infoBold,
         productFont:         tplSettings.productFont         || tplSettings.itemFont || 'Arial',
         productFontSize:     tplSettings.productFontSize     || tplSettings.itemFontSize || 'normal',
