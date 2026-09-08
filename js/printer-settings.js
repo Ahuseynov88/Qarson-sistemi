@@ -223,8 +223,9 @@ export async function renderReceiptTemplateSettings() {
   </div>
   ${logoUrl?`<img src="${esc(logoUrl)}" style="max-height:55px;max-width:150px;margin:6px 0;">`:''}
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;"><input type="file" id="tplLogoFile" accept="image/png,image/jpeg"><button class="btn btn-blue" onclick="uploadReceiptLogo()">Logo yüklə</button>${logoUrl?`<button class="btn btn-ghost" onclick="removeReceiptLogo()">Sil</button>`:''}</div>
-  <div class="form-row"><div class="form-group"><label>Başlıq fontu</label>${fontInput('tplHeaderFont','headerFont',v('restaurantNameFont','Arial'))}</div><div class="form-group"><label>Başlıq ölçüsü</label>${sizeSel('tplHeaderSize','headerFontSize','large')}</div></div>
-  <div class="form-row"><div class="form-group"><label>Başlıq hizalanması</label>${alignSel('tplHeaderAlign','headerAlign','center')}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplHeaderBold',chk('headerBold',true),'Başlıq qalın')}</div></div>
+  <div class="form-row"><div class="form-group"><label>Yalnız obyekt adının fontu</label>${fontInput('tplRestNameFont','restaurantNameFont',v('headerFont','Arial'))}</div><div class="form-group"><label>Yalnız obyekt adının ölçüsü</label>${sizeSel('tplRestNameSize','restaurantNameFontSize',v('headerFontSize','large'))}</div></div>
+  <div class="form-row"><div class="form-group"><label>Obyekt adının hizalanması</label>${alignSel('tplRestNameAlign','restaurantNameAlign',v('headerAlign','center'))}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplRestNameBold',chk('restaurantNameBold',v('headerBold',true)),'Obyekt adı qalın')}</div></div>
+  <p style="font-size:11px;color:var(--text3);margin:-4px 0 12px;">Ünvan və telefon aşağıdakı “Hesab məlumatları” bölməsinin font, ölçü, qalınlıq və hizalanmasını istifadə edir.</p>
   <div style="display:flex;gap:16px;margin-bottom:12px;">${_toggle('tplRestNameUpper',chk('restaurantNameUpper',false),'Restoran adını böyük hərflə')}</div>
 
   ${_section('👤 2. HESAB MƏLUMATLARI — Tarix, saat, masa, ofisiant, müştəri')}
@@ -340,10 +341,11 @@ export function saveReceiptTemplate() {
   data.currency=document.getElementById('tplCurrency')?.value||'AZN';
   data.vatPercent=parseFloat(document.getElementById('tplVatPercent')?.value)||0;
 
-  data.headerFont=document.getElementById('tplHeaderFont')?.value.trim()||'Arial';
-  data.headerFontSize=document.getElementById('tplHeaderSize')?.value||'large';
-  data.headerAlign=document.getElementById('tplHeaderAlign')?.value||'center';
-  data.headerBold=document.getElementById('tplHeaderBold')?.checked??true;
+  // Obyekt adı tam ayrıca stil saxlayır. Ünvan/telefon info* ayarlarını istifadə edir.
+  data.restaurantNameFont=document.getElementById('tplRestNameFont')?.value.trim()||'Arial';
+  data.restaurantNameFontSize=document.getElementById('tplRestNameSize')?.value||'large';
+  data.restaurantNameAlign=document.getElementById('tplRestNameAlign')?.value||'center';
+  data.restaurantNameBold=document.getElementById('tplRestNameBold')?.checked??true;
   data.restaurantNameUpper=document.getElementById('tplRestNameUpper')?.checked??false;
 
   data.infoFont=document.getElementById('tplInfoFont')?.value.trim()||'Arial';
