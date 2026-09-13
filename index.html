@@ -157,6 +157,7 @@
       <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər</button>
       <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">🔔 Bildiriş Səsləri</button>
       <button class="admin-tab" data-section="printers" onclick="adminTab('printers',this)"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</button>
+      <button class="admin-tab" data-section="dangerZone" onclick="adminTab('dangerZone',this)" style="color:var(--red);"><svg class="icon"><use href="#i-warning"></use></svg> Təhlükəli Əməliyyatlar</button>
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -446,8 +447,35 @@
       </div>
     </div>
 
+    <div class="admin-section" id="sec-dangerZone">
+      <div id="dangerZoneBody"></div>
+    </div>
+
   </div>
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
+</div>
+
+<!-- ═══ TƏHLÜKƏLİ ƏMƏLİYYATLAR — PIN MODAL ═══ -->
+<div class="modal-bg" id="dangerZonePinModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:50%;background:rgba(220,53,69,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+      <svg class="icon" style="width:28px;height:28px;color:var(--red);"><use href="#i-key"></use></svg>
+    </div>
+    <h2 id="dzPinTitle" style="margin-bottom:6px;">🔐 Təhlükəli Əməliyyatlar</h2>
+    <p id="dzPinSubtitle" style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Bu bölməyə giriş üçün Admin PIN kodunuzu daxil edin.</p>
+    <div class="form-group" style="margin-bottom:6px;">
+      <input type="password" id="dzPinInput" placeholder="Admin PIN" inputmode="numeric"
+        style="text-align:center;font-size:22px;letter-spacing:8px;padding:12px;"
+        onkeydown="if(event.key==='Enter')confirmDangerZonePin()">
+    </div>
+    <p id="dzPinError" style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:12px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeDangerZonePinModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDangerZonePin()">
+        <svg class="icon"><use href="#i-key"></use></svg> Təsdiqlə
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ PRİNTER MODAL ═══ -->
