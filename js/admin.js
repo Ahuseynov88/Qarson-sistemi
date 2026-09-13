@@ -5,7 +5,7 @@
    `window`-a təyin edilir (bax: fayl sonu).
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
-import { state } from './state.js';
+import { state, ADMIN_PIN } from './state.js';
 import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
@@ -70,6 +70,7 @@ export function renderAdmin() {
      if (state.adminSection==='kitchenStations') renderKitchenStations();
      if (state.adminSection==='notifSounds') renderNotifSounds();
      if (state.adminSection==='printers') { renderPrinters(); renderReceiptTemplateSettings(); }
+     if (state.adminSection==='dangerZone') renderDangerZone();
 }
 
 export function adminTab(sec, el) {
@@ -95,6 +96,9 @@ export function adminTab(sec, el) {
       document.getElementById('referralBonusAmount').value = l.referralBonusAmount || '';
       document.getElementById('referralMinOrderAmount').value = l.referralMinOrderAmount || '';
     });
+  }
+  if (sec==='dangerZone') {
+    openDangerZonePinModal(null);
   }
 }
 
@@ -3639,6 +3643,231 @@ window.deleteKitchenStation    = deleteKitchenStation;
 window.openKitchenMenuAssign   = openKitchenMenuAssign;
 window.closeKitchenMenuAssign  = closeKitchenMenuAssign;
 window.saveKitchenMenuAssign   = saveKitchenMenuAssign;
+/* ═══════════════════════════════════════════
+   TƏHLÜKƏLİ ƏMƏLİYYATLAR
+═══════════════════════════════════════════ */
+
+const DANGER_OPS = [
+  {
+    id: 'clearClosedOrders',
+    icon: '🔒',
+    title: 'Bağlanan Masaları Sil',
+    desc: 'Bütün bağlanan masa tarixçəsi, çek məlumatları və ödəniş qeydləri silinir. Hesabatlar bu məlumatlardan qurulandığı üçün keçmiş hesabatlar da boşalır.',
+    nodes: ['closedOrders', 'payments'],
+    keepLabel: null,
+    danger: 1
+  },
+  {
+    id: 'clearOrders',
+    icon: '🪑',
+    title: 'Aktiv Sifarişləri Sıfırla',
+    desc: 'Hal-hazırda açıq olan bütün masa sifarişləri, masa tutanlar və mətbəx sifariş növbəsi silinir. Masalar boş vəziyyətə keçir.',
+    nodes: ['orders', 'tableOrders', 'kitchenOrders', 'kitchenNotifs', 'printJobs'],
+    keepLabel: null,
+    danger: 1
+  },
+  {
+    id: 'clearLogs',
+    icon: '📋',
+    title: 'Tarixçə Logları Sil',
+    desc: 'Bütün sistem jurnal qeydləri (kim nə etdi, nə vaxt) silinir. Əməliyyat məlumatlarına toxunulmur.',
+    nodes: ['logs'],
+    keepLabel: null,
+    danger: 1
+  },
+  {
+    id: 'clearPurchases',
+    icon: '📦',
+    title: 'Alış Qeydlərini Sil',
+    desc: 'Bütün məhsul alış qeydləri silinir. Təchizatçılar və məhsul kataloqu saxlanılır, yalnız alış tarixçəsi gedir.',
+    nodes: ['purchases'],
+    keepLabel: 'Təchizatçılar və məhsul kataloqu saxlanılır',
+    danger: 1
+  },
+  {
+    id: 'clearBanquetEvents',
+    icon: '🎪',
+    title: 'Banket Tədbirlərini Sil',
+    desc: 'Keçmiş və gələcək bütün banket tədbiri qeydləri, rezervasiya slotları silinir. Banket zalları və tədbir növləri saxlanılır.',
+    nodes: ['banquetEvents', 'banquetHallBookings'],
+    keepLabel: 'Banket zalları və tədbir növləri saxlanılır',
+    danger: 1
+  },
+  {
+    id: 'clearCustomerCharges',
+    icon: '💳',
+    title: 'Nisyə Borclarını Sil',
+    desc: 'Bütün müştəri nisyə (kredit hesabı) əməliyyat qeydləri silinir. Müştərilərin özü saxlanılır, yalnız borc tarixçəsi gedir.',
+    nodes: ['customerCharges'],
+    keepLabel: 'Müştəri qeydiyyatları saxlanılır',
+    danger: 1
+  },
+  {
+    id: 'clearLoyaltyData',
+    icon: '⭐',
+    title: 'Loyallıq Məlumatlarını Sil',
+    desc: 'Qeydiyyatlı sadiqlik müştəriləri, qonaq tokenləri və referral qeydləri silinir.',
+    nodes: ['loyaltyCustomers', 'guestTokens', 'referrals'],
+    keepLabel: null,
+    danger: 1
+  },
+  {
+    id: 'clearAllOperational',
+    icon: '🗑️',
+    title: 'Bütün Əməliyyat Məlumatlarını Sil',
+    desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
+    nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals'],
+    keepLabel: 'İşçilər, məhsullar, masalar, müştərilər, ayarlar, printerlar, mətbəxlər saxlanılır',
+    danger: 2
+  },
+  {
+    id: 'factoryReset',
+    icon: '☢️',
+    title: 'Fabrika Sıfırlaması',
+    desc: 'PROQRAMDAKİ HƏR ŞEY SİLİNİR. İşçilər, məhsullar, masalar, müştərilər, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlar. Bu əməliyyat GERİ QAYTARILMAZ.',
+    nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings'],
+    keepLabel: null,
+    danger: 3
+  }
+];
+
+// ── Parol modal ──
+// opId: null = bölməyə giriş üçün, string = konkret əməliyyat üçün
+let _pendingDangerOpId = null;
+
+function openDangerZonePinModal(opId) {
+  _pendingDangerOpId = opId;
+  const el = document.getElementById('dangerZonePinModal');
+  if (!el) return;
+  document.getElementById('dzPinInput').value = '';
+  document.getElementById('dzPinError').textContent = '';
+  const isEntry = opId === null;
+  document.getElementById('dzPinTitle').textContent = isEntry
+    ? '🔐 Təhlükəli Əməliyyatlar'
+    : '🔑 Əməliyyatı Təsdiqlə';
+  document.getElementById('dzPinSubtitle').textContent = isEntry
+    ? 'Bu bölməyə giriş üçün Admin PIN kodunuzu daxil edin.'
+    : 'Silmə əməliyyatını icra etmək üçün Admin PIN kodunuzu daxil edin.';
+  el.classList.add('open');
+  setTimeout(() => document.getElementById('dzPinInput')?.focus(), 100);
+}
+
+function closeDangerZonePinModal() {
+  document.getElementById('dangerZonePinModal')?.classList.remove('open');
+  _pendingDangerOpId = null;
+  // əgər bölməyə giriş üçün istənilmiş parol ləğv edildisə — dashboard-a qayıt
+  if (state.adminSection === 'dangerZone') {
+    const dashTab = document.querySelector('.admin-tab[data-section="dashboard"]');
+    if (dashTab) adminTab('dashboard', dashTab);
+  }
+}
+
+function confirmDangerZonePin() {
+  const entered = document.getElementById('dzPinInput').value.trim();
+  const current = String(ADMIN_PIN || '');
+  if (String(entered) !== current) {
+    document.getElementById('dzPinError').textContent = '❌ PIN yanlışdır. Yenidən cəhd edin.';
+    document.getElementById('dzPinInput').value = '';
+    document.getElementById('dzPinInput').focus();
+    return;
+  }
+  document.getElementById('dangerZonePinModal').classList.remove('open');
+  if (_pendingDangerOpId === null) {
+    // bölməyə giriş — bölməni render et
+    renderDangerZone();
+  } else {
+    // konkret əməliyyat — icra et
+    _runDangerOp(_pendingDangerOpId);
+  }
+  _pendingDangerOpId = null;
+}
+
+function renderDangerZone() {
+  const body = document.getElementById('dangerZoneBody');
+  if (!body) return;
+
+  body.innerHTML = `
+    <div style="max-width:620px;">
+      <div style="background:rgba(220,53,69,.08);border:1.5px solid var(--red);border-radius:14px;padding:16px 18px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;">
+        <svg class="icon" style="width:22px;height:22px;color:var(--red);flex-shrink:0;margin-top:1px;"><use href="#i-warning"></use></svg>
+        <div>
+          <div style="font-weight:700;color:var(--red);margin-bottom:4px;">Diqqət! Bu bölmədəki əməliyyatlar GERİ QAYTARILMAZ.</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;">Firebase bazasından məlumatlar tam olaraq silinir. Hər əməliyyatdan əvvəl Admin PIN + 2 dəfə təsdiq tələb olunur. Əmin olmadığınız heç bir əməliyyatı icra etməyin.</div>
+        </div>
+      </div>
+
+      ${DANGER_OPS.map(op => `
+        <div class="table-card" style="margin-bottom:12px;${op.danger===3?'border:2px solid var(--red);background:rgba(220,53,69,.07);':op.danger===2?'border:1.5px solid rgba(220,53,69,.5);':''}">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="font-size:26px;line-height:1;flex-shrink:0;">${op.icon}</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;margin-bottom:4px;${op.danger===3?'color:var(--red);':''}">${op.title}</div>
+              <div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:${op.keepLabel?'6px':'10px'};">${op.desc}</div>
+              ${op.keepLabel ? `<div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:10px;">✓ ${op.keepLabel}</div>` : ''}
+              <button class="btn btn-red" onclick="executeDangerOp('${op.id}')"
+                style="padding:9px 18px;font-size:13px;${op.danger===3?'width:100%;padding:13px;font-size:15px;font-weight:700;':''}">
+                <svg class="icon"><use href="#i-trash"></use></svg>
+                ${op.danger===3?'⚠️ '+op.title+' — Hər Şeyi Sil':op.title}
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function executeDangerOp(opId) {
+  // Hər silmə əməliyyatından əvvəl PIN istə
+  openDangerZonePinModal(opId);
+}
+
+function _runDangerOp(opId) {
+  const op = DANGER_OPS.find(o => o.id === opId);
+  if (!op) return;
+
+  const isFabrika = op.danger === 3;
+  const nodeCount = op.nodes.length;
+
+  confirmAction(
+    `<strong>${op.icon} ${op.title}</strong><br><br>${op.desc}${op.keepLabel ? `<br><br><span style="color:var(--green);">✓ ${op.keepLabel}</span>` : ''}<br><br>Bu əməliyyat <strong style="color:var(--red);">GERİ QAYTARILMAZ</strong>. Davam etmək istəyirsiniz?`,
+    () => {
+      const secondMsg = isFabrika
+        ? `<span style="color:var(--red);font-size:15px;font-weight:700;">☢️ SON XƏBƏRDARLIQ!</span><br><br>PROQRAMDAKİ <strong>HƏR ŞEY</strong> silinəcək. Proqram fabrika vəziyyətinə qayıdacaq.<br><br>Bu əməliyyatı TƏSDİQLƏYİRSİNİZ?`
+        : `Son dəfə soruşuram: <strong>${op.title}</strong> əməliyyatı <strong>${nodeCount} verilənlər qrupunu</strong> həmişəlik siləcək.<br><br>Tam əminsinizmi?`;
+
+      confirmAction(
+        secondMsg,
+        async () => {
+          try {
+            await Promise.all(op.nodes.map(node => db.ref(node).remove()));
+            if (!isFabrika) addLog('danger_op', `"${op.title}" əməliyyatı icra edildi`, { nodes: op.nodes });
+            showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${op.title}" uğurla tamamlandı`);
+          } catch (e) {
+            showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Xəta: ${e.message}`);
+          }
+        },
+        {
+          title: isFabrika ? '☢️ Fabrika Sıfırlaması' : 'Son Təsdiq',
+          okLabel: `<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Sil`,
+          okClass: 'btn-red'
+        }
+      );
+    },
+    {
+      title: `${op.icon} ${op.title}`,
+      okLabel: `<svg class="icon"><use href="#i-trash"></use></svg> Davam Et`,
+      okClass: 'btn-red'
+    }
+  );
+}
+
+window.renderDangerZone = renderDangerZone;
+window.executeDangerOp = executeDangerOp;
+window.openDangerZonePinModal = openDangerZonePinModal;
+window.closeDangerZonePinModal = closeDangerZonePinModal;
+window.confirmDangerZonePin = confirmDangerZonePin;
+
 function saveKitchenAlertInterval(val) {
   const n = parseInt(val);
   if (isNaN(n) || n < 5) return;
