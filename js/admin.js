@@ -28,7 +28,6 @@ export function renderPermissionCheckboxes(existingPerms = []) {
     </div>
   `).join('');
 }
-
 export function readPermissionCheckboxes() {
   const checkboxes = document.querySelectorAll('input[name="staff_perm"]:checked');
   return Array.from(checkboxes).map(cb => cb.value);
