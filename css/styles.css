@@ -172,6 +172,20 @@ video.lp-media{z-index:2;}
   .admin-tab.active{box-shadow:var(--shadow-sm);}
   .admin-section{height:100%;overflow-y:auto;padding:28px 32px;flex:1;min-width:0;}
   #adminFab{right:32px;bottom:32px;}
+  .stats-row{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+  .tile-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+  .grid-2{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+}
+@media (min-width:1400px){
+  .admin-tabs{width:270px;}
+  .admin-section{padding:32px 48px;}
+  .stats-row{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+  .tile-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));}
+  .grid-2{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));}
+  #sec-settings > div,
+  #sec-dangerZone > div{max-width:none !important;}
+  .report-subtabs{column-gap:4px;}
+  .closed-tables-filters__row{grid-template-columns:repeat(4,minmax(0,1fr));}
 }
 .admin-section{display:none;}
 .admin-section.active{display:block;}
