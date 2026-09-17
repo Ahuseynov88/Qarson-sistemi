@@ -137,27 +137,89 @@
   <div class="admin-body">
     <button id="adminBackBtn" class="admin-back-btn" onclick="adminGoBack()"><svg class="icon"><use href="#i-close"></use></svg> Geri</button>
     <div class="admin-tabs" id="adminTabsContainer">
+
+      <!-- ─── QRUPsuz: ANA PANEL ─── -->
       <button class="admin-tab active" data-section="dashboard" onclick="adminTab('dashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> Hesabatlar</button>
-      <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</button>
-      <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)"><svg class="icon"><use href="#i-chair"></use></svg> Masalar</button>
-      <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)"><svg class="icon"><use href="#i-food"></use></svg> Menyu</button>
       <button class="admin-tab" data-section="logs" onclick="adminTab('logs',this)"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
-      <button class="admin-tab" data-section="settings" onclick="adminTab('settings',this)"><svg class="icon"><use href="#i-settings"></use></svg> Ayarlar</button>
-      <button class="admin-tab" data-section="feedback" onclick="adminTab('feedback',this)"><svg class="icon"><use href="#i-chat"></use></svg> Şikayətlər</button>
-      <button class="admin-tab" data-section="customers" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
-      <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
       <button class="admin-tab" data-section="closedOrders" onclick="adminTab('closedOrders',this)"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</button>
-      <button class="admin-tab" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)"><svg class="icon"><use href="#i-star"></use></svg> Qeydiyyat Olunanlar</button>
-      <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar</button>
-      <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları</button>
-      <button class="admin-tab" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> Banket Dashboard</button>
-      <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)"><svg class="icon"><use href="#i-clock"></use></svg> Tədbirlər Təqvimi</button>
-      <button class="admin-tab" data-section="banquetHalls" onclick="adminTab('banquetHalls',this)"><svg class="icon"><use href="#i-chair"></use></svg> Zallar</button>
-      <button class="admin-tab" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri</button>
-      <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər</button>
-      <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">🔔 Bildiriş Səsləri</button>
-      <button class="admin-tab" data-section="printers" onclick="adminTab('printers',this)"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</button>
-      <button class="admin-tab" data-section="dangerZone" onclick="adminTab('dangerZone',this)" style="color:var(--red);"><svg class="icon"><use href="#i-warning"></use></svg> Təhlükəli Əməliyyatlar</button>
+      <button class="admin-tab" data-section="feedback" onclick="adminTab('feedback',this)"><svg class="icon"><use href="#i-chat"></use></svg> Şikayətlər</button>
+
+      <!-- ─── QRUP: İDARƏETMƏ ─── -->
+      <div class="nav-group" data-group="idareetme">
+        <button class="nav-group__header" onclick="toggleNavGroup('idareetme',this)">
+          <span class="nav-group__icon"><svg class="icon"><use href="#i-admin"></use></svg></span>
+          <span class="nav-group__label">İdarəetmə</span>
+          <svg class="nav-group__arrow icon"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="nav-group__items">
+          <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</button>
+          <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)"><svg class="icon"><use href="#i-chair"></use></svg> Masalar</button>
+          <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)"><svg class="icon"><use href="#i-food"></use></svg> Menyu</button>
+          <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər</button>
+        </div>
+      </div>
+
+      <!-- ─── QRUP: MALİYYƏ ─── -->
+      <div class="nav-group" data-group="maliyye">
+        <button class="nav-group__header" onclick="toggleNavGroup('maliyye',this)">
+          <span class="nav-group__icon"><svg class="icon"><use href="#i-cash"></use></svg></span>
+          <span class="nav-group__label">Maliyyə</span>
+          <svg class="nav-group__arrow icon"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="nav-group__items">
+          <button class="admin-tab" data-section="customers" onclick="adminTab('customers',this)"><svg class="icon"><use href="#i-users"></use></svg> Müştərilər</button>
+          <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</button>
+          <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar</button>
+          <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları</button>
+        </div>
+      </div>
+
+      <!-- ─── QRUP: LOYALLIQ ─── -->
+      <div class="nav-group" data-group="loyalliq">
+        <button class="nav-group__header" onclick="toggleNavGroup('loyalliq',this)">
+          <span class="nav-group__icon"><svg class="icon"><use href="#i-star"></use></svg></span>
+          <span class="nav-group__label">Loyallıq</span>
+          <svg class="nav-group__arrow icon"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="nav-group__items">
+          <button class="admin-tab" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)"><svg class="icon"><use href="#i-star"></use></svg> Qeydiyyat Olunanlar</button>
+        </div>
+      </div>
+
+      <!-- ─── QRUP: BANKET ─── -->
+      <div class="nav-group" data-group="banket">
+        <button class="nav-group__header" onclick="toggleNavGroup('banket',this)">
+          <span class="nav-group__icon">🎪</span>
+          <span class="nav-group__label">Banket</span>
+          <svg class="nav-group__arrow icon"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="nav-group__items">
+          <button class="admin-tab" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)"><svg class="icon"><use href="#i-chart"></use></svg> Dashboard</button>
+          <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)"><svg class="icon"><use href="#i-clock"></use></svg> Təqvim</button>
+          <button class="admin-tab" data-section="banquetHalls" onclick="adminTab('banquetHalls',this)"><svg class="icon"><use href="#i-chair"></use></svg> Zallar</button>
+          <button class="admin-tab" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri</button>
+        </div>
+      </div>
+
+      <!-- ─── QRUP: SİSTEM ─── -->
+      <div class="nav-group" data-group="sistem">
+        <button class="nav-group__header" onclick="toggleNavGroup('sistem',this)">
+          <span class="nav-group__icon"><svg class="icon"><use href="#i-settings"></use></svg></span>
+          <span class="nav-group__label">Sistem</span>
+          <svg class="nav-group__arrow icon"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="nav-group__items">
+          <button class="admin-tab" data-section="settings" onclick="adminTab('settings',this)"><svg class="icon"><use href="#i-settings"></use></svg> Ayarlar</button>
+          <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">🔔 Bildiriş Səsləri</button>
+          <button class="admin-tab" data-section="printers" onclick="adminTab('printers',this)"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</button>
+        </div>
+      </div>
+
+      <!-- ─── TEHLÜKƏLİ ─── -->
+      <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
+        <button class="admin-tab" data-section="dangerZone" onclick="adminTab('dangerZone',this)" style="color:var(--red);width:100%;"><svg class="icon"><use href="#i-warning"></use></svg> Təhlükəli Əməliyyatlar</button>
+      </div>
+
     </div>
     <div class="admin-section active" id="sec-dashboard">
       <div class="stats-row" id="statsRow"></div>
@@ -250,60 +312,143 @@
       <div class="log-list" id="logList"></div>
     </div>
     <div class="admin-section" id="sec-settings">
-      <div style="max-width:500px;">
-        <div class="table-card" style="margin-bottom:16px;">
-  <h3 style="margin-bottom:8px;">🍳 Mətbəx Siqnal Intervalı</h3>
-  <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Yeni sifariş qəbul edilməyəndə neçə saniyədən bir səs çalsın?</p>
-  <div class="form-group">
-    <label>Saniyə</label>
-    <input type="number" id="kitchenAlertIntervalInput" min="5" max="120" step="5" value="15" onchange="saveKitchenAlertInterval(this.value)">
-  </div>
-  <p id="kitchenAlertStatus" style="font-size:12px;color:var(--green);margin-top:6px;min-height:14px;"></p>
-</div>
-        <div class="table-card" style="margin-bottom:16px;">
-          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-key"></use></svg> Mətbəx PIN Kodu</h3>
-          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Cari PIN: <strong id="currentKitchenPin" style="color:var(--orange);">****</strong></p>
-          <button class="btn btn-blue" onclick="openKitchenPinModal()" style="width:100%;padding:13px;"><svg class="icon"><use href="#i-key"></use></svg> PIN-i Dəyiş</button>
+      <div class="settings-page">
+
+        <!-- ══ BÖLMƏ 1: MƏTBƏx & SİQNAL ══ -->
+        <div class="settings-section-title">
+          <svg class="icon"><use href="#i-chef"></use></svg> Mətbəx
         </div>
-        <div class="table-card" style="margin-bottom:16px;">
-          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-utensils"></use></svg> Menyu URL</h3>
-          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Müştəri panelindəki "Menyu" düyməsinin açacağı link:</p>
-          <div class="form-group" style="margin-bottom:10px;">
-            <input type="url" id="menuUrlInput" placeholder="https://sizin-menyu-linkiniz.com" style="font-size:14px;">
+        <div class="settings-grid">
+
+          <!-- Siqnal intervalı -->
+          <div class="settings-card">
+            <div class="settings-card__icon-wrap" style="background:rgba(52,152,219,.1);">
+              <svg class="icon" style="color:var(--blue);width:20px;height:20px;"><use href="#i-clock"></use></svg>
+            </div>
+            <div class="settings-card__body">
+              <div class="settings-card__title">Siqnal İntervalı</div>
+              <div class="settings-card__desc">Yeni sifariş gəlmədikdə neçə saniyədən bir səs çalsın?</div>
+              <div class="settings-inline-row">
+                <input type="number" id="kitchenAlertIntervalInput" class="settings-input settings-input--sm" min="5" max="120" step="5" value="15" onchange="saveKitchenAlertInterval(this.value)">
+                <span style="font-size:13px;color:var(--text2);">saniyə</span>
+              </div>
+              <p id="kitchenAlertStatus" class="settings-status"></p>
+            </div>
           </div>
-          <button class="btn btn-green" onclick="saveMenuUrl()" style="width:100%;padding:13px;"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
-          <p id="menuUrlStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
-        </div>
-        <div class="table-card" style="margin-bottom:16px;">
-          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-money"></use></svg> Xidmət Haqqı</h3>
-          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Aktiv edilərsə, hər masanın sifarişinə avtomatik olaraq müəyyən faiz qədər xidmət haqqı əlavə olunur (bilette və ödəniş zamanı ayrıca sətir kimi görünür).</p>
-          <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
-            <span style="font-weight:700;">Xidmət haqqını aktiv et</span>
-            <input type="checkbox" id="serviceChargeEnabled" onchange="saveServiceCharge()" style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
-          </label>
-          <div class="form-group">
-            <label>Faiz dərəcəsi (%)</label>
-            <input type="number" id="serviceChargePercent" min="0" max="100" step="0.5" placeholder="10" onchange="saveServiceCharge()">
+
+          <!-- Mətbəx PIN -->
+          <div class="settings-card">
+            <div class="settings-card__icon-wrap" style="background:rgba(201,151,63,.1);">
+              <svg class="icon" style="color:var(--gold);width:20px;height:20px;"><use href="#i-key"></use></svg>
+            </div>
+            <div class="settings-card__body">
+              <div class="settings-card__title">Mətbəx PIN Kodu</div>
+              <div class="settings-card__desc">Mətbəx ekranına giriş üçün istifadə olunan PIN.</div>
+              <div class="settings-pin-display">
+                <span style="font-size:13px;color:var(--text2);">Cari PIN:</span>
+                <strong id="currentKitchenPin" style="color:var(--orange);font-size:18px;letter-spacing:4px;">••••</strong>
+              </div>
+              <button class="btn btn-blue settings-card__btn" onclick="openKitchenPinModal()">
+                <svg class="icon"><use href="#i-key"></use></svg> PIN-i Dəyiş
+              </button>
+            </div>
           </div>
-          <p id="serviceChargeStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+
         </div>
-        <div class="table-card" style="margin-bottom:16px;">
-          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-users"></use></svg> Müştəri Loyallıq Proqramı — Referral</h3>
-          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Qeydiyyatlı müştərilər dostlarını dəvət edə bilər. Dəvət olunan şəxs ilk sifarişini tamamlayanda, dəvət edən şəxsə bonus verilir.</p>
-          <div class="form-group">
-            <label>Dəvət bonusu (bal)</label>
-            <input type="number" id="referralBonusAmount" min="0" step="1" placeholder="10" onchange="saveLoyaltySettings()">
+
+        <!-- ══ BÖLMƏ 2: MÜŞTƏRİ PANELİ ══ -->
+        <div class="settings-section-title">
+          <svg class="icon"><use href="#i-users"></use></svg> Müştəri Paneli
+        </div>
+        <div class="settings-grid">
+
+          <!-- Menyu URL -->
+          <div class="settings-card settings-card--wide">
+            <div class="settings-card__icon-wrap" style="background:rgba(46,204,113,.1);">
+              <svg class="icon" style="color:var(--green);width:20px;height:20px;"><use href="#i-utensils"></use></svg>
+            </div>
+            <div class="settings-card__body">
+              <div class="settings-card__title">Menyu URL</div>
+              <div class="settings-card__desc">Müştəri panelindəki "Menyuya Bax" düyməsinin açacağı xarici link.</div>
+              <div class="settings-url-row">
+                <input type="url" id="menuUrlInput" class="settings-input" placeholder="https://sizin-menyu-linkiniz.com">
+                <button class="btn btn-green" onclick="saveMenuUrl()" style="white-space:nowrap;flex-shrink:0;">
+                  <svg class="icon"><use href="#i-save"></use></svg> Saxla
+                </button>
+              </div>
+              <p id="menuUrlStatus" class="settings-status"></p>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Minimum sifariş məbləği (₼) — bonus üçün</label>
-            <input type="number" id="referralMinOrderAmount" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
+
+        </div>
+
+        <!-- ══ BÖLMƏ 3: MALİYYƏ ══ -->
+        <div class="settings-section-title">
+          <svg class="icon"><use href="#i-money"></use></svg> Maliyyə
+        </div>
+        <div class="settings-grid">
+
+          <!-- Xidmət haqqı -->
+          <div class="settings-card">
+            <div class="settings-card__icon-wrap" style="background:rgba(163,42,36,.08);">
+              <svg class="icon" style="color:var(--red);width:20px;height:20px;"><use href="#i-money"></use></svg>
+            </div>
+            <div class="settings-card__body">
+              <div class="settings-card__title">Xidmət Haqqı</div>
+              <div class="settings-card__desc">Aktiv edilərsə, sifarişə avtomatik xidmət haqqı əlavə olunur.</div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="serviceChargeEnabled" onchange="saveServiceCharge()">
+                <span class="settings-toggle__track"></span>
+                <span class="settings-toggle__label">Xidmət haqqını aktiv et</span>
+              </label>
+              <div class="settings-inline-row" style="margin-top:12px;">
+                <input type="number" id="serviceChargePercent" class="settings-input settings-input--sm" min="0" max="100" step="0.5" placeholder="10" onchange="saveServiceCharge()">
+                <span style="font-size:13px;color:var(--text2);">%</span>
+              </div>
+              <p id="serviceChargeStatus" class="settings-status"></p>
+            </div>
           </div>
-          <p id="loyaltySettingsStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+
+          <!-- Loyallıq Referral -->
+          <div class="settings-card">
+            <div class="settings-card__icon-wrap" style="background:rgba(201,151,63,.12);">
+              <svg class="icon" style="color:var(--gold);width:20px;height:20px;"><use href="#i-star"></use></svg>
+            </div>
+            <div class="settings-card__body">
+              <div class="settings-card__title">Loyallıq — Referral</div>
+              <div class="settings-card__desc">Dəvət sistemi: dost dəvət edən müştəriyə bonus xal verilir.</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                <div>
+                  <label style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:5px;">Dəvət bonusu (bal)</label>
+                  <input type="number" id="referralBonusAmount" class="settings-input" min="0" step="1" placeholder="10" onchange="saveLoyaltySettings()">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:5px;">Min. sifariş (₼)</label>
+                  <input type="number" id="referralMinOrderAmount" class="settings-input" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
+                </div>
+              </div>
+              <p id="loyaltySettingsStatus" class="settings-status"></p>
+            </div>
+          </div>
+
         </div>
-        <div class="table-card">
-          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-clipboard"></use></svg> Sistem Məlumatları</h3>
-          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
+
+        <!-- ══ BÖLMƏ 4: SİSTEM ══ -->
+        <div class="settings-section-title">
+          <svg class="icon"><use href="#i-clipboard"></use></svg> Sistem
         </div>
+        <div class="settings-grid">
+          <div class="settings-card">
+            <div class="settings-card__icon-wrap" style="background:rgba(142,68,173,.1);">
+              <svg class="icon" style="color:var(--purple);width:20px;height:20px;"><use href="#i-admin"></use></svg>
+            </div>
+            <div class="settings-card__body">
+              <div class="settings-card__title">Kiosk Rejimi</div>
+              <div class="settings-card__desc">Qarson paneli kioskda tam ekran açılır. Çıxış yalnız Admin PIN ilə mümkündür.</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
     <div class="admin-section" id="sec-customers">
