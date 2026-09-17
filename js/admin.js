@@ -83,6 +83,16 @@ export function adminTab(sec, el) {
   _toggleSectionBackBtn(false);
   renderAdmin();
   document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes'||sec==='printers') ? 'flex':'none';
+
+  // Aktiv tab-ın içindəki qrupu aç, digərlərindən "has-active" sil
+  document.querySelectorAll('.nav-group').forEach(g => {
+    const hasActive = g.querySelector('.admin-tab.active');
+    g.classList.toggle('has-active', !!hasActive);
+    if (hasActive && !g.classList.contains('open')) {
+      g.classList.add('open');
+    }
+  });
+
   if (sec==='settings') {
     document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
@@ -102,6 +112,17 @@ export function adminTab(sec, el) {
   }
 }
 
+// Nav qrupunu açıb-bağla (accordion)
+function toggleNavGroup(groupId, headerEl) {
+  const group = headerEl.closest('.nav-group');
+  if (!group) return;
+  const isOpen = group.classList.contains('open');
+  // Digər qrupları bağla (isteğe bağlı — accordion davranışı)
+  // document.querySelectorAll('.nav-group.open').forEach(g => { if (g !== group) g.classList.remove('open'); });
+  group.classList.toggle('open', !isOpen);
+}
+window.toggleNavGroup = toggleNavGroup;
+
 // Telefonda "ev ekranı" naviqasiyasında bölmə görünüşündən grid menyusuna qayıdır
 export function adminGoBack() {
   document.querySelector('.admin-body')?.classList.remove('admin-section-open');
@@ -120,20 +141,6 @@ export function initAdminTabDragDrop() {
 
   container.querySelectorAll('.admin-tab').forEach(tab => {
     tab.setAttribute('draggable', 'true');
-
-    // ── Ctrl/Cmd+Click və ya Orta klik: yeni brauzər tabında aç ──
-    tab.addEventListener('mousedown', (e) => {
-      const sec = tab.dataset.section;
-      if (!sec) return;
-      const isMiddle = e.button === 1;
-      const isCtrlCmd = e.button === 0 && (e.ctrlKey || e.metaKey);
-      if (isMiddle || isCtrlCmd) {
-        e.preventDefault();
-        const url = location.href.split('#')[0] + '#admin-section=' + sec;
-        window.open(url, '_blank');
-      }
-    });
-
     tab.addEventListener('dragstart', () => { dragged = tab; tab.classList.add('dragging'); });
     tab.addEventListener('dragend', () => {
       tab.classList.remove('dragging');
@@ -153,31 +160,6 @@ export function initAdminTabDragDrop() {
   });
 
   applySavedAdminTabOrder();
-
-  // ── URL hash-dən bölmə aç (yeni tabda açılmış səhifə üçün) ──
-  const hash = location.hash; // məs: #admin-section=staff
-  if (hash && hash.startsWith('#admin-section=')) {
-    const sec = hash.replace('#admin-section=', '').trim();
-    const matchTab = container.querySelector(`.admin-tab[data-section="${sec}"]`);
-    if (matchTab) {
-      // Admin ekranının görünməsini gözlə, sonra tab-ı aktivləşdir
-      setTimeout(() => {
-        const adminScreen = document.getElementById('adminScreen');
-        if (adminScreen && adminScreen.classList.contains('active')) {
-          adminTab(sec, matchTab);
-        } else {
-          // admin ekranı hələ aktiv deyilsə, observer qur
-          const obs = new MutationObserver(() => {
-            if (adminScreen && adminScreen.classList.contains('active')) {
-              obs.disconnect();
-              adminTab(sec, matchTab);
-            }
-          });
-          if (adminScreen) obs.observe(adminScreen, { attributes: true, attributeFilter: ['class'] });
-        }
-      }, 300);
-    }
-  }
 }
 
 function saveAdminTabOrder() {
