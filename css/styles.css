@@ -26,7 +26,6 @@
 /* Maliyyə rəqəmləri (qiymət, hesabat, statistika) - "dəftər" hissi üçün cədvəl-düzülüşlü
    rəqəmlər (bütün rəqəmlər eyni enə malikdir, sütunlarda düzgün düzülür) */
 .num, .stat-num, td.num, .report-table td.num{font-variant-numeric:tabular-nums;}
-
 body.dark-mode{
   --green:#2ecc71;--green-dark:#27ae60;--red:#e74c3c;--red-dark:#c0392b;
   --blue:#3498db;--orange:#d4c235;--orange-dark:#bcab2e;--purple:#8e44ad;--yellow:#f1c40f;
