@@ -120,6 +120,20 @@ export function initAdminTabDragDrop() {
 
   container.querySelectorAll('.admin-tab').forEach(tab => {
     tab.setAttribute('draggable', 'true');
+
+    // ── Ctrl/Cmd+Click və ya Orta klik: yeni brauzər tabında aç ──
+    tab.addEventListener('mousedown', (e) => {
+      const sec = tab.dataset.section;
+      if (!sec) return;
+      const isMiddle = e.button === 1;
+      const isCtrlCmd = e.button === 0 && (e.ctrlKey || e.metaKey);
+      if (isMiddle || isCtrlCmd) {
+        e.preventDefault();
+        const url = location.href.split('#')[0] + '#admin-section=' + sec;
+        window.open(url, '_blank');
+      }
+    });
+
     tab.addEventListener('dragstart', () => { dragged = tab; tab.classList.add('dragging'); });
     tab.addEventListener('dragend', () => {
       tab.classList.remove('dragging');
@@ -139,6 +153,31 @@ export function initAdminTabDragDrop() {
   });
 
   applySavedAdminTabOrder();
+
+  // ── URL hash-dən bölmə aç (yeni tabda açılmış səhifə üçün) ──
+  const hash = location.hash; // məs: #admin-section=staff
+  if (hash && hash.startsWith('#admin-section=')) {
+    const sec = hash.replace('#admin-section=', '').trim();
+    const matchTab = container.querySelector(`.admin-tab[data-section="${sec}"]`);
+    if (matchTab) {
+      // Admin ekranının görünməsini gözlə, sonra tab-ı aktivləşdir
+      setTimeout(() => {
+        const adminScreen = document.getElementById('adminScreen');
+        if (adminScreen && adminScreen.classList.contains('active')) {
+          adminTab(sec, matchTab);
+        } else {
+          // admin ekranı hələ aktiv deyilsə, observer qur
+          const obs = new MutationObserver(() => {
+            if (adminScreen && adminScreen.classList.contains('active')) {
+              obs.disconnect();
+              adminTab(sec, matchTab);
+            }
+          });
+          if (adminScreen) obs.observe(adminScreen, { attributes: true, attributeFilter: ['class'] });
+        }
+      }, 300);
+    }
+  }
 }
 
 function saveAdminTabOrder() {
