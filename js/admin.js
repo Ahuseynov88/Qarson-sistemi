@@ -63,10 +63,6 @@ export function initAdminTabDragDrop() {
   try { localStorage.removeItem('qarson_adminTabOrder'); } catch(e) {}
 }
 
-function _toggleSectionBackBtn(hide) {
-  const btn = document.getElementById('adminBackBtn');
-  if (btn) btn.style.display = hide ? 'none' : '';
-}
 
 export function renderAdmin() {
   if (state.adminSection==='home')          renderHome();
