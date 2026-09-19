@@ -50,138 +50,434 @@ function _toggleSectionBackBtn(hide) {
   if (btn) btn.style.display = hide ? 'none' : '';
 }
 
-export function renderAdmin() {
-  if (state.adminSection==='dashboard') renderDashboard();
-  if (state.adminSection==='staff')     renderStaff();
-  if (state.adminSection==='tables')    renderTables();
-  if (state.adminSection==='menu')      renderMenuItems();
-  if (state.adminSection==='logs')      renderLogs();
-  if (state.adminSection==='feedback')  renderFeedbackSection();
-  if (state.adminSection==='customers') renderCustomers();
-  if (state.adminSection==='paymentMethods') renderPaymentMethods();
-  if (state.adminSection==='closedOrders') renderClosedOrders();
-  if (state.adminSection==='loyaltyCustomers') renderLoyaltyCustomers();
-  if (state.adminSection==='suppliers') renderSuppliers();
-  if (state.adminSection==='purchases') renderPurchases();
-  if (state.adminSection==='banquetDashboard') renderBanquetDashboard();
-  if (state.adminSection==='banquetCalendar') renderBanquetCalendar();
-  if (state.adminSection==='banquetHalls') renderBanquetHalls();
-  if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
-     if (state.adminSection==='kitchenStations') renderKitchenStations();
-     if (state.adminSection==='notifSounds') renderNotifSounds();
-     if (state.adminSection==='printers') { renderPrinters(); renderReceiptTemplateSettings(); }
-     if (state.adminSection==='dangerZone') renderDangerZone();
+/* ═══════════════════════════════════════════════════════════════
+   YENİ ADMIN NAVİQASİYA SİSTEMİ
+   Köhnə adminTab/renderAdmin saxlanılır, yeni sidebar funksiyaları
+   əlavə olunur. Bütün mövcud bölmə render funksiyaları işləyir.
+═══════════════════════════════════════════════════════════════ */
+
+// initAdminTabDragDrop — app.js çağırır, boşaldılıb (drag artıq yoxdur)
+export function initAdminTabDragDrop() {
+  // Yeni sidebar sistemdə drag-drop yoxdur.
+  // Köhnə localStorage sıralamanı təmizlə
+  try { localStorage.removeItem('qarson_adminTabOrder'); } catch(e) {}
 }
+
+function _toggleSectionBackBtn(hide) {
+  const btn = document.getElementById('adminBackBtn');
+  if (btn) btn.style.display = hide ? 'none' : '';
+}
+
+export function renderAdmin() {
+  if (state.adminSection==='home')          renderHome();
+  if (state.adminSection==='dashboard')     renderDashboard();
+  if (state.adminSection==='registry')      renderRegistry();
+  if (state.adminSection==='staff')         renderStaff();
+  if (state.adminSection==='tables')        renderTables();
+  if (state.adminSection==='menu')          renderMenuItems();
+  if (state.adminSection==='logs')          renderLogs();
+  if (state.adminSection==='feedback')      renderFeedbackSection();
+  if (state.adminSection==='customers')     renderCustomers();
+  if (state.adminSection==='paymentMethods') renderPaymentMethods();
+  if (state.adminSection==='closedOrders')  renderClosedOrders();
+  if (state.adminSection==='loyaltyCustomers') renderLoyaltyCustomers();
+  if (state.adminSection==='suppliers')     renderSuppliers();
+  if (state.adminSection==='purchases')     renderPurchases();
+  if (state.adminSection==='banquetDashboard') renderBanquetDashboard();
+  if (state.adminSection==='banquetCalendar')  renderBanquetCalendar();
+  if (state.adminSection==='banquetHalls')     renderBanquetHalls();
+  if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
+  if (state.adminSection==='kitchenStations')  renderKitchenStations();
+  if (state.adminSection==='notifSounds')      renderNotifSounds();
+  if (state.adminSection==='printers') { renderPrinters(); renderReceiptTemplateSettings(); }
+  if (state.adminSection==='dangerZone')       renderDangerZone();
+}
+
+// Bölmələr üçün "+" FAB göstər/gizlə
+const FAB_SECTIONS = new Set(['tables','menu','staff','customers','paymentMethods','suppliers','purchases','banquetHalls','kitchenStations','banquetEventTypes','printers']);
 
 export function adminTab(sec, el) {
   state.adminSection = sec;
-  document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
-  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
-  document.getElementById('sec-'+sec).classList.add('active');
-  document.querySelector('.admin-body')?.classList.add('admin-section-open');
-  _toggleSectionBackBtn(false);
-  renderAdmin();
-  document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes'||sec==='printers') ? 'flex':'none';
 
-  // Aktiv tab-ın içindəki qrupu aç, digərlərindən "has-active" sil
-  document.querySelectorAll('.nav-group').forEach(g => {
-    const hasActive = g.querySelector('.admin-tab.active');
-    g.classList.toggle('has-active', !!hasActive);
-    if (hasActive && !g.classList.contains('open')) {
-      g.classList.add('open');
-    }
+  // Bütün nav itemlərin aktiv sinifini sil
+  document.querySelectorAll('.ap-nav__item, .admin-tab').forEach(b => b.classList.remove('active'));
+
+  // Yeni aktiv elementi işarələ
+  if (el) el.classList.add('active');
+
+  // Bölmə göstər
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  const secEl = document.getElementById('sec-' + sec);
+  if (secEl) secEl.classList.add('active');
+
+  // Qrup state-ini yenilə (has-active)
+  document.querySelectorAll('.ap-nav__group').forEach(g => {
+    const hasAct = g.querySelector('.ap-nav__item.active');
+    g.classList.toggle('has-active', !!hasAct);
+    if (hasAct && !g.classList.contains('open')) g.classList.add('open');
   });
 
-  if (sec==='settings') {
-    document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
+  // Settings init
+  if (sec === 'settings') {
+    const kpEl = document.getElementById('currentKitchenPin');
+    if (kpEl) kpEl.textContent = state.kitchenPin;
     db.ref('settings/menuUrl').once('value', snap => {
-      if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
+      const el2 = document.getElementById('menuUrlInput');
+      if (snap.val() && el2) el2.value = snap.val();
     });
     const sc = state.serviceCharge || {};
-    document.getElementById('serviceChargeEnabled').checked = !!sc.enabled;
-    document.getElementById('serviceChargePercent').value = sc.percent || '';
+    const scEnabled = document.getElementById('serviceChargeEnabled');
+    const scPct = document.getElementById('serviceChargePercent');
+    if (scEnabled) scEnabled.checked = !!sc.enabled;
+    if (scPct) scPct.value = sc.percent || '';
     db.ref('settings/loyalty').once('value', snap => {
       const l = snap.val() || {};
-      document.getElementById('referralBonusAmount').value = l.referralBonusAmount || '';
-      document.getElementById('referralMinOrderAmount').value = l.referralMinOrderAmount || '';
+      const rb = document.getElementById('referralBonusAmount');
+      const rm = document.getElementById('referralMinOrderAmount');
+      if (rb) rb.value = l.referralBonusAmount || '';
+      if (rm) rm.value = l.referralMinOrderAmount || '';
     });
   }
-  if (sec==='dangerZone') {
+
+  // Danger zone PIN
+  if (sec === 'dangerZone') {
     openDangerZonePinModal(null);
   }
+
+  // FAB görünürlüyü (yalnız desktop/tablet)
+  const fab = document.getElementById('adminFab');
+  if (fab) fab.style.display = (window.innerWidth >= 768 && FAB_SECTIONS.has(sec)) ? 'flex' : 'none';
+
+  // Mobil: section açılanda "open" state
+  const body = document.querySelector('.ap-layout');
+  if (body) body.classList.add('admin-section-open');
+  _toggleSectionBackBtn(false);
+
+  // Render
+  renderAdmin();
 }
 
-// Nav qrupunu açıb-bağla (accordion)
-function toggleNavGroup(groupId, headerEl) {
-  const group = headerEl.closest('.nav-group');
-  if (!group) return;
-  const isOpen = group.classList.contains('open');
-  // Digər qrupları bağla (isteğe bağlı — accordion davranışı)
-  // document.querySelectorAll('.nav-group.open').forEach(g => { if (g !== group) g.classList.remove('open'); });
-  group.classList.toggle('open', !isOpen);
-}
-window.toggleNavGroup = toggleNavGroup;
-
-// Telefonda "ev ekranı" naviqasiyasında bölmə görünüşündən grid menyusuna qayıdır
 export function adminGoBack() {
-  document.querySelector('.admin-body')?.classList.remove('admin-section-open');
-  document.getElementById('adminFab').style.display = 'none';
+  const body = document.querySelector('.ap-layout');
+  if (body) body.classList.remove('admin-section-open');
+  const fab = document.getElementById('adminFab');
+  if (fab) fab.style.display = 'none';
   _toggleSectionBackBtn(false);
 }
 
-// ── Kateqoriya (tab) sırasını sürükləyib dəyişmək (məs. "Ayarlar"ı birinci etmək) ──
-// Sıra brauzerin öz yaddaşında (localStorage) saxlanılır, hər admin öz sırasını seçə bilər.
-const TAB_ORDER_KEY = 'qarson_adminTabOrder';
+/* ── Sidebar collapse (desktop hamburger) ── */
+function apToggleSidebar() {
+  const sb = document.getElementById('apSidebar');
+  const logo = document.querySelector('.ap-topbar__logo');
+  if (!sb) return;
+  sb.classList.toggle('collapsed');
+  if (logo) logo.classList.toggle('collapsed');
+}
+window.apToggleSidebar = apToggleSidebar;
 
-export function initAdminTabDragDrop() {
-  const container = document.getElementById('adminTabsContainer');
-  if (!container) return;
-  let dragged = null;
+/* ── Nav group accordion ── */
+function apToggleGroup(groupId, headerEl) {
+  const group = headerEl?.closest('.ap-nav__group');
+  if (!group) return;
+  group.classList.toggle('open');
+}
+window.apToggleGroup = apToggleGroup;
 
-  container.querySelectorAll('.admin-tab').forEach(tab => {
-    tab.setAttribute('draggable', 'true');
-    tab.addEventListener('dragstart', () => { dragged = tab; tab.classList.add('dragging'); });
-    tab.addEventListener('dragend', () => {
-      tab.classList.remove('dragging');
-      container.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('drag-over'));
-      dragged = null;
-      saveAdminTabOrder();
-    });
-    tab.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (!dragged || dragged === tab) return;
-      container.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('drag-over'));
-      tab.classList.add('drag-over');
-      const rect = tab.getBoundingClientRect();
-      const before = e.clientX < rect.left + rect.width / 2;
-      container.insertBefore(dragged, before ? tab : tab.nextSibling);
-    });
+/* ── Mobile bottom nav active state ── */
+function apSetMobileNav(key) {
+  document.querySelectorAll('.ap-mobile-nav__btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('mbn-' + key);
+  if (btn) btn.classList.add('active');
+}
+window.apSetMobileNav = apSetMobileNav;
+
+/* ── Mobile Drawer ── */
+function apOpenDrawer() {
+  document.getElementById('apDrawer')?.classList.add('open');
+  document.getElementById('apDrawerBg')?.classList.add('open');
+}
+function apCloseDrawer() {
+  document.getElementById('apDrawer')?.classList.remove('open');
+  document.getElementById('apDrawerBg')?.classList.remove('open');
+}
+window.apOpenDrawer = apOpenDrawer;
+window.apCloseDrawer = apCloseDrawer;
+
+/* ── + Yeni Dropdown ── */
+function apToggleNewDropdown(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('apNewDropdown');
+  if (!dd) return;
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) {
+    const close = (ev) => { if (!dd.contains(ev.target)) { dd.classList.remove('open'); document.removeEventListener('click', close); } };
+    setTimeout(() => document.addEventListener('click', close), 10);
+  }
+}
+window.apToggleNewDropdown = apToggleNewDropdown;
+
+/* ── Quick New (hər bölmə üçün modal açır) ── */
+function apQuickNew(section) {
+  document.getElementById('apNewDropdown')?.classList.remove('open');
+  state.editTarget = null;
+  // Bölməyə keç
+  const navItem = document.querySelector(`.ap-nav__item[data-section="${section}"]`);
+  if (navItem) adminTab(section, navItem);
+  // Mövcud openAddModal/specific modal çağır
+  switch(section) {
+    case 'staff':           openAddStaffModal(); break;
+    case 'suppliers':       openSupplierModal(); break;
+    case 'purchases':       openPurchaseModal(); break;
+    case 'banquetEventTypes': openBanquetEventTypeModal(); break;
+    case 'kitchenStations': openKitchenStationModal(); break;
+    case 'printers':        openPrinterModal(); break;
+    case 'banquetHalls':    openBanquetHallModal(); break;
+    case 'menu':
+      document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Mal';
+      document.getElementById('addModalBody').innerHTML = menuItemForm({});
+      onMenuCategorySelectChange();
+      document.getElementById('addModal')?.classList.add('open');
+      break;
+    case 'customers':
+      document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Müştəri';
+      document.getElementById('addModalBody').innerHTML = customerForm({});
+      document.getElementById('addModal')?.classList.add('open');
+      break;
+    case 'paymentMethods':
+      document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Ödəniş Növü';
+      document.getElementById('addModalBody').innerHTML = paymentMethodForm({});
+      document.getElementById('addModal')?.classList.add('open');
+      break;
+    case 'tables':
+      document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Kateqoriya və Masalar';
+      document.getElementById('addModalBody').innerHTML = tableForm('', false);
+      document.getElementById('addModal')?.classList.add('open');
+      break;
+  }
+}
+window.apQuickNew = apQuickNew;
+
+/* ── Ana Səhifə (Home Dashboard) ── */
+function renderHome() {
+  const now = new Date();
+  const weekDays = ['Bazar','Bazar ertəsi','Çərşənbə axşamı','Çərşənbə','Cümə axşamı','Cümə','Şənbə'];
+  const months = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+  const dateEl = document.getElementById('apHomeDate');
+  if (dateEl) dateEl.textContent = `${weekDays[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+
+  // ── Statistik kartlar ──
+  const activeTables = (state.tables || []).filter(t => t.occupant).length;
+  const totalTables  = (state.tables || []).length;
+  const onlineStaff  = (state.staff || []).filter(s => s.status === 'online').length;
+
+  // Bugünkü satış hesabla
+  const bizHour = state._bizDayStartHour || 5;
+  const bizToday = new Date(now);
+  if (now.getHours() < bizHour) bizToday.setDate(bizToday.getDate() - 1);
+  bizToday.setHours(bizHour, 0, 0, 0);
+  const bizTomorrow = new Date(bizToday); bizTomorrow.setDate(bizTomorrow.getDate() + 1);
+
+  const todayOrders = (state.closedOrders || []).filter(o => {
+    const ts = o.closedAt || o.timestamp || 0;
+    return ts >= bizToday.getTime() && ts < bizTomorrow.getTime();
   });
+  const todaySales = todayOrders.reduce((s, o) => s + (o.total || 0), 0);
+  const todayOrderCount = todayOrders.length;
 
-  applySavedAdminTabOrder();
+  // Nisyə borcu
+  const totalCredit = (state.customerCharges || [])
+    .filter(c => !c.paid)
+    .reduce((s, c) => s + (c.amount || 0), 0);
+
+  const statsEl = document.getElementById('apHomeStats');
+  if (statsEl) statsEl.innerHTML = `
+    <div class="ap-home-stat ap-home-stat--green">
+      <div class="ap-home-stat__label">Bugünkü Satış</div>
+      <div class="ap-home-stat__val">${todaySales.toFixed(2)} <span style="font-size:14px;font-weight:600;">₼</span></div>
+      <div class="ap-home-stat__sub">${todayOrderCount} masa bağlandı</div>
+    </div>
+    <div class="ap-home-stat ap-home-stat--blue">
+      <div class="ap-home-stat__label">Aktiv Masalar</div>
+      <div class="ap-home-stat__val">${activeTables}</div>
+      <div class="ap-home-stat__sub">/ ${totalTables} masadan</div>
+    </div>
+    <div class="ap-home-stat ap-home-stat--gold">
+      <div class="ap-home-stat__label">Onlayn İşçilər</div>
+      <div class="ap-home-stat__val">${onlineStaff}</div>
+      <div class="ap-home-stat__sub">/ ${(state.staff||[]).length} işçidən</div>
+    </div>
+    ${totalCredit > 0 ? `
+    <div class="ap-home-stat ap-home-stat--red">
+      <div class="ap-home-stat__label">Ödənilməmiş Nisyə</div>
+      <div class="ap-home-stat__val">${totalCredit.toFixed(2)} <span style="font-size:14px;font-weight:600;">₼</span></div>
+      <div class="ap-home-stat__sub">ödəniləcək borclar</div>
+    </div>` : ''}
+  `;
+
+  // ── Xəbərdarlıqlar ──
+  const warnEl = document.getElementById('apHomeWarnings');
+  if (warnEl) {
+    const warns = [];
+    const lowStockItems = (state.menuItems || []).filter(m => m.trackStock && m.stock !== undefined && m.stock < 5 && m.available !== false);
+    if (lowStockItems.length) warns.push(`<div class="ap-home-warn"><svg class="icon"><use href="#i-warning"></use></svg><p><strong>${lowStockItems.length} məhsulun</strong> stoku azalır: ${lowStockItems.slice(0,3).map(m=>m.name).join(', ')}${lowStockItems.length>3?' ...':''}</p></div>`);
+
+    const upcomingBanquets = (state.banquetEvents || []).filter(ev => {
+      const d = new Date(ev.date);
+      const diff = (d - now) / 86400000;
+      return diff >= 0 && diff <= 7;
+    });
+    if (upcomingBanquets.length) warns.push(`<div class="ap-home-warn"><svg class="icon"><use href="#i-clock"></use></svg><p>Növbəti 7 gündə <strong>${upcomingBanquets.length} banket tədbiri</strong> planlaşdırılıb.</p></div>`);
+
+    warnEl.innerHTML = warns.join('');
+  }
+
+  // ── Aktiv masalar siyahısı ──
+  const tablesListEl = document.getElementById('apHomeTablesList');
+  if (tablesListEl) {
+    const activeTbls = (state.tables || []).filter(t => t.occupant);
+    if (!activeTbls.length) {
+      tablesListEl.innerHTML = '<div class="ap-home-empty">Hazırda açıq masa yoxdur</div>';
+    } else {
+      const orders = state.tableOrders || {};
+      tablesListEl.innerHTML = activeTbls.slice(0, 8).map(t => {
+        const ord = orders[t.id] || {};
+        const items = Object.values(ord);
+        const total = items.reduce((s, it) => s + (it.price||0)*(it.qty||1), 0);
+        return `<div class="ap-home-table-chip">
+          <span class="ap-home-table-chip__name">${esc(t.name)}</span>
+          <span class="ap-home-table-chip__meta">${esc(t.occupant||'')}</span>
+          <span class="ap-home-table-chip__amount">${total.toFixed(2)} ₼</span>
+        </div>`;
+      }).join('');
+      if (activeTbls.length > 8) tablesListEl.innerHTML += `<div style="text-align:center;font-size:12px;color:var(--text3);padding:8px 0;">+${activeTbls.length-8} daha...</div>`;
+    }
+  }
+
+  // ── Son əməliyyatlar ──
+  const actEl = document.getElementById('apHomeActivity');
+  if (actEl) {
+    const recent = (state.logs || []).slice(0, 8);
+    if (!recent.length) {
+      actEl.innerHTML = '<div class="ap-home-empty">Hələ heç bir əməliyyat yoxdur</div>';
+    } else {
+      const colors = { login:'var(--green)', logout:'var(--text3)', order:'var(--blue)', payment:'var(--gold)', danger_op:'var(--red)' };
+      actEl.innerHTML = recent.map(l => `
+        <div class="ap-home-activity">
+          <div class="ap-home-activity__dot" style="background:${colors[l.type]||'var(--text3)'}"></div>
+          <div class="ap-home-activity__text">${esc(l.message||'')}</div>
+          <div class="ap-home-activity__time">${esc(l.time||'')}</div>
+        </div>`).join('');
+    }
+  }
+
+  // ── Yaxın banket tədbirləri ──
+  const banqEl = document.getElementById('apHomeBanquet');
+  if (banqEl) {
+    const upcoming = (state.banquetEvents || []).filter(ev => {
+      const d = new Date(ev.date);
+      return d >= now && (d - now) / 86400000 <= 14;
+    }).slice(0,3);
+    if (upcoming.length) {
+      banqEl.innerHTML = `<div class="ap-home-card" style="margin-top:0;">
+        <div class="ap-home-card__head">
+          <h3>🎪 Yaxın Banket Tədbirləri</h3>
+          <button class="ap-home-card__head a" onclick="adminTab('banquetCalendar',document.querySelector('[data-section=banquetCalendar]'))">Təqvimə bax →</button>
+        </div>
+        <div class="ap-home-card__body">
+          ${upcoming.map(ev=>`<div class="ap-home-table-chip">
+            <span class="ap-home-table-chip__name">${esc(ev.title||ev.clientName||'Tədbir')}</span>
+            <span class="ap-home-table-chip__meta">${esc(ev.date||'')} ${esc(ev.hallName||'')}</span>
+            <span class="ap-home-table-chip__amount" style="color:var(--blue);">${(ev.totalAmount||0).toFixed(2)} ₼</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    } else {
+      banqEl.innerHTML = '';
+    }
+  }
 }
 
-function saveAdminTabOrder() {
-  const container = document.getElementById('adminTabsContainer');
-  if (!container) return;
-  const order = Array.from(container.querySelectorAll('.admin-tab')).map(t => t.dataset.section).filter(Boolean);
-  try { localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(order)); } catch(e) {}
-}
+/* ── Qeydiyyat Mərkəzi ── */
+function renderRegistry() {
+  const grid = document.getElementById('apRegistryGrid');
+  if (!grid) return;
 
-function applySavedAdminTabOrder() {
-  const container = document.getElementById('adminTabsContainer');
-  if (!container) return;
-  let saved;
-  try { saved = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || 'null'); } catch(e) { saved = null; }
-  if (!saved || !Array.isArray(saved)) return;
-  const tabs = Array.from(container.querySelectorAll('.admin-tab'));
-  const bySection = {};
-  tabs.forEach(t => { if (t.dataset.section) bySection[t.dataset.section] = t; });
-  saved.forEach(sectionId => { if (bySection[sectionId]) container.appendChild(bySection[sectionId]); });
-  // Yadda saxlanmış sırada olmayan (yeni əlavə olunan) tablar sona əlavə olunur
-  tabs.forEach(t => { if (t.dataset.section && !saved.includes(t.dataset.section)) container.appendChild(t); });
+  const cards = [
+    {
+      icon: '#i-staff', color: 'rgba(52,152,219,.1)', iconColor: 'var(--blue)',
+      title: 'İşçilər', count: (state.staff||[]).length, unit: 'işçi',
+      addLabel: 'Yeni İşçi', addFn: "apQuickNew('staff')",
+      viewLabel: 'Siyahıya bax', viewFn: "adminTab('staff',document.querySelector('[data-section=staff]'))"
+    },
+    {
+      icon: '#i-chair', color: 'rgba(201,151,63,.1)', iconColor: 'var(--gold)',
+      title: 'Masalar', count: (state.tables||[]).length, unit: 'masa',
+      addLabel: 'Yeni Masa', addFn: "apQuickNew('tables')",
+      viewLabel: 'Siyahıya bax', viewFn: "adminTab('tables',document.querySelector('[data-section=tables]'))"
+    },
+    {
+      icon: '#i-food', color: 'rgba(28,107,53,.1)', iconColor: 'var(--green)',
+      title: 'Menyu / Məhsullar', count: (state.menuItems||[]).length, unit: 'məhsul',
+      addLabel: 'Yeni Məhsul', addFn: "apQuickNew('menu')",
+      viewLabel: 'Məhsullara bax', viewFn: "adminTab('menu',document.querySelector('[data-section=menu]'))"
+    },
+    {
+      icon: '#i-card', color: 'rgba(163,42,36,.08)', iconColor: 'var(--red)',
+      title: 'Nisyə Müştəriləri', count: (state.customers||[]).length, unit: 'müştəri',
+      addLabel: 'Yeni Müştəri', addFn: "apQuickNew('customers')",
+      viewLabel: 'Siyahıya bax', viewFn: "adminTab('customers',document.querySelector('[data-section=customers]'))"
+    },
+    {
+      icon: '#i-users', color: 'rgba(142,68,173,.1)', iconColor: 'var(--purple)',
+      title: 'Təchizatçılar', count: (state.suppliers||[]).length, unit: 'təchizatçı',
+      addLabel: 'Yeni Təchizatçı', addFn: "apQuickNew('suppliers')",
+      viewLabel: 'Siyahıya bax', viewFn: "adminTab('suppliers',document.querySelector('[data-section=suppliers]'))"
+    },
+    {
+      icon: '#i-money', color: 'rgba(52,152,219,.08)', iconColor: 'var(--blue)',
+      title: 'Ödəniş Üsulları', count: (state.paymentMethods||[]).length, unit: 'üsul',
+      addLabel: 'Yeni Üsul', addFn: "apQuickNew('paymentMethods')",
+      viewLabel: 'Siyahıya bax', viewFn: "adminTab('paymentMethods',document.querySelector('[data-section=paymentMethods]'))"
+    },
+    {
+      icon: '#i-chef', color: 'rgba(196,176,46,.1)', iconColor: 'var(--orange)',
+      title: 'Mətbəx Stansiyaları', count: (state.kitchenStations||[]).length, unit: 'stansiya',
+      addLabel: 'Yeni Stansiya', addFn: "apQuickNew('kitchenStations')",
+      viewLabel: 'İdarə et', viewFn: "adminTab('kitchenStations',document.querySelector('[data-section=kitchenStations]'))"
+    },
+    {
+      icon: '#i-chair', color: 'rgba(46,204,113,.1)', iconColor: 'var(--green)',
+      title: 'Banket Zalları', count: (state.banquetHalls||[]).length, unit: 'zal',
+      addLabel: 'Yeni Zal', addFn: "apQuickNew('banquetHalls')",
+      viewLabel: 'İdarə et', viewFn: "adminTab('banquetHalls',document.querySelector('[data-section=banquetHalls]'))"
+    }
+  ];
+
+  grid.innerHTML = cards.map(c => `
+    <div class="ap-registry-card">
+      <div class="ap-registry-card__top">
+        <div class="ap-registry-card__icon" style="background:${c.color};">
+          <svg class="icon" style="color:${c.iconColor};"><use href="${c.icon}"></use></svg>
+        </div>
+        <div class="ap-registry-card__info">
+          <h3>${c.title}</h3>
+          <div class="ap-registry-card__count" style="color:${c.iconColor};">${c.count}</div>
+          <div class="ap-registry-card__sub">${c.unit} qeydiyyatda</div>
+        </div>
+      </div>
+      <div class="ap-registry-card__actions">
+        <button class="ap-registry-card__btn ap-registry-card__btn--add" onclick="${c.addFn}">
+          <svg class="icon"><use href="#i-plus"></use></svg> ${c.addLabel}
+        </button>
+        <button class="ap-registry-card__btn" onclick="${c.viewFn}">
+          <svg class="icon"><use href="#i-clipboard"></use></svg> ${c.viewLabel}
+        </button>
+      </div>
+    </div>
+  `).join('');
 }
+window.renderRegistry = renderRegistry;
+window.renderHome = renderHome;
 
 export function renderDashboard() {
   const activeStaff = state.staff.filter(s=>s.status!=='offline').length;
@@ -194,7 +490,6 @@ export function renderDashboard() {
   `;
   const bizHourEl = document.getElementById('repBizDayHour');
   if (bizHourEl && !bizHourEl.value) bizHourEl.value = String(state._bizDayStartHour||5).padStart(2,'0') + ':00';
-  // Filtr sahələri hələ boşdursa (ilk açılış), defolt olaraq "gün sonu" aralığı tətbiq olunur
   const dateFromEl = document.getElementById('repDateFrom');
   if (dateFromEl && !dateFromEl.value) { setReportQuickRange('today'); }
   else { renderReports(); }
@@ -1405,47 +1700,8 @@ export function previewMenuItemPhoto(input) {
 }
 
 export function openAddModal() {
-  state.editTarget = null;
-  if (state.adminSection === 'staff') {
-    openAddStaffModal();
-    return;
-  }
-  if (state.adminSection === 'suppliers') {
-    openSupplierModal();
-    return;
-  }
-  if (state.adminSection === 'purchases') {
-    openPurchaseModal();
-    return;
-  }
-    if (state.adminSection === 'banquetEventTypes') {
-    openBanquetEventTypeModal();
-    return;
-  }
-  if (state.adminSection === 'kitchenStations') {
-    openKitchenStationModal();
-    return;
-  }
-  if (state.adminSection === 'printers') {
-    openPrinterModal();
-    return;
-  }
-  
-  if (state.adminSection === 'menu') {
-    document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Mal';
-    document.getElementById('addModalBody').innerHTML = menuItemForm({});
-    onMenuCategorySelectChange();
-  } else if (state.adminSection === 'customers') {
-    document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Müştəri';
-    document.getElementById('addModalBody').innerHTML = customerForm({});
-  } else if (state.adminSection === 'paymentMethods') {
-    document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Ödəniş Növü';
-    document.getElementById('addModalBody').innerHTML = paymentMethodForm({});
-  } else {
-    document.getElementById('addModalTitle').innerHTML = '<svg class="icon"><use href="#i-plus"></use></svg> Yeni Kateqoriya və Masalar';
-    document.getElementById('addModalBody').innerHTML = tableForm('', false);
-  }
-  document.getElementById('addModal').classList.add('open');
+  // Yeni sistemdə apQuickNew istifadə edir, bu köhnə FAB üçün saxlanılıb
+  apQuickNew(state.adminSection);
 }
 
 export function closeAddModal() {
@@ -3776,10 +4032,10 @@ function openDangerZonePinModal(opId) {
 function closeDangerZonePinModal() {
   document.getElementById('dangerZonePinModal')?.classList.remove('open');
   _pendingDangerOpId = null;
-  // əgər bölməyə giriş üçün istənilmiş parol ləğv edildisə — dashboard-a qayıt
+  // əgər bölməyə giriş üçün istənilmiş parol ləğv edildisə — Ana Səhifəyə qayıt
   if (state.adminSection === 'dangerZone') {
-    const dashTab = document.querySelector('.admin-tab[data-section="dashboard"]');
-    if (dashTab) adminTab('dashboard', dashTab);
+    const homeItem = document.querySelector('.ap-nav__item[data-section="home"]');
+    if (homeItem) adminTab('home', homeItem);
   }
 }
 
