@@ -3,7 +3,6 @@
    Bütün SVG xətt-ikonları tək dəfə DOM-a əlavə edir.
    İstifadə: <svg class="icon"><use href="#i-check"></use></svg>
 ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
-
 export function injectIconSprite() {
   if (document.getElementById('icon-sprite-root')) return;
   const wrap = document.createElement('div');
