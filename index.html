@@ -128,857 +128,466 @@
 <!-- ═══ ADMIN ═══ -->
 <div class="screen" id="adminScreen">
 
-  <!-- ── Desktop/Tablet Topbar ── -->
-  <div class="ap-topbar">
-    <div class="ap-topbar__logo">
-      <div class="ap-topbar__logo-icon"><svg class="icon"><use href="#i-utensils"></use></svg></div>
-      <span class="ap-topbar__logo-text">Qarson Pro</span>
+  <!-- Topbar -->
+  <div class="topbar" id="adminTopbar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="ap-hamburger" onclick="apToggleSidebar()" title="Menyu"><svg class="icon" style="width:20px;height:20px;"><use href="#i-menu"></use></svg></button>
+      <h2 style="font-size:16px;"><svg class="icon"><use href="#i-admin"></use></svg> <span id="apPageTitle">Admin Paneli</span></h2>
     </div>
-    <button class="ap-topbar__hamburger" id="apSidebarToggle" onclick="apToggleSidebar()">
-      <svg class="icon"><use href="#i-menu"></use></svg>
-    </button>
-    <div class="ap-topbar__center"></div>
-    <div class="ap-topbar__right">
+    <div class="topbar-right">
       <!-- + Yeni dropdown -->
       <div style="position:relative;">
-        <button class="ap-topbar__new-btn" id="apNewBtn" onclick="apToggleNewDropdown(event)">
-          <svg class="icon"><use href="#i-plus"></use></svg> Yeni
+        <button class="btn btn-green ap-new-btn" id="apNewBtn" onclick="apToggleNewMenu(event)" style="padding:7px 12px;font-size:13px;display:flex;align-items:center;gap:5px;">
+          <svg class="icon" style="width:14px;height:14px;"><use href="#i-plus"></use></svg>
+          <span class="ap-new-label">Yeni</span>
         </button>
-        <div class="ap-new-dropdown" id="apNewDropdown">
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('staff')"><svg class="icon"><use href="#i-staff"></use></svg> Yeni İşçi</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Yeni Masa</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('menu')"><svg class="icon"><use href="#i-food"></use></svg> Yeni Məhsul</button>
+        <div class="ap-new-dropdown" id="apNewMenu">
+          <div class="ap-new-dropdown__section">Qeydiyyat</div>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('staff')"><svg class="icon"><use href="#i-staff"></use></svg> Yeni İşçi</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Yeni Masa</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('menu')"><svg class="icon"><use href="#i-food"></use></svg> Yeni Məhsul</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('customers')"><svg class="icon"><use href="#i-users"></use></svg> Nisyə Müştəri</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('paymentMethods')"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növü</button>
           <div class="ap-new-dropdown__sep"></div>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('customers')"><svg class="icon"><use href="#i-users"></use></svg> Nisyə Müştəri</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('paymentMethods')"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növü</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('purchases')"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışı</button>
+          <div class="ap-new-dropdown__section">Anbar</div>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('purchases')"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışı</button>
           <div class="ap-new-dropdown__sep"></div>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('banquetHalls')"><svg class="icon"><use href="#i-chair"></use></svg> Banket Zalı</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('kitchenStations')"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx Stansiyası</button>
-          <button class="ap-new-dropdown__item" onclick="apQuickNew('banquetEventTypes')"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növü</button>
+          <div class="ap-new-dropdown__section">Sistem</div>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('banquetHalls')"><svg class="icon"><use href="#i-chair"></use></svg> Banket Zalı</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('kitchenStations')"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx Stansiyası</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('printers')"><svg class="icon"><use href="#i-printer"></use></svg> Printer</button>
         </div>
       </div>
-      <button class="ap-topbar__icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Tema dəyiş">
-        <svg class="icon"><use href="#i-moon"></use></svg>
-      </button>
-      <button class="btn btn-red" onclick="logout()" style="padding:7px 14px;font-size:13px;">Çıxış</button>
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
+      <button class="btn btn-red" onclick="logout()" style="padding:7px 12px;font-size:13px;">Çıxış</button>
     </div>
   </div>
 
-  <!-- ── Main Layout ── -->
-  <div class="ap-layout">
+  <!-- Ana layout -->
+  <div class="admin-body" id="adminBody">
+    <button id="adminBackBtn" class="admin-back-btn" onclick="adminGoBack()"><svg class="icon"><use href="#i-close"></use></svg> Geri</button>
 
-    <!-- ── Sidebar ── -->
-    <nav class="ap-sidebar" id="apSidebar">
-      <div class="ap-nav" id="apNavContainer">
+    <!-- Sidebar / Tab container -->
+    <div class="admin-tabs" id="adminTabsContainer">
 
-        <!-- ANA SƏHİFƏ -->
-        <button class="ap-nav__item active" data-section="home" onclick="adminTab('home',this)">
-          <svg class="icon"><use href="#i-home"></use></svg>
-          <span class="ap-nav__label">Ana Səhifə</span>
+      <!-- ANA SƏHİFƏ & HESABATLAR -->
+      <div class="ap-group" data-group="reports">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-chart"></use></svg>
+          <span>Hesabatlar</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
         </button>
-
-        <!-- HESABATLAR -->
-        <div class="ap-nav__group" data-group="reports">
-          <button class="ap-nav__group-header" onclick="apToggleGroup('reports',this)">
-            <svg class="icon"><use href="#i-chart"></use></svg>
-            <span class="ap-nav__label">Hesabatlar</span>
-            <svg class="ap-nav__group-arrow icon"><use href="#i-chevron"></use></svg>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="dashboard" onclick="adminTab('dashboard',this)">
+            <svg class="icon"><use href="#i-chart"></use></svg> Satış Hesabatı
           </button>
-          <div class="ap-nav__group-items">
-            <button class="ap-nav__item" data-section="dashboard" onclick="adminTab('dashboard',this)">
-              <svg class="icon"><use href="#i-chart"></use></svg>
-              <span class="ap-nav__label">Satış Hesabatı</span>
-            </button>
-            <button class="ap-nav__item" data-section="closedOrders" onclick="adminTab('closedOrders',this)">
-              <svg class="icon"><use href="#i-lock"></use></svg>
-              <span class="ap-nav__label">Bağlanan Masalar</span>
-            </button>
-            <button class="ap-nav__item" data-section="logs" onclick="adminTab('logs',this)">
-              <svg class="icon"><use href="#i-clipboard"></use></svg>
-              <span class="ap-nav__label">Tarixçə</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- QEYDİYYAT -->
-        <div class="ap-nav__group" data-group="registry">
-          <button class="ap-nav__group-header" onclick="apToggleGroup('registry',this)">
-            <svg class="icon"><use href="#i-folder"></use></svg>
-            <span class="ap-nav__label">Qeydiyyat</span>
-            <svg class="ap-nav__group-arrow icon"><use href="#i-chevron"></use></svg>
+          <button class="admin-tab" data-section="closedOrders" onclick="adminTab('closedOrders',this)">
+            <svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar
           </button>
-          <div class="ap-nav__group-items">
-            <button class="ap-nav__item" data-section="registry" onclick="adminTab('registry',this)">
-              <svg class="icon"><use href="#i-admin"></use></svg>
-              <span class="ap-nav__label">Mərkəz</span>
-            </button>
-            <button class="ap-nav__item" data-section="staff" onclick="adminTab('staff',this)">
-              <svg class="icon"><use href="#i-staff"></use></svg>
-              <span class="ap-nav__label">İşçilər</span>
-            </button>
-            <button class="ap-nav__item" data-section="tables" onclick="adminTab('tables',this)">
-              <svg class="icon"><use href="#i-chair"></use></svg>
-              <span class="ap-nav__label">Masalar</span>
-            </button>
-            <button class="ap-nav__item" data-section="menu" onclick="adminTab('menu',this)">
-              <svg class="icon"><use href="#i-food"></use></svg>
-              <span class="ap-nav__label">Menyu</span>
-            </button>
-            <button class="ap-nav__item" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)">
-              <svg class="icon"><use href="#i-card"></use></svg>
-              <span class="ap-nav__label">Ödəniş Növləri</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- ANBAR & ALIŞ -->
-        <div class="ap-nav__group" data-group="warehouse">
-          <button class="ap-nav__group-header" onclick="apToggleGroup('warehouse',this)">
-            <svg class="icon"><use href="#i-box"></use></svg>
-            <span class="ap-nav__label">Anbar & Alış</span>
-            <svg class="ap-nav__group-arrow icon"><use href="#i-chevron"></use></svg>
+          <button class="admin-tab" data-section="logs" onclick="adminTab('logs',this)">
+            <svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə
           </button>
-          <div class="ap-nav__group-items">
-            <button class="ap-nav__item" data-section="purchases" onclick="adminTab('purchases',this)">
-              <svg class="icon"><use href="#i-cash"></use></svg>
-              <span class="ap-nav__label">Məhsul Alışları</span>
-            </button>
-            <button class="ap-nav__item" data-section="suppliers" onclick="adminTab('suppliers',this)">
-              <svg class="icon"><use href="#i-users"></use></svg>
-              <span class="ap-nav__label">Təchizatçılar</span>
-            </button>
-          </div>
         </div>
+      </div>
 
-        <!-- MÜŞTƏRİ & CRM -->
-        <div class="ap-nav__group" data-group="crm">
-          <button class="ap-nav__group-header" onclick="apToggleGroup('crm',this)">
-            <svg class="icon"><use href="#i-users"></use></svg>
-            <span class="ap-nav__label">Müştəri & CRM</span>
-            <svg class="ap-nav__group-arrow icon"><use href="#i-chevron"></use></svg>
-          </button>
-          <div class="ap-nav__group-items">
-            <button class="ap-nav__item" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)">
-              <svg class="icon"><use href="#i-star"></use></svg>
-              <span class="ap-nav__label">Loyallıq Üzvləri</span>
-            </button>
-            <button class="ap-nav__item" data-section="customers" onclick="adminTab('customers',this)">
-              <svg class="icon"><use href="#i-card"></use></svg>
-              <span class="ap-nav__label">Nisyə Hesabları</span>
-            </button>
-            <button class="ap-nav__item" data-section="feedback" onclick="adminTab('feedback',this)">
-              <svg class="icon"><use href="#i-chat"></use></svg>
-              <span class="ap-nav__label">Rəylər & Şikayətlər</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- BANKET -->
-        <div class="ap-nav__group" data-group="banquet">
-          <button class="ap-nav__group-header" onclick="apToggleGroup('banquet',this)">
-            <span style="font-size:14px;flex-shrink:0;">🎪</span>
-            <span class="ap-nav__label">Banket</span>
-            <svg class="ap-nav__group-arrow icon"><use href="#i-chevron"></use></svg>
-          </button>
-          <div class="ap-nav__group-items">
-            <button class="ap-nav__item" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)">
-              <svg class="icon"><use href="#i-chart"></use></svg>
-              <span class="ap-nav__label">Dashboard</span>
-            </button>
-            <button class="ap-nav__item" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)">
-              <svg class="icon"><use href="#i-clock"></use></svg>
-              <span class="ap-nav__label">Təqvim</span>
-            </button>
-            <button class="ap-nav__item" data-section="banquetHalls" onclick="adminTab('banquetHalls',this)">
-              <svg class="icon"><use href="#i-chair"></use></svg>
-              <span class="ap-nav__label">Zallar</span>
-            </button>
-            <button class="ap-nav__item" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)">
-              <svg class="icon"><use href="#i-tag"></use></svg>
-              <span class="ap-nav__label">Tədbir Növləri</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SİSTEM -->
-        <div class="ap-nav__group" data-group="system">
-          <button class="ap-nav__group-header" onclick="apToggleGroup('system',this)">
-            <svg class="icon"><use href="#i-settings"></use></svg>
-            <span class="ap-nav__label">Sistem</span>
-            <svg class="ap-nav__group-arrow icon"><use href="#i-chevron"></use></svg>
-          </button>
-          <div class="ap-nav__group-items">
-            <button class="ap-nav__item" data-section="settings" onclick="adminTab('settings',this)">
-              <svg class="icon"><use href="#i-settings"></use></svg>
-              <span class="ap-nav__label">Ümumi Ayarlar</span>
-            </button>
-            <button class="ap-nav__item" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)">
-              <svg class="icon"><use href="#i-chef"></use></svg>
-              <span class="ap-nav__label">Mətbəx</span>
-            </button>
-            <button class="ap-nav__item" data-section="printers" onclick="adminTab('printers',this)">
-              <svg class="icon"><use href="#i-printer"></use></svg>
-              <span class="ap-nav__label">Printer & Çek</span>
-            </button>
-            <button class="ap-nav__item" data-section="notifSounds" onclick="adminTab('notifSounds',this)">
-              <svg class="icon"><use href="#i-bell"></use></svg>
-              <span class="ap-nav__label">Bildiriş Səsləri</span>
-            </button>
-            <button class="ap-nav__item ap-nav__item--danger" data-section="dangerZone" onclick="adminTab('dangerZone',this)">
-              <svg class="icon"><use href="#i-warning"></use></svg>
-              <span class="ap-nav__label">Təhlükəli Əməliyyatlar</span>
-            </button>
-          </div>
-        </div>
-
-      </div><!-- /ap-nav -->
-
-      <!-- Sidebar bottom -->
-      <div class="ap-nav__bottom">
-        <button class="ap-nav__item" style="width:100%;color:var(--red);" onclick="logout()">
-          <svg class="icon"><use href="#i-close"></use></svg>
-          <span class="ap-nav__label">Çıxış</span>
+      <!-- QEYDİYYAT -->
+      <div class="ap-group" data-group="registry">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-folder"></use></svg>
+          <span>Qeydiyyat</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
         </button>
-      </div>
-    </nav><!-- /ap-sidebar -->
-
-    <!-- ── Content ── -->
-    <main class="ap-content" id="apContent">
-      <button id="adminBackBtn" class="admin-back-btn" onclick="adminGoBack()">
-        <svg class="icon"><use href="#i-close"></use></svg> Geri
-      </button>
-
-      <!-- HOME — Ana Səhifə -->
-      <div class="admin-section active" id="sec-home">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div>
-              <div class="ap-page-header__title"><svg class="icon"><use href="#i-home"></use></svg> Ana Səhifə</div>
-              <div class="ap-page-header__sub" id="apHomeDate"></div>
-            </div>
-          </div>
-          <div class="ap-home-stats" id="apHomeStats"></div>
-          <div id="apHomeWarnings"></div>
-          <div class="ap-home-row">
-            <div class="ap-home-card" id="apHomeTablesCard">
-              <div class="ap-home-card__head">
-                <h3><svg class="icon"><use href="#i-chair"></use></svg> Aktiv Masalar</h3>
-                <button class="ap-home-card__head a" onclick="adminTab('closedOrders', document.querySelector('[data-section=closedOrders]'))">Hamısına bax →</button>
-              </div>
-              <div class="ap-home-card__body" id="apHomeTablesList"></div>
-            </div>
-            <div class="ap-home-card" id="apHomeActivityCard">
-              <div class="ap-home-card__head">
-                <h3><svg class="icon"><use href="#i-clipboard"></use></svg> Son Əməliyyatlar</h3>
-                <button class="ap-home-card__head a" onclick="adminTab('logs', document.querySelector('[data-section=logs]'))">Hamısına bax →</button>
-              </div>
-              <div class="ap-home-card__body" id="apHomeActivity"></div>
-            </div>
-          </div>
-          <div id="apHomeBanquet"></div>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)">
+            <svg class="icon"><use href="#i-staff"></use></svg> İşçilər
+          </button>
+          <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)">
+            <svg class="icon"><use href="#i-chair"></use></svg> Masalar
+          </button>
+          <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)">
+            <svg class="icon"><use href="#i-food"></use></svg> Menyu
+          </button>
+          <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)">
+            <svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri
+          </button>
         </div>
       </div>
 
-      <!-- DASHBOARD — Satış Hesabatı -->
-      <div class="admin-section" id="sec-dashboard">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div>
-              <div class="ap-page-header__title"><svg class="icon"><use href="#i-chart"></use></svg> Satış Hesabatı</div>
-            </div>
-          </div>
-          <div class="stats-row" id="statsRow"></div>
-          <div class="report-quick-filters">
-            <button class="report-quick-btn" onclick="setReportQuickRange('today')">Bu gün</button>
-            <button class="report-quick-btn" onclick="setReportQuickRange('yesterday')">Dünən</button>
-            <button class="report-quick-btn" onclick="setReportQuickRange('week')">Bu həftə</button>
-            <button class="report-quick-btn" onclick="setReportQuickRange('month')">Bu ay</button>
-            <button class="report-quick-btn" onclick="setReportQuickRange('lastMonth')">Keçən ay</button>
-            <button class="report-quick-btn" onclick="setReportQuickRange('year')">Bu il</button>
-            <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('dayEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Gün Sonu</button>
-            <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('monthEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Ay Sonu</button>
-          </div>
-          <div class="closed-tables-filters" style="margin-bottom:14px;">
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="repDateFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
-              <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="repDateTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
-            </div>
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="repTimeFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
-              <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="repTimeTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
-            </div>
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">İş günü başlama saatı <small style="font-weight:400;">(Gün/Ay Sonu üçün)</small></span><input type="time" id="repBizDayHour" value="05:00" onchange="saveBizDayHour()"></div>
-              <div style="display:flex;align-items:flex-end;"><span id="reportRangeSummary" style="font-size:12.5px;color:var(--text2);padding-bottom:9px;"></span></div>
-            </div>
-          </div>
-          <div class="report-subtabs" id="reportSubtabs">
-            <button class="report-subtab active" data-view="summary" onclick="setReportView('summary')"><svg class="icon"><use href="#i-chart"></use></svg> Xülasə</button>
-            <button class="report-subtab" data-view="payments" onclick="setReportView('payments')"><svg class="icon"><use href="#i-money"></use></svg> Kassa Əməliyyatları</button>
-            <button class="report-subtab" data-view="staff" onclick="setReportView('staff')"><svg class="icon"><use href="#i-staff"></use></svg> İşçi Performansı</button>
-            <button class="report-subtab" data-view="items" onclick="setReportView('items')"><svg class="icon"><use href="#i-food"></use></svg> Məhsul Satışı</button>
-            <button class="report-subtab" data-view="tables" onclick="setReportView('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Masalara Görə</button>
-            <button class="report-subtab" data-view="days" onclick="setReportView('days')"><svg class="icon"><use href="#i-clipboard"></use></svg> Günlərə Görə</button>
-            <button class="report-subtab" data-view="hours" onclick="setReportView('hours')"><svg class="icon"><use href="#i-clock"></use></svg> Saatlara Görə</button>
-            <button class="report-subtab" data-view="discounts" onclick="setReportView('discounts')"><svg class="icon"><use href="#i-tag"></use></svg> Endirim / İkram</button>
-            <button class="report-subtab" data-view="turnover" onclick="setReportView('turnover')"><svg class="icon"><use href="#i-refresh"></use></svg> Masa Dövriyyəsi</button>
-            <button class="report-subtab" data-view="loyalty" onclick="setReportView('loyalty')"><svg class="icon"><use href="#i-users"></use></svg> Loyallıq Proqramı</button>
-            <button class="report-subtab" data-view="compare" onclick="setReportView('compare')"><svg class="icon"><use href="#i-chart"></use></svg> Dövrlər Müqayisəsi</button>
-            <button class="report-subtab" data-view="cancellations" onclick="setReportView('cancellations')"><svg class="icon"><use href="#i-trash"></use></svg> Ləğvetmələr</button>
-            <button class="report-subtab" data-view="openTables" onclick="setReportView('openTables')"><svg class="icon"><use href="#i-chair"></use></svg> Hazırda Açıq Masalar</button>
-            <button class="report-subtab" data-view="credit" onclick="setReportView('credit')"><svg class="icon"><use href="#i-cash"></use></svg> Nisyə Vəziyyəti</button>
-            <button class="report-subtab" data-view="stock" onclick="setReportView('stock')"><svg class="icon"><use href="#i-food"></use></svg> Anbar/Stok</button>
-            <button class="report-subtab" data-view="suppliers" onclick="setReportView('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı/Alış</button>
-          </div>
-          <div id="reportContent"></div>
+      <!-- ANBAR & ALIŞ -->
+      <div class="ap-group" data-group="warehouse">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-box"></use></svg>
+          <span>Anbar & Alış</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)">
+            <svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları
+          </button>
+          <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)">
+            <svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar
+          </button>
         </div>
       </div>
 
-      <!-- QEYDİYYAT MƏRKƏZİ -->
-      <div class="admin-section" id="sec-registry">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div>
-              <div class="ap-page-header__title"><svg class="icon"><use href="#i-folder"></use></svg> Qeydiyyat Mərkəzi</div>
-              <div class="ap-page-header__sub">Bütün qeydiyyat növlərini bir yerdən idarə et</div>
-            </div>
-          </div>
-          <div class="ap-registry-grid" id="apRegistryGrid"></div>
+      <!-- MÜŞTƏRİ & CRM -->
+      <div class="ap-group" data-group="crm">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-users"></use></svg>
+          <span>Müştəri & CRM</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)">
+            <svg class="icon"><use href="#i-star"></use></svg> Loyallıq Üzvləri
+          </button>
+          <button class="admin-tab" data-section="customers" onclick="adminTab('customers',this)">
+            <svg class="icon"><use href="#i-card"></use></svg> Nisyə Hesabları
+          </button>
+          <button class="admin-tab" data-section="feedback" onclick="adminTab('feedback',this)">
+            <svg class="icon"><use href="#i-chat"></use></svg> Rəylər & Şikayətlər
+          </button>
         </div>
       </div>
 
-      <!-- İŞÇİLƏR -->
-      <div class="admin-section" id="sec-staff">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-staff"></use></svg> İşçilər</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('staff')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni İşçi</button>
-            </div>
-          </div>
-          <div class="tile-grid" id="staffGrid"></div>
-          <div class="tile-detail-overlay" id="staffDetailPanel">
-            <div class="tile-detail-back" onclick="selectStaff(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="staffDetailBody"></div>
-          </div>
+      <!-- BANKET -->
+      <div class="ap-group" data-group="banquet">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <span class="ap-group__emoji">🎪</span>
+          <span>Banket</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)">
+            <svg class="icon"><use href="#i-chart"></use></svg> Dashboard
+          </button>
+          <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)">
+            <svg class="icon"><use href="#i-clock"></use></svg> Təqvim
+          </button>
+          <button class="admin-tab" data-section="banquetHalls" onclick="adminTab('banquetHalls',this)">
+            <svg class="icon"><use href="#i-chair"></use></svg> Zallar
+          </button>
+          <button class="admin-tab" data-section="banquetEventTypes" onclick="adminTab('banquetEventTypes',this)">
+            <svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri
+          </button>
         </div>
       </div>
 
-      <!-- MASALAR -->
-      <div class="admin-section" id="sec-tables">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-chair"></use></svg> Masalar</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('tables')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Masa</button>
-            </div>
-          </div>
-          <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-          <div class="tile-grid" id="tablesGrid"></div>
-          <div class="tile-detail-overlay" id="tablesDetailPanel">
-            <div class="tile-detail-back" onclick="selectTableMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="tablesDetailBody"></div>
-          </div>
+      <!-- SİSTEM -->
+      <div class="ap-group" data-group="system">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-settings"></use></svg>
+          <span>Sistem</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="settings" onclick="adminTab('settings',this)">
+            <svg class="icon"><use href="#i-settings"></use></svg> Ayarlar
+          </button>
+          <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)">
+            <svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər
+          </button>
+          <button class="admin-tab" data-section="printers" onclick="adminTab('printers',this)">
+            <svg class="icon"><use href="#i-printer"></use></svg> Printerlər
+          </button>
+          <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">
+            <svg class="icon"><use href="#i-bell"></use></svg> Bildiriş Səsləri
+          </button>
+          <button class="admin-tab" data-section="dangerZone" onclick="adminTab('dangerZone',this)" style="color:var(--red);">
+            <svg class="icon"><use href="#i-warning"></use></svg> Təhlükəli Əməliyyatlar
+          </button>
         </div>
       </div>
 
-      <!-- MENYU -->
-      <div class="admin-section" id="sec-menu">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-food"></use></svg> Menyu</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('menu')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Məhsul</button>
-            </div>
-          </div>
-          <div id="menuCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-          <div class="tile-grid" id="menuGrid"></div>
-          <div class="tile-detail-overlay" id="menuDetailPanel">
-            <div class="tile-detail-back" onclick="selectMenuItem(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="menuDetailBody"></div>
-          </div>
+    </div><!-- /admin-tabs -->
+
+    <!-- Content bölmələri -->
+    <div class="admin-section active" id="sec-dashboard">
+      <div class="stats-row" id="statsRow"></div>
+      <div class="report-quick-filters">
+        <button class="report-quick-btn" onclick="setReportQuickRange('today')">Bu gün</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('yesterday')">Dünən</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('week')">Bu həftə</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('month')">Bu ay</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('lastMonth')">Keçən ay</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('year')">Bu il</button>
+        <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('dayEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Gün Sonu</button>
+        <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('monthEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Ay Sonu</button>
+      </div>
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="repDateFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="repDateTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="repTimeFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="repTimeTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">İş günü başlama saatı <small style="font-weight:400;">(Gün/Ay Sonu üçün)</small></span><input type="time" id="repBizDayHour" value="05:00" onchange="saveBizDayHour()"></div>
+          <div style="display:flex;align-items:flex-end;"><span id="reportRangeSummary" style="font-size:12.5px;color:var(--text2);padding-bottom:9px;"></span></div>
         </div>
       </div>
-
-      <!-- BAĞLANAN MASALAR -->
-      <div class="admin-section" id="sec-closedOrders">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar</div></div>
-          </div>
-          <div class="closed-tables-filters" style="margin-bottom:14px;">
-            <input type="text" id="ctSearchInput" placeholder="Masa adı və ya mal adı ilə axtar..." oninput="renderClosedOrders()">
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
-              <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
-            </div>
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="ctTimeFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
-              <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="ctTimeTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
-            </div>
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">Ödəniş növü</span><select id="ctPaymentTypeFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
-              <div><span class="closed-tables-filters__label">Sırala</span>
-                <select id="ctSortSelect" onchange="renderClosedOrders()">
-                  <option value="newest">Ən yeni</option>
-                  <option value="oldest">Ən köhnə</option>
-                  <option value="amount_desc">Məbləğ (çox→az)</option>
-                  <option value="amount_asc">Məbləğ (az→çox)</option>
-                </select>
-              </div>
-            </div>
-            <div class="closed-tables-filters__row">
-              <div><span class="closed-tables-filters__label">Masanı açan işçi</span><select id="ctOpenedByFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
-              <div><span class="closed-tables-filters__label">Masanı bağlayan işçi</span><select id="ctStaffFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
-            </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;">
-              <input type="checkbox" id="ctRestoredOnlyFilter" onchange="renderClosedOrders()" style="width:16px;height:16px;cursor:pointer;">
-              Yalnız bərpa edilmiş masalar (<span style="color:var(--orange);">*</span> işarəli)
-            </label>
-          </div>
-          <div id="ctReportSummary" style="margin-bottom:14px;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
-              <input type="checkbox" id="ctSelectAllCheckbox" onchange="toggleSelectAllClosedOrders(this.checked)" style="width:16px;height:16px;cursor:pointer;">
-              Hamısını seç
-            </label>
-            <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
-          </div>
-          <div class="tile-grid" id="closedOrdersList"></div>
-          <div class="tile-detail-overlay" id="ctDetailPanel">
-            <div class="tile-detail-back" onclick="selectClosedOrder(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="ctDetailBody"></div>
-          </div>
-        </div>
+      <div class="report-subtabs" id="reportSubtabs">
+        <button class="report-subtab active" data-view="summary" onclick="setReportView('summary')"><svg class="icon"><use href="#i-chart"></use></svg> Xülasə</button>
+        <button class="report-subtab" data-view="payments" onclick="setReportView('payments')"><svg class="icon"><use href="#i-money"></use></svg> Kassa Əməliyyatları</button>
+        <button class="report-subtab" data-view="staff" onclick="setReportView('staff')"><svg class="icon"><use href="#i-staff"></use></svg> İşçi Performansı</button>
+        <button class="report-subtab" data-view="items" onclick="setReportView('items')"><svg class="icon"><use href="#i-food"></use></svg> Məhsul Satışı</button>
+        <button class="report-subtab" data-view="tables" onclick="setReportView('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Masalara Görə</button>
+        <button class="report-subtab" data-view="days" onclick="setReportView('days')"><svg class="icon"><use href="#i-clipboard"></use></svg> Günlərə Görə</button>
+        <button class="report-subtab" data-view="hours" onclick="setReportView('hours')"><svg class="icon"><use href="#i-clock"></use></svg> Saatlara Görə</button>
+        <button class="report-subtab" data-view="discounts" onclick="setReportView('discounts')"><svg class="icon"><use href="#i-tag"></use></svg> Endirim / İkram</button>
+        <button class="report-subtab" data-view="turnover" onclick="setReportView('turnover')"><svg class="icon"><use href="#i-refresh"></use></svg> Masa Dövriyyəsi</button>
+        <button class="report-subtab" data-view="loyalty" onclick="setReportView('loyalty')"><svg class="icon"><use href="#i-users"></use></svg> Loyallıq Proqramı</button>
+        <button class="report-subtab" data-view="compare" onclick="setReportView('compare')"><svg class="icon"><use href="#i-chart"></use></svg> Dövrlər Müqayisəsi</button>
+        <button class="report-subtab" data-view="cancellations" onclick="setReportView('cancellations')"><svg class="icon"><use href="#i-trash"></use></svg> Ləğvetmələr</button>
+        <button class="report-subtab" data-view="openTables" onclick="setReportView('openTables')"><svg class="icon"><use href="#i-chair"></use></svg> Hazırda Açıq Masalar</button>
+        <button class="report-subtab" data-view="credit" onclick="setReportView('credit')"><svg class="icon"><use href="#i-cash"></use></svg> Nisyə Vəziyyəti</button>
+        <button class="report-subtab" data-view="stock" onclick="setReportView('stock')"><svg class="icon"><use href="#i-food"></use></svg> Anbar/Stok</button>
+        <button class="report-subtab" data-view="suppliers" onclick="setReportView('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı/Alış</button>
       </div>
-
-      <!-- TARİXÇƏ LOGLARI -->
-      <div class="admin-section" id="sec-logs">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-red" style="padding:8px 14px;font-size:12px;" onclick="clearOldLogs()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
-            </div>
-          </div>
-          <div class="closed-tables-filters" style="margin-bottom:12px;">
-            <input type="text" id="logSearchInput" placeholder="Söz və ya ifadə ilə axtar..." oninput="renderLogs()">
-          </div>
-          <div class="closed-tables-filters__row" style="margin-bottom:10px;">
-            <div class="form-group"><label>Tarixdən</label><input type="date" id="logDateFrom" onchange="renderLogs()"></div>
-            <div class="form-group"><label>Tarixə</label><input type="date" id="logDateTo" onchange="renderLogs()"></div>
-          </div>
-          <div class="closed-tables-filters__row" style="margin-bottom:12px;">
-            <div class="form-group"><label>Saatdan</label><input type="time" id="logTimeFrom" onchange="renderLogs()"></div>
-            <div class="form-group"><label>Saata</label><input type="time" id="logTimeTo" onchange="renderLogs()"></div>
-          </div>
-          <div class="log-filter-bar" id="logFilterBar"></div>
-          <div class="log-list" id="logList"></div>
-        </div>
-      </div>
-
-      <!-- ÖDƏNİŞ NÖVLƏRİ -->
-      <div class="admin-section" id="sec-paymentMethods">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('paymentMethods')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Ödəniş Növü</button>
-            </div>
-          </div>
-          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Burada yaratdığınız ödəniş növləri qarsonun "Ödəniş Al" ekranında avtomatik görünəcək.</p>
-          <div class="grid-2" id="paymentMethodsGrid"></div>
-        </div>
-      </div>
-
-      <!-- NİSYƏ MÜŞTƏRİLƏR -->
-      <div class="admin-section" id="sec-customers">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div>
-              <div class="ap-page-header__title"><svg class="icon"><use href="#i-card"></use></svg> Nisyə Hesabları</div>
-              <div class="ap-page-header__sub">Kredit hesabı ilə xidmət göstərilən müştərilər</div>
-            </div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('customers')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Müştəri</button>
-            </div>
-          </div>
-          <div class="grid-2" id="customersGrid"></div>
-        </div>
-      </div>
-
-      <!-- LOYALLIQ ÜZVLƏRİ -->
-      <div class="admin-section" id="sec-loyaltyCustomers">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div>
-              <div class="ap-page-header__title"><svg class="icon"><use href="#i-star"></use></svg> Loyallıq Üzvləri</div>
-              <div class="ap-page-header__sub">QR/Referral sistemi ilə qeydiyyatdan keçmiş müştərilər</div>
-            </div>
-          </div>
-          <div class="closed-tables-filters" style="margin-bottom:14px;">
-            <input type="text" id="lcSearchInput" placeholder="Ad, soyad və ya telefon ilə axtar..." oninput="renderLoyaltyCustomers()">
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
-              <input type="checkbox" id="lcSelectAllCheckbox" onchange="toggleSelectAllLoyaltyCustomers(this.checked)" style="width:16px;height:16px;cursor:pointer;">
-              Hamısını seç
-            </label>
-            <button id="lcDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedLoyaltyCustomers()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
-          </div>
-          <div class="tile-grid" id="loyaltyCustomersList"></div>
-          <div class="tile-detail-overlay" id="lcDetailPanel">
-            <div class="tile-detail-back" onclick="selectLoyaltyCustomer(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="lcDetailBody"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RƏYLƏR & ŞİKAYƏTLƏR -->
-      <div class="admin-section" id="sec-feedback">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-chat"></use></svg> Rəylər & Şikayətlər</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-red" style="padding:8px 14px;font-size:12px;" onclick="clearOldFeedbacks()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
-            </div>
-          </div>
-          <div id="feedbackList" class="log-list"></div>
-        </div>
-      </div>
-
-      <!-- TƏCHİZATÇILAR -->
-      <div class="admin-section" id="sec-suppliers">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('suppliers')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Təchizatçı</button>
-            </div>
-          </div>
-          <div class="tile-grid" id="suppliersGrid"></div>
-          <div class="tile-detail-overlay" id="suppliersDetailPanel">
-            <div class="tile-detail-back" onclick="selectSupplierMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="suppliersDetailBody"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- MƏHSUL ALIŞLARI -->
-      <div class="admin-section" id="sec-purchases">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('purchases')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Alış</button>
-            </div>
-          </div>
-          <div class="closed-tables-filters" style="margin-bottom:14px;">
-            <input type="text" id="purSearchInput" placeholder="Təchizatçı, faktura nömrəsi ilə axtar..." oninput="renderPurchases()">
-          </div>
-          <div class="tile-grid" id="purchasesList"></div>
-          <div class="tile-detail-overlay" id="purDetailPanel">
-            <div class="tile-detail-back" onclick="selectPurchase(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="purDetailBody"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- BANKET DASHBOARD -->
-      <div class="admin-section" id="sec-banquetDashboard">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title">🎪 Banket Dashboard</div></div>
-          </div>
-          <div id="banquetDashboardBody"></div>
-        </div>
-      </div>
-
-      <!-- BANKET TƏQVİMİ -->
-      <div class="admin-section" id="sec-banquetCalendar">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-clock"></use></svg> Tədbirlər Təqvimi</div></div>
-          </div>
-          <div id="banquetCalendarHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;"></div>
-          <div id="banquetCalendarGrid" class="banquet-calendar-grid"></div>
-          <div id="banquetDayEventsSection" style="margin-top:20px;"></div>
-          <div class="tile-detail-overlay" id="banquetEventDetailPanel">
-            <div class="tile-detail-back" onclick="closeBanquetEventDetail()"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="banquetEventDetailBody"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- BANKET ZALLARI -->
-      <div class="admin-section" id="sec-banquetHalls">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-chair"></use></svg> Banket Zalları</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('banquetHalls')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Zal</button>
-            </div>
-          </div>
-          <div class="tile-grid" id="banquetHallsGrid"></div>
-          <div class="tile-detail-overlay" id="banquetHallDetailPanel">
-            <div class="tile-detail-back" onclick="selectBanquetHall(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
-            <div class="tile-detail-body" id="banquetHallDetailBody"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- BANKET TƏDBİR NÖVLƏRİ -->
-      <div class="admin-section" id="sec-banquetEventTypes">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('banquetEventTypes')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Növ</button>
-            </div>
-          </div>
-          <div class="tile-grid" id="banquetEventTypesGrid"></div>
-        </div>
-      </div>
-
-      <!-- AYARLAR -->
-      <div class="admin-section" id="sec-settings">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-settings"></use></svg> Ümumi Ayarlar</div></div>
-          </div>
-          <div class="ap-settings-grid">
-
-            <!-- MƏTBƏX bölməsi başlığı -->
-            <div class="ap-settings-section">
-              <svg class="icon"><use href="#i-chef"></use></svg> Mətbəx
-            </div>
-
-            <!-- Siqnal intervalı -->
-            <div class="ap-settings-card">
-              <div class="ap-settings-card__icon" style="background:rgba(52,152,219,.1);">
-                <svg class="icon" style="color:var(--blue);"><use href="#i-clock"></use></svg>
-              </div>
-              <div class="ap-settings-card__body">
-                <div class="ap-settings-card__title">Siqnal İntervalı</div>
-                <div class="ap-settings-card__desc">Yeni sifariş gəlmədikdə neçə saniyədən bir xəbərdarlıq səsi çalsın.</div>
-                <div class="ap-settings-row">
-                  <input type="number" class="ap-settings-input ap-settings-input--sm" id="kitchenAlertIntervalInput" min="5" max="120" step="5" value="15" onchange="saveKitchenAlertInterval(this.value)">
-                  <span style="font-size:13px;color:var(--text2);">saniyə</span>
-                </div>
-                <p id="kitchenAlertStatus" class="ap-settings-status"></p>
-              </div>
-            </div>
-
-            <!-- Mətbəx PIN -->
-            <div class="ap-settings-card">
-              <div class="ap-settings-card__icon" style="background:rgba(201,151,63,.1);">
-                <svg class="icon" style="color:var(--gold);"><use href="#i-key"></use></svg>
-              </div>
-              <div class="ap-settings-card__body">
-                <div class="ap-settings-card__title">Mətbəx PIN Kodu</div>
-                <div class="ap-settings-card__desc">Mətbəx ekranına giriş üçün PIN kod.</div>
-                <div class="ap-settings-pin-row">
-                  <span style="font-size:13px;color:var(--text2);">Cari:</span>
-                  <span class="ap-settings-pin-val" id="currentKitchenPin">••••</span>
-                </div>
-                <button class="btn btn-blue" onclick="openKitchenPinModal()" style="padding:8px 16px;font-size:13px;">
-                  <svg class="icon"><use href="#i-key"></use></svg> PIN-i Dəyiş
-                </button>
-              </div>
-            </div>
-
-            <!-- MÜŞTƏRİ PANELİ bölməsi başlığı -->
-            <div class="ap-settings-section">
-              <svg class="icon"><use href="#i-users"></use></svg> Müştəri Paneli
-            </div>
-
-            <!-- Menyu URL -->
-            <div class="ap-settings-card" style="grid-column:1/-1;">
-              <div class="ap-settings-card__icon" style="background:rgba(46,204,113,.1);">
-                <svg class="icon" style="color:var(--green);"><use href="#i-utensils"></use></svg>
-              </div>
-              <div class="ap-settings-card__body">
-                <div class="ap-settings-card__title">Menyu URL</div>
-                <div class="ap-settings-card__desc">Müştəri panelindəki "Menyuya Bax" düyməsinin açacağı xarici link.</div>
-                <div class="ap-settings-row">
-                  <input type="url" class="ap-settings-input" id="menuUrlInput" placeholder="https://sizin-menyu-linkiniz.com" style="flex:1;">
-                  <button class="btn btn-green" onclick="saveMenuUrl()" style="padding:8px 14px;font-size:13px;flex-shrink:0;">
-                    <svg class="icon"><use href="#i-save"></use></svg> Saxla
-                  </button>
-                </div>
-                <p id="menuUrlStatus" class="ap-settings-status"></p>
-              </div>
-            </div>
-
-            <!-- MALİYYƏ bölməsi başlığı -->
-            <div class="ap-settings-section">
-              <svg class="icon"><use href="#i-money"></use></svg> Maliyyə
-            </div>
-
-            <!-- Xidmət haqqı -->
-            <div class="ap-settings-card">
-              <div class="ap-settings-card__icon" style="background:rgba(163,42,36,.08);">
-                <svg class="icon" style="color:var(--red);"><use href="#i-money"></use></svg>
-              </div>
-              <div class="ap-settings-card__body">
-                <div class="ap-settings-card__title">Xidmət Haqqı</div>
-                <div class="ap-settings-card__desc">Aktiv edilərsə, sifarişə avtomatik xidmət haqqı əlavə olunur.</div>
-                <label class="ap-settings-toggle" style="margin-bottom:10px;">
-                  <input type="checkbox" id="serviceChargeEnabled" onchange="saveServiceCharge()">
-                  <span class="ap-settings-toggle__track"></span>
-                  <span class="ap-settings-toggle__label">Aktiv et</span>
-                </label>
-                <div class="ap-settings-row">
-                  <input type="number" class="ap-settings-input ap-settings-input--sm" id="serviceChargePercent" min="0" max="100" step="0.5" placeholder="10" onchange="saveServiceCharge()">
-                  <span style="font-size:13px;color:var(--text2);">%</span>
-                </div>
-                <p id="serviceChargeStatus" class="ap-settings-status"></p>
-              </div>
-            </div>
-
-            <!-- Loyallıq Referral -->
-            <div class="ap-settings-card">
-              <div class="ap-settings-card__icon" style="background:rgba(201,151,63,.12);">
-                <svg class="icon" style="color:var(--gold);"><use href="#i-star"></use></svg>
-              </div>
-              <div class="ap-settings-card__body">
-                <div class="ap-settings-card__title">Loyallıq — Referral</div>
-                <div class="ap-settings-card__desc">Dost dəvət edən müştəriyə bonus xal verilir.</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
-                  <div>
-                    <div style="font-size:10.5px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Dəvət bonusu (bal)</div>
-                    <input type="number" class="ap-settings-input" id="referralBonusAmount" min="0" step="1" placeholder="10" onchange="saveLoyaltySettings()">
-                  </div>
-                  <div>
-                    <div style="font-size:10.5px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Min. sifariş (₼)</div>
-                    <input type="number" class="ap-settings-input" id="referralMinOrderAmount" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
-                  </div>
-                </div>
-                <p id="loyaltySettingsStatus" class="ap-settings-status"></p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- MƏTBƏX STANSİYALARI -->
-      <div class="admin-section" id="sec-kitchenStations">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx Stansiyaları</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('kitchenStations')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Stansiya</button>
-            </div>
-          </div>
-          <div class="tile-grid" id="kitchenStationsGrid"></div>
-        </div>
-      </div>
-
-      <!-- BİLDİRİŞ SƏSLƏRİ -->
-      <div class="admin-section" id="sec-notifSounds">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-bell"></use></svg> Bildiriş Səsləri</div></div>
-          </div>
-          <div style="max-width:600px;" id="notifSoundsSection"></div>
-        </div>
-      </div>
-
-      <!-- PRİNTERLƏR -->
-      <div class="admin-section" id="sec-printers">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div><div class="ap-page-header__title"><svg class="icon"><use href="#i-printer"></use></svg> Printer & Çek</div></div>
-            <div class="ap-page-header__actions">
-              <button class="btn btn-green" onclick="apQuickNew('printers')"><svg class="icon"><use href="#i-plus"></use></svg> Yeni Printer</button>
-            </div>
-          </div>
-          <div style="max-width:680px;">
-            <div class="table-card" style="margin-bottom:20px;">
-              <h3 style="margin-bottom:12px;"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</h3>
-              <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Aktiv "Hesab printeri" tapıldıqda "Hesab" düyməsi avtomatik onu istifadə edir.</p>
-              <div class="tile-grid" id="printersGrid"></div>
-            </div>
-            <div class="table-card">
-              <div id="receiptTemplateSettings"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TƏHLÜKƏLİ ƏMƏLİYYATLAR -->
-      <div class="admin-section" id="sec-dangerZone">
-        <div class="ap-content__inner">
-          <div class="ap-page-header">
-            <div>
-              <div class="ap-page-header__title" style="color:var(--red);"><svg class="icon"><use href="#i-warning"></use></svg> Təhlükəli Əməliyyatlar</div>
-              <div class="ap-page-header__sub">Bu bölmədəki əməliyyatlar geri qaytarıla bilməz</div>
-            </div>
-          </div>
-          <div id="dangerZoneBody"></div>
-        </div>
-      </div>
-
-    </main><!-- /ap-content -->
-  </div><!-- /ap-layout -->
-
-  <!-- ── Mobile Bottom Nav ── -->
-  <nav class="ap-mobile-nav" id="apMobileNav">
-    <div class="ap-mobile-nav__bar">
-      <button class="ap-mobile-nav__btn active" id="mbn-home" onclick="adminTab('home',this);apSetMobileNav('home')">
-        <svg class="icon"><use href="#i-home"></use></svg>
-        Ana
-      </button>
-      <button class="ap-mobile-nav__btn" id="mbn-reports" onclick="adminTab('dashboard',this);apSetMobileNav('reports')">
-        <svg class="icon"><use href="#i-chart"></use></svg>
-        Hesabat
-      </button>
-      <button class="ap-mobile-nav__btn ap-mobile-nav__btn--add" onclick="apToggleNewDropdown(event)">
-        <svg class="icon"><use href="#i-plus"></use></svg>
-      </button>
-      <button class="ap-mobile-nav__btn" id="mbn-registry" onclick="adminTab('registry',this);apSetMobileNav('registry')">
-        <svg class="icon"><use href="#i-folder"></use></svg>
-        Qeydiyyat
-      </button>
-      <button class="ap-mobile-nav__btn" id="mbn-more" onclick="apOpenDrawer()">
-        <svg class="icon"><use href="#i-menu"></use></svg>
-        Menyu
-      </button>
+      <div id="reportContent"></div>
     </div>
-  </nav>
+    <div class="admin-section" id="sec-staff">
+      <div class="tile-grid" id="staffGrid"></div>
+      <div class="tile-detail-overlay" id="staffDetailPanel">
+        <div class="tile-detail-back" onclick="selectStaff(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="staffDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-tables">
+      <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div class="tile-grid" id="tablesGrid"></div>
+      <div class="tile-detail-overlay" id="tablesDetailPanel">
+        <div class="tile-detail-back" onclick="selectTableMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="tablesDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-menu">
+      <div id="menuCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div class="tile-grid" id="menuGrid"></div>
+      <div class="tile-detail-overlay" id="menuDetailPanel">
+        <div class="tile-detail-back" onclick="selectMenuItem(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="menuDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-logs">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldLogs()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
+      </div>
+      <div class="closed-tables-filters" style="margin-bottom:12px;">
+        <input type="text" id="logSearchInput" placeholder="Söz və ya ifadə ilə axtar..." oninput="renderLogs()">
+      </div>
+      <div class="closed-tables-filters__row" style="margin-bottom:10px;">
+        <div class="form-group"><label>Tarixdən</label><input type="date" id="logDateFrom" onchange="renderLogs()"></div>
+        <div class="form-group"><label>Tarixə</label><input type="date" id="logDateTo" onchange="renderLogs()"></div>
+      </div>
+      <div class="closed-tables-filters__row" style="margin-bottom:12px;">
+        <div class="form-group"><label>Saatdan</label><input type="time" id="logTimeFrom" onchange="renderLogs()"></div>
+        <div class="form-group"><label>Saata</label><input type="time" id="logTimeTo" onchange="renderLogs()"></div>
+      </div>
+      <div class="log-filter-bar" id="logFilterBar"></div>
+      <div class="log-list" id="logList"></div>
+    </div>
+    <div class="admin-section" id="sec-settings">
+      <div style="max-width:500px;">
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;">🍳 Mətbəx Siqnal Intervalı</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Yeni sifariş qəbul edilməyəndə neçə saniyədən bir səs çalsın?</p>
+          <div class="form-group">
+            <label>Saniyə</label>
+            <input type="number" id="kitchenAlertIntervalInput" min="5" max="120" step="5" value="15" onchange="saveKitchenAlertInterval(this.value)">
+          </div>
+          <p id="kitchenAlertStatus" style="font-size:12px;color:var(--green);margin-top:6px;min-height:14px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-key"></use></svg> Mətbəx PIN Kodu</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Cari PIN: <strong id="currentKitchenPin" style="color:var(--orange);">****</strong></p>
+          <button class="btn btn-blue" onclick="openKitchenPinModal()" style="width:100%;padding:13px;"><svg class="icon"><use href="#i-key"></use></svg> PIN-i Dəyiş</button>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-utensils"></use></svg> Menyu URL</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Müştəri panelindəki "Menyu" düyməsinin açacağı link:</p>
+          <div class="form-group" style="margin-bottom:10px;">
+            <input type="url" id="menuUrlInput" placeholder="https://sizin-menyu-linkiniz.com" style="font-size:14px;">
+          </div>
+          <button class="btn btn-green" onclick="saveMenuUrl()" style="width:100%;padding:13px;"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+          <p id="menuUrlStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-money"></use></svg> Xidmət Haqqı</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Aktiv edilərsə, hər masanın sifarişinə avtomatik olaraq müəyyən faiz qədər xidmət haqqı əlavə olunur.</p>
+          <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-weight:700;">Xidmət haqqını aktiv et</span>
+            <input type="checkbox" id="serviceChargeEnabled" onchange="saveServiceCharge()" style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
+          </label>
+          <div class="form-group">
+            <label>Faiz dərəcəsi (%)</label>
+            <input type="number" id="serviceChargePercent" min="0" max="100" step="0.5" placeholder="10" onchange="saveServiceCharge()">
+          </div>
+          <p id="serviceChargeStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-users"></use></svg> Müştəri Loyallıq Proqramı — Referral</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Qeydiyyatlı müştərilər dostlarını dəvət edə bilər. Dəvət olunan şəxs ilk sifarişini tamamlayanda, dəvət edən şəxsə bonus verilir.</p>
+          <div class="form-group">
+            <label>Dəvət bonusu (bal)</label>
+            <input type="number" id="referralBonusAmount" min="0" step="1" placeholder="10" onchange="saveLoyaltySettings()">
+          </div>
+          <div class="form-group">
+            <label>Minimum sifariş məbləği (₼) — bonus üçün</label>
+            <input type="number" id="referralMinOrderAmount" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
+          </div>
+          <p id="loyaltySettingsStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-clipboard"></use></svg> Sistem Məlumatları</h3>
+          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-customers">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Nisyə (kredit hesabı) ilə xidmət etdiyiniz müştərilər. Qarson masadan mal seçib bu müştərilərin adına köçürə bilər.</p>
+      <div class="grid-2" id="customersGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-paymentMethods">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Burada yaratdığınız ödəniş növləri qarsonun "Ödəniş Al" ekranında avtomatik görünəcək.</p>
+      <div class="grid-2" id="paymentMethodsGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-closedOrders">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="ctSearchInput" placeholder="Masa adı və ya mal adı ilə axtar..." oninput="renderClosedOrders()">
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="ctTimeFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="ctTimeTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Ödəniş növü</span><select id="ctPaymentTypeFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+          <div><span class="closed-tables-filters__label">Sırala</span>
+            <select id="ctSortSelect" onchange="renderClosedOrders()">
+              <option value="newest">Ən yeni</option>
+              <option value="oldest">Ən köhnə</option>
+              <option value="amount_desc">Məbləğ (çox→az)</option>
+              <option value="amount_asc">Məbləğ (az→çox)</option>
+            </select>
+          </div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Masanı açan işçi</span><select id="ctOpenedByFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+          <div><span class="closed-tables-filters__label">Masanı bağlayan işçi</span><select id="ctStaffFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ctRestoredOnlyFilter" onchange="renderClosedOrders()" style="width:16px;height:16px;cursor:pointer;">
+          Yalnız bərpa edilmiş masalar (<span style="color:var(--orange);">*</span> işarəli)
+        </label>
+      </div>
+      <div id="ctReportSummary" style="margin-bottom:14px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ctSelectAllCheckbox" onchange="toggleSelectAllClosedOrders(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+          Hamısını seç
+        </label>
+        <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+      </div>
+      <div class="tile-grid" id="closedOrdersList"></div>
+      <div class="tile-detail-overlay" id="ctDetailPanel">
+        <div class="tile-detail-back" onclick="selectClosedOrder(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="ctDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-loyaltyCustomers">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="lcSearchInput" placeholder="Ad, soyad və ya telefon ilə axtar..." oninput="renderLoyaltyCustomers()">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="lcSelectAllCheckbox" onchange="toggleSelectAllLoyaltyCustomers(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+          Hamısını seç
+        </label>
+        <button id="lcDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedLoyaltyCustomers()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+      </div>
+      <div class="tile-grid" id="loyaltyCustomersList"></div>
+      <div class="tile-detail-overlay" id="lcDetailPanel">
+        <div class="tile-detail-back" onclick="selectLoyaltyCustomer(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="lcDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-suppliers">
+      <div class="tile-grid" id="suppliersGrid"></div>
+      <div class="tile-detail-overlay" id="suppliersDetailPanel">
+        <div class="tile-detail-back" onclick="selectSupplierMgmt(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="suppliersDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-purchases">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="purSearchInput" placeholder="Təchizatçı, faktura nömrəsi ilə axtar..." oninput="renderPurchases()">
+      </div>
+      <div class="tile-grid" id="purchasesList"></div>
+      <div class="tile-detail-overlay" id="purDetailPanel">
+        <div class="tile-detail-back" onclick="selectPurchase(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="purDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetDashboard">
+      <div id="banquetDashboardBody"></div>
+    </div>
+    <div class="admin-section" id="sec-banquetCalendar">
+      <div id="banquetCalendarHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;"></div>
+      <div id="banquetCalendarGrid" class="banquet-calendar-grid"></div>
+      <div id="banquetDayEventsSection" style="margin-top:20px;"></div>
+      <div class="tile-detail-overlay" id="banquetEventDetailPanel">
+        <div class="tile-detail-back" onclick="closeBanquetEventDetail()"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="banquetEventDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetHalls">
+      <div class="tile-grid" id="banquetHallsGrid"></div>
+      <div class="tile-detail-overlay" id="banquetHallDetailPanel">
+        <div class="tile-detail-back" onclick="selectBanquetHall(null)"><svg class="icon"><use href="#i-close"></use></svg> Geri</div>
+        <div class="tile-detail-body" id="banquetHallDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetEventTypes">
+      <div class="tile-grid" id="banquetEventTypesGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-notifSounds">
+      <div style="max-width:600px;" id="notifSoundsSection"></div>
+    </div>
+    <div class="admin-section" id="sec-kitchenStations">
+      <div class="tile-grid" id="kitchenStationsGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-feedback">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="color:var(--text2);font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
+        <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldFeedbacks()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
+      </div>
+      <div id="feedbackList" class="log-list"></div>
+    </div>
+    <div class="admin-section" id="sec-printers">
+      <div style="max-width:680px;">
+        <div class="table-card" style="margin-bottom:20px;">
+          <h3 style="margin-bottom:12px;"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Aktiv "Hesab printeri" tapıldıqda "Hesab" düyməsi avtomatik onu istifadə edir.</p>
+          <div class="tile-grid" id="printersGrid"></div>
+        </div>
+        <div class="table-card">
+          <div id="receiptTemplateSettings"></div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-dangerZone">
+      <div id="dangerZoneBody"></div>
+    </div>
 
-  <!-- ── Mobile Drawer ── -->
-  <div class="ap-drawer-bg" id="apDrawerBg" onclick="apCloseDrawer()"></div>
-  <div class="ap-drawer" id="apDrawer">
-    <div class="ap-drawer__handle"></div>
-    <div class="ap-drawer__title">Əsas Menyu</div>
-    <button class="ap-drawer__item" onclick="adminTab('purchases',document.querySelector('[data-section=purchases]'));apCloseDrawer();apSetMobileNav('more')">
-      <svg class="icon"><use href="#i-cash"></use></svg> Anbar & Alış
-    </button>
-    <button class="ap-drawer__item" onclick="adminTab('loyaltyCustomers',document.querySelector('[data-section=loyaltyCustomers]'));apCloseDrawer();apSetMobileNav('more')">
-      <svg class="icon"><use href="#i-star"></use></svg> Müştəri & CRM
-    </button>
-    <button class="ap-drawer__item" onclick="adminTab('banquetDashboard',document.querySelector('[data-section=banquetDashboard]'));apCloseDrawer();apSetMobileNav('more')">
-      <span style="font-size:16px;">🎪</span> Banket
-    </button>
-    <button class="ap-drawer__item" onclick="adminTab('settings',document.querySelector('[data-section=settings]'));apCloseDrawer();apSetMobileNav('more')">
-      <svg class="icon"><use href="#i-settings"></use></svg> Sistem
-    </button>
-    <div class="ap-drawer__sep"></div>
-    <button class="ap-drawer__item" onclick="toggleTheme();apCloseDrawer()">
-      <svg class="icon"><use href="#i-moon"></use></svg> Tema Dəyiş
-    </button>
-    <button class="ap-drawer__item ap-drawer__item--danger" onclick="logout()">
-      <svg class="icon"><use href="#i-close"></use></svg> Çıxış
-    </button>
-  </div>
-
+  </div><!-- /admin-body -->
   <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
-
-</div><!-- /adminScreen -->
+</div>
 
 <!-- ═══ TƏHLÜKƏLİ ƏMƏLİYYATLAR — PIN MODAL ═══ -->
 <div class="modal-bg" id="dangerZonePinModal">
