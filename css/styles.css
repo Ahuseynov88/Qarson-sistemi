@@ -3,8 +3,6 @@
 :root{
   --green:#1c6b35;--green-dark:#155327;--red:#a32a24;--red-dark:#84211c;
   --blue:#3498db;--orange:#c4b02e;--orange-dark:#a8972a;--purple:#8e44ad;--yellow:#f1c40f;
-  /* İsti-neytral fon (soyuq boz "generic SaaS" tonundan uzaqlaşdırılıb, şərab kimliyi ilə
-     həmahəng, amma "AI dizaynı"nın standart krem/#F4F1EA tonundan da FƏRQLİDİR) */
   --bg:#f3efec;--card:#ffffff;--card2:#ebe4de;--border:#ddd3c8;
   --text:#1a1d24;--text2:#5b6573;--text3:#9aa1ad;
   --overlay-strong:rgba(0,0,0,.55);--overlay-soft:rgba(0,0,0,.08);
@@ -13,18 +11,13 @@
   --brand-gradient:linear-gradient(135deg,#7a1533 0%,#4a0f24 55%,#1f0a12 100%);
   --brand-glow:radial-gradient(circle at 85% 0%, rgba(201,151,63,.28) 0%, transparent 60%);
   --font-display:'Fraunces',serif;--font-body:'Inter','Segoe UI',sans-serif;
-  /* Boşluq şkalası - hər yerdə eyni ritm üçün */
   --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
-  /* Künc-yumşaltma şkalası - əvvəlki ad-hoc dəyərlər əvəzinə */
   --r-sm:10px;--r-md:14px;--r-lg:20px;
-  /* Çoxqatlı, yumşaq kölgə sistemi - düz/tək qatlı kölgə əvəzinə */
   --shadow-sm:0 1px 3px rgba(20,12,8,.10), 0 1px 2px rgba(20,12,8,.07);
   --shadow-md:0 6px 16px rgba(20,12,8,.14), 0 2px 6px rgba(20,12,8,.09);
   --shadow-lg:0 16px 36px rgba(20,12,8,.18), 0 6px 14px rgba(20,12,8,.10);
 }
 
-/* Maliyyə rəqəmləri (qiymət, hesabat, statistika) - "dəftər" hissi üçün cədvəl-düzülüşlü
-   rəqəmlər (bütün rəqəmlər eyni enə malikdir, sütunlarda düzgün düzülür) */
 .num, .stat-num, td.num, .report-table td.num{font-variant-numeric:tabular-nums;}
 
 body.dark-mode{
@@ -100,7 +93,6 @@ video.lp-media{z-index:2;}
 
 .lp-slogan{position:absolute;bottom:32px;right:32px;z-index:4;color:rgba(255,255,255,.45);font-size:13px;font-style:italic;letter-spacing:.5px;}
 
-/* Köhnə login stillər — digər yerlər üçün saxlanılır */
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;}
 .pin-display{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
 .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:.2s;}
@@ -136,6 +128,8 @@ video.lp-media{z-index:2;}
 .topbar{background:var(--brand-gradient);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:relative;overflow:hidden;}
 #orderScreen{position:fixed;inset:0;z-index:501;background:var(--bg);}
 #orderScreen .topbar{background:var(--card);overflow:visible;}
+/* ✅ BUG 1 FIX: Admin topbar overflow:hidden-i ləğv edir, dropdown görünür */
+#adminTopbar{overflow:visible;}
 #orderScreen .topbar h2{color:var(--text);}
 .topbar::before{content:'';position:absolute;top:0;right:0;width:200px;height:100%;background:var(--brand-glow);pointer-events:none;}
 .topbar h2,.topbar h1{color:#fff;position:relative;z-index:1;}
@@ -200,7 +194,8 @@ video.lp-media{z-index:2;}
 }
 .ap-group__header:hover{background:var(--card2);color:var(--text);}
 .ap-group__icon{width:16px;height:16px;flex-shrink:0;}
-.ap-group__emoji{font-size:14px;flex-shrink:0;line-height:1;}
+/* ✅ BUG 2 FIX: Banket emoji ikonun ölçüsü digər ikonlarla eyniləşdirildi */
+.ap-group__emoji{font-size:14px;flex-shrink:0;line-height:1;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;}
 .ap-group__header span{flex:1;}
 .ap-group__arrow{
   width:14px;height:14px;flex-shrink:0;color:var(--text3);
@@ -287,6 +282,8 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
   .ap-new-label{display:none;}
 }
 
+/* ✅ BUG 4 FIX: Geri düyməsi kompüterdə gizlədilir */
+#adminBackBtn{display:none;}
 /* ── TELEFON (<768px) ── */
 @media (max-width:767px){
   #adminTopbar{padding:10px 12px;}
@@ -409,10 +406,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .ct-detail-info-block__value{font-size:13px;font-weight:600;color:var(--text);}
 .ct-detail-section-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:16px 0 8px;}
 
-/* ── KAFEL ŞƏBƏKƏSİ + TAM EKRAN DETAL (bütün qeydiyyat bölmələri: Masalar,
-   İşçilər, Menyu, Təchizatçılar) - bütün cihazlarda (telefon/planşet/kompüter)
-   responsivdir, kartın üzərinə basanda detal "yeni səhifə" kimi tam ekran açılır ── */
-/* ── BANKET VƏ TƏDBİRLƏRİN İDARƏ EDİLMƏSİ - TƏQVİM ── */
 .banquet-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
 .banquet-cal-daylabel{text-align:center;font-size:10.5px;font-weight:700;color:var(--text3);padding:6px 0;text-transform:uppercase;}
 .banquet-cal-day{aspect-ratio:1;border-radius:10px;border:1px solid var(--border);padding:6px;cursor:pointer;
@@ -476,7 +469,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .report-section-title:first-child{margin-top:0;}
 .report-empty{color:var(--text3);text-align:center;padding:30px;font-size:13.5px;}
 
-/* Sadə CSS sütun qrafiki (kitabxana olmadan) */
 .report-bar-chart{display:flex;align-items:flex-end;gap:6px;height:160px;padding:10px 6px 0;overflow-x:auto;}
 .report-bar-chart__col{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:40px;flex:1;height:100%;justify-content:flex-end;}
 .report-bar-chart__bar{width:100%;max-width:34px;background:linear-gradient(180deg,var(--blue),var(--green));border-radius:5px 5px 0 0;min-height:2px;transition:.3s;position:relative;}
@@ -507,7 +499,7 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .supplier-debt-badge--owed{background:rgba(163,42,36,.12);color:var(--red);}
 .supplier-debt-badge--clear{background:rgba(28,107,53,.12);color:var(--green);}
 
-/* ── HESABAT XÜLASƏSİ (filtrlənmiş nəticələr üçün) ── */
+/* ── HESABAT XÜLASƏSİ ── */
 .ct-report{background:#1a1d24;color:#fff;border-radius:14px;padding:18px 20px;}
 .ct-report__stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px;margin-bottom:14px;}
 .ct-report__stat-label{font-size:10px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:4px;}
@@ -578,7 +570,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .k-tables-under{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:8px;min-height:20px;}
 .k-table-chip{background:rgba(52,152,219,.2);border:1px solid rgba(52,152,219,.4);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--blue);}
 .k-no-click-overlay{position:absolute;inset:0;border-radius:15px;z-index:10;cursor:not-allowed;}
-/* Yeni sifariş kartları */
 .kitchen-orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
 .ko-card{background:var(--card);border-radius:var(--r-lg);padding:18px;border:2px solid var(--border);transition:.2s;box-shadow:var(--shadow-sm);}
 .ko-card--pending{border-color:var(--red);background:rgba(231,76,60,.06);}
@@ -609,7 +600,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .waiter-info img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;}
 .waiter-body{flex:1;padding:16px;overflow:hidden;display:flex;flex-direction:column;}
 .waiter-body h3{font-size:15px;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;}
-/* ── MASA LÖVHƏSİ (FLOOR VIEW) — təmiz, işıqlı POS kart dizaynı ── */
 .table-board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;}
 .floor-card{position:relative;background:var(--card);border-radius:10px;padding:14px 14px 12px 16px;cursor:pointer;
   transition:border-color .12s,box-shadow .12s;border:1px solid var(--border);border-left:3px solid var(--border);
@@ -621,7 +611,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .floor-card.other{border-left-color:var(--text3);cursor:default;opacity:.7;}
 .floor-card.other-manage{border-left-color:var(--orange);cursor:pointer;opacity:1;}
 
-/* ── Vaxta/əməliyyata görə rəng: son sifarişdən neçə vaxt keçib (yalnız dolu masalar) ── */
 .floor-card.floor-card--fresh{background:rgba(46,204,113,.16);border-color:#2ecc71;border-left-color:#2ecc71;}
 .floor-card.floor-card--warning{background:rgba(243,156,18,.18);border-color:#f39c12;border-left-color:#f39c12;}
 .floor-card.floor-card--danger{background:rgba(231,76,60,.18);border-color:#e74c3c;border-left-color:#e74c3c;}
@@ -640,14 +629,12 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .floor-card__total{font-size:14.5px;font-weight:700;color:var(--blue);margin-top:2px;font-variant-numeric:tabular-nums;}
 .floor-card__note{font-size:11px;color:var(--text3);margin-top:5px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* ── KATEQORİYA REYLİ (dikey tab paneli) ── */
 .category-rail{display:flex;flex-direction:column;gap:3px;}
 .category-rail__tab{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:9px;border:none;background:transparent;
   color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;transition:.15s;text-align:left;width:100%;font-family:var(--font-body);}
 .category-rail__tab:hover{background:var(--overlay-soft);}
 .category-rail__tab.active{background:var(--blue);color:#fff;}
 
-/* ── ÜRÜN (PRODUCT) KARTLARI (konteyner: .order-items-grid, artıq responsiv qaydalarla təyin olunub) ── */
 .product-card{position:relative;background:var(--card2);border:1px solid var(--border);border-radius:var(--r-sm);
   cursor:pointer;transition:.12s;overflow:hidden;aspect-ratio:1/1;display:flex;align-items:flex-end;box-shadow:var(--shadow-sm);}
 .product-card:active{transform:scale(.96);border-color:var(--gold);}
@@ -660,7 +647,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .product-card__oos{font-size:9.5px;color:#ffb4b0;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 .product-card__stock{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:7px;z-index:2;}
 .product-card__stock--low{background:rgba(211,84,0,.85);}
-/* Şəkli olmayan mallar üçün - çap olunmuş menyu vərəqi kimi zərif mətn kartı */
 .product-card.no-photo{align-items:center;justify-content:center;background:var(--card);aspect-ratio:auto;padding:14px 8px;}
 .product-card.no-photo:active{background:var(--card2);}
 .product-card.no-photo .product-card__overlay{position:static;background:none;padding:0;width:100%;}
@@ -668,7 +654,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .product-card.no-photo .product-card__price{color:var(--gold-dark);text-shadow:none;}
 .product-card.no-photo .product-card__oos{color:var(--red);}
 
-/* ── TİCKET (SƏBƏT) PANELİ — təmiz, işıqlı ── */
 .ticket-panel{background:var(--card);display:flex;flex-direction:column;height:100%;}
 .ticket-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .ticket-header__title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;}
@@ -694,14 +679,12 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .ticket-total-row__label{font-size:13px;color:var(--text2);font-weight:600;}
 .ticket-total-row__value{font-size:24px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
 
-/* ── MİQDAR STEPPER (draft +/- və qismən seçim üçün ortaq) ── */
 .qty-stepper{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0;}
 .qty-stepper button{width:26px;height:26px;border:none;background:var(--card2);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.12s;}
 .qty-stepper button:hover{background:var(--blue);color:#fff;}
 .qty-stepper__val{min-width:24px;text-align:center;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;}
 .qty-stepper.batch-select .qty-stepper__val{color:var(--blue);}
 
-/* ── TOPLU ƏMƏLİYYAT PANELİ ── */
 .batch-bar{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);align-items:center;}
 .batch-bar__count{font-size:12px;color:var(--text2);width:100%;font-weight:600;}
 .batch-chip{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid;transition:.15s;background:transparent;}
@@ -711,7 +694,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .batch-chip--transfer{border-color:var(--purple);color:var(--purple);}
 .batch-chip--clear{border-color:var(--border);color:var(--text2);}
 
-/* ── ÖDƏNİŞ TETİKLƏYİCİSİ (canlı cəm/qalıq) ── */
 .pay-trigger{width:100%;border:none;border-radius:10px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
   background:var(--blue);color:#fff;transition:.15s;}
 .pay-trigger:hover{background:#2980b9;}
@@ -773,10 +755,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
 /* ── MÜŞTƏRİ PANELİ ── */
-/* ── MÜŞTƏRİ EKRANI: sabit, müasir "buzlu şüşə" dizaynı ──
-   QEYD: bu bölmə BİLƏRƏKDƏN --card/--text kimi işıq/qaranlıq dəyişənlərindən istifadə ETMİR.
-   Fon həmişə tünd şərab qradiyenti olduğu üçün, kartlar da öz sabit, yüksək-kontrastlı
-   palitrasını daşıyır - əməliyyat panelinin gecə/gündüz rejimi bura təsir etmir. */
 #customerScreen,#referralRegisterScreen{background:var(--brand-gradient);overflow-y:auto;position:relative;color:#fff;}
 #customerScreen::before,#referralRegisterScreen::before{content:'';position:fixed;top:0;right:0;width:50%;height:40%;background:var(--brand-glow);pointer-events:none;z-index:0;}
 .cust-wrap{width:100%;max-width:440px;margin:0 auto;padding:20px;position:relative;z-index:1;}
@@ -824,7 +802,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 .cust-feedback textarea{width:100%;padding:10px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.16);border-radius:10px;color:#fff;font-size:14.5px;resize:none;min-height:80px;}
 .cust-feedback textarea::placeholder{color:rgba(255,255,255,.4);}
 
-/* ── MÜŞTƏRİ: CANLI SİFARİŞ GÖRÜNÜŞÜ ── */
 .cust-order-section{background:rgba(255,255,255,.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border-radius:16px;padding:18px;border:1px solid rgba(255,255,255,.14);margin-bottom:18px;box-shadow:0 8px 24px rgba(0,0,0,.15);}
 .cust-order-section__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -852,7 +829,6 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 #custWaiterCard .cw-label{font-size:10px;color:rgba(255,255,255,.6);font-weight:600;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8);}
 #custWaiterCard .cw-name{font-size:15px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px;text-align:center;white-space:normal;max-width:140px;text-shadow:0 1px 4px rgba(0,0,0,.8);}
 
-/* ── MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ── */
 .cust-loyalty-modal{background:linear-gradient(160deg,#3a0f1f,#1f0a12);border:1px solid rgba(255,255,255,.14);
   border-radius:20px;padding:28px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);
   max-height:90vh;overflow-y:auto;}
@@ -903,25 +879,19 @@ body.dark-mode .admin-tab.active{background:rgba(217,169,74,.15);color:var(--gol
 body.dark-mode #custWaiterCard .cw-label{color:rgba(255,255,255,.6);}
 body.dark-mode #custWaiterCard .cw-name{color:#fff;}
 
-/* ── Ödəniş növü düymələri ── */
 .payment-type-btn{padding:14px;border-radius:10px;border:2px solid var(--border);
-  background:var(--card2);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;transition:.15s;}
+  background:var(--card2);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;transition:.15px;}
 .payment-type-btn:active{transform:scale(0.97);}
 .payment-type-btn.selected{border-color:var(--green);background:rgba(28,107,53,.15);color:var(--green);}
-/* ── Hesabat tablosu ── */
 .report-row{display:flex;justify-content:space-between;padding:10px 0;
   border-bottom:1px solid var(--border);font-size:14px;}
 .report-row:last-child{border-bottom:none;font-weight:700;font-size:16px;color:var(--green);}
 .report-section{background:var(--card2);border-radius:12px;padding:14px;margin-bottom:12px;}
 .report-section h4{font-size:12px;text-transform:uppercase;color:var(--text2);
   letter-spacing:.06em;margin-bottom:10px;}
-/* ── Endirim badgei ── */
 .discount-badge{display:inline-block;background:rgba(196,176,46,.2);color:var(--orange);
   border:1px solid var(--orange);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;}
 
-/* ── SİFARİŞ EKRANI - RESPONSİV LAYOUT
-   Kateqoriya reyli HƏMİŞƏ solda daimi qalır (dar, telefonda da).
-   Mallar + bilet bir yerdə sürüşür (telefonda) və ya yan-yana durur (masaüstü). ── */
 .order-layout{flex-direction:row;}
 .order-cat-rail.category-rail{flex-direction:column;overflow-x:hidden;overflow-y:auto;width:62px;gap:2px;
   border-right:1px solid var(--border)!important;border-bottom:none;padding:8px 4px;}
@@ -933,7 +903,6 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
 .order-items-grid{flex-shrink:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px;}
 .ticket-panel{flex-shrink:0;max-height:none;border-top:2px solid var(--border);}
 
-/* Telefonda daha kompakt mal kartları və bilet sətirləri */
 @media (max-width:899px){
   .product-card.no-photo{padding:10px 5px;}
   .product-card__overlay{padding:14px 6px 5px;}
@@ -956,14 +925,6 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
   .ticket-panel{width:360px;border-top:none;border-left:1px solid var(--border);overflow-y:auto;}
 }
 
-/* ═══════════════════════════════════════════
-   TELEFON/PLANŞET/KOMPÜTER ÜÇÜN ÜMUMİ UYĞUNLAŞMA
-   Bütün ekranlarda: mətn/rəqəmlər qutudan çıxmasın, iki-sütunlu
-   panellər dar ekranda alt-alta düzülsün, düymələr/formalar sıxılmasın.
-═══════════════════════════════════════════ */
-
-/* Hər ölçüdə tətbiq olunan təhlükəsizlik qaydaları - uzun mətn/rəqəm
-   heç vaxt öz qutusundan kənara çıxmasın */
 .stat-card,.ct-report__stats>div,.ct-detail-info-block,.ct-list-item__amount,
 .ct-report__stat-value,.audit-summary-header__value,.ticket-total-row__value,
 .cust-order-total__value,.pay-trigger__amount,.item-card,.log-item,.modal,
@@ -974,7 +935,6 @@ body.dark-mode #custWaiterCard .cw-name{color:#fff;}
 .topbar h2{display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
 img,svg.icon{max-width:100%;}
 
-/* ── PLANŞET (≤1024px): geniş 2-sütunlu panellər bir az sıxılır, tam sıxılmır ── */
 @media (max-width:1024px){
   .closed-tables-layout{gap:12px;}
   .closed-tables-list-col{max-width:340px;}
@@ -982,29 +942,18 @@ img,svg.icon{max-width:100%;}
   .modal{padding:22px;}
 }
 
-/* ── TELEFON (≤680px): əsas struktur dəyişiklikləri ── */
 @media (max-width:680px){
-  /* Admin: iki sütunlu "Bağlanan Masalar" (siyahı + detal) alt-alta düzülür */
   .closed-tables-layout{flex-direction:column;}
   .closed-tables-list-col{max-width:none;}
   .closed-tables-detail-col{position:static;}
-
-  /* Mal alışı sətirləri: telefonda tək sütuna düşür */
   .purchase-line__grid,.purchase-line__grid--three{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .purchase-line{padding:13px;}
-
-  /* Admin: filtr sətirləri (tarix aralığı, ödəniş növü və s.) tək sütuna düşür */
   .closed-tables-filters__row{grid-template-columns:1fr;}
-
-  /* Admin tabları: üfüqi sürüşmə əvəzinə daha yığcam, sıxılmış görünüş */
   .admin-tabs{gap:6px;padding-bottom:12px;margin-bottom:14px;}
   .admin-tab{padding:8px 13px;font-size:12.5px;}
-
   .admin-body{padding:12px;}
   .topbar{padding:12px 14px;}
   .topbar h2{font-size:16px;}
-
-  /* Hesabat/statistika qutuları: az sütun, kiçik şrift ki rəqəm daşmasın */
   .stat-card{padding:12px;}
   .stat-num{font-size:22px;}
   .ct-report{padding:14px;}
@@ -1014,50 +963,27 @@ img,svg.icon{max-width:100%;}
   .ct-detail-panel{padding:14px;}
   .ct-detail-header{font-size:15px;}
   .ct-detail-header span:last-child{font-size:18px!important;}
-
-  /* Modallar: telefonda tam ekrana yaxın, az padding */
   .modal-bg{padding:10px;}
   .modal{padding:18px;border-radius:16px;max-height:94vh;}
   .modal h2{font-size:18px;}
-
-  /* Bilet alt hərəkət düymələri: 3 sütun çox sıx olur, 2-yə düşür */
   .ticket-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-
-  /* Ödəniş növü seçimi və digər 2-sütunlu ümumi qutular tələb olunanda 1 sütuna keçir */
   #paymentTypeGrid{grid-template-columns:1fr!important;}
   .perm-checkbox-grid{grid-template-columns:1fr!important;}
-
-  /* Login qutusu: kənar boşluq azalır, PIN klaviaturası sığır */
   .login-box{padding:26px 20px;}
-
-  /* Masa lövhəsi, mətbəx və idarəetmə kartları: telefonda TAM sıra tutmasın,
-     ən azı 2 sütun yan-yana sığsın (minmax əvəzinə sabit 2 sütun - məzmunun eni
-     nə olursa olsun sütun sayı dəyişmir) */
   .table-board-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
   .kitchen-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
   .grid-2{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
   .floor-card{padding:11px 10px 10px 12px;min-width:0;}
   .floor-card__name{font-size:13px;}
   .item-card{padding:13px;min-width:0;}
-
-  /* Toplu-əməliyyat zolağı (checkbox seçimi) telefonda alt-alta düzülür */
   .batch-bar{flex-wrap:wrap;}
-
-  /* İdarəetmə formalarındakı geniş sətirlər (2 sahə yan-yana) telefonda alt-alta keçir */
   .item-card-header{flex-wrap:wrap;}
-
-  /* Kart üzərindəki əməliyyat düymələri (Deaktiv/Düzənlə/Sil və s.): yan-yana
-     sıxılıb yazı bölünmək əvəzinə alt-alta, incə formada düzülür */
   .item-actions{flex-direction:column;gap:6px;}
   .item-actions .btn{width:100%;padding:9px 10px;font-size:12.5px;white-space:normal;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.3;min-height:36px;}
   .item-actions .btn .icon{flex-shrink:0;}
-
-  /* ── Admin paneli: telefonda məzmun bölmələri ── */
   .admin-back-btn{display:none;}
-  /* (telefon admin stili yuxarıda @media (max-width:767px) blokunda verilmişdir) */
 }
 
-/* ── ÇOX DAR TELEFON (≤380px): son sıxlaşdırma ── */
 @media (max-width:380px){
   .ct-report__stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .ct-report__stat-value{font-size:15px;}
@@ -1177,19 +1103,16 @@ img,svg.icon{max-width:100%;}
 .isp-action-btn--transfer{border-color:var(--blue);background:rgba(52,152,219,.08);color:var(--blue);}
 .isp-action-btn--cancel{border-color:var(--red);background:rgba(163,42,36,.08);color:var(--red);}
 .isp-action-btn--credit{border-color:#8b5cf6;background:rgba(139,92,246,.08);color:#8b5cf6;}
-/* ── Batch seçim checkbox ── */
 .bsel-check{display:flex;align-items:center;padding:4px;cursor:pointer;flex-shrink:0;}
 .bsel-box{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);background:var(--bg);transition:.15s;flex-shrink:0;}
 .bsel-box--on{background:var(--blue);border-color:var(--blue);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:12px;background-repeat:no-repeat;background-position:center;}
 .ticket-line.bsel{background:rgba(52,152,219,.06);border-color:var(--blue);}
 
-/* ── Action bar ── */
 .bsel-bar{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-top:8px;}
 .bsel-bar-info{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--text);}
 .bsel-clear{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;}
 .bsel-action-btn{display:flex;align-items:center;justify-content:center;gap:6px;}
 
-/* ── Batch action modal item ── */
 .bam-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
 .bam-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .bam-item-name{font-size:13px;font-weight:600;color:var(--text);}
