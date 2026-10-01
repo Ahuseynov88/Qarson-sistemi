@@ -192,3 +192,352 @@ button>.icon,.admin-tab>.icon,.ap-group__header>.icon{width:18px;height:18px;}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
 }
+/* =========================================================
+   İPƏK YOLU — LOGIN UI V2.1
+   Burgundy + Champagne Gold
+   ========================================================= */
+
+/* Sol login sahəsi */
+#loginScreen .lp-left {
+    background:
+        radial-gradient(circle at 12% 8%,
+            rgba(213, 173, 99, 0.18) 0%,
+            rgba(213, 173, 99, 0.05) 25%,
+            transparent 45%),
+        radial-gradient(circle at 90% 90%,
+            rgba(122, 21, 51, 0.28) 0%,
+            transparent 42%),
+        linear-gradient(
+            145deg,
+            #641b30 0%,
+            #4a1226 35%,
+            #32101c 67%,
+            #19090e 100%
+        ) !important;
+
+    position: relative;
+    overflow: hidden;
+}
+
+/* Premium incə dekorasiya */
+#loginScreen .lp-left::before {
+    content: "";
+    position: absolute;
+    width: 420px;
+    height: 420px;
+    left: -240px;
+    top: -230px;
+    border-radius: 50%;
+    border: 1px solid rgba(213, 173, 99, 0.15);
+    box-shadow:
+        0 0 0 55px rgba(213, 173, 99, 0.025),
+        0 0 0 110px rgba(213, 173, 99, 0.018);
+    pointer-events: none;
+}
+
+#loginScreen .lp-left::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(
+            115deg,
+            transparent 0%,
+            rgba(255,255,255,0.018) 40%,
+            transparent 65%
+        );
+    pointer-events: none;
+}
+
+/* Logo */
+#loginScreen .lp-logo-wrap {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 10px 25px rgba(0,0,0,.25));
+}
+
+/* Login başlığı */
+#loginScreen .lp-left h1,
+#loginScreen .lp-left h2,
+#loginScreen .lp-title {
+    color: #ffffff !important;
+    letter-spacing: -0.02em;
+}
+
+/* Alt məlumat yazıları */
+#loginScreen .lp-left p,
+#loginScreen .lp-subtitle {
+    color: rgba(255,255,255,.62) !important;
+}
+
+/* Rol seçim sahəsi */
+#loginScreen .lp-roles,
+#loginScreen .role-tabs {
+    background: rgba(12, 5, 8, 0.30) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.04),
+        0 10px 30px rgba(0,0,0,.12);
+    backdrop-filter: blur(12px);
+}
+
+/* Normal rol */
+#loginScreen .lp-role,
+#loginScreen .role-tab {
+    color: rgba(255,255,255,.64) !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    transition:
+        background .18s ease,
+        color .18s ease,
+        transform .18s ease,
+        box-shadow .18s ease !important;
+}
+
+/* Rol hover */
+#loginScreen .lp-role:hover,
+#loginScreen .role-tab:hover {
+    color: #fff !important;
+    background: rgba(255,255,255,.07) !important;
+}
+
+/* Aktiv rol */
+#loginScreen .lp-role.active,
+#loginScreen .role-tab.active {
+    background:
+        linear-gradient(
+            135deg,
+            #e0bd79 0%,
+            #c9973f 48%,
+            #a96f22 100%
+        ) !important;
+
+    color: #21140b !important;
+    border-color: rgba(255,224,163,.7) !important;
+
+    box-shadow:
+        0 7px 22px rgba(201,151,63,.25),
+        inset 0 1px 0 rgba(255,255,255,.45) !important;
+}
+
+/* PIN nöqtələri */
+#loginScreen .pin-dot {
+    background: rgba(255,255,255,.03) !important;
+    border: 2px solid rgba(255,255,255,.20) !important;
+    box-shadow: none !important;
+}
+
+#loginScreen .pin-dot.filled {
+    background: #d5ad63 !important;
+    border-color: #e7c887 !important;
+    box-shadow:
+        0 0 0 4px rgba(213,173,99,.10),
+        0 0 15px rgba(213,173,99,.30) !important;
+}
+
+/* Numpad */
+#loginScreen .numpad {
+    gap: 10px;
+}
+
+/* Rəqəm düymələri */
+#loginScreen .num-btn {
+    min-height: 56px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,.10),
+            rgba(255,255,255,.045)
+        ) !important;
+
+    border: 1px solid rgba(255,255,255,.11) !important;
+
+    color: #fff !important;
+
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.05),
+        0 5px 15px rgba(0,0,0,.10);
+
+    backdrop-filter: blur(8px);
+
+    font-weight: 650;
+}
+
+/* Rəqəm hover */
+#loginScreen .num-btn:hover {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(213,173,99,.20),
+            rgba(201,151,63,.10)
+        ) !important;
+
+    border-color: rgba(213,173,99,.35) !important;
+
+    transform: translateY(-1px);
+}
+
+/* Rəqəm basılarkən */
+#loginScreen .num-btn:active {
+    transform: scale(.95);
+    background: rgba(201,151,63,.25) !important;
+}
+
+/* LOGIN düyməsi */
+#loginScreen .lp-login-btn,
+#loginScreen .login-btn {
+    min-height: 52px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #e0bd79 0%,
+            #c9973f 48%,
+            #ad7629 100%
+        ) !important;
+
+    color: #21140b !important;
+
+    border: 1px solid rgba(255,224,163,.60) !important;
+
+    border-radius: 12px !important;
+
+    font-weight: 750 !important;
+
+    box-shadow:
+        0 10px 28px rgba(201,151,63,.25),
+        inset 0 1px 0 rgba(255,255,255,.45) !important;
+
+    transition:
+        transform .18s ease,
+        box-shadow .18s ease,
+        filter .18s ease !important;
+}
+
+/* Login hover */
+#loginScreen .lp-login-btn:hover,
+#loginScreen .login-btn:hover {
+    filter: brightness(1.07);
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 14px 34px rgba(201,151,63,.32),
+        inset 0 1px 0 rgba(255,255,255,.50) !important;
+}
+
+/* Login basılarkən */
+#loginScreen .lp-login-btn:active,
+#loginScreen .login-btn:active {
+    transform: translateY(0) scale(.985);
+}
+
+/* Xəta mesajı */
+#loginScreen .err-msg {
+    color: #ff9b9b !important;
+}
+
+/* Saat */
+#loginScreen .lp-clock {
+    color: #fff !important;
+    text-shadow: 0 3px 20px rgba(0,0,0,.25);
+}
+
+/* Tarix */
+#loginScreen .lp-date {
+    color: rgba(255,255,255,.62) !important;
+}
+
+/* Hava məlumatı */
+#loginScreen .lp-weather {
+    background: rgba(20,7,12,.48) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+
+    box-shadow:
+        0 12px 35px rgba(0,0,0,.18),
+        inset 0 1px 0 rgba(255,255,255,.04);
+
+    backdrop-filter: blur(15px);
+}
+
+#loginScreen .lp-weather-temp {
+    color: #fff !important;
+}
+
+/* Slogan */
+#loginScreen .lp-slogan {
+    color: rgba(255,255,255,.48) !important;
+}
+
+/* Sağdakı şəkil/video hissəsi */
+#loginScreen .lp-right {
+    position: relative;
+    background: #19090e !important;
+}
+
+/* Sağ tərəfə premium overlay */
+#loginScreen .lp-right::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(25,9,14,.32) 0%,
+            transparent 35%
+        ),
+        linear-gradient(
+            0deg,
+            rgba(15,5,8,.25) 0%,
+            transparent 45%
+        );
+}
+
+/* Klaviatura ilə istifadə üçün fokus */
+#loginScreen button:focus-visible {
+    outline: 3px solid rgba(224,189,121,.70) !important;
+    outline-offset: 3px;
+}
+
+/* Mobil */
+@media (max-width: 900px) {
+
+    #loginScreen .lp-left {
+        background:
+            radial-gradient(
+                circle at 10% 5%,
+                rgba(213,173,99,.14),
+                transparent 35%
+            ),
+            linear-gradient(
+                150deg,
+                #58182b 0%,
+                #35101e 55%,
+                #19090e 100%
+            ) !important;
+    }
+
+    #loginScreen .num-btn {
+        min-height: 54px;
+    }
+
+    #loginScreen .lp-login-btn,
+    #loginScreen .login-btn {
+        min-height: 54px;
+    }
+}
+
+/* Hərəkəti azalt seçimi */
+@media (prefers-reduced-motion: reduce) {
+
+    #loginScreen *,
+    #loginScreen *::before,
+    #loginScreen *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
