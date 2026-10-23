@@ -13,119 +13,239 @@
 <title>Restoran Sistemi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
-<link rel="stylesheet" href="css/yuzapos-premium.css">
-</head>
-<body>
-
-<!-- ═══ LOGIN ═══ -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Kalam:wght@400&display=swap
+<!-- ═══ LOGIN (YuZa POS) ═══ -->
 <div class="screen active" id="loginScreen">
 
-  <!-- SOL HİSSƏ -->
-  <div class="lp-left">
-    <div class="lp-logo-wrap">
-     <img src="assets/logo.png" class="lp-logo" alt="Logo"
-           onerror="this.style.display='none';document.getElementById('lp-logo-fallback').style.display='flex'">
-      <div id="lp-logo-fallback" class="lp-logo-fallback" style="display:none;">
-        <svg class="icon" style="width:64px;height:64px;color:#fff;"><use href="#i-utensils"></use></svg>
+  <!-- İkon və loqo simvolları (yalnız giriş ekranı üçün) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="yzGold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8d283"/>
+        <stop offset="1" stop-color="#d99a36"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Loqo: aşpaz papağı + çəngəl və bıçaq -->
+    <symbol id="yz-mark" viewBox="-4 0 128 112">
+      <g fill="none" stroke="url(#yzGold)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M30 68A24.6 21 0 0 1 9.7 33A23.4 20 0 0 1 43.2 15A25.7 22 0 0 1 83.4 14A22.2 19 0 0 1 110.3 32A24.6 21 0 0 1 90 68"/>
+        <path d="M30 68V98A6 6 0 0 0 36 104H84A6 6 0 0 0 90 98V68"/>
+        <path d="M30 98L24 104M90 98L96 104"/>
+      </g>
+      <g fill="url(#yzGold)" stroke="none">
+        <rect x="40.4" y="40" width="4.8" height="24" rx="2.4"/>
+        <rect x="47.8" y="40" width="4.8" height="24" rx="2.4"/>
+        <rect x="55.2" y="40" width="4.8" height="24" rx="2.4"/>
+        <path d="M40.4 60H60V66C60 74 56 78 52.8 79.4V106.6a2.6 2.6 0 0 1-5.2 0V79.4C44.4 78 40.4 74 40.4 66Z"/>
+        <path d="M68.5 40C77 44.5 80 56 79 70V83H75.5V108.6a3.4 3.4 0 0 1-7 0Z"/>
+      </g>
+    </symbol>
+
+    <!-- Rol ikonları -->
+    <symbol id="yz-i-admin" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="15" r="7.5"/>
+        <path d="M9 41c0-8.6 6.7-14 15-14s15 5.4 15 14"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-waiter" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="14.5" r="7.5"/>
+        <path d="M17 12.5c3 0 6-1.3 7.6-4 1.4 2.7 3.8 4 6.4 4"/>
+        <path d="M9 41v-3c0-6 4.7-10 11-10h8c6.3 0 11 4 11 10v3"/>
+        <path d="M19.5 29.5l4.5 2.4 4.5-2.4v6l-4.5-2.4-4.5 2.4z"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-chef" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.5 28.5a8 8 0 0 1-1.6-15.2A8.4 8.4 0 0 1 24 8.2a8.4 8.4 0 0 1 12.1 5.1 8 8 0 0 1-1.6 15.2V39a2.5 2.5 0 0 1-2.5 2.5H16A2.5 2.5 0 0 1 13.5 39z"/>
+        <path d="M13.5 34h21"/>
+        <path d="M19 26v4M24 25v5M29 26v4"/>
+      </g>
+    </symbol>
+
+    <!-- Üstünlük ikonları -->
+    <symbol id="yz-i-utensils" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 4v7a4 4 0 0 0 8 0V4M12 4v24"/>
+        <path d="M23 28V4c-3 1.6-4.4 5-4.4 9v5.5H23"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-users" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="11" r="4"/>
+        <circle cx="7" cy="13" r="3"/>
+        <circle cx="25" cy="13" r="3"/>
+        <path d="M8.5 26c0-4.2 3.4-7 7.5-7s7.5 2.8 7.5 7"/>
+        <path d="M2.5 23.5c0-3 2-5 4.5-5.2M29.5 23.5c0-3-2-5-4.5-5.2"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-chart" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 27h22"/>
+        <path d="M7 27v-7M13 27v-11M19 27v-8M25 27V14"/>
+        <path d="M5.5 14.5l6-5 5 3.5 8-7M20 6h5v5"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-calendar" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="7" width="22" height="20" rx="3"/>
+        <path d="M5 13h22M11 4v5M21 4v5"/>
+        <path d="M16 16.2l1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-shield" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 3.5l9.5 3.8v7.4c0 6-4 10.6-9.5 13.3-5.5-2.7-9.5-7.3-9.5-13.3V7.3z"/>
+        <path d="M11.5 15.8l3.2 3.2 6-6.4"/>
+      </g>
+    </symbol>
+
+    <!-- Idarəetmə ikonları -->
+    <symbol id="yz-i-sun" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.2" fill="currentColor" fill-opacity=".25"/>
+        <path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-moon" viewBox="0 0 24 24">
+      <path d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8a8.4 8.4 0 1 0 10.8 10.8z" fill="currentColor" fill-opacity=".85"/>
+    </symbol>
+    <symbol id="yz-i-lock" viewBox="0 0 24 24">
+      <g fill="currentColor">
+        <path d="M7 10V7.5a5 5 0 0 1 10 0V10h-2V7.5a3 3 0 0 0-6 0V10z"/>
+        <rect x="4.5" y="10" width="15" height="11" rx="2.5"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-reset" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5.5 16a10.5 10.5 0 0 1 18-7.3L26 11.5"/>
+        <path d="M26.5 5.5v6h-6"/>
+        <path d="M26.5 16a10.5 10.5 0 0 1-18 7.3L6 20.5"/>
+        <path d="M5.5 26.5v-6h6"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-backspace" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11.5 6.5H26a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H11.5L3.5 16z"/>
+        <path d="M15.5 12l7 8M22.5 12l-7 8"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <div class="yz-login" id="yzLogin" data-yz-theme="dark">
+
+    <!-- Atmosfer fonu (restoran işıqları) -->
+    <div class="yz-bg" aria-hidden="true">
+      <i class="yz-bokeh" style="left:41%;top:16%;--s:15em;--c:255,170,64;--o:.62"></i>
+      <i class="yz-bokeh" style="left:41%;top:17.5%;--s:4.6em;--c:255,214,140;--o:.85"></i>
+      <i class="yz-bokeh" style="left:45%;top:24%;--s:6.5em;--c:255,170,64;--o:.55"></i>
+      <i class="yz-bokeh" style="left:46%;top:5%;--s:16em;--c:190,120,40;--o:.32"></i>
+      <i class="yz-bokeh" style="left:61%;top:8%;--s:9em;--c:200,130,50;--o:.22"></i>
+      <i class="yz-bokeh" style="left:92%;top:31%;--s:7.5em;--c:255,170,64;--o:.55"></i>
+      <i class="yz-bokeh" style="left:98%;top:20%;--s:10em;--c:255,180,80;--o:.4"></i>
+      <i class="yz-bokeh" style="left:97%;top:25%;--s:3.4em;--c:90,150,255;--o:.55"></i>
+      <i class="yz-bokeh" style="left:95%;top:76%;--s:10em;--c:255,170,64;--o:.7"></i>
+      <i class="yz-bokeh" style="left:95%;top:75%;--s:3.4em;--c:255,225,160;--o:.95"></i>
+      <i class="yz-bokeh" style="left:36%;top:49%;--s:3.6em;--c:255,160,60;--o:.5"></i>
+      <i class="yz-bokeh" style="left:45%;top:53%;--s:3.2em;--c:255,160,60;--o:.5"></i>
+      <i class="yz-bokeh" style="left:40%;top:60%;--s:5em;--c:255,150,50;--o:.3"></i>
+      <i class="yz-bokeh" style="left:65%;top:95%;--s:26em;--c:210,125,40;--o:.2"></i>
+      <i class="yz-bokeh" style="left:3%;top:30%;--s:19em;--c:55,110,50;--o:.42"></i>
+      <i class="yz-bokeh" style="left:6%;top:64%;--s:17em;--c:50,100,46;--o:.34"></i>
+      <i class="yz-bokeh" style="left:2%;top:8%;--s:12em;--c:60,120,55;--o:.34"></i>
+      <i class="yz-bokeh" style="left:30%;top:44%;--s:13em;--c:50,100,46;--o:.18"></i>
+      <i class="yz-bokeh" style="left:24%;top:48%;--s:4em;--c:255,200,110;--o:.5"></i>
+      <i class="yz-bokeh" style="left:26%;top:54%;--s:3em;--c:255,170,70;--o:.55"></i>
+      <i class="yz-bokeh" style="left:20%;top:58%;--s:9em;--c:255,150,50;--o:.16"></i>
+      <i class="yz-bokeh" style="left:32%;top:62%;--s:3.4em;--c:255,190,100;--o:.4"></i>
+    </div>
+
+    <!-- Görünüş rejimi + dil -->
+    <div class="yz-topbar">
+      <div class="yz-theme" role="group" aria-label="Görünüş rejimi">
+        <button type="button" class="yz-theme__btn" data-yz-theme-set="light" aria-pressed="false" aria-label="İşıqlı rejim" title="İşıqlı rejim"><svg><use href="#yz-i-sun"/></svg></button>
+        <button type="button" class="yz-theme__btn" data-yz-theme-set="dark" aria-pressed="true" aria-label="Qaranlıq rejim" title="Qaranlıq rejim"><svg><use href="#yz-i-moon"/></svg></button>
       </div>
+      <span class="yz-lang" title="Azərbaycan dili">AZ</span>
     </div>
 
-    <p class="lp-subtitle">SİSTEMƏ DAXİL OLUN</p>
+    <div class="yz-stage">
 
-    <div class="role-tabs lp-roles">
-      <button class="role-tab active" onclick="setRole('admin',this)">
-        <svg class="icon"><use href="#i-admin"></use></svg> ADMIN
-      </button>
-      <button class="role-tab" onclick="setRole('staff',this)">
-        <svg class="icon"><use href="#i-user"></use></svg> İşçi
-      </button>
-      <button class="role-tab" onclick="setRole('kitchen',this)">
-        <svg class="icon"><use href="#i-chef"></use></svg> MƏTBƏX
-      </button>
+      <!-- SOL HİSSƏ: brend + üstünlüklər -->
+      <section class="yz-brand">
+        <div class="yz-lockup">
+          <svg class="yz-mark" aria-hidden="true"><use href="#yz-mark"/></svg>
+          <div class="yz-wordmark"><span class="yz-wm-a">YuZa</span><span class="yz-wm-b">POS</span></div>
+          <p class="yz-lockup__sub">RESTORAN İDARƏETMƏ SİSTEMİ</p>
+        </div>
+
+        <h2 class="yz-headline">Restoranınızın<br><span>bütün ehtiyacları<br>tək bir sistemdə!</span></h2>
+
+        <ul class="yz-features">
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-utensils"/></svg></span><span><b>Masa və Sifariş İdarəsi</b><small>Sürətli və rahat</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-users"/></svg></span><span><b>İşçi İdarəetməsi</b><small>Komanda üçün tam nəzarət</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-chart"/></svg></span><span><b>Maliyyə və Hesabatlar</b><small>Dəqiq statistikalar</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-calendar"/></svg></span><span><b>Banket və Tədbirlər</b><small>Xüsusi anlar üçün ideal</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-shield"/></svg></span><span><b>Müştəri Loyallığı</b><small>Daha çox qonaq, daha çox dəyər</small></span></li>
+        </ul>
+
+        <div class="yz-tagline">
+          <p>Uğurlu restoranlar<br><span>doğru sistemlə başlayır!</span></p>
+          <svg viewBox="0 0 270 60" preserveAspectRatio="none" aria-hidden="true"><path d="M3 55C84 47 180 33 266 6" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round"/></svg>
+        </div>
+      </section>
+
+      <!-- SAĞ HİSSƏ: giriş kartı (PIN) -->
+      <main class="yz-card">
+        <svg class="yz-mark" aria-hidden="true"><use href="#yz-mark"/></svg>
+        <div class="yz-wordmark"><span class="yz-wm-a">YuZa</span><span class="yz-wm-b">POS</span></div>
+        <p class="yz-lockup__sub">RESTORAN İDARƏETMƏ SİSTEMİ</p>
+
+        <h1 class="yz-card__title">Sistemə Daxil Olun</h1>
+        <p class="yz-card__hint">Zəhmət olmasa, rolunuzu seçin və PIN kodunuzu daxil edin.</p>
+
+        <div class="yz-roles" role="group" aria-label="Rol seçimi">
+          <button type="button" class="role-tab yz-role yz-role--admin active" onclick="setRole('admin',this)"><svg><use href="#yz-i-admin"/></svg><span>Admin</span></button>
+          <button type="button" class="role-tab yz-role yz-role--staff" onclick="setRole('staff',this)"><svg><use href="#yz-i-waiter"/></svg><span>Ofisiant</span></button>
+          <button type="button" class="role-tab yz-role yz-role--kitchen" onclick="setRole('kitchen',this)"><svg><use href="#yz-i-chef"/></svg><span>Mətbəx</span></button>
+        </div>
+
+        <div class="yz-pad">
+          <div class="yz-pinwrap">
+            <div class="yz-pin" id="pinDots" aria-label="PIN kod">
+              <div class="yz-dot" id="d0"></div>
+              <div class="yz-dot" id="d1"></div>
+              <div class="yz-dot" id="d2"></div>
+              <div class="yz-dot" id="d3"></div>
+            </div>
+            <div class="yz-err" id="loginErr" role="alert" aria-live="assertive"></div>
+          </div>
+
+          <div class="yz-keys">
+            <button type="button" class="yz-key" onclick="numPress('1')">1</button>
+            <button type="button" class="yz-key" onclick="numPress('2')">2</button>
+            <button type="button" class="yz-key" onclick="numPress('3')">3</button>
+            <button type="button" class="yz-key" onclick="numPress('4')">4</button>
+            <button type="button" class="yz-key" onclick="numPress('5')">5</button>
+            <button type="button" class="yz-key" onclick="numPress('6')">6</button>
+            <button type="button" class="yz-key" onclick="numPress('7')">7</button>
+            <button type="button" class="yz-key" onclick="numPress('8')">8</button>
+            <button type="button" class="yz-key" onclick="numPress('9')">9</button>
+            <button type="button" class="yz-key yz-key--ico" onclick="numPress('clear')" aria-label="Təmizlə" title="Təmizlə"><svg><use href="#yz-i-reset"/></svg></button>
+            <button type="button" class="yz-key" onclick="numPress('0')">0</button>
+            <button type="button" class="yz-key yz-key--ico" onclick="numPress('back')" aria-label="Sil" title="Sil"><svg><use href="#yz-i-backspace"/></svg></button>
+          </div>
+        </div>
+
+        <p class="yz-secure"><svg><use href="#yz-i-lock"/></svg><span>Təhlükəsiz və etibarlı sistem</span></p>
+      </main>
     </div>
 
-    <div class="pin-display lp-pin-display" id="pinDots">
-      <div class="pin-dot" id="d0"></div>
-      <div class="pin-dot" id="d1"></div>
-      <div class="pin-dot" id="d2"></div>
-      <div class="pin-dot" id="d3"></div>
-    </div>
-
-    <div class="numpad lp-numpad">
-      <button class="num-btn" onclick="numPress('1')">1</button>
-      <button class="num-btn" onclick="numPress('2')">2</button>
-      <button class="num-btn" onclick="numPress('3')">3</button>
-      <button class="num-btn" onclick="numPress('4')">4</button>
-      <button class="num-btn" onclick="numPress('5')">5</button>
-      <button class="num-btn" onclick="numPress('6')">6</button>
-      <button class="num-btn" onclick="numPress('7')">7</button>
-      <button class="num-btn" onclick="numPress('8')">8</button>
-      <button class="num-btn" onclick="numPress('9')">9</button>
-      <button class="num-btn lp-clear-btn" onclick="numPress('clear')">SİL</button>
-      <button class="num-btn" onclick="numPress('0')">0</button>
-      <button class="num-btn lp-back-btn" onclick="numPress('back')">⌫</button>
-    </div>
-
-    <button class="login-btn lp-login-btn" onclick="doLogin()">DAXİL OL</button>
-    <div class="err-msg" id="loginErr"></div>
+    <div class="yz-version"><svg><use href="#yz-i-shield"/></svg><span>YuZa POS v1.0.0</span></div>
   </div>
-
-  <!-- SAĞ HİSSƏ -->
-  <div class="lp-right">
-    <video class="lp-media" autoplay muted loop playsinline
-           onerror="this.style.display='none'">
-      <source src="assets/login-video.mp4" type="video/mp4">
-    </video>
-    <img src="assets/login-bg.jpg" class="lp-media lp-media-img" alt=""
-         onerror="this.style.display='none'">
-    <div class="lp-overlay"></div>
-
-    <div class="lp-datetime">
-      <div class="lp-clock" id="lpClock">00:00</div>
-      <div class="lp-date" id="lpDate"></div>
-    </div>
-
-    <div class="lp-weather">
-      <div class="lp-weather-icon">☀️</div>
-      <div class="lp-weather-info">
-        <span class="lp-weather-temp" id="lpTemp">—°</span>
-        <span class="lp-weather-desc">Naxçıvan</span>
-      </div>
-    </div>
-
-    <div class="lp-slogan">Ənənədən gələn dad </div>
-  </div>
-
 </div>
-
-<script>
-(function(){
-  var days=['Bazar','Bazar ertəsi','Çərşənbə axşamı','Çərşənbə','Cümə axşamı','Cümə','Şənbə'];
-  var months=['yanvar','fevral','mart','aprel','may','iyun','iyul','avqust','sentyabr','oktyabr','noyabr','dekabr'];
-  function tick(){
-    var now=new Date();
-    var h=String(now.getHours()).padStart(2,'0');
-    var m=String(now.getMinutes()).padStart(2,'0');
-    var cl=document.getElementById('lpClock');
-    var dt=document.getElementById('lpDate');
-    if(cl) cl.textContent=h+':'+m;
-    if(dt) dt.textContent=days[now.getDay()]+', '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();
-  }
-  tick(); setInterval(tick,1000);
-  fetch('https://api.open-meteo.com/v1/forecast?latitude=39.2092&longitude=45.4112&current_weather=true')
-    .then(function(r){return r.json();}).then(function(d){
-      var t=document.getElementById('lpTemp');
-      var wc=d.current_weather&&d.current_weather.weathercode;
-      if(t) t.textContent=Math.round(d.current_weather.temperature)+'°C';
-      var icons={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',51:'🌦',61:'🌧',71:'❄️',80:'🌦',95:'⛈'};
-      var wp=document.querySelector('.lp-weather-icon');
-      if(wp) wp.textContent=icons[wc]||'🌡';
-    }).catch(function(){});
-})();
-</script>
-
 <!-- ═══ ADMIN ═══ -->
 <div class="screen" id="adminScreen">
 
@@ -1621,5 +1741,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/yuza-login.js"></script>
 </body>
 </html>
