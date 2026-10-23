@@ -1,0 +1,286 @@
+/* ═══════════════════════════════════════════════════════════════
+   YuZa POS — GİRİŞ SƏHİFƏSİ (Mərhələ 1)
+   Yalnız #loginScreen daxilindəki #yzLogin elementinə təsir edir.
+   Digər ekranlara (admin, qarson, mətbəx, müştəri) toxunmur.
+   index.html-də styles.css (və varsa yuzapos-premium.css) fayllarından SONRA yüklənməlidir.
+
+   Ölçü sistemi: dizayn 1536×1024 şəkli əsasında qurulub. Masaüstündə bütün
+   ölçülər "em"-dir və #yzLogin-in font-size-ı ekrana görə miqyaslanır,
+   beləliklə kompozisiya şəkildəki kimi qalır (kiçik ekranda proporsional kiçilir).
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Tema dəyişənləri ─────────────────────────────────────────── */
+#yzLogin{
+  --g1:#f8d283; --g2:#e8b04b; --g3:#c98d2e;
+  --text:#ffffff; --text-soft:rgba(255,255,255,.88); --muted:rgba(255,255,255,.6);
+  --headline-gold:#f1b84f;
+  --card-bg:rgba(10,11,14,.76);
+  --card-glow:rgba(232,176,75,.16);
+  --ctl-bg:rgba(16,18,22,.8); --ctl-bd:rgba(232,176,75,.4); --ctl-active:rgba(255,255,255,.1);
+  --moon:#9fb0d6;
+  --feat-fill:#1a140a; --feat-bd:#e0a940;
+  --role-bg:linear-gradient(180deg,rgba(22,36,58,.62),rgba(14,24,40,.62));
+  --role-bg-kitchen:linear-gradient(180deg,rgba(18,38,44,.62),rgba(12,26,32,.62));
+  --role-bd:rgba(255,255,255,.14);
+  --role-staff:#62aeff; --role-kitchen:#35d9a4;
+  --pin-bg:rgba(5,7,10,.72); --pin-bd:rgba(255,255,255,.12); --dot:#5c626b;
+  --key-bg:linear-gradient(180deg,#15222f,#0e1823); --key-bd:rgba(255,255,255,.12); --key-fg:#fff;
+  --key-hover:linear-gradient(180deg,#1b2c3d,#122030);
+  --err-bg:rgba(74,14,14,.95); --err-fg:#ffb9b0;
+  --bg-base:radial-gradient(120% 95% at 68% 38%,#15110b 0%,#080a0d 52%,#030405 100%);
+  --bg-shade:linear-gradient(90deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.12) 52%,rgba(0,0,0,.22) 100%);
+  --bg-vignette:radial-gradient(130% 100% at 50% 50%,transparent 55%,rgba(0,0,0,.55) 100%);
+  --bokeh-mul:1;
+}
+#yzLogin[data-yz-theme="light"]{
+  --text:#1d1812; --text-soft:rgba(29,24,18,.86); --muted:rgba(29,24,18,.62);
+  --headline-gold:#b87618;
+  --g1:#e9b95a; --g2:#cc8f2a; --g3:#a9701a;
+  --card-bg:rgba(255,252,245,.86);
+  --card-glow:rgba(201,141,46,.2);
+  --ctl-bg:rgba(255,255,255,.78); --ctl-bd:rgba(176,118,28,.45); --ctl-active:rgba(176,118,28,.14);
+  --moon:#5b6b92;
+  --feat-fill:#fbf1dc; --feat-bd:#c98d2e;
+  --role-bg:linear-gradient(180deg,#f3f6fc,#e8eef8);
+  --role-bg-kitchen:linear-gradient(180deg,#eef8f4,#e2f1ea);
+  --role-bd:rgba(29,24,18,.14);
+  --role-staff:#1f6fd1; --role-kitchen:#0e9a6c;
+  --pin-bg:rgba(255,255,255,.85); --pin-bd:rgba(29,24,18,.14); --dot:#b9b2a5;
+  --key-bg:linear-gradient(180deg,#ffffff,#f3eee4); --key-bd:rgba(29,24,18,.14); --key-fg:#1d1812;
+  --key-hover:linear-gradient(180deg,#fffdf8,#ece5d6);
+  --err-bg:rgba(255,232,228,.97); --err-fg:#a3231a;
+  --bg-base:radial-gradient(120% 95% at 68% 38%,#fbf6ea 0%,#f1e7d3 55%,#e6d8bd 100%);
+  --bg-shade:linear-gradient(90deg,rgba(255,250,238,.55) 0%,rgba(255,250,238,.1) 55%,rgba(255,250,238,.2) 100%);
+  --bg-vignette:radial-gradient(130% 100% at 50% 50%,transparent 60%,rgba(120,84,30,.22) 100%);
+  --bokeh-mul:.4;
+}
+
+/* ── Əsas çərçivə ─────────────────────────────────────────────── */
+#loginScreen{background:#05070a;}
+#yzLogin{
+  position:relative; flex:1; min-width:0; min-height:100vh; min-height:100dvh;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; color:var(--text);
+  font-family:'Inter','Segoe UI',system-ui,sans-serif;
+  /* 16px dizayn bazası: şəkildə 1536×1024 → 16px */
+  font-size:clamp(9.4px,min(1.5625vh,1.04167vw),20.8px);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+#yzLogin *, #yzLogin *::before, #yzLogin *::after{box-sizing:border-box;}
+#yzLogin button{font-family:inherit;}
+#yzLogin svg{display:block;max-width:none;}
+
+/* ── Fon ──────────────────────────────────────────────────────── */
+#yzLogin .yz-bg{position:absolute; inset:0; background:var(--bg-base); overflow:hidden; pointer-events:none;}
+#yzLogin .yz-bg::before{content:''; position:absolute; inset:0; background:var(--bg-shade);}
+#yzLogin .yz-bg::after{content:''; position:absolute; inset:0; background:var(--bg-vignette);}
+#yzLogin .yz-bokeh{
+  position:absolute; width:var(--s); height:var(--s); border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(var(--c),var(--o)) 0%,rgba(var(--c),calc(var(--o)*.4)) 38%,rgba(var(--c),0) 70%);
+  opacity:var(--bokeh-mul); filter:blur(.35em);
+}
+
+/* ── Yuxarı idarəetmə (rejim + dil) ───────────────────────────── */
+#yzLogin .yz-topbar{position:absolute; top:1.7em; right:3.45em; display:flex; gap:.8em; z-index:5;}
+#yzLogin .yz-theme{
+  display:flex; align-items:center; width:7.75em; height:2.875em; padding:.28em;
+  border-radius:99em; background:var(--ctl-bg); border:1px solid var(--ctl-bd);
+  backdrop-filter:blur(.6em); -webkit-backdrop-filter:blur(.6em);
+}
+#yzLogin .yz-theme__btn{
+  flex:1; height:100%; border:0; border-radius:99em; background:transparent; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:background .2s,color .2s;
+}
+#yzLogin .yz-theme__btn svg{width:1.3em; height:1.3em;}
+#yzLogin .yz-theme__btn[data-yz-theme-set="light"]{color:var(--g2);}
+#yzLogin .yz-theme__btn[data-yz-theme-set="dark"]{color:var(--moon);}
+#yzLogin .yz-theme__btn[aria-pressed="true"]{background:var(--ctl-active);}
+#yzLogin .yz-lang{
+  display:flex; align-items:center; justify-content:center; width:6em; height:2.875em;
+  border-radius:99em; background:var(--ctl-bg); border:1px solid var(--role-bd);
+  font-size:1em; font-weight:600; letter-spacing:.04em; color:var(--text);
+  backdrop-filter:blur(.6em); -webkit-backdrop-filter:blur(.6em); cursor:default; user-select:none;
+}
+
+/* ── Səhnə (iki sütun) ────────────────────────────────────────── */
+#yzLogin .yz-stage{
+  position:relative; z-index:2; width:75.625em; flex:none; transform:translateX(-.19em);
+  display:grid; grid-template-columns:35.875em 39.75em; align-items:start;
+}
+
+/* ── Sol sütun: brend ─────────────────────────────────────────── */
+#yzLogin .yz-brand{margin-top:-3.06em; min-width:0;}
+#yzLogin .yz-lockup{width:21.6em; margin-left:1.1em; text-align:center;}
+#yzLogin .yz-mark{width:7.57em; height:6.63em; margin:0 auto; transform:translateX(-.9em); filter:drop-shadow(0 .2em .6em rgba(0,0,0,.45));}
+#yzLogin .yz-wordmark{display:flex; justify-content:center; align-items:baseline; gap:.2em; line-height:1;}
+#yzLogin .yz-wordmark span{font-family:'Poppins','Inter',sans-serif; font-weight:600; letter-spacing:-.025em; line-height:1;}
+#yzLogin .yz-wm-a{color:var(--text);}
+#yzLogin .yz-wm-b{background:linear-gradient(180deg,var(--g1),var(--g3)); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;}
+#yzLogin .yz-brand .yz-wordmark{font-size:4.65em; margin-top:.02em;}
+#yzLogin .yz-lockup__sub{
+  margin:0; font-size:1em; font-weight:400; letter-spacing:.16em; line-height:1.2; color:var(--text-soft);
+  white-space:nowrap;
+}
+#yzLogin .yz-brand .yz-lockup__sub{margin-top:.62em;}
+
+#yzLogin .yz-headline{
+  margin:.78em 0 0 .06em; font-family:'Poppins','Inter',sans-serif; font-weight:700;
+  font-size:2.09em; line-height:1.147; letter-spacing:-.005em; color:var(--text);
+}
+#yzLogin .yz-headline span{color:var(--headline-gold);}
+
+#yzLogin .yz-features{list-style:none; margin:1.2em 0 0; padding:0; display:flex; flex-direction:column; gap:1em;}
+#yzLogin .yz-features li{display:flex; align-items:center; gap:1.6em;}
+#yzLogin .yz-feat__ico{
+  flex:none; width:3.625em; height:3.625em; border-radius:50%;
+  border:.125em solid transparent; color:var(--g2);
+  background:linear-gradient(var(--feat-fill),var(--feat-fill)) padding-box, linear-gradient(180deg,var(--g1) 0%,var(--g3) 100%) border-box;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 1.2em rgba(232,176,75,.12), inset 0 0 .8em rgba(232,176,75,.08);
+}
+#yzLogin .yz-feat__ico svg{width:1.85em; height:1.85em;}
+#yzLogin .yz-features b{display:block; font-size:.92em; font-weight:600; line-height:1.63; color:var(--text);}
+#yzLogin .yz-features small{display:block; font-size:.86em; font-weight:400; line-height:1.6; color:var(--text-soft); opacity:.82;}
+
+#yzLogin .yz-tagline{position:relative; width:19em; height:7.2em; margin:1.5em 0 0 3.1em; color:var(--g2);}
+#yzLogin .yz-tagline p{
+  position:absolute; left:0; top:.1em; margin:0; width:max-content;
+  font-family:'Kalam','Segoe Print','Segoe Script',cursive; font-weight:400; font-style:italic; font-size:1.7em; line-height:1.32;
+  background:linear-gradient(180deg,var(--g1),var(--g3)); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
+  transform:rotate(-7deg); transform-origin:left top;
+}
+#yzLogin .yz-tagline p span{display:inline-block; margin-left:1em;}
+#yzLogin .yz-tagline svg{position:absolute; left:1.2em; bottom:-.4em; width:16.3em; height:3.6em; opacity:.95;}
+
+/* ── Sağ sütun: giriş kartı ───────────────────────────────────── */
+#yzLogin .yz-card{
+  position:relative; width:39.75em; min-height:51.8em; margin:0;
+  padding:2.25em 2.5625em 2.2em; border-radius:1.85em;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  background:var(--card-bg);
+  backdrop-filter:blur(1.4em) saturate(1.1); -webkit-backdrop-filter:blur(1.4em) saturate(1.1);
+  box-shadow:0 0 3.2em var(--card-glow), 0 2.2em 5em rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);
+}
+#yzLogin .yz-card::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:.095em; pointer-events:none;
+  background:linear-gradient(180deg,rgba(250,214,130,.95) 0%,rgba(214,156,60,.62) 40%,rgba(214,156,60,.5) 75%,rgba(246,200,110,.8) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+}
+#yzLogin .yz-card .yz-mark{width:5.07em; height:4.43em; transform:none;}
+#yzLogin .yz-card .yz-wordmark{font-size:3.28em; margin-top:0;}
+#yzLogin .yz-card .yz-lockup__sub{margin-top:.8em; font-size:.76em; letter-spacing:.19em;}
+#yzLogin .yz-card__title{
+  margin:1.55em 0 0; font-family:'Poppins','Inter',sans-serif; font-weight:600; font-size:1.375em; line-height:1.2; color:var(--text);
+}
+#yzLogin .yz-card__hint{margin:.32em 0 0; font-size:.906em; line-height:1.4; color:var(--text-soft); font-weight:400;}
+
+/* Rollar */
+#yzLogin .yz-roles{width:100%; margin-top:1.73em; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.9375em;}
+#yzLogin .yz-role{
+  height:7.5em; padding:.35em .4em 0; margin:0; border-radius:.9em; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.7em;
+  background:var(--role-bg); border:1px solid var(--role-bd); color:var(--text);
+  font-size:1em; font-weight:500; letter-spacing:0; transition:border-color .2s,box-shadow .2s,transform .12s,background .2s;
+}
+#yzLogin .yz-role--kitchen{background:var(--role-bg-kitchen);}
+#yzLogin .yz-role svg{width:3em; height:3em;}
+#yzLogin .yz-role span{font-size:1.125em; line-height:1.2; color:inherit;}
+#yzLogin .yz-role--admin svg{color:var(--g2);}
+#yzLogin .yz-role--staff svg,#yzLogin .yz-role--staff span{color:var(--role-staff);}
+#yzLogin .yz-role--kitchen svg,#yzLogin .yz-role--kitchen span{color:var(--role-kitchen);}
+#yzLogin .yz-role--admin span{color:var(--text);}
+#yzLogin .yz-role:hover{border-color:rgba(232,176,75,.45);}
+#yzLogin .yz-role:active{transform:scale(.97);}
+#yzLogin .yz-role.active{
+  border-color:var(--g2); color:var(--text);
+  background:linear-gradient(180deg,rgba(232,176,75,.17) 0%,rgba(52,36,12,.55) 100%);
+  box-shadow:0 0 0 1px var(--g2), 0 0 1.5em rgba(232,176,75,.45), inset 0 0 1.1em rgba(232,176,75,.16);
+}
+#yzLogin[data-yz-theme="light"] .yz-role.active{background:linear-gradient(180deg,rgba(232,176,75,.34) 0%,rgba(255,236,196,.9) 100%);}
+#yzLogin .yz-role.active span{color:var(--text);}
+
+/* PIN + düymələr */
+#yzLogin .yz-pad{width:25.8125em; max-width:100%; margin-top:2em;}
+#yzLogin .yz-pinwrap{position:relative; height:3.5em; border-radius:.75em;}
+#yzLogin .yz-pin{
+  height:100%; border-radius:inherit; background:var(--pin-bg); border:1px solid var(--pin-bd);
+  display:flex; align-items:center; justify-content:center; gap:2.19em;
+}
+#yzLogin .yz-dot{width:1em; height:1em; border-radius:50%; background:var(--dot); transition:background .18s,box-shadow .18s,transform .18s;}
+#yzLogin .yz-dot.filled{background:var(--g2); box-shadow:0 0 .7em rgba(232,176,75,.75); transform:scale(1.08);}
+#yzLogin .yz-err{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 1em;
+  border-radius:inherit; background:var(--err-bg); color:var(--err-fg);
+  border:1px solid rgba(255,120,110,.5); font-size:.8125em; font-weight:600; line-height:1.3; text-align:center;
+}
+#yzLogin .yz-err:empty{display:none;}
+#yzLogin .yz-pinwrap.yz-shake{animation:yzShake .38s ease;}
+@keyframes yzShake{10%,90%{transform:translateX(-.15em)}20%,80%{transform:translateX(.3em)}30%,50%,70%{transform:translateX(-.5em)}40%,60%{transform:translateX(.5em)}}
+
+#yzLogin .yz-keys{margin-top:.94em; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75em .9em;}
+#yzLogin .yz-key{
+  height:1.904em; padding:0; margin:0; border-radius:.31em; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--key-bg); border:1px solid var(--key-bd); color:var(--key-fg);
+  font-size:1.625em; font-weight:400; line-height:1; font-variant-numeric:tabular-nums;
+  -webkit-user-select:none; user-select:none; touch-action:manipulation;
+  transition:background .15s,border-color .15s,transform .1s,box-shadow .15s;
+}
+#yzLogin .yz-key:hover{background:var(--key-hover); border-color:rgba(232,176,75,.4);}
+#yzLogin .yz-key:active,#yzLogin .yz-key.yz-pressed{transform:scale(.95); border-color:var(--g2); box-shadow:0 0 .9em rgba(232,176,75,.35);}
+#yzLogin .yz-key--ico svg{width:.92em; height:.92em;}
+
+#yzLogin .yz-secure{margin:2.14em 0 0; display:flex; align-items:center; justify-content:center; gap:.6em; font-size:.875em; color:var(--text-soft); opacity:.82;}
+#yzLogin .yz-secure svg{width:1.15em; height:1.15em; color:var(--text-soft);}
+
+/* Versiya */
+#yzLogin .yz-version{position:absolute; right:3.7em; bottom:3.2em; z-index:3; display:flex; align-items:center; gap:.55em; font-size:.8125em; color:var(--muted);}
+#yzLogin .yz-version svg{width:1.55em; height:1.55em; color:var(--g2);}
+
+/* Fokus (klaviatura ilə naviqasiya) */
+#yzLogin button:focus-visible{outline:2px solid var(--g2); outline-offset:2px;}
+
+/* ── Mobil / planşet (portret): yalnız giriş kartı ────────────── */
+@media (max-width:959px){
+  #yzLogin{font-size:16px; align-items:flex-start; padding:4.2em 1em 3.4em;}
+  #yzLogin .yz-stage{display:block; width:100%; max-width:30em; margin:0 auto;}
+  #yzLogin .yz-brand{display:none;}
+  #yzLogin .yz-topbar{top:.9em; right:1em; gap:.6em;}
+  #yzLogin .yz-theme{width:6.6em; height:2.5em;}
+  #yzLogin .yz-lang{width:4.8em; height:2.5em; font-size:.92em;}
+  #yzLogin .yz-card{width:100%; min-height:0; padding:1.8em 1.25em 1.6em; border-radius:1.6em;}
+  #yzLogin .yz-card .yz-mark{width:4.4em; height:3.85em;}
+  #yzLogin .yz-card .yz-wordmark{font-size:2.7em;}
+  #yzLogin .yz-card .yz-lockup__sub{font-size:.72em; letter-spacing:.16em; white-space:normal;}
+  #yzLogin .yz-card__title{font-size:1.3em; margin-top:1.3em;}
+  #yzLogin .yz-card__hint{font-size:.88em;}
+  #yzLogin .yz-roles{margin-top:1.5em; gap:.6em;}
+  #yzLogin .yz-role{height:6.2em; gap:.5em;}
+  #yzLogin .yz-role svg{width:2.4em; height:2.4em;}
+  #yzLogin .yz-role span{font-size:1em;}
+  #yzLogin .yz-pad{width:100%; margin-top:1.5em;}
+  #yzLogin .yz-pinwrap{height:3.4em;}
+  #yzLogin .yz-pin{gap:1.9em;}
+  #yzLogin .yz-keys{gap:.65em;}
+  #yzLogin .yz-key{height:2.33em; font-size:1.5em; border-radius:.35em;}
+  #yzLogin .yz-secure{margin-top:1.4em; font-size:.82em;}
+  #yzLogin .yz-version{position:static; justify-content:center; margin-top:1.4em; font-size:.8em;}
+  #yzLogin .yz-stage + .yz-version{position:absolute; left:0; right:0; bottom:1.1em; margin:0;}
+}
+@media (max-width:380px){
+  #yzLogin .yz-card{padding-left:1em; padding-right:1em;}
+  #yzLogin .yz-card .yz-wordmark{font-size:2.4em;}
+  #yzLogin .yz-role{height:5.6em;}
+}
+/* Alçaq ekran (landşaft telefon) */
+@media (max-width:959px) and (max-height:520px){
+  #yzLogin{padding-top:3.4em;}
+  #yzLogin .yz-stage + .yz-version{position:static; margin:1em 0 0;}
+}
+
+/* Hərəkəti azaltmaq istəyənlər üçün */
+@media (prefers-reduced-motion:reduce){
+  #yzLogin *{transition:none !important; animation:none !important;}
+}
