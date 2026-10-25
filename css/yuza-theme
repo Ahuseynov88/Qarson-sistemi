@@ -1,0 +1,250 @@
+/* ═══════════════════════════════════════════════════════════════
+   YuZa POS — ÜMUMİ TEMA (Mərhələ 2)
+   Giriş səhifəsindəki qara-qızılı dizayn dilini bütün sistemə tətbiq edir:
+   admin, mətbəx, qarson, sifariş, ödəniş, müştəri ekranları və modallar.
+
+   • styles.css-dən (və varsa yuzapos-premium.css-dən) SONRA yüklənməlidir.
+   • Geri qaytarmaq: index.html-dən bu faylın <link> sətrini silmək kifayətdir.
+   • Gündüz (işıqlı) rejim = :root      → isti krem fon, tünd mətn, qızılı vurğu
+   • Gecə (tünd) rejim   = body.dark-mode → qara fon, krem mətn, qızılı vurğu
+   Bütün mətn/fon cütləri WCAG AA (≥4.5:1) kontrastına uyğun seçilib.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1) GÜNDÜZ REJİMİ ─────────────────────────────────────────── */
+:root{
+  --bg:#f5f0e6; --card:#fffdf8; --card2:#efe7d6; --border:#d9ccb2;
+  --text:#1c1710; --text2:#4d4435; --text3:#766c59;
+
+  --gold:#b87a12; --gold-dark:#8a5a0b;
+  --green:#157a45; --green-dark:#0f6036;
+  --red:#b3261e;   --red-dark:#8f1d17;
+  --blue:#1f62b3;
+  --orange:#a05a06; --orange-dark:#8a4c04;
+  --purple:#6d3fa0; --yellow:#b8860b;
+
+  --overlay-strong:rgba(12,9,4,.62); --overlay-soft:rgba(60,42,10,.07);
+  --shadow-color:rgba(60,42,10,.16);
+  --shadow-sm:0 1px 3px rgba(60,42,10,.10), 0 1px 2px rgba(60,42,10,.06);
+  --shadow-md:0 6px 16px rgba(60,42,10,.12), 0 2px 6px rgba(60,42,10,.07);
+  --shadow-lg:0 16px 36px rgba(60,42,10,.16), 0 6px 14px rgba(60,42,10,.09);
+
+  --brand-gradient:linear-gradient(135deg,#17120a 0%,#0d0f13 55%,#06080a 100%);
+  --brand-glow:radial-gradient(circle at 85% 0%, rgba(232,176,75,.30) 0%, transparent 62%);
+  --font-display:'Poppins','Inter','Segoe UI',sans-serif;
+
+  --yz-gold-1:#f8d283; --yz-gold-2:#e8b04b; --yz-gold-3:#c98d2e;
+  --yz-on-gold:#1a1205;
+  --yz-gold-grad:linear-gradient(180deg,#f6cf7c 0%,#e1a43e 100%);
+  --yz-gold-tint:rgba(184,122,18,.12);
+  --yz-ring:rgba(184,122,18,.45);
+}
+
+/* ── 2) GECƏ REJİMİ ───────────────────────────────────────────── */
+body.dark-mode{
+  color-scheme:dark;
+  --bg:#06080b; --card:#0e1217; --card2:#161c24; --border:rgba(232,176,75,.17);
+  --text:#f4eee2; --text2:#bdb5a5; --text3:#8e8777;
+
+  --gold:#e8b04b; --gold-dark:#c98d2e;
+  --green:#3fd08a; --green-dark:#2fae72;
+  --red:#ef6a60;   --red-dark:#d4493f;
+  --blue:#6aaeff;
+  --orange:#f0b34a; --orange-dark:#d99a33;
+  --purple:#b48be6; --yellow:#f3c64a;
+
+  --overlay-strong:rgba(0,0,0,.78); --overlay-soft:rgba(255,255,255,.05);
+  --shadow-color:rgba(0,0,0,.55);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.45);
+  --shadow-md:0 6px 16px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 36px rgba(0,0,0,.6);
+
+  --yz-gold-tint:rgba(232,176,75,.14);
+  --yz-ring:rgba(232,176,75,.5);
+}
+
+/* ── 3) ÜMUMİ ─────────────────────────────────────────────────── */
+body{background:var(--bg); color:var(--text);}
+body.dark-mode{
+  background:
+    radial-gradient(90% 60% at 80% -10%, rgba(232,176,75,.07) 0%, transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+h1,h2,h3,.modal h2,.topbar h2{font-family:var(--font-display); letter-spacing:0;}
+h1,h2{font-weight:600;}
+::selection{background:rgba(232,176,75,.35); color:inherit;}
+:focus-visible{outline:2px solid var(--yz-ring); outline-offset:2px;}
+
+/* Skroll zolağı */
+*{scrollbar-width:thin; scrollbar-color:rgba(184,122,18,.45) transparent;}
+body.dark-mode *{scrollbar-color:rgba(232,176,75,.35) transparent;}
+
+/* ── 4) YUXARI PANEL (hər iki rejimdə tünd + qızılı xətt) ─────── */
+.topbar{
+  background:var(--brand-gradient);
+  border-bottom:1px solid rgba(232,176,75,.38);
+  box-shadow:0 1px 0 rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.18);
+}
+.topbar h2,.topbar h1{color:#fff;}
+.topbar .icon{color:var(--yz-gold-2);}
+.topbar .btn-ghost,.topbar-right .btn-ghost{color:#f4eee2; border-color:rgba(232,176,75,.4);}
+.ap-hamburger{background:rgba(232,176,75,.14); color:var(--yz-gold-1);}
+.ap-hamburger:hover{background:rgba(232,176,75,.26);}
+#orderScreen .topbar{background:var(--card); border-bottom:1px solid var(--border); box-shadow:none;}
+#orderScreen .topbar h2{color:var(--text);}
+#orderScreen .topbar .icon{color:var(--gold);}
+.waiter-header{background:var(--card); border-bottom:1px solid var(--border);}
+.theme-toggle-btn{color:var(--yz-gold-1);}
+
+/* ── 5) DÜYMƏLƏR ──────────────────────────────────────────────── */
+/* Əsas əməliyyat düyməsi (Yadda saxla, Göndər, Təsdiqlə...) = qızılı */
+.btn-green,
+.add-fab{
+  background:var(--yz-gold-grad); color:var(--yz-on-gold);
+  border:1px solid rgba(138,90,11,.55);
+  box-shadow:0 2px 10px rgba(201,141,46,.28), inset 0 1px 0 rgba(255,255,255,.35);
+  font-weight:700;
+}
+.btn-green:hover,.add-fab:hover{filter:brightness(1.06);}
+.btn-green .icon,.add-fab .icon{color:inherit;}
+.add-fab{box-shadow:0 6px 22px rgba(201,141,46,.45);}
+.btn-red{background:var(--red-dark); color:#fff; border:1px solid rgba(0,0,0,.2);}
+body.dark-mode .btn-red{background:#c63d34; border-color:rgba(255,160,150,.25);}
+.btn-blue{background:#244f86; color:#fff; border:1px solid rgba(0,0,0,.2);}
+body.dark-mode .btn-blue{background:#2c5f9f; border-color:rgba(130,180,255,.25);}
+.btn-ghost{background:transparent; color:var(--text); border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--yz-gold-tint); border-color:var(--gold);}
+.btn{border-radius:10px;}
+
+/* Ödəniş düyməsi */
+.pay-trigger{background:linear-gradient(135deg,#a8741f,#7a5110); color:#fff; border:1px solid rgba(232,176,75,.45); box-shadow:0 2px 10px rgba(120,80,16,.3);}
+.pay-trigger:hover{background:linear-gradient(135deg,#b88025,#85580f);}
+.pay-trigger.partial{background:linear-gradient(135deg,#6e4a10,#4a3009);}
+
+/* ── 6) SIDEBAR / TABLAR ──────────────────────────────────────── */
+.ap-group__header{color:var(--text2);}
+.ap-group__header:hover{background:var(--yz-gold-tint); color:var(--text);}
+.ap-group.has-active > .ap-group__header{color:var(--gold-dark);}
+body.dark-mode .ap-group.has-active > .ap-group__header{color:var(--gold);}
+.admin-tab{color:var(--text2);}
+.admin-tab:hover{background:var(--yz-gold-tint); color:var(--text);}
+.admin-tab.active,
+body.dark-mode .admin-tab.active{
+  background:var(--yz-gold-tint); color:var(--gold-dark);
+  border-color:var(--yz-ring); box-shadow:inset 3px 0 0 var(--gold);
+}
+body.dark-mode .admin-tab.active{color:var(--gold);}
+
+.category-rail__tab:hover{background:var(--yz-gold-tint);}
+.category-rail__tab.active,
+.log-filter.active{
+  background:var(--yz-gold-grad); color:var(--yz-on-gold); font-weight:700;
+  box-shadow:0 2px 8px rgba(201,141,46,.3);
+}
+.report-subtab.active{
+  background:var(--brand-gradient); color:var(--yz-gold-1);
+  border-color:rgba(232,176,75,.5);
+}
+.report-quick-btn--accent{border-color:var(--gold); color:var(--gold-dark); background:var(--yz-gold-tint);}
+body.dark-mode .report-quick-btn--accent{color:var(--gold);}
+
+/* ── 7) KARTLAR / CƏDVƏLLƏR ───────────────────────────────────── */
+.stat-card,.table-card,.tile-card,.floor-card,.report-table,.modal,.ticket-panel{
+  background:var(--card); border-color:var(--border);
+}
+.stat-card{box-shadow:var(--shadow-md);}
+body.dark-mode .stat-card,body.dark-mode .table-card,body.dark-mode .tile-card{
+  box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(232,176,75,.06);
+}
+.stat-num{color:var(--gold-dark); font-family:var(--font-display); font-weight:600;}
+body.dark-mode .stat-num{color:var(--gold);}
+.tile-card:hover,.floor-card:hover,.table-card:hover{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 6px 18px var(--shadow-color);}
+.tile-card__icon{background:var(--card2);}
+.tile-card__icon .icon{color:var(--gold-dark);}
+body.dark-mode .tile-card__icon .icon{color:var(--gold);}
+.tile-detail-overlay{background:var(--bg);}
+.tile-detail-back{background:var(--card); border-bottom:1px solid var(--border); color:var(--text);}
+
+.report-table th{background:var(--card2); color:var(--text2);}
+.report-table td{color:var(--text); border-top-color:var(--border);}
+.report-table tr:hover td{background:var(--yz-gold-tint);}
+.report-table tr.report-table__top td{background:var(--yz-gold-tint);}
+.report-bar-chart__bar{background:linear-gradient(180deg,#f6cf7c,#c98d2e);}
+
+/* Statusla bağlı yazılar */
+.badge-green{background:rgba(21,122,69,.14); color:var(--green);}
+.badge-red{background:rgba(179,38,30,.13); color:var(--red);}
+.badge-orange{background:var(--yz-gold-tint); color:var(--orange);}
+body.dark-mode .badge-green{background:rgba(63,208,138,.14);}
+body.dark-mode .badge-red{background:rgba(239,106,96,.15);}
+
+/* ── 8) FORMLAR ───────────────────────────────────────────────── */
+.form-group label{color:var(--text2);}
+.form-group input,.form-group select,.form-group textarea,
+input[type="text"],input[type="number"],input[type="password"],input[type="tel"],
+input[type="date"],input[type="time"],input[type="url"],select,textarea{
+  background:var(--bg); color:var(--text); border-color:var(--border);
+}
+body.dark-mode .form-group input,body.dark-mode .form-group select,body.dark-mode .form-group textarea{background:#090c10;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus,
+input:focus,select:focus,textarea:focus{
+  border-color:var(--gold) !important; box-shadow:0 0 0 3px rgba(232,176,75,.2); outline:none;
+}
+::placeholder{color:var(--text3); opacity:1;}
+input[type="checkbox"],input[type="radio"]{accent-color:#c98d2e;}
+
+/* ── 9) MODAL ─────────────────────────────────────────────────── */
+.modal{border:1px solid var(--border); box-shadow:var(--shadow-lg);}
+body.dark-mode .modal{box-shadow:0 24px 60px rgba(0,0,0,.65), 0 0 0 1px rgba(232,176,75,.12);}
+.modal h2{color:var(--text);}
+.modal h2 .icon{color:var(--gold);}
+.modal-bg{backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);}
+
+/* ── 10) MƏTBƏX ───────────────────────────────────────────────── */
+.k-card.ready{background:rgba(63,208,138,.1); border-color:var(--green);}
+.ko-card--ready{border-color:var(--gold); background:var(--yz-gold-tint);}
+.ko-status--ready{color:var(--orange); background:var(--yz-gold-tint);}
+.ko-item-btn{background:var(--red-dark); color:#fff;}
+
+/* ── 11) QARSON: masa lövhəsi və sifariş ──────────────────────── */
+.floor-card.empty{border-left-color:var(--gold);}
+.floor-card.mine{border-left-color:var(--gold); background:var(--yz-gold-tint);}
+.floor-card.floor-card--fresh{background:rgba(21,122,69,.13); border-color:var(--green); border-left-color:var(--green);}
+.floor-card.floor-card--warning{background:rgba(224,150,30,.16); border-color:#d9951c; border-left-color:#d9951c;}
+.floor-card.floor-card--danger{background:rgba(179,38,30,.14); border-color:var(--red); border-left-color:var(--red);}
+body.dark-mode .floor-card.floor-card--fresh{background:rgba(63,208,138,.12);}
+body.dark-mode .floor-card.floor-card--warning{background:rgba(240,179,74,.14);}
+body.dark-mode .floor-card.floor-card--danger{background:rgba(239,106,96,.14);}
+.floor-card.floor-card--billed{background:#2a2009; border-color:var(--yz-gold-3); border-left-color:var(--yz-gold-2);}
+.floor-card.floor-card--billed .floor-card__total{color:var(--yz-gold-1);}
+.floor-card__total{color:var(--gold-dark);}
+body.dark-mode .floor-card__total{color:var(--gold);}
+.qty-stepper button:hover{background:var(--gold); color:var(--yz-on-gold);}
+.chat-bubble.customer{background:var(--yz-gold-tint);}
+.chat-bubble.waiter{background:rgba(21,122,69,.16);}
+body.dark-mode .chat-bubble.waiter{background:rgba(63,208,138,.16);}
+.product-card__price{color:var(--yz-gold-1);}
+
+/* Rəqəm düymələri (PIN pəncərələri, ödəniş) */
+.num-btn{background:var(--card2); border-color:var(--border); color:var(--text);}
+.num-btn:hover{border-color:var(--gold);}
+.pin-dot.filled{background:var(--gold); border-color:var(--gold);}
+
+/* ── 12) MÜŞTƏRİ EKRANI (həmişə tünd qara-qızılı) ─────────────── */
+#customerScreen,#referralRegisterScreen{
+  background:
+    radial-gradient(70% 45% at 85% 0%, rgba(232,176,75,.2) 0%, transparent 60%),
+    radial-gradient(60% 40% at 0% 100%, rgba(232,176,75,.08) 0%, transparent 60%),
+    linear-gradient(180deg,#0d0f13 0%,#06080a 100%);
+}
+.cust-loyalty-modal{background:linear-gradient(160deg,#17130b,#08090c); border:1px solid rgba(232,176,75,.3);}
+.cust-glass-card,.cust-chat-section,.cust-feedback,.cust-order-section{border-color:rgba(232,176,75,.22);}
+.menu-btn{border-color:rgba(232,176,75,.5);}
+.cust-btn.call-btn{background:rgba(232,176,75,.14); border-color:rgba(232,176,75,.5); color:#f6d58a;}
+.cust-input-row button,.cust-feedback button,.cust-loyalty-btn--primary{background:var(--yz-gold-grad); color:var(--yz-on-gold); font-weight:700;}
+
+/* ── 13) KİÇİK DETALLAR ───────────────────────────────────────── */
+#toast{border:1px solid rgba(232,176,75,.35);}
+.connection-status-banner{background:#8f1d17;}
+.ct-report,.audit-summary-header{background:linear-gradient(135deg,#17120a,#0b0d11); border:1px solid rgba(232,176,75,.28);}
+.avatar-upload-area:hover{border-color:var(--gold); background:var(--yz-gold-tint);}
