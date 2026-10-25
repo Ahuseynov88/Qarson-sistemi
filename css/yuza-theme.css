@@ -248,3 +248,55 @@ body.dark-mode .chat-bubble.waiter{background:rgba(63,208,138,.16);}
 .connection-status-banner{background:#8f1d17;}
 .ct-report,.audit-summary-header{background:linear-gradient(135deg,#17120a,#0b0d11); border:1px solid rgba(232,176,75,.28);}
 .avatar-upload-area:hover{border-color:var(--gold); background:var(--yz-gold-tint);}
+
+/* ═══════════════════════════════════════════════════════════════
+   14) JS-DƏ YAZILMIŞ RƏNGLƏR VƏ AÇIQ/TÜND KONTRAST DÜZƏLİŞLƏRİ
+   (admin.js, alarm.js, banquet.js, billing.js, loyalty.js skanından)
+═══════════════════════════════════════════════════════════════ */
+
+/* Tarixçə (log) nişanları: rəng JS-dən inline gəlir → rejimə görə işıqlığı tənzimlə */
+.log-badge{font-weight:800;}
+:root .log-badge{filter:brightness(.66) saturate(1.25);}
+body.dark-mode .log-badge{filter:brightness(1.32) saturate(.95);}
+
+/* Bildiriş (alarm) ekranı: sarı/narıncı fonda ağ mətn oxunmurdu → tünd mətn */
+#alarmOverlay[style*="241, 196, 15"] .alarm-title,
+#alarmOverlay[style*="241, 196, 15"] .alarm-sub,
+#alarmOverlay[style*="243, 156, 18"] .alarm-title,
+#alarmOverlay[style*="243, 156, 18"] .alarm-sub{color:#1a1205; text-shadow:none;}
+#alarmOverlay[style*="241, 196, 15"] .alarm-icon,
+#alarmOverlay[style*="243, 156, 18"] .alarm-icon{color:#1a1205;}
+.alarm-btn{border:2px solid rgba(0,0,0,.15);}
+
+/* "Seçilmiş/aktiv" vəziyyətlər: mavi/yaşıl əvəzinə qızılı */
+.ct-list-item:hover,.ct-list-item.active,
+.banquet-cal-day:hover,.banquet-cal-day--today,.banquet-cal-day--selected,
+.banquet-event-card:hover,.report-quick-btn:hover,
+.purchase-line__field input:focus,
+.order-item-card.selected,.payment-type-btn.selected{border-color:var(--gold);}
+.order-item-card.selected{box-shadow:0 0 0 1px var(--gold);}
+.payment-type-btn.selected{background:var(--yz-gold-tint); color:var(--gold-dark);}
+body.dark-mode .payment-type-btn.selected{color:var(--gold);}
+.report-quick-btn:hover{color:var(--gold-dark);}
+body.dark-mode .report-quick-btn:hover{color:var(--gold);}
+.ticket-line__note-btn:hover,.ticket-line__note-btn.has-note,
+.qty-stepper.batch-select .qty-stepper__val{color:var(--gold-dark);}
+body.dark-mode .ticket-line__note-btn:hover,
+body.dark-mode .ticket-line__note-btn.has-note,
+body.dark-mode .qty-stepper.batch-select .qty-stepper__val{color:var(--gold);}
+
+/* Solid fonlu düymələr/nişanlar: tünd rejimdə --green/--blue açıq olduğu üçün
+   ağ mətn oxunmurdu → dərin qızılı fon + ağ mətn */
+.ko-accept-btn,.order-item-qty-badge,.bsel-box--on{
+  background-color:#9a6a17; border-color:#9a6a17; color:#fff;
+}
+.ko-accept-btn{background:linear-gradient(135deg,#a8741f,#7a5110);}
+.chat-input-row button,.login-btn,.order-step-btn:active{
+  background:var(--yz-gold-grad); color:var(--yz-on-gold); font-weight:700;
+}
+
+/* Həmişə tünd olan hesabat bloklarında mavi rəng oxunmur → açıq qızılı */
+.audit-summary-header__value,.ct-report__type-chip b{color:var(--yz-gold-1);}
+
+/* İkram / endirim nişanları */
+.discount-badge{background:var(--yz-gold-tint); color:var(--orange); border-color:var(--orange);}
