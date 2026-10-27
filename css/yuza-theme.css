@@ -429,31 +429,3 @@ body.dark-mode .yz-chip{color:var(--gold);}
 .yz-tag{font-style:normal; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:3px; vertical-align:middle;
   background:var(--yz-gold-tint); color:var(--gold-dark); border:1px solid var(--yz-ring);}
 body.dark-mode .yz-tag{color:var(--gold);}
-
-/* ═══ 17) XAMMADƏ + RESEPT ═══ */
-#confirmActionModal{z-index:2100;}
-.yz-ingmodal{max-width:720px;}
-.yz-ing__search{width:100%; margin:6px 0; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px;}
-.yz-ing__list{max-height:46vh; overflow-y:auto;}
-.yz-ing{background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:8px;}
-.yz-ing--low{border-color:var(--red);}
-.yz-ing__top{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
-.yz-ing__name{flex:1; min-width:0; font-weight:700;}
-.yz-ing input,.yz-ing select{padding:9px 10px; border-radius:9px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; width:100%;}
-.yz-ing__top select{width:84px; flex-shrink:0;}
-.yz-ing__grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
-@media (max-width:620px){.yz-ing__grid{grid-template-columns:1fr 1fr;}}
-.yz-ing__grid label{display:flex; flex-direction:column; gap:3px;}
-.yz-ing__grid small{font-size:11px; color:var(--text3);}
-.yz-ing--low .yz-ing__grid label:first-child small{color:var(--red); font-weight:700;}
-.yz-ing__add{display:flex; gap:6px;}
-.yz-ing__add .btn{padding:0 14px;}
-.yz-rec__row{display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border);}
-.yz-rec__name{flex:1; min-width:0; display:flex; flex-direction:column; font-size:14px; color:var(--text);}
-.yz-rec__name small{font-size:11px; color:var(--text3);}
-.yz-rec__qty{width:84px; padding:9px 10px; border-radius:9px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:15px; text-align:right;}
-.yz-rec__unit{width:34px; font-size:13px; color:var(--text2);}
-.yz-rec__add{padding:10px 0 4px;}
-.yz-rec__add select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px;}
-.yz-rec__cost{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0 6px; font-size:13px; color:var(--text2);}
-.yz-rec__cost .btn{padding:8px 12px; font-size:13px;}
