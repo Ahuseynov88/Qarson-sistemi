@@ -787,13 +787,13 @@ export class ConfirmedOrder {
     const selKeys = Object.keys(selection).filter(k => fromOrderCheck?.items?.[k]);
     if (!selKeys.length) { this.closeItemTransferModal(); return; }
 
-    const movedList = [];
+    List = [];
     selKeys.forEach(itemKey => {
       const it = fromOrderCheck.items[itemKey];
       if (!it) return;
       const moveQty = Math.min(selection[itemKey], it.qty);
       movedList.push({ name: it.name, qty: moveQty });
-      const moved = { menuItemId: it.menuItemId, name: it.name, price: it.price, note: it.note||'', extraFee: it.extraFee||0 };
+     const moved = { menuItemId: it.menuItemId, name: it.name, price: it.price, note: it.note||'', extraFee: it.extraFee||0, vatRate: it.vatRate||0, vatIncluded: it.vatIncluded };
       this._transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved);
     });
 
