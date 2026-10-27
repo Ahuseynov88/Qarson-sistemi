@@ -205,6 +205,9 @@ function initListeners() {
       if (el && document.activeElement !== el) el.value = String(snap.val()).padStart(2,'0') + ':00';
     }
   });
+    db.ref('settings/vatMode').on('value', snap => {
+    state.vatMode = snap.val() === 'added' ? 'added' : 'included';
+  });
   db.ref('settings/serviceCharge').on('value', snap => {
     state.serviceCharge = snap.val() || { enabled: false, percent: 0 };
     if (state.user?.role === 'admin') onDataChange();
@@ -284,7 +287,7 @@ function removeListeners() {
   R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off(); R.printers.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
    db.ref('settings/notifSoundMap').off(); db.ref('settings/kitchenAlertIntervalSec').off();
-  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('chats').off();
+  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('settings/vatMode').off(); db.ref('chats').off();
 }
 
 function onDataChange() {
