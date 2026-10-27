@@ -51,8 +51,8 @@ export class OrderCart {
       const inp = e.target.closest('.qty-stepper__input');
       if (!inp) return;
       const lineKey = inp.dataset.lineKey;
-      const newQty = parseInt(inp.value);
-      if (!lineKey || isNaN(newQty) || newQty < 1) { this.renderDraftList(); return; }
+      const newQty = Math.round(parseFloat(String(inp.value).replace(',', '.')) * 2) / 2;
+      if (!lineKey || isNaN(newQty) || newQty < 0.5) { this.renderDraftList(); return; }
       const line = state._orderDraft[lineKey];
       if (!line) return;
       line.qty = newQty;
@@ -99,11 +99,13 @@ export class OrderCart {
   }
 
   renderCatTabs() {
-    const cats = ['all', ...this.getCategories()];
+       const hasFav = state.menuItems.some(m => m.isFavorite && m.available !== false);
+    if (!hasFav && state._orderCatFilter === '__fav__') state._orderCatFilter = 'all';
+    const cats = ['all', ...(hasFav ? ['__fav__'] : []), ...this.getCategories()];
     this.els.catTabs.innerHTML = cats.map(c => `
       <button class="category-rail__tab ${state._orderCatFilter===c?'active':''}" data-cat="${esc(c)}">
         <svg class="icon"><use href="#i-${c==='all'?'clipboard':'food'}"></use></svg>
-        <span>${c === 'all' ? 'Hamısı' : esc(c)}</span>
+        <span>${c === 'all' ? 'Hamısı' : c === '__fav__' ? '★ Favorilər' : esc(c)}</span>
       </button>
     `).join('');
   }
@@ -118,7 +120,8 @@ export class OrderCart {
     const q = (state._orderSearchQuery || '').trim().toLowerCase();
     const items = state.menuItems.filter(m => {
       if (m.available === false) return false;
-      if (q) return m.name.toLowerCase().includes(q);
+           if (q) return m.name.toLowerCase().includes(q);
+      if (state._orderCatFilter === '__fav__') return !!m.isFavorite;
       if (state._orderCatFilter === 'all') return true;
       return (m.category || 'Digər') === state._orderCatFilter;
     });
@@ -182,13 +185,14 @@ export class OrderCart {
       this._updateServiceChargeRow(state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0);
       return;
     }
-    let draftTotal = 0;
+    let draftTotal = 0, draftVat = 0;
     const canFee = hasPermission('order.discount');
     const rows = lines.map(([lineKey, line]) => {
       const m = state.menuItems.find(x => x.id === line.menuItemId);
       if (!m) return '';
-      const lineTotal = (m.price||0) * line.qty + (line.extraFee||0);
+           const lineTotal = (m.price||0) * line.qty + (line.extraFee||0);
       draftTotal += lineTotal;
+      if (m.vatIncluded === false && Number(m.vatRate) > 0) draftVat += lineTotal * Number(m.vatRate) / 100;
       const noteOpen = this._noteOpenKeys.has(lineKey);
       const hasNote = !!(line.note && line.note.trim());
       const hasFee = !!(line.extraFee);
@@ -200,7 +204,7 @@ export class OrderCart {
           </button>
                    <div class="qty-stepper">
             <button data-qty-change="-1" data-line-key="${lineKey}">−</button>
-            <input class="qty-stepper__val qty-stepper__input" type="number" min="1" value="${line.qty}" data-line-key="${lineKey}" style="width:40px;text-align:center;border:none;background:transparent;font-size:inherit;font-weight:inherit;color:inherit;">
+            <input class="qty-stepper__val qty-stepper__input" type="number" min="0.5" step="0.5" value="${line.qty}" data-line-key="${lineKey}" style="width:52px;text-align:center;border:none;background:transparent;font-size:inherit;font-weight:inherit;color:inherit;">
             <button data-qty-change="1" data-line-key="${lineKey}">+</button>
           </div>
           <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
@@ -228,7 +232,7 @@ export class OrderCart {
     </div>${rows}`;
     const sentTotal = (state.tableOrders[state.orderTableId]?.total) || 0;
     const scPct = state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0;
-    this.els.draftTotal.textContent = (sentTotal + draftTotal * (1 + scPct/100)).toFixed(2) + ' ₼';
+    this.els.draftTotal.textContent = (sentTotal + draftTotal * (1 + scPct/100) + draftVat).toFixed(2) + ' ₼';
     this._updateServiceChargeRow(scPct);
   }
 
@@ -266,7 +270,7 @@ export class OrderCart {
         if (!m) return;
         const cleanKey = makeLineKey(draft.menuItemId, draft.note || '', draft.extraFee || 0);
         if (items[cleanKey]) items[cleanKey] = { ...items[cleanKey], qty: items[cleanKey].qty + draft.qty };
-        else items[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price || 0, qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0 };
+        else items[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price || 0, qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0, vatRate: Number(m.vatRate) || 0, vatIncluded: m.vatIncluded !== false };
       });
 
       const _tot = computeOrderTotals(items);
