@@ -1,35 +1,35 @@
 /* ═══════════════════════════════════════════
-   YUZA POS — MƏHSUL PROFİLİ (Mərhələ 1)
-   Admin → Menyu → mala toxunanda açılan profilə "Məhsul ayarları" paneli əlavə edir:
-     • Sürüşən düymələr: Aktiv (satışda), Favori, QR menyuda göstər, Yeni
-     • ƏDV dərəcəsi (qiymətə daxildir), maliyyət (maya dəyəri), xalis qazanc hesabı
-     • Yarım porsiya (ayrıca qiymətlə) — avtomatik ayrıca menyu mövqeyi yaradılır
-     • Qiymət tarixçəsi (kim, nə vaxt, köhnə → yeni)
-   admin.js-ə TOXUNMUR. Yalnız admin sessiyasında işləyir.
+   YUZA POS — MƏHSUL PROFİLİ (tam səhifə)
+   Admin → Menyu → mala toxunanda bütün məlumat bir səhifədə açılır və BİRBAŞA redaktə olunur
+   (ayrıca "Redaktə et" pəncərəsi lazım deyil; hər dəyişiklik xananı tərk edəndə avtomatik saxlanır).
 
-   Yarım porsiya: `${malId}_half` açarlı ayrıca menyu mövqeyi (isHalf:true, parentId).
-   Sifariş, mətbəx, çek və hesabatlar dəyişmədən işləyir. Ana malın adı/kateqoriyası/
-   şəkli/aktivliyi dəyişəndə yarım porsiya avtomatik sinxronlaşır.
+   Səhifədə: şəkil, ad, kateqoriya, qiymət, təsvir • sürüşən düymələr (Aktiv, Favori,
+   QR menyuda göstər, Sayıla bilən, ƏDV qiymətə daxildir) • ƏDV faizi və maya dəyəri •
+   satış və faktiki qalıq • qiymət tarixçəsi.
+
+   admin.js-ə toxunmur. Yalnız admin sessiyasında işləyir.
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog } from './utils.js';
+import { getIngredients, onIngredients, fmtQty } from './yuza-ingredients.js';
 
 const $ = (id) => document.getElementById(id);
 const isAdmin = () => state.user?.role === 'admin';
 const num = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
 const r2 = (n) => Math.round(n * 100) / 100;
 const fmt = (n) => (Number.isFinite(n) ? n.toFixed(2) : '—') + ' ₼';
-const VAT_RATES = [0, 8, 18];
+const NEW_CAT = '__new__';
 
-/* ── Sürüşən düymələr (Aktiv sarı, deaktiv boz) ── */
+/* ── Sürüşən düymələr ── */
 const FLAGS = [
-  { key: 'available',  label: 'Aktiv (satışda)',      hint: 'Söndürəndə mal sifariş siyahısında görünmür', def: true  },
-  { key: 'isFavorite', label: 'Favori',               hint: 'Sevimli mallar siyahısında göstər',           def: false },
-  { key: 'showInQr',   label: 'QR menyuda göstər',    hint: 'QR / rəqəmsal menyuda görünsün',              def: true  },
-  { key: 'isNew',      label: 'Yeni məhsul nişanı',   hint: '"Yeni" işarəsi ilə seçilsin',                 def: false }
+  { key: 'available',   label: 'Aktiv (satışda)',        hint: 'Söndürəndə mal sifariş siyahısında görünmür',                def: true  },
+  { key: 'isFavorite',  label: 'Favori',                 hint: 'Sifariş ekranında "★ Favorilər" bölməsində görünür',        def: false },
+  { key: 'showInQr',    label: 'QR menyuda göstər',      hint: 'Müştəri menyusunda görünsün (aktiv mallar)',                def: true  },
+  { key: 'isTrackable', label: 'Sayıla bilən mal',       hint: 'Anbarda izlənir, "Məhsul Alışı" bölməsində görünür',        def: false },
+  { key: 'vatIncluded', label: 'ƏDV qiymətə daxildir',   hint: 'Söndürülsə ƏDV faizi qiymətin üstünə əlavə olunur',         def: true  }
 ];
-const flagOn = (m, f) => (m[f.key] === undefined || m[f.key] === null) ? f.def : m[f.key] !== false && !!m[f.key];
+const flagOn = (m, f) => (m[f.key] === undefined || m[f.key] === null) ? f.def : !!m[f.key];
 
 function switchHTML(m, f) {
   const on = flagOn(m, f);
@@ -40,257 +40,394 @@ function switchHTML(m, f) {
   </div>`;
 }
 
+/* ── Maliyyə hesabı ── */
+function calc(m) {
+  const price = Number(m.price || 0), rate = Number(m.vatRate || 0);
+  const incl = m.vatIncluded !== false;
+  const vatAmt = rate > 0 ? (incl ? price * rate / (100 + rate) : price * rate / 100) : 0;
+  const customerPays = incl ? price : price + vatAmt;
+  const net = incl ? price - vatAmt : price;
+  const hasCost = m.cost !== undefined && m.cost !== null && m.cost !== '' && Number.isFinite(Number(m.cost));
+  const profit = hasCost ? net - Number(m.cost) : NaN;
+  const pct = hasCost && net > 0 ? profit / net * 100 : NaN;
+  return { price, rate, incl, vatAmt, customerPays, net, hasCost, cost: Number(m.cost), profit, pct };
+}
+
 function profitHTML(m) {
-  const price = Number(m.price || 0), vat = Number(m.vatRate || 0), cost = Number(m.cost);
-  const vatAmt = vat > 0 ? price * vat / (100 + vat) : 0;
-  const net = price - vatAmt;
-  const hasCost = Number.isFinite(cost) && m.cost !== undefined && m.cost !== null && m.cost !== '';
-  const profit = hasCost ? net - cost : NaN;
-  const pct = hasCost && net > 0 ? (profit / net) * 100 : NaN;
+  const c = calc(m);
   return `<div class="yz-profit">
-    <div><small>Satış qiyməti</small><b>${fmt(price)}</b></div>
-    <div><small>ƏDV (${vat}%)</small><b>${fmt(vatAmt)}</b></div>
-    <div><small>Maya dəyəri</small><b>${hasCost ? fmt(cost) : '—'}</b></div>
-    <div class="yz-profit__net"><small>Xalis qazanc</small><b class="${profit < 0 ? 'yz-neg' : ''}">${fmt(profit)}${Number.isFinite(pct) ? ` <em>(${pct.toFixed(0)}%)</em>` : ''}</b></div>
+    <div><small>Qiymət (menyuda)</small><b>${fmt(c.price)}</b></div>
+    <div><small>ƏDV ${c.rate}% ${c.rate > 0 ? (c.incl ? '(daxildir)' : '(əlavə olunur)') : ''}</small><b>${fmt(c.vatAmt)}</b></div>
+    <div><small>Müştəri ödəyir</small><b>${fmt(c.customerPays)}</b></div>
+    <div><small>Maya dəyəri</small><b>${c.hasCost ? fmt(c.cost) : '—'}</b></div>
+    <div class="yz-profit__net"><small>Xalis qazanc</small><b class="${c.profit < 0 ? 'yz-neg' : ''}">${fmt(c.profit)}${Number.isFinite(c.pct) ? ` <em>(${c.pct.toFixed(0)}%)</em>` : ''}</b></div>
   </div>`;
 }
 
 function historyHTML(m) {
-  const list = Object.values(m.priceHistory || {}).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12);
+  const list = Object.values(m.priceHistory || {}).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 15);
   if (!list.length) return '<div class="yz-hist__empty">Qiymət hələ dəyişdirilməyib.</div>';
   return list.map(h => {
     const d = new Date(h.at || 0);
     const when = `${d.toLocaleDateString('az-AZ')} ${d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}`;
     const up = Number(h.to) > Number(h.from);
     return `<div class="yz-hist__row">
-      <span class="yz-hist__when">${esc(when)}<small>${esc(h.by || '')}${h.kind === 'half' ? ' · yarım porsiya' : ''}</small></span>
+      <span class="yz-hist__when">${esc(when)}<small>${esc(h.by || '')}</small></span>
       <span class="yz-hist__chg">${fmt(Number(h.from))} → <b class="${up ? 'yz-up' : 'yz-down'}">${fmt(Number(h.to))}</b></span>
     </div>`;
   }).join('');
 }
 
-function panelHTML(m) {
-  const halfOn = !!m.hasHalf;
-  const suggest = r2(Number(m.price || 0) / 2);
+/* ── Satış statistikası: bağlanmış sifarişlərdən (30 san. keş) ── */
+let salesCache = null;   // { at, map: id → {qty, revenue, today, month} }
+let salesLoading = false;
+function loadSales(cb) {
+  if (salesCache && Date.now() - salesCache.at < 30000) { cb(salesCache.map); return; }
+  if (salesLoading) return;
+  salesLoading = true;
+  R.closedOrders.once('value').then((snap) => {
+    const map = {};
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const orders = snap.val() || {};
+    Object.values(orders).forEach(o => {
+      const at = o.firstOrderAt || o.closedAt || 0;
+      Object.values(o.items || {}).forEach(it => {
+        if (!it.menuItemId) return;
+        const q = Number(it.qty) || 0;
+        const rev = it.compliment ? 0 : (Number(it.price) || 0) * q * (1 - ((it.discountPercent || 0) / 100)) + (Number(it.extraFee) || 0);
+        const e = map[it.menuItemId] = map[it.menuItemId] || { qty: 0, revenue: 0, today: 0, month: 0, orders: 0 };
+        e.qty += q; e.revenue += rev; e.orders += 1;
+        if (at >= dayStart) e.today += q;
+        if (at >= monthStart) e.month += q;
+      });
+    });
+    salesCache = { at: Date.now(), map };
+    salesLoading = false;
+    cb(map);
+  }).catch(() => { salesLoading = false; });
+}
+
+function statsHTML(m, s) {
+  const stockKnown = m.stock !== undefined && m.stock !== null;
+  const q = (n) => (Math.round(n * 100) / 100).toString();
+  const e = s || { qty: 0, revenue: 0, today: 0, month: 0 };
+  return `<div class="yz-profit yz-stats">
+    <div><small>Ümumi satılıb</small><b>${s ? q(e.qty) + ' ədəd' : '…'}</b></div>
+    <div><small>Ümumi gəlir</small><b>${s ? fmt(e.revenue) : '…'}</b></div>
+    <div><small>Bu gün / bu ay</small><b>${s ? q(e.today) + ' / ' + q(e.month) : '…'}</b></div>
+    <div class="yz-profit__net"><small>Faktiki qalıq</small><b class="${stockKnown && m.stock <= 0 ? 'yz-neg' : ''}">${stockKnown ? q(Number(m.stock)) + ' ədəd' : 'izlənmir'}</b></div>
+  </div>`;
+}
+
+/* ── Səhifənin qurulması ── */
+function categories(m) {
+  const cats = [...new Set((state.menuItems || []).map(x => x.category).filter(Boolean))];
+  if (m.category && !cats.includes(m.category)) cats.push(m.category);
+  return cats;
+}
+
+function pageHTML(m) {
+  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || '?')}&background=e8b04b&color=1a1205&size=200`;
+  const stockKnown = m.stock !== undefined && m.stock !== null;
   return `<div class="yz-prod" id="yzProdPanel" data-id="${esc(m.id)}">
+    <div class="yz-prod__head">
+      <label class="yz-photo" title="Şəkli dəyiş">
+        <img id="yzPhotoImg" src="${esc(m.photo || fallback)}" alt="" onerror="this.src='${fallback}'">
+        <span>Şəkli dəyiş</span>
+        <input type="file" id="yzPhotoFile" accept="image/*" hidden>
+      </label>
+      <div class="yz-prod__basic">
+        <label class="yz-f"><span>Mal adı</span><input id="yzName" type="text" value="${esc(m.name || '')}" data-save="name"></label>
+        <div class="yz-prod__grid">
+          <label class="yz-f"><span>Kateqoriya</span>
+            <select id="yzCat">${categories(m).map(c => `<option value="${esc(c)}"${c === m.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="${NEW_CAT}">+ Yeni kateqoriya...</option></select></label>
+          <label class="yz-f"><span>Qiymət (₼)</span><input id="yzPrice" type="text" inputmode="decimal" value="${m.price ?? ''}"></label>
+        </div>
+        <label class="yz-f" id="yzNewCatWrap" style="display:none;"><span>Yeni kateqoriya adı</span><input id="yzNewCat" type="text" placeholder="Məs: Salatlar"></label>
+      </div>
+    </div>
+    <label class="yz-f"><span>Təsvir (istəyə görə)</span><textarea id="yzDesc" rows="2">${esc(m.description || '')}</textarea></label>
+
     <div class="ct-detail-section-title">Məhsul ayarları</div>
     <div class="yz-prod__box">${FLAGS.map(f => switchHTML(m, f)).join('')}</div>
 
-    <div class="ct-detail-section-title">Maliyyə və ƏDV</div>
+    <div class="ct-detail-section-title">ƏDV və maliyyət</div>
     <div class="yz-prod__box yz-prod__grid">
-      <label class="yz-f"><span>ƏDV dərəcəsi (qiymətə daxildir)</span>
-        <select id="yzVat">${VAT_RATES.map(v => `<option value="${v}"${Number(m.vatRate || 0) === v ? ' selected' : ''}>${v === 0 ? 'ƏDV yoxdur (0%)' : v + '%'}</option>`).join('')}</select></label>
+      <div class="yz-f"><span>ƏDV faizi (%) — istənilən rəqəm</span>
+        <div class="yz-vatrow">
+          <input id="yzVat" type="text" inputmode="decimal" value="${Number(m.vatRate || 0)}" aria-label="ƏDV faizi">
+          <div class="yz-chips">${[0, 8, 18].map(v => `<button type="button" class="yz-chip" data-yz-vat="${v}">${v}%</button>`).join('')}</div>
+        </div></div>
       <label class="yz-f"><span>Maya dəyəri (₼)</span>
         <input id="yzCost" type="text" inputmode="decimal" placeholder="məs: 4.20" value="${m.cost !== undefined && m.cost !== null && m.cost !== '' ? esc(m.cost) : ''}"></label>
     </div>
     <div id="yzProfit">${profitHTML(m)}</div>
 
-    <div class="ct-detail-section-title">Yarım porsiya</div>
-    <div class="yz-prod__box">
-      <div class="yz-prow">
-        <div class="yz-prow__txt"><b>Yarım porsiya var</b><small>Ayrıca qiymətlə ayrıca mövqe kimi sifariş olunur</small></div>
-        <button type="button" class="yz-switch${halfOn ? ' yz-switch--on' : ''}" role="switch" aria-checked="${halfOn}" data-yz-half="1" aria-label="Yarım porsiya"><span class="yz-switch__knob"></span></button>
-      </div>
-      ${halfOn ? `<label class="yz-f yz-f--half"><span>Yarım porsiya qiyməti (₼) <small>təklif: ${suggest.toFixed(2)}</small></span>
-        <input id="yzHalfPrice" type="text" inputmode="decimal" placeholder="${suggest.toFixed(2)}" value="${m.halfPrice !== undefined && m.halfPrice !== null ? esc(m.halfPrice) : ''}"></label>` : ''}
+    <div class="ct-detail-section-title">Resept (xammadə sərfi — 1 porsiya üçün)</div>
+    <div class="yz-prod__box" id="yzRecipe">${recipeHTML(m)}</div>
+
+    <div class="ct-detail-section-title">Satış və qalıq</div>
+    <div id="yzStats">${statsHTML(m, salesCache && salesCache.map[m.id] ? salesCache.map[m.id] : (salesCache ? {} : null))}</div>
+    <div class="yz-stockrow">
+      <input id="yzStockSet" type="text" inputmode="decimal" placeholder="${stockKnown ? 'Qalığı dəqiqləşdir (məs: ' + m.stock + ')' : 'Anbar qalığı təyin et'}" aria-label="Qalıq">
+      <button type="button" class="btn btn-green" data-yz-act="stockset">Təyin et</button>
+      <button type="button" class="btn btn-ghost" data-yz-act="stockadd">+ Stok artır</button>
     </div>
 
     <div class="ct-detail-section-title">Qiymət tarixçəsi</div>
     <div class="yz-prod__box yz-hist" id="yzHist">${historyHTML(m)}</div>
+
+    <div class="yz-prod__danger"><button type="button" class="btn btn-red" data-yz-act="delete"><svg class="icon"><use href="#i-trash"></use></svg> Malı sil</button></div>
   </div>`;
 }
 
-/* ── Paneli profilə yerləşdir ── */
+/* ── Resept ── */
+function recipeCost(m) {
+  const ings = getIngredients();
+  return Object.entries(m.recipe || {}).reduce((s, [id, q]) => {
+    const g = ings.find(x => x.id === id);
+    return s + (g && g.cost !== undefined && g.cost !== null ? Number(g.cost) * Number(q) : 0);
+  }, 0);
+}
+function recipeHTML(m) {
+  const ings = getIngredients();
+  const rec = m.recipe || {};
+  const ids = Object.keys(rec);
+  const rows = ids.map(id => {
+    const g = ings.find(x => x.id === id);
+    if (!g) return `<div class="yz-rec__row yz-rec__row--gone"><span class="yz-rec__name">(silinmiş xammadə)</span><button type="button" class="yz-qa__item-del" data-yz-rec-del="${esc(id)}" aria-label="Çıxar">✕</button></div>`;
+    const low = g.minQty !== undefined && g.minQty !== null && Number(g.stock || 0) <= Number(g.minQty);
+    return `<div class="yz-rec__row">
+      <span class="yz-rec__name">${esc(g.name)}<small>qalıq: ${fmtQty(g.stock)} ${esc(g.unit || '')}${low ? ' ⚠' : ''}</small></span>
+      <input class="yz-rec__qty" data-yz-rec-qty="${esc(id)}" inputmode="decimal" value="${fmtQty(rec[id])}" aria-label="Miqdar">
+      <span class="yz-rec__unit">${esc(g.unit || '')}</span>
+      <button type="button" class="yz-qa__item-del" data-yz-rec-del="${esc(id)}" aria-label="Çıxar">✕</button>
+    </div>`;
+  }).join('');
+  const avail = ings.filter(g => rec[g.id] === undefined);
+  const cost = recipeCost(m);
+  return `${rows || '<div class="yz-hist__empty">Resept yoxdur — satış zamanı xammadə çıxılmır.</div>'}
+    <div class="yz-rec__add">
+      <select id="yzRecAdd" aria-label="Xammadə seç"><option value="">+ Xammadə əlavə et...</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)} (${esc(g.unit || '')})</option>`).join('')}</select>
+    </div>
+    ${ids.length ? `<div class="yz-rec__cost"><span>Reseptdən maya: <b>${fmt(cost)}</b></span>
+      <button type="button" class="btn btn-ghost" data-yz-act="applycost">Maya dəyəri kimi yaz</button></div>` : ''}`;
+}
+function refreshRecipe() {
+  const el = $('yzRecipe'); const m = currentItem();
+  if (el && m && !el.contains(document.activeElement)) el.innerHTML = recipeHTML(m);
+}
+onIngredients(() => refreshRecipe());
+
 function currentItem() {
   const id = state._selectedMenuItemId;
   return id ? (state.menuItems || []).find(x => x.id === id) : null;
 }
 
-function inject() {
+/* Yazı yazarkən canlı yenilənmə fokusu aparmasın */
+let typing = null;
+document.addEventListener('focusin', (e) => {
+  const t = e.target;
+  if (t.closest && t.closest('#yzProdPanel') && /INPUT|TEXTAREA/.test(t.tagName) && t.id) typing = { id: t.id, v: t.value, t: Date.now() };
+});
+document.addEventListener('input', (e) => { if (typing && e.target.id === typing.id) { typing.v = e.target.value; typing.t = Date.now(); } });
+document.addEventListener('focusout', (e) => { if (typing && e.target.id === typing.id) typing = null; });
+
+function render() {
   if (!isAdmin()) return;
   const body = $('menuDetailBody');
   if (!body) return;
   const m = currentItem();
-  const old = $('yzProdPanel');
-  if (!m) { old?.remove(); return; }
-  if (m.isHalf) { old?.remove(); return; }
-  if (old && old.dataset.id === m.id) return;      // artıq var
-  old?.remove();
-  const tpl = document.createElement('div');
-  tpl.innerHTML = panelHTML(m);
-  const actions = body.querySelector('.ct-detail-actions');
-  if (actions) body.insertBefore(tpl.firstElementChild, actions); else body.appendChild(tpl.firstElementChild);
+  const panel = $('yzProdPanel');
+  if (!m) return;
+  if (panel && panel.dataset.id === m.id && body.firstElementChild === panel) return;
+  body.innerHTML = pageHTML(m);
+  if (typing && Date.now() - typing.t < 4000) {
+    const el = $(typing.id);
+    if (el) { el.value = typing.v; el.focus(); }
+  }
+  loadSales((map) => { const el = $('yzStats'); const cur = currentItem(); if (el && cur) el.innerHTML = statsHTML(cur, map[cur.id] || {}); });
 }
 
 let obs;
 function startObserver() {
   const body = $('menuDetailBody');
   if (!body || obs) return;
-  obs = new MutationObserver(() => { if (!$('yzProdPanel')) inject(); else inject(); });
+  obs = new MutationObserver(render);
   obs.observe(body, { childList: true });
-  inject();
+  render();
 }
 
 /* ── Yazma əməliyyatları ── */
-function update(id, data) {
-  return R.menuItems.child(id).update(data);
+const update = (id, data) => R.menuItems.child(id).update(data);
+const itemById = (id) => (state.menuItems || []).find(x => x.id === id);
+
+function pushHistory(id, from, to) {
+  R.menuItems.child(id).child('priceHistory').push({ from, to, at: Date.now(), by: state.user?.name || 'Admin' });
 }
 
-function onFlag(key, id) {
-  const m = (state.menuItems || []).find(x => x.id === id); if (!m) return;
+function toggleFlag(key, id) {
+  const m = itemById(id); if (!m) return;
   const f = FLAGS.find(x => x.key === key);
   const next = !flagOn(m, f);
   update(id, { [key]: next });
   addLog('menu_mgmt', `"${m.name}" — ${f.label}: ${next ? 'AÇIQ' : 'BAĞLI'}`, { menuItemId: id });
-  showToast(`${m.name} — ${f.label}: ${next ? 'açıq' : 'bağlı'}`);
 }
 
-function onHalfToggle(id) {
-  const m = (state.menuItems || []).find(x => x.id === id); if (!m) return;
-  if (!m.hasHalf) {
-    const p = r2(Number(m.price || 0) / 2);
-    update(id, { hasHalf: true, halfPrice: m.halfPrice ?? p });
-    addLog('menu_mgmt', `"${m.name}" üçün yarım porsiya açıldı`, { menuItemId: id });
-  } else {
-    update(id, { hasHalf: false });
-    addLog('menu_mgmt', `"${m.name}" yarım porsiyası söndürüldü`, { menuItemId: id });
-  }
+function saveName(id, v) {
+  const m = itemById(id); const name = v.trim();
+  if (!m || name === m.name) return;
+  if (!name) { showToast('Mal adı boş ola bilməz'); $('yzName').value = m.name; return; }
+  update(id, { name }); addLog('menu_mgmt', `Mal adı dəyişdi: ${m.name} → ${name}`, { menuItemId: id });
 }
 
-function pushHistory(id, from, to, kind) {
-  R.menuItems.child(id).child('priceHistory').push({
-    from, to, kind: kind || 'full', at: Date.now(), by: state.user?.name || 'Admin'
-  });
-}
-
-function onHalfPrice(id, raw) {
-  const m = (state.menuItems || []).find(x => x.id === id); if (!m) return;
+function savePrice(id, raw) {
+  const m = itemById(id); if (!m) return;
   const v = num(raw);
-  if (!Number.isFinite(v) || v < 0) { showToast('Düzgün yarım porsiya qiyməti yaz'); return; }
+  if (!Number.isFinite(v) || v < 0) { showToast('Düzgün qiymət yaz'); $('yzPrice').value = m.price ?? ''; return; }
   const price = r2(v);
-  if (price === Number(m.halfPrice)) return;
-  if (m.halfPrice !== undefined && m.halfPrice !== null) pushHistory(id, Number(m.halfPrice), price, 'half');
-  update(id, { halfPrice: price });
-  addLog('menu_mgmt', `"${m.name}" yarım porsiya qiyməti: ${price.toFixed(2)} ₼`, { menuItemId: id });
+  if (price === Number(m.price)) return;
+  /* tarixçə ilk növbədə burada yazılır; canlı izləmə eyni dəyişikliyi təkrar yazmasın deyə baza yenilənir */
+  pushHistory(id, Number(m.price || 0), price);
+  if (priceBase) priceBase[id] = price;
+  update(id, { price });
+  addLog('menu_mgmt', `"${m.name}" qiyməti: ${Number(m.price || 0).toFixed(2)} → ${price.toFixed(2)} ₼`, { menuItemId: id });
 }
 
-function onMoney(id, field, raw, label) {
-  const m = (state.menuItems || []).find(x => x.id === id); if (!m) return;
+function saveCategory(id, sel) {
+  const m = itemById(id); if (!m) return;
+  if (sel.value === NEW_CAT) { $('yzNewCatWrap').style.display = ''; $('yzNewCat').focus(); return; }
+  if (sel.value !== m.category) update(id, { category: sel.value });
+}
+function saveNewCategory(id, v) {
+  const c = v.trim(); if (!c) return;
+  update(id, { category: c });
+}
+
+function saveMoney(id, field, raw, label) {
+  const m = itemById(id); if (!m) return;
   if (String(raw).trim() === '') { update(id, { [field]: null }); return; }
   const v = num(raw);
   if (!Number.isFinite(v) || v < 0) { showToast(`Düzgün ${label} yaz`); return; }
   update(id, { [field]: r2(v) });
 }
 
-function refreshProfit(live) {
-  const el = $('yzProfit'); const p = $('yzProdPanel');
-  if (!el || !p) return;
-  const m = currentItem(); if (!m) return;
-  el.innerHTML = profitHTML({ ...m, ...live });
+function setStock(id, raw) {
+  const m = itemById(id); const v = num(raw);
+  if (!m) return;
+  if (!Number.isFinite(v) || v < 0) { showToast('Düzgün qalıq yaz'); return; }
+  update(id, { stock: v });
+  addLog('menu_mgmt', `Anbar qalığı təyin edildi: ${m.name} (${m.stock ?? '—'} → ${v})`, { menuItemId: id });
+  showToast(`${m.name} — qalıq: ${v}`);
+}
+
+function livePreview() {
+  const m = currentItem(); const el = $('yzProfit'); if (!m || !el) return;
+  el.innerHTML = profitHTML({ ...m, price: num($('yzPrice')?.value), vatRate: num($('yzVat')?.value) || 0, cost: $('yzCost')?.value === '' ? null : num($('yzCost')?.value) });
 }
 
 document.addEventListener('click', (e) => {
   const p = e.target.closest('#yzProdPanel'); if (!p) return;
   const id = p.dataset.id;
   const fl = e.target.closest('[data-yz-flag]');
-  if (fl) { onFlag(fl.dataset.yzFlag, id); return; }
-  if (e.target.closest('[data-yz-half]')) onHalfToggle(id);
+  if (fl) { toggleFlag(fl.dataset.yzFlag, id); return; }
+  const rd = e.target.closest('[data-yz-rec-del]');
+  if (rd) { update(id, { ['recipe/' + rd.dataset.yzRecDel]: null }); return; }
+  const chip = e.target.closest('[data-yz-vat]');
+  if (chip) { $('yzVat').value = chip.dataset.yzVat; saveMoney(id, 'vatRate', chip.dataset.yzVat, 'ƏDV'); livePreview(); return; }
+  const act = e.target.closest('[data-yz-act]');
+  if (!act) return;
+  if (act.dataset.yzAct === 'stockset') { setStock(id, $('yzStockSet').value); $('yzStockSet').value = ''; }
+  else if (act.dataset.yzAct === 'stockadd') { if (typeof window.openQuickStockModal === 'function') window.openQuickStockModal(id); }
+  else if (act.dataset.yzAct === 'applycost') { const m = itemById(id); const c = r2(recipeCost(m)); update(id, { cost: c }); showToast('Maya dəyəri: ' + c.toFixed(2) + ' ₼'); }
+  else if (act.dataset.yzAct === 'delete') { if (typeof window.deleteMenuItem === 'function') window.deleteMenuItem(id); }
 });
+
 document.addEventListener('change', (e) => {
   const p = e.target.closest('#yzProdPanel'); if (!p) return;
-  const id = p.dataset.id;
-  if (e.target.id === 'yzVat') update(id, { vatRate: Number(e.target.value) });
-  else if (e.target.id === 'yzCost') onMoney(id, 'cost', e.target.value, 'maya dəyəri');
-  else if (e.target.id === 'yzHalfPrice') onHalfPrice(id, e.target.value);
+  const id = p.dataset.id, t = e.target;
+  if (t.id === 'yzName') saveName(id, t.value);
+  else if (t.id === 'yzPrice') savePrice(id, t.value);
+  else if (t.id === 'yzCat') saveCategory(id, t);
+  else if (t.id === 'yzNewCat') saveNewCategory(id, t.value);
+  else if (t.id === 'yzDesc') update(id, { description: t.value.trim() });
+  else if (t.id === 'yzVat') saveMoney(id, 'vatRate', t.value || '0', 'ƏDV faizi');
+  else if (t.id === 'yzCost') saveMoney(id, 'cost', t.value, 'maya dəyəri');
+  else if (t.id === 'yzRecAdd') { if (t.value) update(id, { ['recipe/' + t.value]: 1 }); }
+  else if (t.dataset.yzRecQty) {
+    const v = num(t.value);
+    if (!Number.isFinite(v) || v < 0) { showToast('Düzgün miqdar yaz'); return; }
+    update(id, { ['recipe/' + t.dataset.yzRecQty]: v === 0 ? null : Math.round(v * 1000) / 1000 });
+  }
+  else if (t.id === 'yzPhotoFile') {
+    const file = t.files[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('Şəkil 2MB-dan böyük olmamalıdır'); t.value = ''; return; }
+    const rd = new FileReader();
+    rd.onload = (ev) => { update(id, { photo: ev.target.result }); showToast('Şəkil yeniləndi'); };
+    rd.readAsDataURL(file);
+  }
 });
 document.addEventListener('input', (e) => {
-  if (e.target.id === 'yzCost') refreshProfit({ cost: num(e.target.value) });
-  if (e.target.id === 'yzVat') refreshProfit({ vatRate: Number(e.target.value) });
+  if (['yzPrice', 'yzVat', 'yzCost'].includes(e.target.id)) livePreview();
 });
 
-/* ── Canlı sinxronizasiya: qiymət tarixçəsi + yarım porsiya ── */
-let priceBase = null;       // id → son bilinən qiymət
-let timer = null;
-
+/* ── Canlı izləmə: qiymət tarixçəsi (başqa yoldan dəyişsə də) + köhnə yarım porsiya təmizliyi ── */
+let priceBase = null;
+let cleaned = false;
+let lastRaw = null;
 function sync(raw) {
-  if (!isAdmin()) return;
+  lastRaw = raw;
   const items = Object.entries(raw || {}).map(([id, v]) => ({ id, ...v }));
 
-  /* 1) Qiymət tarixçəsi — ilk yükləmə baza kimi saxlanır, sonrakı dəyişikliklər yazılır */
   if (priceBase === null) {
     priceBase = {};
     items.forEach(m => { priceBase[m.id] = Number(m.price || 0); });
-  } else {
+  } else if (isAdmin()) {
     items.forEach(m => {
-      if (m.isHalf) return;
       const cur = Number(m.price || 0), prev = priceBase[m.id];
       if (prev !== undefined && prev !== cur) {
         const last = Object.values(m.priceHistory || {}).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
-        const dup = last && last.kind !== 'half' && Number(last.to) === cur && Date.now() - (last.at || 0) < 60000;
-        if (!dup) pushHistory(m.id, prev, cur, 'full');
+        const dup = last && Number(last.to) === cur && Date.now() - (last.at || 0) < 60000;
+        if (!dup) pushHistory(m.id, prev, cur);
       }
       priceBase[m.id] = cur;
     });
   }
 
-  /* 2) Yarım porsiya mövqelərini sinxronlaşdır */
-  const byId = Object.fromEntries(items.map(m => [m.id, m]));
-  items.forEach(m => {
-    if (m.isHalf) return;
-    const hid = `${m.id}_half`;
-    const half = byId[hid];
-    if (m.hasHalf) {
-      const wanted = {
-        name: `${m.name} (yarım)`, category: m.category || 'Digər',
-        price: Number.isFinite(Number(m.halfPrice)) && m.halfPrice !== null && m.halfPrice !== undefined ? Number(m.halfPrice) : r2(Number(m.price || 0) / 2),
-        description: m.description || '', photo: m.photo || '',
-        available: m.available !== false, isHalf: true, parentId: m.id,
-        kitchenId: m.kitchenId ?? null, showInQr: m.showInQr ?? true,
-        vatRate: Number(m.vatRate || 0)
-      };
-      if (!half) {
-        R.menuItems.child(hid).set({ ...wanted, isTrackable: false, createdAt: Date.now() });
-      } else {
-        const diff = {};
-        Object.keys(wanted).forEach(k => { if ((half[k] ?? null) !== (wanted[k] ?? null)) diff[k] = wanted[k]; });
-        if (Object.keys(diff).length) R.menuItems.child(hid).update(diff);
-      }
-    } else if (half) {
-      R.menuItems.child(hid).remove();
-    }
-  });
-  /* ana mal silinibsə yarımı da sil */
-  items.forEach(m => { if (m.isHalf && m.parentId && !byId[m.parentId]) R.menuItems.child(m.id).remove(); });
+  /* əvvəlki versiyada yaradılmış yarım porsiya mövqelərini bir dəfə təmizlə */
+  if (!cleaned && isAdmin()) {
+    cleaned = true;
+    items.forEach(m => {
+      if (m.isHalf) R.menuItems.child(m.id).remove();
+      else if (m.hasHalf !== undefined || m.halfPrice !== undefined) R.menuItems.child(m.id).update({ hasHalf: null, halfPrice: null });
+    });
+  }
 }
 
+let timer = null;
 function boot() {
   startObserver();
+  setInterval(() => { if (isAdmin() && !cleaned && lastRaw) { try { sync(lastRaw); } catch (e) {} } }, 2000);
   R.menuItems.on('value', (snap) => {
     const raw = snap.val();
     clearTimeout(timer);
-    timer = setTimeout(() => { try { sync(raw); } catch (err) { console.warn('yuza-product sync', err); } inject(); }, 400);
+    timer = setTimeout(() => { try { sync(raw); } catch (err) { console.warn('yuza-product sync', err); } render(); }, 400);
   });
 }
-
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
 
-/* ── Menyu kartlarına nişanlar (½, ★, Yeni) ── */
+/* ── Menyu kartlarına nişanlar (★, qeyri-aktiv) ── */
 function decorateCards() {
-  const grid = document.querySelector('#sec-menu .tile-grid, #menuList, #menuItemsList');
-  /* kartların siyahısı tətbiqin öz render-ində qurulur; nişanları adın yanına əlavə edirik */
   document.querySelectorAll('#sec-menu .tile-card').forEach(card => {
     if (card.dataset.yzDeco) return;
     const m = (state.menuItems || []).find(x => card.getAttribute('onclick')?.includes(`'${x.id}'`));
     if (!m) return;
     card.dataset.yzDeco = '1';
     const nameEl = card.querySelector('.tile-card__name');
-    if (!nameEl) return;
-    const tags = [];
-    if (m.isHalf) tags.push('<i class="yz-tag yz-tag--half">½</i>');
-    if (m.isFavorite) tags.push('<i class="yz-tag yz-tag--fav">★</i>');
-    if (m.isNew) tags.push('<i class="yz-tag yz-tag--new">Yeni</i>');
-    if (tags.length) nameEl.insertAdjacentHTML('beforeend', ' ' + tags.join(''));
+    if (nameEl && m.isFavorite) nameEl.insertAdjacentHTML('beforeend', ' <i class="yz-tag yz-tag--fav">★</i>');
   });
 }
 new MutationObserver(() => { if (isAdmin()) decorateCards(); }).observe(document.body, { childList: true, subtree: true });
