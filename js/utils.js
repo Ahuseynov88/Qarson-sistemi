@@ -2,7 +2,7 @@
    UTILS
    Bütün modullarda istifadə olunan köməkçi funksiyalar.
 ═══════════════════════════════════════════ */
-import { R } from './firebase-service.js';
+import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 
 export function esc(s) {
@@ -167,7 +167,14 @@ export function addLog(type, message, details = {}) {
 // azaldanda bir-birini əzməsin (race condition qorunması)
 export function updateStock(menuItemId, delta, menuItems) {
   if (!menuItemId) return;
-  const item = menuItems.find(x => x.id === menuItemId);
+    const item = menuItems.find(x => x.id === menuItemId);
+  // Resept: hər porsiya üçün xammadə qalığından avtomatik çıxılır (ləğvdə qaytarılır)
+  if (item && item.recipe) {
+    Object.entries(item.recipe).forEach(([ingId, q]) => {
+      const amt = (Number(q) || 0) * delta;
+      if (amt) db.ref('ingredients/' + ingId + '/stock').transaction(cur => Math.max(0, Math.round(((cur || 0) + amt) * 1000) / 1000));
+    });
+  }
   if (!item || item.stock === undefined || item.stock === null) return;
   R.menuItems.child(menuItemId).child('stock').transaction(current => Math.max(0, (current || 0) + delta));
 }
