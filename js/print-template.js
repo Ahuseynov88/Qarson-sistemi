@@ -4,6 +4,24 @@
    Bütün format ayarları Firebase-dən gəlir — heç nə hard-code deyil.
 ═══════════════════════════════════════════ */
 
+// ƏDV hesabı (utils.js-dəki computeVat ilə eyni məntiq)
+function computeVat(items) {
+  let added = 0, included = 0;
+  const byRate = {};
+  Object.values(items || {}).forEach(v => {
+    const r = Number(v.vatRate) || 0;
+    if (r <= 0) return;
+    const line = (v.price||0) * v.qty * (1 - ((v.discountPercent||0)/100)) + (v.extraFee||0);
+    const inc = v.vatIncluded !== false;
+    const amt = inc ? line * r / (100 + r) : line * r / 100;
+    if (inc) included += amt; else added += amt;
+    const k = r + (inc ? 'i' : 'a');
+    byRate[k] = byRate[k] || { rate: r, included: inc, amount: 0 };
+    byRate[k].amount += amt;
+  });
+  return { added, included, rows: Object.values(byRate) };
+}
+
 function esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -41,8 +59,9 @@ export function buildReceiptHtml({ table, order, waiterName, now, settings = {},
   const scAmt   = order?.serviceChargeAmount || 0;
   const scPct   = order?.serviceChargePercent || 0;
   const disc    = order?.discountValue || 0;
-  const subtotal = total - scAmt;
-  const payType  = order?.paymentType || '';
+  const vat      = computeVat(order?.items);
+  const subtotal = total - scAmt - vat.added;
+  const payType
   const currency = val('currency', '₼');
   const divType  = val('dividerType', 'dash');
 
@@ -118,9 +137,18 @@ export function buildReceiptHtml({ table, order, waiterName, now, settings = {},
     totals += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;">
       <span>Endirim:</span><span style="color:#c0392b;">-${disc.toFixed(2)} ${currency}</span></div>`;
   }
-  if (show('serviceCharge') && scAmt > 0) {
-    totals += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;">
+    const _scShown = show('serviceCharge') && scAmt > 0;
+  if (_scShown || vat.rows.length) {
+    if (_scShown || vat.added > 0) {
+      totals += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;">
       <span>Ara cəm:</span><span>${subtotal.toFixed(2)} ${currency}</span></div>`;
+    }
+    vat.rows.forEach(r => {
+      totals += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;">
+      <span>ƏDV (${r.rate}%)${r.included ? ' daxildir' : ''}:</span><span>${r.amount.toFixed(2)} ${currency}</span></div>`;
+    });
+  }
+  if (_scShown) {
     totals += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;">
       <span>Xidmət haqqı (${scPct}%):</span><span>${scAmt.toFixed(2)} ${currency}</span></div>`;
   }
