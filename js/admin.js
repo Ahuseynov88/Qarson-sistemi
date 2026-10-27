@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state, ADMIN_PIN } from './state.js';
-import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf, computeVat } from './utils.js';
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 import { renderNotifSounds } from './notifSounds.js';
@@ -99,7 +99,9 @@ export function adminTab(sec, el) {
     });
     const sc = state.serviceCharge || {};
     document.getElementById('serviceChargeEnabled').checked = !!sc.enabled;
-    document.getElementById('serviceChargePercent').value = sc.percent || '';
+        document.getElementById('serviceChargePercent').value = sc.percent || '';
+    const vm = state.vatMode === 'added' ? 'added' : 'included';
+    document.querySelectorAll('input[name="vatMode"]').forEach(r => { r.checked = r.value === vm; });
     db.ref('settings/loyalty').once('value', snap => {
       const l = snap.val() || {};
       document.getElementById('referralBonusAmount').value = l.referralBonusAmount || '';
@@ -310,7 +312,29 @@ function renderReportSummaryView(orders, el) {
   });
   const avgCheck = orders.length ? totalRevenue/orders.length : 0;
   const breakdown = buildPaymentTypeBreakdown(orders);
-  const entries = Object.entries(breakdown).sort((a,b)=>b[1].amount-a[1].amount);
+    const entries = Object.entries(breakdown).sort((a,b)=>b[1].amount-a[1].amount);
+
+  // ƏDV — bağlanmış masaların mallarındakı faizə görə (mal sifarişə düşən anda saxlanılan faiz)
+  const vatByRate = {};
+  let vatTotal = 0;
+  orders.forEach(o => {
+    computeVat(o.items).rows.forEach(r => {
+      const k = r.rate + (r.included ? 'i' : 'a');
+      vatByRate[k] = vatByRate[k] || { rate: r.rate, included: r.included, amount: 0 };
+      vatByRate[k].amount += r.amount;
+      vatTotal += r.amount;
+    });
+  });
+  const vatRowsRep = Object.values(vatByRate).filter(r => r.amount > 0).sort((a,b)=>b.rate-a.rate);
+  const vatHtml = `<div class="report-section-title" style="margin-top:22px;"><svg class="icon"><use href="#i-tag"></use></svg> ƏDV bölgüsü</div>
+    <table class="report-table">
+      <thead><tr><th>Faiz</th><th>Növ</th><th class="num">ƏDV məbləği</th></tr></thead>
+      <tbody>
+        ${vatRowsRep.length ? vatRowsRep.map(r => `<tr><td>${r.rate}%</td><td>${r.included ? 'Qiymətə daxil' : 'Üstünə əlavə'}</td><td class="num">${r.amount.toFixed(2)} ₼</td></tr>`).join('')
+          + `<tr class="report-table__top"><td colspan="2">Cəmi ƏDV</td><td class="num">${vatTotal.toFixed(2)} ₼</td></tr>`
+          : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Bu aralıqda ƏDV-li satış yoxdur</td></tr>'}
+      </tbody>
+    </table>`;
 
   el.innerHTML = `
     <div class="ct-report__stats" style="margin-bottom:22px;">
@@ -326,9 +350,10 @@ function renderReportSummaryView(orders, el) {
       <thead><tr><th>Növ</th><th class="num">Məbləğ</th><th class="num">Pay</th></tr></thead>
       <tbody>
         ${entries.length ? entries.map(([label,v]) => `<tr><td>${esc(label)}</td><td class="num">${v.amount.toFixed(2)} ₼</td><td class="num">${totalRevenue?((v.amount/totalRevenue)*100).toFixed(1):0}%</td></tr>`).join('')
-          : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Ödəniş qeydi yoxdur</td></tr>'}
+                    : '<tr><td colspan="3" style="text-align:center;color:var(--text3);">Ödəniş qeydi yoxdur</td></tr>'}
       </tbody>
     </table>
+    ${vatHtml}
   `;
 }
 
@@ -1535,6 +1560,17 @@ export function saveServiceCharge() {
   document.getElementById('serviceChargeStatus').innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı';
   setTimeout(()=>{ const el = document.getElementById('serviceChargeStatus'); if (el) el.textContent=''; },3000);
   showToast(`<svg class="icon"><use href="#i-check"></use></svg> Xidmət haqqı ${enabled?'aktivdir':'deaktivdir'}`);
+}
+
+export function saveVatMode() {
+  const sel = document.querySelector('input[name="vatMode"]:checked');
+  const mode = sel?.value === 'added' ? 'added' : 'included';
+  db.ref('settings/vatMode').set(mode);
+  state.vatMode = mode;
+  addLog('settings', `ƏDV hesablama üsulu: ${mode === 'added' ? 'qiymətin üstünə əlavə olunur' : 'qiymətə daxildir'}`, {});
+  const el = document.getElementById('vatModeStatus');
+  if (el) { el.innerHTML = '<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı — yeni sifarişlərə tətbiq olunur'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  showToast('<svg class="icon"><use href="#i-check"></use></svg> ƏDV hesablama üsulu yadda saxlandı');
 }
 
 export function saveLoyaltySettings() {
@@ -3456,6 +3492,7 @@ window.saveItem = saveItem;
 window.saveKitchenPin = saveKitchenPin;
 window.saveMenuUrl = saveMenuUrl;
 window.saveServiceCharge = saveServiceCharge;
+window.saveVatMode = saveVatMode;
 window.saveLoyaltySettings = saveLoyaltySettings;
 window.setLogFilter = setLogFilter;
 window.renderLogs = renderLogs;
