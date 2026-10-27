@@ -28,6 +28,27 @@ export function formatItemsList(items) {
 // Malların cəmini hesablayır və (aktivdirsə) xidmət haqqını əlavə edir.
 // BÜTÜN yerlərdə order.total hesablanarkən İSTİFADƏ OLUNMALIDIR ki, xidmət
 // haqqı hər zaman tutarlı tətbiq olunsun (mal əlavəsi, endirim, köçürmə və s.).
+// ƏDV: sətirdə vatRate (faiz) və vatIncluded (false = qiymətə əlavə olunur) saxlanılır.
+// vatIncluded !== false  → ƏDV qiymətin içindədir (yalnız məlumat üçün)
+// vatIncluded === false  → ƏDV qiymətin üstünə əlavə olunur
+export function computeVat(items) {
+  let added = 0, included = 0;
+  const byRate = {};
+  Object.values(items || {}).forEach(v => {
+    const r = Number(v.vatRate) || 0;
+    if (r <= 0) return;
+    const line = (v.price||0) * v.qty * (1 - ((v.discountPercent||0)/100)) + (v.extraFee||0);
+    const inc = v.vatIncluded !== false;
+    const amt = inc ? line * r / (100 + r) : line * r / 100;
+    if (inc) included += amt; else added += amt;
+    const k = r + (inc ? 'i' : 'a');
+    byRate[k] = byRate[k] || { rate: r, included: inc, amount: 0 };
+    byRate[k].amount += amt;
+  });
+  const rd = n => Math.round(n * 100) / 100;
+  return { added: rd(added), included: rd(included), rows: Object.values(byRate).map(x => ({ ...x, amount: rd(x.amount) })) };
+}
+
 export function computeOrderTotals(items) {
   let itemsSubtotal = 0;
   Object.values(items || {}).forEach(v => {
@@ -37,8 +58,9 @@ export function computeOrderTotals(items) {
   const sc = state.serviceCharge || {};
   const scPercent = sc.enabled ? (sc.percent || 0) : 0;
   const serviceChargeAmount = Math.round(itemsSubtotal * scPercent / 100 * 100) / 100;
-  const total = Math.round((itemsSubtotal + serviceChargeAmount) * 100) / 100;
-  return { itemsSubtotal, serviceChargeAmount, serviceChargePercent: scPercent, total };
+  const vatAdded = computeVat(items).added;
+  const total = Math.round((itemsSubtotal + serviceChargeAmount + vatAdded) * 100) / 100;
+  return { itemsSubtotal, serviceChargeAmount, serviceChargePercent: scPercent, vatAdded, total };
 }
 
 // Masaya aid tarixçə görünüşündə eyni masanın adının təkrarlanmasının qarşısını alır
