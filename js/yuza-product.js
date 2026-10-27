@@ -27,7 +27,7 @@ const FLAGS = [
   { key: 'isFavorite',  label: 'Favori',                 hint: 'Sifariş ekranında "★ Favorilər" bölməsində görünür',        def: false },
   { key: 'showInQr',    label: 'QR menyuda göstər',      hint: 'Müştəri menyusunda görünsün (aktiv mallar)',                def: true  },
   { key: 'isTrackable', label: 'Sayıla bilən mal',       hint: 'Anbarda izlənir, "Məhsul Alışı" bölməsində görünür',        def: false },
-  { key: 'vatIncluded', label: 'ƏDV qiymətə daxildir',   hint: 'Söndürülsə ƏDV faizi qiymətin üstünə əlavə olunur',         def: true  }
+  
 ];
 const flagOn = (m, f) => (m[f.key] === undefined || m[f.key] === null) ? f.def : !!m[f.key];
 
@@ -43,7 +43,7 @@ function switchHTML(m, f) {
 /* ── Maliyyə hesabı ── */
 function calc(m) {
   const price = Number(m.price || 0), rate = Number(m.vatRate || 0);
-  const incl = m.vatIncluded !== false;
+   const incl = state.vatMode !== 'added'; // Ayarlar → ƏDV Hesablama Üsulu
   const vatAmt = rate > 0 ? (incl ? price * rate / (100 + rate) : price * rate / 100) : 0;
   const customerPays = incl ? price : price + vatAmt;
   const net = incl ? price - vatAmt : price;
@@ -155,7 +155,7 @@ function pageHTML(m) {
 
     <div class="ct-detail-section-title">ƏDV və maliyyət</div>
     <div class="yz-prod__box yz-prod__grid">
-      <div class="yz-f"><span>ƏDV faizi (%) — istənilən rəqəm</span>
+      <div class="yz-f"><span>ƏDV faizi (%) — daxil/əlavə qaydası Ayarlardadır</span>
         <div class="yz-vatrow">
           <input id="yzVat" type="text" inputmode="decimal" value="${Number(m.vatRate || 0)}" aria-label="ƏDV faizi">
           <div class="yz-chips">${[0, 8, 18].map(v => `<button type="button" class="yz-chip" data-yz-vat="${v}">${v}%</button>`).join('')}</div>
