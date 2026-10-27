@@ -241,13 +241,13 @@ export async function renderReceiptTemplateSettings() {
     ${_chkField('itemName','Məhsul adı',chk('itemName'))}${_chkField('itemQty','Miqdar',chk('itemQty'))}
     ${_chkField('itemPrice','Vahid qiymət',chk('itemPrice',false))}${_chkField('lineTotal','Məbləğ',chk('lineTotal'))}
     ${_chkField('itemNote','Məhsul qeydi',chk('itemNote',true))}${_chkField('discount','Endirim',chk('discount'))}
-    ${_chkField('serviceCharge','Xidmət haqqı',chk('serviceCharge'))}${_chkField('vat','ƏDV',chk('vat',false))}
+    ${_chkField('serviceCharge','Xidmət haqqı',chk('serviceCharge'))}${_chkField('vat','ƏDV (mallara görə)',chk('vat',false))}
     ${_chkField('totalAmount','Yekun məbləğ',chk('totalAmount'))}${_chkField('paymentType','Ödəniş növü',chk('paymentType',false))}
   </div>
   <div class="form-row"><div class="form-group"><label>Məhsul bölməsi fontu</label>${fontInput('tplProductFont','productFont',v('itemFont','Arial'))}</div><div class="form-group"><label>Məhsul bölməsi ölçüsü</label>${sizeSel('tplProductSize','productFontSize',v('itemFontSize','normal'))}</div></div>
   <div class="form-row"><div class="form-group"><label>Məhsul hizalanması</label>${alignSel('tplProductAlign','productAlign','left')}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplProductBold',chk('productBold',false),'Məhsul yazıları qalın')}</div></div>
   <div class="form-row"><div class="form-group"><label>Yekun məbləğ ölçüsü</label>${sizeSel('tplTotalFontSize','totalFontSize','large')}</div><div class="form-group"><label>Valyuta</label><select id="tplCurrency"><option value="AZN" ${sel('currency','AZN','AZN')}>AZN</option><option value="₼" ${sel('currency','₼','AZN')}>₼</option><option value="$" ${sel('currency','$','AZN')}>$</option><option value="€" ${sel('currency','€','AZN')}>€</option></select></div></div>
-  <div class="form-group"><label>ƏDV faizi (%)</label><input type="number" id="tplVatPercent" value="${v('vatPercent',0)}" min="0" max="100"></div>
+ 
   <div style="display:flex;gap:16px;margin-bottom:12px;">${_toggle('tplTotalBold',chk('totalBold',true),'Yekun qalın')}${_toggle('tplTotalUpper',chk('totalUpper',true),'Yekun böyük hərf')}</div>
 
   ${_section('📝 4. FOOTER')}
@@ -339,7 +339,7 @@ export function saveReceiptTemplate() {
   data.dividerType=document.getElementById('tplDivider')?.value||'dash';
   data.bottomLines=parseInt(document.getElementById('tplBottomLines')?.value)||5;
   data.currency=document.getElementById('tplCurrency')?.value||'AZN';
-  data.vatPercent=parseFloat(document.getElementById('tplVatPercent')?.value)||0;
+  
 
   // Obyekt adı tam ayrıca stil saxlayır. Ünvan/telefon info* ayarlarını istifadə edir.
   data.restaurantNameFont=document.getElementById('tplRestNameFont')?.value.trim()||'Arial';
