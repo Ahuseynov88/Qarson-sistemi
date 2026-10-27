@@ -12,7 +12,6 @@
 import { R } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog } from './utils.js';
-import { getIngredients, onIngredients, fmtQty } from './yuza-ingredients.js';
 
 const $ = (id) => document.getElementById(id);
 const isAdmin = () => state.user?.role === 'admin';
@@ -165,9 +164,6 @@ function pageHTML(m) {
     </div>
     <div id="yzProfit">${profitHTML(m)}</div>
 
-    <div class="ct-detail-section-title">Resept (xammadə sərfi — 1 porsiya üçün)</div>
-    <div class="yz-prod__box" id="yzRecipe">${recipeHTML(m)}</div>
-
     <div class="ct-detail-section-title">Satış və qalıq</div>
     <div id="yzStats">${statsHTML(m, salesCache && salesCache.map[m.id] ? salesCache.map[m.id] : (salesCache ? {} : null))}</div>
     <div class="yz-stockrow">
@@ -182,44 +178,6 @@ function pageHTML(m) {
     <div class="yz-prod__danger"><button type="button" class="btn btn-red" data-yz-act="delete"><svg class="icon"><use href="#i-trash"></use></svg> Malı sil</button></div>
   </div>`;
 }
-
-/* ── Resept ── */
-function recipeCost(m) {
-  const ings = getIngredients();
-  return Object.entries(m.recipe || {}).reduce((s, [id, q]) => {
-    const g = ings.find(x => x.id === id);
-    return s + (g && g.cost !== undefined && g.cost !== null ? Number(g.cost) * Number(q) : 0);
-  }, 0);
-}
-function recipeHTML(m) {
-  const ings = getIngredients();
-  const rec = m.recipe || {};
-  const ids = Object.keys(rec);
-  const rows = ids.map(id => {
-    const g = ings.find(x => x.id === id);
-    if (!g) return `<div class="yz-rec__row yz-rec__row--gone"><span class="yz-rec__name">(silinmiş xammadə)</span><button type="button" class="yz-qa__item-del" data-yz-rec-del="${esc(id)}" aria-label="Çıxar">✕</button></div>`;
-    const low = g.minQty !== undefined && g.minQty !== null && Number(g.stock || 0) <= Number(g.minQty);
-    return `<div class="yz-rec__row">
-      <span class="yz-rec__name">${esc(g.name)}<small>qalıq: ${fmtQty(g.stock)} ${esc(g.unit || '')}${low ? ' ⚠' : ''}</small></span>
-      <input class="yz-rec__qty" data-yz-rec-qty="${esc(id)}" inputmode="decimal" value="${fmtQty(rec[id])}" aria-label="Miqdar">
-      <span class="yz-rec__unit">${esc(g.unit || '')}</span>
-      <button type="button" class="yz-qa__item-del" data-yz-rec-del="${esc(id)}" aria-label="Çıxar">✕</button>
-    </div>`;
-  }).join('');
-  const avail = ings.filter(g => rec[g.id] === undefined);
-  const cost = recipeCost(m);
-  return `${rows || '<div class="yz-hist__empty">Resept yoxdur — satış zamanı xammadə çıxılmır.</div>'}
-    <div class="yz-rec__add">
-      <select id="yzRecAdd" aria-label="Xammadə seç"><option value="">+ Xammadə əlavə et...</option>${avail.map(g => `<option value="${esc(g.id)}">${esc(g.name)} (${esc(g.unit || '')})</option>`).join('')}</select>
-    </div>
-    ${ids.length ? `<div class="yz-rec__cost"><span>Reseptdən maya: <b>${fmt(cost)}</b></span>
-      <button type="button" class="btn btn-ghost" data-yz-act="applycost">Maya dəyəri kimi yaz</button></div>` : ''}`;
-}
-function refreshRecipe() {
-  const el = $('yzRecipe'); const m = currentItem();
-  if (el && m && !el.contains(document.activeElement)) el.innerHTML = recipeHTML(m);
-}
-onIngredients(() => refreshRecipe());
 
 function currentItem() {
   const id = state._selectedMenuItemId;
@@ -333,15 +291,12 @@ document.addEventListener('click', (e) => {
   const id = p.dataset.id;
   const fl = e.target.closest('[data-yz-flag]');
   if (fl) { toggleFlag(fl.dataset.yzFlag, id); return; }
-  const rd = e.target.closest('[data-yz-rec-del]');
-  if (rd) { update(id, { ['recipe/' + rd.dataset.yzRecDel]: null }); return; }
   const chip = e.target.closest('[data-yz-vat]');
   if (chip) { $('yzVat').value = chip.dataset.yzVat; saveMoney(id, 'vatRate', chip.dataset.yzVat, 'ƏDV'); livePreview(); return; }
   const act = e.target.closest('[data-yz-act]');
   if (!act) return;
   if (act.dataset.yzAct === 'stockset') { setStock(id, $('yzStockSet').value); $('yzStockSet').value = ''; }
   else if (act.dataset.yzAct === 'stockadd') { if (typeof window.openQuickStockModal === 'function') window.openQuickStockModal(id); }
-  else if (act.dataset.yzAct === 'applycost') { const m = itemById(id); const c = r2(recipeCost(m)); update(id, { cost: c }); showToast('Maya dəyəri: ' + c.toFixed(2) + ' ₼'); }
   else if (act.dataset.yzAct === 'delete') { if (typeof window.deleteMenuItem === 'function') window.deleteMenuItem(id); }
 });
 
@@ -355,12 +310,6 @@ document.addEventListener('change', (e) => {
   else if (t.id === 'yzDesc') update(id, { description: t.value.trim() });
   else if (t.id === 'yzVat') saveMoney(id, 'vatRate', t.value || '0', 'ƏDV faizi');
   else if (t.id === 'yzCost') saveMoney(id, 'cost', t.value, 'maya dəyəri');
-  else if (t.id === 'yzRecAdd') { if (t.value) update(id, { ['recipe/' + t.value]: 1 }); }
-  else if (t.dataset.yzRecQty) {
-    const v = num(t.value);
-    if (!Number.isFinite(v) || v < 0) { showToast('Düzgün miqdar yaz'); return; }
-    update(id, { ['recipe/' + t.dataset.yzRecQty]: v === 0 ? null : Math.round(v * 1000) / 1000 });
-  }
   else if (t.id === 'yzPhotoFile') {
     const file = t.files[0]; if (!file) return;
     if (file.size > 2 * 1024 * 1024) { showToast('Şəkil 2MB-dan böyük olmamalıdır'); t.value = ''; return; }
