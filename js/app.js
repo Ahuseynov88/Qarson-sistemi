@@ -18,7 +18,7 @@ import { renderNotifSounds } from './notifSounds.js';
 import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener, closeWaiterChat } from './customer.js';
 import { ensureDefaultEventTypes } from './banquet.js';
 import { renderPrinters, renderReceiptTemplateSettings } from './printer-settings.js';
-
+import { raciaStart, raciaStop } from './racia.js';
 let ADMIN_PIN = null;
 let staffApp = null;
 
@@ -155,6 +155,7 @@ function logout() {
     addLog('logout', 'Mətbəx sistemdən çıxdı', { type: 'kitchen' });
   }
   stopAlarm();
+  raciaStop();
   if (staffApp) staffApp.stop();
   removeListeners();
   state.user = null;
@@ -280,6 +281,7 @@ function initListeners() {
 
   initCustomerRequestListener();
   if (state.user?.role === 'staff') initWaiterChatListener();
+  raciaStart();
 }
 
 function removeListeners() {
