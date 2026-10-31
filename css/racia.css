@@ -1,0 +1,161 @@
+/* ═══════════════════════════════════════════════════════════════
+   RACİA — "Bas-danış" səsli əlaqə (js/racia.js)
+   yuza-theme.css-dən SONRA yüklənir. Rənglər mövcud tema dəyişənlərindən
+   gəlir, ona görə həm gündüz, həm gecə rejimində avtomatik uyğunlaşır.
+═══════════════════════════════════════════════════════════════ */
+
+/* Basıb-saxlama zamanı mətn seçilməsin, iPhone menyusu açılmasın, ekran sürüşməsin */
+[data-ptt]{
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  touch-action:none; -webkit-tap-highlight-color:transparent;
+}
+
+/* ── Qarson ekranında üzən düymə ── */
+.rc-fab{
+  position:fixed; right:16px; bottom:calc(18px + env(safe-area-inset-bottom,0px)); z-index:900;
+  width:62px; height:62px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--yz-gold-grad); color:var(--yz-on-gold);
+  border:1px solid rgba(138,90,11,.55);
+  box-shadow:0 8px 24px rgba(201,141,46,.45), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.rc-fab svg{width:28px; height:28px;}
+.rc-fab:active{transform:scale(.95);}
+.rc-fab__badge{
+  position:absolute; top:-4px; right:-4px; min-width:22px; height:22px; padding:0 6px;
+  border-radius:11px; background:var(--red); color:#fff; font-size:12px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; border:2px solid var(--card);
+}
+.rc-fab__badge[hidden]{display:none;}
+
+/* ── Alt panel (qarson) ── */
+.rc-sheet-bg{
+  position:fixed; inset:0; z-index:2500; display:none;
+  background:var(--overlay-strong); align-items:flex-end; justify-content:center;
+}
+.rc-sheet-bg.open{display:flex;}
+.rc-sheet{
+  width:100%; max-width:560px; max-height:88vh; overflow-y:auto;
+  background:var(--card); color:var(--text); border:1px solid var(--border);
+  border-radius:20px 20px 0 0; padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  box-shadow:var(--shadow-lg); animation:rcUp .22s ease;
+}
+@keyframes rcUp{from{transform:translateY(30px); opacity:.4;}to{transform:none; opacity:1;}}
+@media (min-width:700px){ .rc-sheet-bg{align-items:center;} .rc-sheet{border-radius:20px;} }
+.rc-sheet__head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.rc-sheet__title{display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-size:18px; font-weight:600;}
+.rc-sheet__title svg{width:22px; height:22px; color:var(--gold);}
+.rc-x{width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center;}
+
+.rc-sec{margin:16px 0 8px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text2);}
+
+/* "HAMIYA DANIŞ" böyük düymə */
+.rc-all{
+  width:100%; display:flex; align-items:center; gap:14px; padding:16px 18px; cursor:pointer;
+  border-radius:16px; border:1px solid rgba(138,90,11,.55);
+  background:var(--yz-gold-grad); color:var(--yz-on-gold); text-align:left; font-family:inherit;
+  box-shadow:0 4px 16px rgba(201,141,46,.35);
+  transition:transform .1s, box-shadow .15s;
+}
+.rc-all b{display:block; font-size:17px; letter-spacing:.02em;}
+.rc-all small{display:block; font-size:12.5px; opacity:.8; margin-top:2px;}
+.rc-all__mic{width:48px; height:48px; flex-shrink:0; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.12);}
+.rc-all__mic svg{width:26px; height:26px;}
+
+/* İşçi düymələri */
+.rc-people{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+@media (max-width:360px){ .rc-people{grid-template-columns:1fr;} }
+.rc-person{
+  display:flex; align-items:center; gap:10px; padding:10px; min-height:62px; cursor:pointer;
+  border-radius:14px; border:1px solid var(--border); background:var(--card2); color:var(--text);
+  text-align:left; font-family:inherit; transition:transform .1s, border-color .15s, background .15s;
+}
+.rc-person__txt{flex:1; min-width:0; display:flex; flex-direction:column;}
+.rc-person__txt b{font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rc-person__txt small{font-size:11.5px; color:var(--text3); display:flex; align-items:center; gap:5px;}
+.rc-person__mic{width:30px; height:30px; flex-shrink:0; color:var(--gold-dark); opacity:.75;}
+body.dark-mode .rc-person__mic{color:var(--gold);}
+.rc-person__mic svg{width:100%; height:100%;}
+.rc-ava{width:38px; height:38px; flex-shrink:0; border-radius:50%; object-fit:cover; background:var(--card);}
+.rc-ava--icon{display:flex; align-items:center; justify-content:center; color:var(--gold); border:1px solid var(--yz-ring);}
+.rc-dot{width:8px; height:8px; border-radius:50%; background:var(--text3); display:inline-block;}
+.rc-dot--on{background:var(--green); box-shadow:0 0 0 3px rgba(63,208,138,.2);}
+
+/* Basılı vəziyyət */
+.rc-pressed{transform:scale(.97);}
+.rc-person.rc-pressed{border-color:var(--red); background:rgba(179,38,30,.12);}
+.rc-all.rc-pressed{box-shadow:0 0 0 4px rgba(179,38,30,.45), 0 4px 16px rgba(201,141,46,.35);}
+
+/* Tarixçə */
+.rc-hist{display:flex; flex-direction:column; gap:6px;}
+.rc-hist--admin{max-height:60vh; overflow-y:auto;}
+.rc-row{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:var(--card2); border:1px solid var(--border);}
+.rc-row--me{opacity:.75;}
+.rc-row__txt{flex:1; min-width:0; display:flex; flex-direction:column;}
+.rc-row__txt b{font-size:13.5px; color:var(--text); overflow-wrap:anywhere;}
+.rc-row__txt small{font-size:11.5px; color:var(--text3);}
+.rc-play{
+  width:40px; height:40px; flex-shrink:0; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--yz-gold-tint); color:var(--gold-dark); border:1px solid var(--yz-ring);
+}
+body.dark-mode .rc-play{color:var(--gold);}
+.rc-play svg{width:18px; height:18px; margin-left:2px;}
+.rc-tag{font-weight:700; color:var(--orange);}
+.rc-empty{padding:12px; text-align:center; font-size:13px; color:var(--text3);}
+.rc-note{margin-top:10px; font-size:12px; color:var(--text3);}
+
+/* ── Səs yazılan zaman ekran ── */
+.rc-rec{position:fixed; inset:0; z-index:3000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); pointer-events:none;}
+.rc-rec.open{display:flex;}
+.rc-rec__card{
+  width:min(300px, 86vw); padding:24px 20px; border-radius:22px; text-align:center;
+  background:var(--card); color:var(--text); border:1px solid var(--yz-ring); box-shadow:var(--shadow-lg);
+}
+.rc-rec__mic{
+  width:84px; height:84px; margin:0 auto 12px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--card2); color:var(--text3);
+}
+.rc-rec__mic svg{width:40px; height:40px;}
+.rc-rec--live .rc-rec__mic{background:var(--red); color:#fff; animation:rcPulse 1.1s ease-in-out infinite;}
+@keyframes rcPulse{0%,100%{box-shadow:0 0 0 0 rgba(179,38,30,.55);}50%{box-shadow:0 0 0 16px rgba(179,38,30,0);}}
+.rc-rec__to{font-family:var(--font-display); font-size:19px; font-weight:600; margin-bottom:4px; overflow-wrap:anywhere;}
+.rc-rec__time{font-variant-numeric:tabular-nums; font-size:15px; color:var(--text2);}
+.rc-rec__bar{height:6px; margin:12px 0 10px; border-radius:6px; background:var(--card2); overflow:hidden;}
+.rc-rec__bar i{display:block; height:100%; width:0; background:var(--red); transition:width .2s linear;}
+.rc-rec__hint{font-size:13px; color:var(--text2);}
+
+/* ── Səslənən mesaj zolağı (yuxarıda) ── */
+.rc-now{
+  position:fixed; left:50%; top:calc(10px + env(safe-area-inset-top,0px)); z-index:2900;
+  transform:translateX(-50%) translateY(-120%); opacity:0; pointer-events:none;
+  display:flex; align-items:center; gap:10px; max-width:min(92vw,460px); padding:10px 16px;
+  border-radius:999px; cursor:pointer; font-family:inherit; font-size:14px; text-align:left;
+  background:var(--brand-gradient); color:#f4eee2; border:1px solid rgba(232,176,75,.5);
+  box-shadow:0 8px 24px rgba(0,0,0,.35); transition:transform .2s ease, opacity .2s ease;
+}
+.rc-now.open{transform:translateX(-50%); opacity:1; pointer-events:auto;}
+.rc-now b{color:var(--yz-gold-1);}
+.rc-now small{margin-left:4px; font-size:11.5px; padding:3px 9px; border-radius:99px; border:1px solid rgba(232,176,75,.45); color:var(--yz-gold-1); white-space:nowrap;}
+.rc-now svg{width:18px; height:18px; flex-shrink:0; color:var(--yz-gold-1);}
+.rc-now--tap{animation:rcBlink 1.2s ease-in-out infinite;}
+@keyframes rcBlink{50%{box-shadow:0 0 0 6px rgba(232,176,75,.25), 0 8px 24px rgba(0,0,0,.35);}}
+.rc-now__wave{display:flex; align-items:center; gap:2px; height:16px;}
+.rc-now__wave i{width:3px; height:6px; border-radius:2px; background:var(--yz-gold-1); animation:rcWave .9s ease-in-out infinite;}
+.rc-now__wave i:nth-child(2){animation-delay:.15s;} .rc-now__wave i:nth-child(3){animation-delay:.3s;} .rc-now__wave i:nth-child(4){animation-delay:.45s;}
+@keyframes rcWave{50%{height:16px;}}
+
+/* ── Admin bölməsi ── */
+.rc-admin{max-width:680px;}
+.rc-admin__card{margin-bottom:16px;}
+.rc-admin__histhead{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+.rc-admin__histhead h3{margin:0; font-size:16px; display:flex; align-items:center; gap:6px;}
+.rc-admin__histhead select{min-width:180px; padding:9px 12px; border-radius:10px; border:1px solid var(--border);}
+.rc-switchrow{display:flex; align-items:center; justify-content:space-between; gap:14px; cursor:pointer;}
+.rc-switchrow b{display:block; font-size:14px; color:var(--text);}
+.rc-switchrow small{display:block; font-size:12px; color:var(--text3); line-height:1.4; margin-top:2px;}
+.rc-switchrow input{width:22px; height:22px; flex-shrink:0; cursor:pointer;}
+
+@media (prefers-reduced-motion:reduce){
+  .rc-sheet,.rc-now--tap,.rc-rec--live .rc-rec__mic,.rc-now__wave i{animation:none;}
+}
