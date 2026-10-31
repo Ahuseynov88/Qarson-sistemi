@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/yuza-login.css">
 <link rel="stylesheet" href="css/yuza-theme.css">
+<link rel="stylesheet" href="css/racia.css">
 </head>
 <body>
 
@@ -423,6 +424,9 @@
           <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">
             <svg class="icon"><use href="#i-bell"></use></svg> Bildiriş Səsləri
           </button>
+          <button class="admin-tab" data-section="racia" onclick="adminTab('racia',this)">
+            <svg class="icon"><use href="#i-megaphone"></use></svg> Racia
+          </button>
           <button class="admin-tab" data-section="dangerZone" onclick="adminTab('dangerZone',this)" style="color:var(--red);">
             <svg class="icon"><use href="#i-warning"></use></svg> Təhlükəli Əməliyyatlar
           </button>
@@ -723,6 +727,7 @@
         </div>
       </div>
     </div>
+        <div class="admin-section" id="sec-racia"><div id="raciaAdminBody"></div></div>
     <div class="admin-section" id="sec-dangerZone">
       <div id="dangerZoneBody"></div>
     </div>
