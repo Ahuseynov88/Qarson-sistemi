@@ -254,9 +254,90 @@ body.dark-mode .yzi-pick__new{color:var(--gold)}
   .yzi-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .yzi-kpi{padding:10px 12px}
   .yzi-kpi b{font-size:18px}
-  .yzi-modal{width:100vw;max-width:100vw;max-height:100vh;height:100vh;border-radius:0!important}
+  .yzi-modal{width:100vw;max-width:100vw;max-height:100vh;height:100vh;max-height:100dvh;height:100dvh;border-radius:0!important}
+  .yzi-modal__foot{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
   .yzi-modal__foot .yzi-btn{flex:1 1 auto}
   .yzi-ed__top{flex-direction:column}
   .yzi-count-it{flex-direction:column;align-items:stretch}
   .yzi-count-in input{width:100%}
+}
+
+/* ═══ PATRON PANELİ: yeni menyu, iki səviyyəli işçi menyusu, telefon düzəlişləri ═══ */
+body:not(.yz-inv-v2) .yz-only-v2{display:none!important}
+body.yz-inv-v2 .yz-only-legacy{display:none!important}
+
+/* İşçi ekranı: qrup → bölmə */
+.yzi-nav{flex-direction:column;gap:8px;padding:10px 4px 8px}
+.yzi-nav__groups,.yzi-nav__tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.yzi-nav__groups::-webkit-scrollbar,.yzi-nav__tabs::-webkit-scrollbar{display:none}
+.yzi-nav__grp{flex-shrink:0;height:38px;padding:0 14px;border:none;border-bottom:3px solid transparent;background:transparent;color:var(--text2);font:800 13px/1 var(--yzi-font);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.yzi-nav__grp.is-on{color:var(--gold-dark);border-bottom-color:var(--gold)}
+body.dark-mode .yzi-nav__grp.is-on{color:var(--gold)}
+.yzi--single{gap:0}
+.yzi--single>.yzi-body{padding:0 0 40px}
+.yz-inv-sec{padding-top:24px}
+
+/* Sol menyu: Zal, alt başlıqlar, nişanlar */
+.admin-tab.yz-zal-tab{margin:2px 0 8px;border:1px solid var(--gold);background:var(--yz-gold-tint,rgba(201,151,63,.1));color:var(--gold-dark);font-weight:800}
+body.dark-mode .admin-tab.yz-zal-tab{color:var(--gold)}
+.ap-sub{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 12px 3px}
+.admin-tab>span:not(.yz-side-badge){flex:1;min-width:0}
+.yz-side-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--red);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.yz-side-badge[hidden]{display:none}
+.ap-group__header .yz-side-badge{margin-left:0}
+
+/* Təsdiq zəngi */
+.yz-bell{position:relative;width:38px;height:38px;border-radius:9px;border:1px solid rgba(232,176,75,.4);background:rgba(232,176,75,.14);color:var(--yz-gold-1,#f3d38b);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.yz-bell .icon{width:18px;height:18px}
+.yz-bell__n{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--red);color:#fff;font:800 11px/19px var(--yzi-font);text-align:center;box-shadow:0 0 0 2px var(--card)}
+.yz-bell__n[hidden]{display:none}
+
+/* "+ Yeni" menyusu tam açılsın (uzun siyahı ekrandan çıxmasın) */
+.ap-new-dropdown{max-height:calc(100vh - 80px);overflow-y:auto;overscroll-behavior:contain}
+
+/* Patron Zalda */
+.yz-zal-back{display:none}
+body.yz-patron-zal .yz-zal-back{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+body.yz-patron-zal #waiterScreen [onclick="showExitModal()"],
+body.yz-patron-zal #yzInvStaffBtn{display:none!important}
+
+/* Kassa */
+.yzi-acc-cards .yzi-acc{display:flex;flex-direction:column;gap:4px}
+.yzi-acc .yzi-btn{margin-top:6px;align-self:flex-start}
+.yzi-acc--cash{border-left:3px solid var(--gold)}
+.yzi-acc--pos{border-left:3px solid var(--blue)}
+.yzi-acc--bank{border-left:3px solid var(--green)}
+.yzi-table tr.is-pending td{opacity:.65;font-style:italic}
+.yzi-setup{display:flex;flex-direction:column;gap:10px;margin:8px 0}
+.yzi-setup__row{display:grid;grid-template-columns:180px 1fr 180px;gap:10px;align-items:end;padding:10px;border:1px solid var(--border);border-radius:12px}
+
+/* Planşet (768–899): yan menyu ikonlardır, alt başlıq və "Geri" zolağı lazım deyil */
+@media (min-width:768px) and (max-width:899px){
+  .ap-sub,.admin-tabs .yz-side-badge{display:none}
+  body.yz-shell .admin-body.admin-section-open #adminBackBtn{display:none}
+}
+/* Telefon (<768): bölmə yuxarı paneldən və "Geri" zolağından AŞAĞIDA açılır — heç nə üst-üstə düşmür */
+@media (max-width:767px){
+  body.yz-shell #adminTopbar{position:sticky;top:0;z-index:152}
+  body.yz-shell .admin-body.admin-section-open #adminBackBtn{display:flex;position:fixed;top:var(--yz-tb,58px);left:0;right:0;z-index:151;min-height:46px;margin:0}
+  body.yz-shell .admin-body.admin-section-open .admin-section.active{top:calc(var(--yz-tb,58px) + 46px);padding:14px 12px calc(96px + env(safe-area-inset-bottom))}
+  body.yz-shell #yzAdminBack{display:none!important}
+  body.yz-shell .admin-tabs{max-height:none}
+  .ap-sub{grid-column:1/-1;padding:6px 4px 0}
+  .admin-tab.yz-zal-tab{flex-direction:row;justify-content:center;min-height:54px;font-size:14px;margin:0 0 10px}
+  .admin-tab .yz-side-badge{position:absolute;top:6px;right:6px}
+  .admin-tab{position:relative}
+  .ap-new-dropdown{position:fixed;top:calc(var(--yz-tb,58px) + 4px);left:8px;right:8px;min-width:0;max-height:calc(100vh - var(--yz-tb,58px) - 16px);max-height:calc(100dvh - var(--yz-tb,58px) - 16px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .ap-new-dropdown__item{padding:12px 10px;font-size:14px}
+  .yz-inv-sec{padding-top:14px}
+  .yzi-setup__row{grid-template-columns:1fr}
+  .yz-bell{width:34px;height:34px}
+  #apPageTitle{display:inline-block;max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+}
+.yzi-acc__name{font-weight:700;font-size:14px;color:var(--text)}
+@media (max-width:600px){
+  .yzi-filters--cash>.yzi-f--inline{flex:1 1 calc(50% - 6px)}
+  .yzi-filters--cash>.yzi-btn{flex:1 1 calc(50% - 6px)}
+  .yzi-filters--cash>.yzi-pills{flex:1 1 100%}
+  .yzi-acc-cards{grid-template-columns:1fr}
 }
