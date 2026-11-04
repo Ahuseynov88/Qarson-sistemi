@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/yuza-login.css">
 <link rel="stylesheet" href="css/yuza-theme.css">
+<link rel="stylesheet" href="css/yuza-inventory.css">
 <link rel="stylesheet" href="css/racia.css">
 </head>
 <body>
@@ -352,6 +353,9 @@
           <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
         </button>
         <div class="ap-group__items">
+                   <button class="admin-tab" data-section="inv" onclick="adminTab('inv',this)">
+            <svg class="icon"><use href="#i-box"></use></svg> Anbar və Məhsullar
+          </button>
           <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)">
             <svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları
           </button>
@@ -728,6 +732,9 @@
       </div>
     </div>
         <div class="admin-section" id="sec-racia"><div id="raciaAdminBody"></div></div>
+        <div class="admin-section" id="sec-inv">
+      <div id="yzInvAdminHost"></div>
+    </div>
     <div class="admin-section" id="sec-dangerZone">
       <div id="dangerZoneBody"></div>
     </div>
@@ -806,6 +813,15 @@
       <button class="btn btn-green" onclick="savePrinter()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
     </div>
   </div>
+</div>
+
+<!-- ═══ ANBAR (işçilər üçün: mühasib, anbardar) ═══ -->
+<div class="screen" id="invScreen">
+  <div class="topbar">
+    <h2><svg class="icon"><use href="#i-box"></use></svg> Anbar</h2>
+    <div class="topbar-right"><button class="btn btn-ghost" id="yzInvStaffBack" type="button"><svg class="icon"><use href="#i-close"></use></svg> Geri</button></div>
+  </div>
+  <div id="yzInvStaffHost"></div>
 </div>
 
 <!-- ═══ KITCHEN ═══ -->
@@ -1770,5 +1786,6 @@
 <script type="module" src="js/yuza-nav.js"></script>
 <script type="module" src="js/yuza-quickadd.js"></script>
 <script type="module" src="js/yuza-product.js"></script>
+<script type="module" src="js/yuza-inventory.js"></script>
 </body>
 </html>
