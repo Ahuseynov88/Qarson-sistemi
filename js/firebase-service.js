@@ -7,7 +7,7 @@
 ═══════════════════════════════════════════ */
 
 // Test saytı (.pages.dev) TEST bazasına, əsl sayt əsl bazaya qoşulur
-const IS_TEST = location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
+const IS_TEST = location.hostname.startsWith('test-yuzapos') || location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
 const firebaseConfig = {
   databaseURL: IS_TEST
     ? "https://test-yuzapos-default-rtdb.europe-west1.firebasedatabase.app/" 
