@@ -120,13 +120,25 @@ export const ALL_PERMISSIONS = [
       { key: 'stock.storno',             label: 'Anbar sənədini storno etmək' },
       { key: 'stock.report',             label: 'Anbar hesabatları (hərəkətlər, sərf analizi)' },
     ]
+  },
+  {
+    group: 'Kassa və pul hesabları',
+    icon: '<svg class="icon"><use href="#i-money"></use></svg>',
+    items: [
+      { key: 'cash.view',          label: 'Kassa qalıqlarını və hərəkətləri görmək' },
+      { key: 'cash.create',        label: 'Mədaxil / məxaric / transfer yazmaq (təsdiqə)' },
+      { key: 'cash.approve',       label: 'Kassa sənədini təsdiqləmək və kassa parametrləri' },
+      { key: 'cash.storno',        label: 'Kassa sənədini storno etmək' },
+      { key: 'cash.close.create',  label: 'Gün sonu bağlanışı etmək (pulu saymaq)' },
+      { key: 'cash.close.approve', label: 'Gün sonu bağlanışını təsdiqləmək' },
+    ]
   }
 ];
 
 export const PERMISSION_PRESETS = {
   accountant: {
     label: '<svg class="icon"><use href="#i-cash"></use></svg> Mühasib',
-    perms: ['catalog.view','catalog.quickadd','catalog.price','catalog.cost','purchase.view','purchase.create','purchase.approve','purchase.storno','supplier.manage','supplier.payment.create','supplier.payment.approve','supplier.payment.storno','stock.view','stock.writeoff.approve','stock.transfer.approve','stock.count.approve','stock.production.approve','stock.storno','stock.report','report.daily','report.weekly']
+    perms: ['catalog.view','catalog.quickadd','catalog.price','catalog.cost','purchase.view','purchase.create','purchase.approve','purchase.storno','supplier.manage','supplier.payment.create','supplier.payment.approve','supplier.payment.storno','stock.view','stock.writeoff.approve','stock.transfer.approve','stock.count.approve','stock.production.approve','stock.storno','stock.report','cash.view','cash.create','cash.approve','cash.storno','cash.close.create','cash.close.approve','report.daily','report.weekly']
   },
   storekeeper: {
     label: '<svg class="icon"><use href="#i-box"></use></svg> Anbardar',
@@ -142,7 +154,7 @@ export const PERMISSION_PRESETS = {
   },
   cashier: {
     label: '<svg class="icon"><use href="#i-money"></use></svg> Kassir',
-        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','order.gift','order.batch_ops','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view']
+        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','order.gift','order.batch_ops','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','cash.view','cash.create','cash.close.create']
   },
   manager: {
     label: '<svg class="icon"><use href="#i-staff"></use></svg> Müdir',

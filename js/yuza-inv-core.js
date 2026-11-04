@@ -38,7 +38,9 @@ export const DOCS = {
   writeoff:   { node: 'invWriteoffs',   prefix: 'SL', perm: 'stock.writeoff',   storno: 'stock.storno',            label: 'Silinmə aktı' },
   transfer:   { node: 'invTransfers',   prefix: 'TR', perm: 'stock.transfer',   storno: 'stock.storno',            label: 'Anbarlararası transfer' },
   count:      { node: 'invCounts',      prefix: 'SY', perm: 'stock.count',      storno: 'stock.storno',            label: 'İnventarizasiya (sayım)' },
-  production: { node: 'invProductions', prefix: 'HZ', perm: 'stock.production', storno: 'stock.storno',            label: 'Hazırlama aktı' }
+  production: { node: 'invProductions', prefix: 'HZ', perm: 'stock.production', storno: 'stock.storno',            label: 'Hazırlama aktı' },
+  cash:       { node: 'invCash',        prefix: 'KS', perm: 'cash',             storno: 'cash.storno',             label: 'Kassa sənədi', limit: 3000 },
+  cashclose:  { node: 'cashCloses',     prefix: 'GS', perm: 'cash.close',       storno: 'cash.storno',             label: 'Gün sonu bağlanışı', limit: 1500 }
 };
 export const STATUS = {
   draft:    { label: 'Qaralama',         cls: 'muted' },
@@ -100,25 +102,36 @@ export function startInv() {
     document.body.classList.toggle('yz-inv-v2', inv.settings.mode === 'v2');
     emit('settings'); flushPending();
   });
-  R.menuItems.on('child_changed', s => reverseSync(s.key, s.val()));
+  /* orderByKey: app.js çıxışda R.menuItems.off() edəndə bu dinləyici silinməsin */
+  db.ref('menuItems').orderByKey().on('child_changed', s => reverseSync(s.key, s.val()));
 }
 
 /* ── Sənədlər və təchizatçılar: yalnız anbar ekranı açılanda dinlənir ── */
 export const docs = {};            // node → { id: doc }
 export const suppliers = {};       // id → supplier
+export const cashAccounts = {};    // id → { name, kind: cash|bank|pos, order, archived, opening, openingAt }
+export const accName = (id) => cashAccounts[id]?.name || '—';
+export const accountList = (all = false) => Object.entries(cashAccounts).map(([id, a]) => ({ id, ...a }))
+  .filter(a => all || !a.archived).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
 let docsStarted = false;
 export function watchDocs() {
   if (docsStarted) return; docsStarted = true;
   const nodes = [...new Set(Object.values(DOCS).map(d => d.node))];
   nodes.forEach(node => {
     docs[node] = {};
-    db.ref(node).orderByChild('createdAt').limitToLast(600).on('value', s => {
+    const lim = Object.values(DOCS).find(d => d.node === node)?.limit || 600;
+    db.ref(node).orderByChild('createdAt').limitToLast(lim).on('value', s => {
       docs[node] = s.val() || {};
       if (node === 'invPayments') {
         state.invPayments = Object.entries(docs[node]).map(([id, p]) => ({ id, ...p })).filter(p => p.status === 'approved');
       }
       emit('docs');
     });
+  });
+  db.ref('cashAccounts').on('value', s => {
+    Object.keys(cashAccounts).forEach(k => delete cashAccounts[k]);
+    Object.assign(cashAccounts, s.val() || {});
+    emit('cash');
   });
   db.ref('suppliers').on('value', s => {
     Object.keys(suppliers).forEach(k => delete suppliers[k]);
@@ -393,7 +406,7 @@ export function canApprove(kind, doc) {
 export function hasAnyInvPerm() {
   if (isAdmin()) return true;
   const ps = state.user?.permissions || [];
-  return ps.some(k => /^(catalog|warehouse|purchase|supplier|stock)\./.test(k));
+  return ps.some(k => /^(catalog|warehouse|purchase|supplier|stock|cash)\./.test(k));
 }
 
 export async function nextNo(kind) {

@@ -1,13 +1,10 @@
 /* ═══════════════════════════════════════════
    YUZA POS — ANBAR: ÜMUMİ EKRAN QABIĞI
-   • Admin panelində "Anbar və Məhsullar" bölməsi (sec-inv)
-   • İşçilər üçün ayrıca ekran (#invScreen) — qarson ekranında "Anbar" düyməsi
-     yalnız anbar icazəsi olan işçiyə görünür (mühasib, anbardar və s.)
+   • Bölmə qeydiyyatı: admin panelində hər bölmə ayrıca, işçi ekranında iki səviyyəli menyu
    • Ortaq komponentlər: pəncərə (modal), məhsul seçici, sürətli məhsul əlavəsi
 ═══════════════════════════════════════════ */
 import { state } from './state.js';
 import { esc, showToast } from './utils.js';
-import { showScreen } from './theme.js';
 import {
   inv, onInv, startInv, PTYPES, UNITS, product, productList, findSimilar, saveProduct,
   hasAnyInvPerm, can, isV2, fmtQty, totalStock, packsOf, defaultWarehouseId, watchDocs
@@ -18,60 +15,98 @@ export const $ = (id) => document.getElementById(id);
 export const ok = (m) => showToast('<svg class="icon"><use href="#i-check"></use></svg> ' + esc(m));
 export const fail = (m) => showToast('<svg class="icon"><use href="#i-warning"></use></svg> ' + esc(m));
 
-/* ── Bölmə (tab) qeydiyyatı ── */
+/* ── Bölmə (tab) qeydiyyatı ──
+   tab: { id, label, group, order, perm(): bool, render(el), live?: [], badge?(): number, legacyOk? }
+   Admin panelində hər tab ayrıca bölmədir (sec-inv-<id>), işçi ekranında isə
+   iki səviyyəli menyu: əvvəlcə qrup (Mühasibat / Anbar / ...), sonra bölmə. */
+export const GROUPS = { acc: 'Mühasibat', stock: 'Anbar', reg: 'Qeydiyyat', rep: 'Hesabatlar', sys: 'Sistem' };
+const GROUP_ORDER = ['acc', 'stock', 'reg', 'rep', 'sys'];
 const tabs = [];
-/* tab: { id, label, perm(): bool, render(el), badge?(): number } */
 export function registerTab(tab) { tabs.push(tab); tabs.sort((a, b) => (a.order || 50) - (b.order || 50)); }
-let current = null;
-let hostEl = null;
+export const tabById = (id) => tabs.find(t => t.id === id);
+export const tabAllowed = (t) => { try { return !!(t && t.perm()); } catch (e) { return false; } };
+export const allTabs = () => tabs.slice();
+/* Sənəd növünə görə xüsusi baxış (məs. kassa): { open(id), side(d), amount(d) } */
+export const docHooks = {};
+const visibleTabs = () => tabs.filter(tabAllowed);
 
-function visibleTabs() { return tabs.filter(t => { try { return t.perm(); } catch (e) { return false; } }); }
-
+const views = new Set();      // { host, single?, current?, group? }
+function viewOf(host, init) {
+  if (!host._yziView) { host._yziView = { host, ...init }; views.add(host._yziView); }
+  return host._yziView;
+}
+/* Admin: tək bölmə, menyusuz */
+export function mountSingle(host, id) {
+  if (!host) return;
+  watchDocs();
+  const v = viewOf(host, {});
+  v.single = id;
+  if (!host.querySelector('.yzi')) host.innerHTML = '<div class="yzi yzi--single"><div class="yzi-body"></div></div>';
+  renderBody(v);
+}
+/* İşçi ekranı: iki səviyyəli menyu */
 export function mount(host) {
   if (!host) return;
-  hostEl = host;
   watchDocs();
-  if (!host.querySelector('.yzi')) {
+  const v = viewOf(host, { nav: true });
+  if (!host.querySelector('.yzi-nav')) {
     host.innerHTML = `<div class="yzi">
-      <nav class="yzi-nav" role="tablist" aria-label="Anbar bölmələri"></nav>
-      <div class="yzi-body" id="yziBody"></div>
-    </div>`;
+      <nav class="yzi-nav" aria-label="Bölmələr"><div class="yzi-nav__groups" role="tablist"></div><div class="yzi-nav__tabs" role="tablist"></div></nav>
+      <div class="yzi-body"></div></div>`;
     host.querySelector('.yzi-nav').addEventListener('click', (e) => {
+      const g = e.target.closest('[data-yzi-group]');
+      if (g) { v.group = g.dataset.yziGroup; v.current = visibleTabs().find(t => t.group === v.group)?.id; renderNav(v); renderBody(v); return; }
       const b = e.target.closest('[data-yzi-tab]');
-      if (b) go(b.dataset.yziTab);
+      if (b) { v.current = b.dataset.yziTab; renderNav(v); renderBody(v); host.querySelector('.yzi-body')?.scrollTo?.(0, 0); }
     });
   }
   const vis = visibleTabs();
-  if (!current || !vis.some(t => t.id === current)) current = vis[0]?.id || null;
-  renderNav(); renderBody();
+  if (!v.current || !vis.some(t => t.id === v.current)) v.current = vis[0]?.id || null;
+  v.group = tabById(v.current)?.group || null;
+  renderNav(v); renderBody(v);
 }
-export function go(id) { current = id; renderNav(); renderBody(); hostEl?.querySelector('.yzi-body')?.scrollTo?.(0, 0); }
+/* Bölmədən bölməyə keçid (kodun içindən) */
+export function go(id) {
+  if ($('adminScreen')?.classList.contains('active') && typeof window.adminTab === 'function') {
+    const btn = document.querySelector(`.admin-tab[data-section="inv-${id}"]`);
+    window.adminTab('inv-' + id, btn);
+    return;
+  }
+  views.forEach(v => { if (v.nav && isShown(v)) { v.current = id; v.group = tabById(id)?.group; renderNav(v); renderBody(v); } });
+}
 export function refresh(what) {
-  if (!hostEl || !hostEl.isConnected || !isShown()) return;
-  renderNav();
-  const t = tabs.find(x => x.id === current);
-  if (t?.live && (!what || t.live.includes(what))) renderBody(true);
+  views.forEach(v => {
+    if (!v.host.isConnected || !isShown(v)) return;
+    if (v.nav) renderNav(v);
+    const t = tabById(v.single || v.current);
+    if (t?.live && (!what || t.live.includes(what))) renderBody(v, true);
+  });
 }
-function isShown() {
-  return !!(hostEl && (hostEl.closest('.admin-section.active') || hostEl.closest('.screen.active')));
+function isShown(v) {
+  return !!(v.host.closest('.admin-section.active') || (v.host.closest('.screen.active') && !v.host.closest('.admin-section')));
 }
-function renderNav() {
-  const nav = hostEl?.querySelector('.yzi-nav'); if (!nav) return;
-  nav.innerHTML = visibleTabs().map(t => {
+function renderNav(v) {
+  const g = v.host.querySelector('.yzi-nav__groups'), tb = v.host.querySelector('.yzi-nav__tabs');
+  if (!g || !tb) return;
+  const vis = visibleTabs();
+  const groups = GROUP_ORDER.filter(k => vis.some(t => t.group === k));
+  const badgeOf = (list) => list.reduce((s, t) => s + (t.badge ? (Number(t.badge()) || 0) : 0), 0);
+  g.innerHTML = groups.map(k => { const n = badgeOf(vis.filter(t => t.group === k)); return `<button type="button" role="tab" class="yzi-nav__grp${k === v.group ? ' is-on' : ''}" data-yzi-group="${k}" aria-selected="${k === v.group}">${GROUPS[k]}${n ? `<span class="yzi-badge">${n}</span>` : ''}</button>`; }).join('');
+  tb.innerHTML = vis.filter(t => t.group === v.group).map(t => {
     const n = t.badge ? t.badge() : 0;
-    return `<button type="button" role="tab" class="yzi-nav__btn${t.id === current ? ' is-on' : ''}" data-yzi-tab="${t.id}" aria-selected="${t.id === current}">
-      ${esc(t.label)}${n ? `<span class="yzi-badge">${n}</span>` : ''}</button>`;
+    return `<button type="button" role="tab" class="yzi-nav__btn${t.id === v.current ? ' is-on' : ''}" data-yzi-tab="${t.id}" aria-selected="${t.id === v.current}">${esc(t.label)}${n ? `<span class="yzi-badge">${n}</span>` : ''}</button>`;
   }).join('');
 }
-function renderBody(soft) {
-  const body = hostEl?.querySelector('.yzi-body'); if (!body) return;
-  const t = tabs.find(x => x.id === current);
-  if (!t) { body.innerHTML = '<p class="yzi-empty">Bu bölmə üçün icazəniz yoxdur.</p>'; return; }
+function renderBody(v, soft) {
+  const body = v.host.querySelector('.yzi-body'); if (!body) return;
+  const t = tabById(v.single || v.current);
+  if (!t || !tabAllowed(t)) { body.innerHTML = '<p class="yzi-empty">Bu bölmə üçün icazəniz yoxdur.</p>'; return; }
   if (!isV2() && !t.legacyOk) {
+    const admin = state.user?.role === 'admin';
     body.innerHTML = `<div class="yzi-banner">
       <b>Yeni anbar sistemi hələ aktiv deyil.</b>
-      <span>Əvvəlcə köhnə məlumatlar köçürülməlidir. ${state.user?.role === 'admin' ? '"Parametrlər" bölməsindən köçürməni başladın.' : 'Admin köçürməni etməlidir.'}</span>
-      ${state.user?.role === 'admin' ? '<button type="button" class="yzi-btn yzi-btn--gold" data-yzi-go="settings">Parametrlərə keç</button>' : ''}
+      <span>Əvvəlcə köhnə məlumatlar köçürülməlidir. ${admin ? '"Sistem → Anbar parametrləri" bölməsindən köçürməni başladın.' : 'Patron köçürməni etməlidir.'}</span>
+      ${admin ? '<button type="button" class="yzi-btn yzi-btn--gold" data-yzi-go="settings">Parametrlərə keç</button>' : ''}
     </div>`;
     body.querySelector('[data-yzi-go]')?.addEventListener('click', () => go('settings'));
     return;
@@ -278,49 +313,6 @@ export function quickAddProduct(name, { types } = {}) {
     $('yziQaName').addEventListener('input', sim);
     hint(); sim();
   });
-}
-
-/* ═══ YERLƏŞDİRMƏ ═══ */
-function adminHost() { return $('yzInvAdminHost'); }
-function staffHost() { return $('yzInvStaffHost'); }
-
-function wrapAdminTab() {
-  if (window.__yzInvWrapped || typeof window.adminTab !== 'function') return !!window.__yzInvWrapped;
-  const orig = window.adminTab;
-  window.adminTab = function (sec, el) {
-    orig(sec, el);
-    if (sec === 'inv' && adminHost()) mount(adminHost());
-  };
-  window.__yzInvWrapped = true;
-  return true;
-}
-
-/* Qarson ekranında "Anbar" düyməsi — yalnız icazəsi olan işçiyə */
-function ensureStaffButton() {
-  /* Məlumat yalnız işçi/admin girişindən sonra yüklənir (müştəri QR ekranında yox) */
-  if (state.user) startInv();
-  /* Admin girişi: ödənişlər kassa hesabatında görünsün deyə sənədlər yüklənir */
-  if (state.user?.role === 'admin' && $('adminScreen')?.classList.contains('active')) watchDocs();
-  const head = document.querySelector('#waiterScreen .waiter-header');
-  if (!head) return;
-  let b = $('yzInvStaffBtn');
-  const show = !!state.user && state.user.role !== 'admin' && hasAnyInvPerm();
-  if (!show) { b?.remove(); return; }
-  if (b) return;
-  b = document.createElement('button');
-  b.id = 'yzInvStaffBtn'; b.type = 'button'; b.className = 'btn btn-ghost yzi-staff-btn';
-  b.innerHTML = '<svg class="icon"><use href="#i-box"></use></svg> Anbar';
-  b.addEventListener('click', () => { showScreen('invScreen'); mount(staffHost()); });
-  const theme = $('themeToggleBtnWaiter');
-  head.insertBefore(b, theme || null);
-}
-
-export function initShell() {
-  if (!wrapAdminTab()) { const t = setInterval(() => { if (wrapAdminTab()) clearInterval(t); }, 300); }
-  $('yzInvStaffBack')?.addEventListener('click', () => showScreen('waiterScreen'));
-  new MutationObserver(ensureStaffButton).observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true });
-  ensureStaffButton();
-  onInv((what) => refresh(what));
 }
 
 /* Ortaq: anbar seçimi */

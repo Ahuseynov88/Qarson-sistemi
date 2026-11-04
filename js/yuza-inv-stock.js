@@ -11,9 +11,9 @@ import {
   r2, r3, r4, num, uid, isAdmin, defaultWarehouseId, packsOf
 } from './yuza-inv-core.js';
 import {
-  registerTab, modal, confirmBox, esc, $, ok, fail, numInput, typeChip, attachPicker, whOptions, packOptions, fresh, go, blurIn
+  registerTab, modal, confirmBox, esc, $, ok, fail, numInput, typeChip, attachPicker, whOptions, packOptions, fresh, go, blurIn, docHooks
 } from './yuza-inv-ui.js';
-import { openPurchaseView } from './yuza-inv-purchase.js';
+import { openPurchaseView, openPaymentEditor } from './yuza-inv-purchase.js';
 
 const STOCK_TYPES = Object.keys(PTYPES).filter(t => PTYPES[t].stock);
 const MOVE_LBL = {
@@ -146,46 +146,56 @@ function orderList(low) {
     actions: [{ label: 'Bağla', cancel: true, cls: 'yzi-btn--ghost' }, { label: 'Mətni kopyala', cls: 'yzi-btn--gold', close: false, onClick: async () => { await navigator.clipboard.writeText(text); ok('Kopyalandı'); } }] });
 }
 
-/* ═══ SƏNƏD SİYAHISI ═══ */
-const KINDS_STOCK = ['writeoff', 'transfer', 'count', 'production', 'payment', 'preturn'];
-const sf = { kind: 'all', st: 'all' };
-function renderDocs(host) {
-  const el = fresh(host); const again = () => renderDocs(host);
-  const kinds = KINDS_STOCK.filter(k => can('stock.view') || can(DOCS[k].perm + '.create') || can(DOCS[k].perm + '.approve'));
+/* ═══ SƏNƏD SİYAHILARI ═══
+   Eyni siyahı komponenti bir neçə bölmədə istifadə olunur:
+   Sayım · Silinmə və transfer · Hazırlama · Təchizatçı ödənişləri */
+const KINDS_STOCK = ['writeoff', 'transfer', 'count', 'production', 'payment', 'preturn', 'cash'];
+const LISTS = {
+  count:      { kinds: ['count'],                eyebrow: 'MÜHASİBAT · ANBAR', title: 'Sayım (inventarizasiya)', news: [['count', 'Yeni sayım', true]] },
+  stockdocs:  { kinds: ['writeoff', 'transfer'], eyebrow: 'MÜHASİBAT · ANBAR', title: 'Silinmə və transfer',     news: [['writeoff', 'Silinmə aktı', true], ['transfer', 'Transfer', false]] },
+  production: { kinds: ['production'],           eyebrow: 'MÜHASİBAT · ANBAR', title: 'Hazırlama aktları',       news: [['production', 'Hazırlama aktı', true]] },
+  payments:   { kinds: ['payment'],              eyebrow: 'MÜHASİBAT · PUL',   title: 'Təchizatçı ödənişləri',   news: [['payment', 'Ödəniş et', true]] }
+};
+const sfs = {};
+function renderDocList(host, key) {
+  const cfg = LISTS[key];
+  const sf = sfs[key] = sfs[key] || { kind: 'all', st: 'all' };
+  const el = fresh(host); const again = () => renderDocList(host, key);
+  const kinds = cfg.kinds;
   const all = kinds.flatMap(k => docList(k).map(d => ({ ...d, kind: k })))
     .filter(d => (sf.kind === 'all' || d.kind === sf.kind) && (sf.st === 'all' || d.status === sf.st))
     .sort((a, b) => (b.at || b.createdAt || 0) - (a.at || a.createdAt || 0));
-  const newBtns = [
-    ['writeoff', 'Silinmə aktı'], ['transfer', 'Transfer'], ['count', 'Sayım (inventarizasiya)'], ['production', 'Hazırlama']
-  ].filter(([k]) => canCreate(k) || canApprove(k));
+  const newBtns = cfg.news.filter(([k]) => canCreate(k) || canApprove(k));
   el.innerHTML = `
-    <div class="yzi-head"><div><div class="yzi-eyebrow">ANBAR</div><h1 class="yzi-h1">Anbar sənədləri</h1></div>
-      <div class="yzi-actions">${newBtns.map(([k, v]) => `<button type="button" class="yzi-btn ${k === 'count' ? 'yzi-btn--gold' : 'yzi-btn--ghost'}" data-new="${k}">+ ${v}</button>`).join('')}</div></div>
-    <div class="yzi-filters"><div class="yzi-pills">
-      <button type="button" data-k="all" class="${sf.kind === 'all' ? 'is-on' : ''}">Hamısı</button>
-      ${kinds.map(k => `<button type="button" data-k="${k}" class="${sf.kind === k ? 'is-on' : ''}">${DOCS[k].label}</button>`).join('')}</div>
-      <div class="yzi-pills">${['all', 'draft', 'pending', 'approved', 'rejected', 'storno'].map(s => `<button type="button" data-s="${s}" class="${sf.st === s ? 'is-on' : ''}">${s === 'all' ? 'Bütün statuslar' : STATUS[s].label}</button>`).join('')}</div></div>
+    <div class="yzi-head"><div><div class="yzi-eyebrow">${cfg.eyebrow}</div><h1 class="yzi-h1">${cfg.title}</h1></div>
+      <div class="yzi-actions">${newBtns.map(([k, v, main]) => `<button type="button" class="yzi-btn ${main ? 'yzi-btn--gold' : 'yzi-btn--ghost'}" data-new="${k}">+ ${v}</button>`).join('')}</div></div>
+    <div class="yzi-filters">
+      ${kinds.length > 1 ? `<div class="yzi-pills"><button type="button" data-k="all" class="${sf.kind === 'all' ? 'is-on' : ''}">Hamısı</button>
+        ${kinds.map(k => `<button type="button" data-k="${k}" class="${sf.kind === k ? 'is-on' : ''}">${DOCS[k].label}</button>`).join('')}</div>` : ''}
+      <div class="yzi-pills">${['all', 'draft', 'pending', 'approved', 'rejected', 'storno'].filter(s => s !== 'draft' || kinds.includes('count')).map(s => `<button type="button" data-s="${s}" class="${sf.st === s ? 'is-on' : ''}">${s === 'all' ? 'Bütün statuslar' : STATUS[s].label}</button>`).join('')}</div></div>
     <div class="yzi-table-wrap"><table class="yzi-table">
-      <thead><tr><th>Tarix</th><th>Sənəd</th><th>Növ</th><th>Anbar / tərəf</th><th class="n">Məbləğ</th><th>Yazan</th><th>Status</th></tr></thead>
+      <thead><tr><th>Tarix</th><th>Sənəd</th>${kinds.length > 1 ? '<th>Növ</th>' : ''}<th>${key === 'payments' ? 'Təchizatçı' : 'Anbar / izah'}</th><th class="n">${key === 'count' ? 'Fərq' : 'Məbləğ'}</th><th>Yazan</th><th>Status</th></tr></thead>
       <tbody>${all.map(d => `<tr data-open="${d.id}" data-kind="${d.kind}" tabindex="0" class="${d.status === 'storno' ? 'is-void' : ''}">
-        <td>${fmtDT(d.at || d.createdAt)}</td><td><b class="yzi-mono">${esc(d.no)}</b></td><td>${DOCS[d.kind].label}</td>
+        <td>${fmtDT(d.at || d.createdAt)}</td><td><b class="yzi-mono">${esc(d.no)}</b></td>${kinds.length > 1 ? `<td>${DOCS[d.kind].label}</td>` : ''}
         <td class="mut">${esc(sideOf(d))}</td><td class="n">${docAmount(d)}</td><td class="mut">${esc(d.createdByName || '')}</td>
-        <td><span class="yzi-st yzi-st--${STATUS[d.status]?.cls}">${STATUS[d.status]?.label || d.status}</span></td></tr>`).join('') || '<tr><td colspan="7" class="yzi-empty">Sənəd yoxdur.</td></tr>'}</tbody></table></div>`;
+        <td><span class="yzi-st yzi-st--${STATUS[d.status]?.cls}">${STATUS[d.status]?.label || d.status}</span></td></tr>`).join('') || `<tr><td colspan="7" class="yzi-empty">Sənəd yoxdur.</td></tr>`}</tbody></table></div>`;
   el.addEventListener('click', (e) => {
     const k = e.target.closest('[data-k]'); if (k) { sf.kind = k.dataset.k; again(); return; }
     const s = e.target.closest('[data-s]'); if (s) { sf.st = s.dataset.s; again(); return; }
-    const n = e.target.closest('[data-new]'); if (n) { openEditor(n.dataset.new); return; }
+    const n = e.target.closest('[data-new]'); if (n) { n.dataset.new === 'payment' ? openPaymentEditor(null, {}) : openEditor(n.dataset.new); return; }
     const r = e.target.closest('[data-open]'); if (r) openDoc(r.dataset.kind, r.dataset.open);
   });
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('[data-open]')) openDoc(e.target.dataset.kind, e.target.dataset.open); });
 }
 function sideOf(d) {
+  if (docHooks[d.kind]?.side) return docHooks[d.kind].side(d);
   if (d.kind === 'transfer') return `${whName(d.fromWh)} → ${whName(d.toWh)}`;
   if (d.kind === 'payment' || d.kind === 'preturn') return d.supplierName || '';
   if (d.kind === 'production') return `${whName(d.whId)} · ${d.productName || ''}`;
   return whName(d.whId) + (d.reason ? ' · ' + d.reason : '');
 }
 function docAmount(d) {
+  if (docHooks[d.kind]?.amount) return docHooks[d.kind].amount(d);
   if (d.kind === 'payment') return fmtMoney(d.amount);
   if (d.kind === 'preturn') return fmtMoney(d.totals?.gross);
   if (d.kind === 'count') { const v = countValue(d); return d.status === 'approved' || can('stock.count.approve') ? `<span class="${v < 0 ? 'yzi-bad' : v > 0 ? 'yzi-ok' : ''}">${v > 0 ? '+' : ''}${fmtMoney(v)}</span>` : '—'; }
@@ -197,6 +207,7 @@ const countValue = (d) => r2(linesOf(d).reduce((s, l) => s + ((l.counted ?? l.ex
 
 /* ═══ SƏNƏD BAXIŞI (ümumi) ═══ */
 export function openDoc(kind, id) {
+  if (docHooks[kind]?.open) { docHooks[kind].open(id); return; }
   if (kind === 'purchase' || kind === 'preturn') { openPurchaseView(id, kind); return; }
   const d = docList(kind).find(x => x.id === id); if (!d) return;
   const mine = d.createdBy === uid() || isAdmin();
@@ -338,7 +349,7 @@ export function openEditor(kind, id) {
 }
 
 /* ═══ SAYIM (telefonla, kor sayım) ═══ */
-function openCount(id) {
+export function openCount(id) {
   if (!id) {
     const m = modal({ title: 'Yeni sayım (inventarizasiya)', body: `
       <label class="yzi-f"><span>Anbar</span><select id="yziCnWh">${whOptions()}</select></label>
@@ -524,9 +535,14 @@ async function renderAnalysis(host) {
 
 /* ═══ QEYDİYYAT ═══ */
 const anyApprove = () => Object.keys(DOCS).some(k => can(DOCS[k].perm + '.approve'));
-const anyStockDoc = () => can('stock.view') || KINDS_STOCK.some(k => can(DOCS[k].perm + '.create') || can(DOCS[k].perm + '.approve'));
-registerTab({ id: 'approvals', label: 'Təsdiq gözləyənlər', order: 5, perm: anyApprove, render: renderApprovals, live: ['docs'], badge: () => myPending().length });
-registerTab({ id: 'balances', label: 'Qalıqlar', order: 15, perm: () => can('stock.view') || can('catalog.view') || anyStockDoc(), render: renderBalances, live: ['stock', 'products'] });
-registerTab({ id: 'stockdocs', label: 'Anbar sənədləri', order: 40, perm: anyStockDoc, render: renderDocs, live: ['docs'] });
-registerTab({ id: 'moves', label: 'Hərəkətlər', order: 60, perm: () => can('stock.report'), render: renderMoves });
-registerTab({ id: 'analysis', label: 'Sərf analizi', order: 70, perm: () => can('stock.report'), render: renderAnalysis });
+const kindPerm = (k) => can(DOCS[k].perm + '.create') || can(DOCS[k].perm + '.approve');
+const payPerm = () => can('supplier.payment.create') || can('supplier.payment.approve') || can('purchase.approve');
+export const myPendingCount = () => myPending().length;
+registerTab({ id: 'approvals', group: 'acc', label: 'Təsdiq gözləyənlər', order: 1, perm: anyApprove, render: renderApprovals, live: ['docs'], badge: () => myPending().length });
+registerTab({ id: 'payments', group: 'acc', label: 'Təchizatçı ödənişləri', order: 4, perm: payPerm, render: (h) => renderDocList(h, 'payments'), live: ['docs'] });
+registerTab({ id: 'balances', group: 'stock', label: 'Qalıqlar', order: 20, perm: () => can('stock.view') || can('catalog.view') || ['writeoff', 'transfer', 'count', 'production'].some(kindPerm), render: renderBalances, live: ['stock', 'products'] });
+registerTab({ id: 'count', group: 'stock', label: 'Sayım', order: 21, perm: () => can('stock.view') || kindPerm('count'), render: (h) => renderDocList(h, 'count'), live: ['docs'] });
+registerTab({ id: 'stockdocs', group: 'stock', label: 'Silinmə və transfer', order: 22, perm: () => can('stock.view') || kindPerm('writeoff') || kindPerm('transfer'), render: (h) => renderDocList(h, 'stockdocs'), live: ['docs'] });
+registerTab({ id: 'production', group: 'stock', label: 'Hazırlama', order: 23, perm: () => can('stock.view') || kindPerm('production'), render: (h) => renderDocList(h, 'production'), live: ['docs'] });
+registerTab({ id: 'analysis', group: 'rep', label: 'Sərf analizi', order: 60, perm: () => can('stock.report'), render: renderAnalysis });
+registerTab({ id: 'moves', group: 'rep', label: 'Anbar hərəkətləri', order: 61, perm: () => can('stock.report'), render: renderMoves });

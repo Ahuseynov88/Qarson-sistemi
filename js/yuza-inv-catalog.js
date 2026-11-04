@@ -439,7 +439,7 @@ function renderWarehouses(el) {
     await db.ref('settings/inventory/defaultWarehouseId').set(b.dataset.whDef); ok('Defolt anbar dəyişdi');
   }));
 }
-function whEditor(id) {
+export function whEditor(id) {
   const w = id ? { id, ...inv.warehouses[id] } : {};
   const staffOpts = (state.staff || []).map(s => `<option value="${esc(s.name)}"${s.name === w.responsible ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
   modal({
@@ -526,6 +526,6 @@ function renderSettings(el) {
 }
 
 /* ═══ QEYDİYYAT ═══ */
-registerTab({ id: 'catalog', label: 'Məhsullar', order: 10, perm: () => can('catalog.view') || can('catalog.edit'), render: renderCatalog, live: ['products', 'stock', 'warehouses'] });
-registerTab({ id: 'warehouses', label: 'Anbarlar', order: 80, perm: () => can('warehouse.manage'), render: renderWarehouses, live: ['warehouses', 'stock', 'settings'] });
-registerTab({ id: 'settings', label: 'Parametrlər', order: 90, perm: () => isAdmin(), render: renderSettings, live: ['settings'], legacyOk: true });
+registerTab({ id: 'catalog', group: 'reg', label: 'Məhsullar', order: 40, perm: () => can('catalog.view') || can('catalog.edit'), render: renderCatalog, live: ['products', 'stock', 'warehouses'] });
+registerTab({ id: 'warehouses', group: 'reg', label: 'Anbarlar', order: 41, perm: () => can('warehouse.manage'), render: renderWarehouses, live: ['warehouses', 'stock', 'settings'] });
+registerTab({ id: 'settings', group: 'sys', label: 'Anbar parametrləri', order: 90, perm: () => isAdmin(), render: renderSettings, live: ['settings'], legacyOk: true });

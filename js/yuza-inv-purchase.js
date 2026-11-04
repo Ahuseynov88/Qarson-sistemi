@@ -533,7 +533,7 @@ function renderSuppliers(host) {
   el.addEventListener('click', (e) => { const r = e.target.closest('[data-sup]'); if (r) openSupplierAccount(r.dataset.sup); });
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('[data-sup]')) openSupplierAccount(e.target.dataset.sup); });
 }
-function supplierEditor(id) {
+export function supplierEditor(id) {
   const s = id ? { id, ...suppliers[id] } : {};
   modal({ title: id ? 'Təchizatçını redaktə et' : 'Yeni təchizatçı', body: `
     <label class="yzi-f"><span>Ad *</span><input type="text" id="yziSuName" value="${esc(s.name || '')}" placeholder="Şirkət və ya şəxs"></label>
@@ -634,5 +634,5 @@ async function openLegacy() {
 
 /* ═══ QEYDİYYAT ═══ */
 const anyPurchasePerm = () => ['purchase.view', 'purchase.create', 'purchase.approve'].some(can);
-registerTab({ id: 'purchases', label: 'Alış qaimələri', order: 20, perm: anyPurchasePerm, render: renderPurchases, live: ['docs', 'suppliers'] });
-registerTab({ id: 'suppliers', label: 'Təchizatçılar', order: 30, perm: () => can('purchase.approve') || can('supplier.manage') || can('supplier.payment.create') || can('supplier.payment.approve'), render: renderSuppliers, live: ['suppliers', 'docs'] });
+registerTab({ id: 'purchases', group: 'acc', label: 'Alış qaimələri', order: 3, perm: anyPurchasePerm, render: renderPurchases, live: ['docs', 'suppliers'] });
+registerTab({ id: 'suppliers', group: 'reg', label: 'Təchizatçılar', order: 42, perm: () => can('purchase.approve') || can('supplier.manage') || can('supplier.payment.create') || can('supplier.payment.approve'), render: renderSuppliers, live: ['suppliers', 'docs'] });
