@@ -6,6 +6,7 @@
    nəticəni digər modulların import edə biləcəyi kimi ixrac edirik.
 ═══════════════════════════════════════════ */
 // Test saytı (.pages.dev) TEST bazasına, əsl sayt əsl bazaya qoşulur
+
 const IS_TEST = location.hostname.startsWith('test-yuzapos') || location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
 const firebaseConfig = {
   databaseURL: IS_TEST
