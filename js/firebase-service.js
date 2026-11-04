@@ -5,7 +5,6 @@
    yüklənir), ona görə qlobal `firebase` obyektindən istifadə edirik və
    nəticəni digər modulların import edə biləcəyi kimi ixrac edirik.
 ═══════════════════════════════════════════ */
-
 // Test saytı (.pages.dev) TEST bazasına, əsl sayt əsl bazaya qoşulur
 const IS_TEST = location.hostname.startsWith('test-yuzapos') || location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
 const firebaseConfig = {
