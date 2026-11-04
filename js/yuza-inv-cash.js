@@ -274,7 +274,7 @@ function exportCsv(list) {
 
 /* ── İlk quraşdırma ── */
 function renderSetup(el, host) {
-  if (!manage()) { el.innerHTML = '<div class="yzi-head"><div><div class="yzi-eyebrow">MÜHASİBAT</div><h1 class="yzi-h1">Kassa</h1></div></div><p class="yzi-banner">Kassa hesabları hələ yaradılmayıb. Patron və ya mühasib əvvəlcə hesabları qurmalıdır.</p>'; return; }
+  if (!manage()) { el.innerHTML = '<div class="yzi-head"><div><div class="yzi-eyebrow">MÜHASİBAT</div><h1 class="yzi-h1">Kassa</h1></div></div><p class="yzi-banner">Kassa hesabları hələ yaradılmayıb. Rəhbər və ya mühasib əvvəlcə hesabları qurmalıdır.</p>'; return; }
   const rows = [['cash', 'Əsas kassa', true], ['pos', 'POS terminal', true], ['bank', 'Bank hesabı', false]];
   el.innerHTML = `<div class="yzi-head"><div><div class="yzi-eyebrow">MÜHASİBAT</div><h1 class="yzi-h1">Kassanı quraq</h1></div></div>
     <div class="yzi-card">
@@ -297,7 +297,7 @@ function renderSetup(el, host) {
         const name = el.querySelector('#yziSuN' + i).value.trim() || ACC_KINDS[k];
         const o = num(el.querySelector('#yziSuO' + i).value);
         const ref = db.ref('cashAccounts').push();
-        await ref.set({ name, kind: k, order: order++, opening: Number.isFinite(o) ? r2(o) : 0, openingAt: at, createdAt: Date.now(), createdBy: state.user?.name || 'Patron' });
+        await ref.set({ name, kind: k, order: order++, opening: Number.isFinite(o) ? r2(o) : 0, openingAt: at, createdAt: Date.now(), createdBy: state.user?.name || 'Rəhbər' });
         ids[k] = ref.key;
       }
       if (!Object.keys(ids).length) { fail('Ən azı bir hesab seçin'); b.disabled = false; return; }
