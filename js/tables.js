@@ -103,7 +103,7 @@ export class TableBoard {
   }
 
   render() {
-    if (!state.user || state.user.role !== 'staff') return;
+        if (!state.user || (state.user.role !== 'staff' && state.user.role !== 'admin')) return;
     this.renderCatTabs();
     this.renderStaffFilter();
 
@@ -127,7 +127,7 @@ export class TableBoard {
     this.el.innerHTML = filtered.map(t => {
       const isMine = t.occupant === state.user.id;
       const isOther = t.occupant && !isMine;
-      const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
+       const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: t.occupant === 'admin' ? 'Patron' : '?' }) : null;
       const tableOrder = state.tableOrders[t.id];
       let cls = '', statusText = 'Boş masa';
       if (isMine) { cls = 'mine'; statusText = 'Sizin masanız'; }
