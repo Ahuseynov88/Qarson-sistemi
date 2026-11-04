@@ -407,6 +407,11 @@ function buildKassaLedger(orders) {
     expense.push({ ts: p.createdAt||0, category: 'Təchizatçı Ödənişi', method: p.paymentType==='cash'?'Nağd':p.paymentType==='transfer'?'Köçürmə':p.paymentType==='card'?'Kart':p.paymentType, amount: p.paidAmount||0, source: p.supplierName||'Təchizatçı', who: p.staffName||'?' });
   });
 
+    // 5) Yeni anbar sistemindən təchizatçı ödənişləri (yalnız təsdiqlənmiş)
+  (state.invPayments||[]).filter(p => inRange(p.at||0)).forEach(p => {
+    expense.push({ ts: p.at||0, category: 'Təchizatçı Ödənişi', method: p.method==='cash'?'Nağd':p.method==='transfer'?'Köçürmə':p.method==='card'?'Kart':p.method, amount: p.amount||0, source: p.supplierName||'Təchizatçı', who: p.approvedByName||p.createdByName||'?' });
+  });
+
   income.sort((a,b) => b.ts - a.ts);
   expense.sort((a,b) => b.ts - a.ts);
   return { income, expense };
@@ -1692,7 +1697,7 @@ export function openAddStaffModal() {
 
 export function onStaffPositionChange() {
   const pos = document.getElementById('fs_position').value;
-  const map = { 'Qarson': 'waiter', 'Baş Qarson': 'head_waiter', 'Kassir': 'cashier', 'Müdir': 'manager' };
+    const map = { 'Qarson': 'waiter', 'Baş Qarson': 'head_waiter', 'Kassir': 'cashier', 'Müdir': 'manager', 'Mühasib': 'accountant', 'Anbardar': 'storekeeper' };
   if (map[pos]) applyPermissionPreset(map[pos]);
 }
 
@@ -1758,7 +1763,9 @@ export function staffForm(s = {}) {
           <option value="Baş Qarson" ${currentPos==='Baş Qarson'?'selected':''}><svg class="icon"><use href="#i-star"></use></svg> Baş Qarson</option>
           <option value="Kassir" ${currentPos==='Kassir'?'selected':''}><svg class="icon"><use href="#i-money"></use></svg> Kassir</option>
           <option value="Müdir" ${currentPos==='Müdir'?'selected':''}><svg class="icon"><use href="#i-staff"></use></svg> Müdir</option>
-          <option value="Mətbəx" ${currentPos==='Mətbəx'?'selected':''}><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</option>
+                    <option value="Mətbəx" ${currentPos==='Mətbəx'?'selected':''}><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</option>
+          <option value="Mühasib" ${currentPos==='Mühasib'?'selected':''}>Mühasib</option>
+          <option value="Anbardar" ${currentPos==='Anbardar'?'selected':''}>Anbardar</option>
           <option value="Digər" ${currentPos==='Digər'?'selected':''}>Digər</option>
         </select>
       </div>
