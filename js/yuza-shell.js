@@ -16,7 +16,7 @@ import { showScreen } from './theme.js';
 import { startInv, onInv, hasAnyInvPerm, watchDocs, pendingDocs, canApprove } from './yuza-inv-core.js';
 import { mount, mountSingle, refresh, $ } from './yuza-inv-ui.js';
 
-export const PATRON = 'Patron';
+export const PATRON = 'Rəhbər';
 const I = (id) => `<svg class="icon"><use href="#i-${id}"></use></svg>`;
 
 /* ── Menyu quruluşu ──
@@ -145,7 +145,7 @@ function ensureSections() {
 function setTitle(sec) {
   const t = $('apPageTitle'); if (!t) return;
   const it = allItems().find(x => x.s === sec);
-  t.textContent = it ? it.l : 'Patron Paneli';
+  t.textContent = it ? it.l : 'Rəhbər Paneli';
 }
 function wrapGlobals() {
   if (typeof window.adminTab !== 'function' || typeof window.apNewItem !== 'function') return false;
@@ -216,7 +216,7 @@ function enterZal() {
   document.body.classList.add('yz-patron-zal');
   const nm = $('wName'); if (nm) nm.textContent = PATRON;
   const rb = $('wRoleBadge'); if (rb) rb.textContent = 'Bütün masalar';
-  const av = $('wAvatar'); if (av && !av.dataset.yzPatron) { av.dataset.yzPatron = '1'; av.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="#8a5a0b"/><text x="40" y="53" font-family="Arial" font-size="38" font-weight="700" fill="#fff" text-anchor="middle">P</text></svg>'); }
+  const av = $('wAvatar'); if (av && !av.dataset.yzPatron) { av.dataset.yzPatron = '1'; av.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="#8a5a0b"/><text x="40" y="53" font-family="Arial" font-size="38" font-weight="700" fill="#fff" text-anchor="middle">R</text></svg>'); }
   ensureZalBack();
   showScreen('waiterScreen');
   if (!zalSubs) {
@@ -296,7 +296,7 @@ function measureTopbar() {
 export function initShell() {
   document.body.classList.add('yz-shell');
   const rl = document.querySelector('.yz-role--admin span'); if (rl) rl.textContent = PATRON;
-  const pt = $('apPageTitle'); if (pt && /Admin/.test(pt.textContent)) pt.textContent = 'Patron Paneli';
+  const pt = $('apPageTitle'); if (pt && /Admin/.test(pt.textContent)) pt.textContent = 'Rəhbər Paneli';
   buildSidebar(); buildNewMenu(); ensureSections();
   if (!wrapGlobals()) { const t = setInterval(() => { if (wrapGlobals()) clearInterval(t); }, 200); setTimeout(() => clearInterval(t), 15000); }
   $('yzInvStaffBack')?.addEventListener('click', () => {
