@@ -165,8 +165,14 @@ export function addLog(type, message, details = {}) {
 
 // stok Firebase transaction ilə dəyişdirilir ki, iki paralel sifariş eyni malı
 // azaldanda bir-birini əzməsin (race condition qorunması)
+// Yeni anbar sistemi (yuza-inventory) satışda stok silinməsini öz üzərinə götürür.
+// Hook true qaytarsa köhnə məntiq işləmir; köhnə rejimdə false qaytarır və hər şey əvvəlki kimidir.
+let _stockHook = null;
+export function setStockHook(fn) { _stockHook = fn; }
+
 export function updateStock(menuItemId, delta, menuItems) {
   if (!menuItemId) return;
+  if (_stockHook && _stockHook(menuItemId, delta) === true) return;
     const item = menuItems.find(x => x.id === menuItemId);
   // Resept: hər porsiya üçün xammadə qalığından avtomatik çıxılır (ləğvdə qaytarılır)
   if (item && item.recipe) {
