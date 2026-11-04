@@ -105,7 +105,7 @@ function renderBody(v, soft) {
     const admin = state.user?.role === 'admin';
     body.innerHTML = `<div class="yzi-banner">
       <b>Yeni anbar sistemi hələ aktiv deyil.</b>
-      <span>Əvvəlcə köhnə məlumatlar köçürülməlidir. ${admin ? '"Sistem → Anbar parametrləri" bölməsindən köçürməni başladın.' : 'Patron köçürməni etməlidir.'}</span>
+      <span>Əvvəlcə köhnə məlumatlar köçürülməlidir. ${admin ? '"Sistem → Anbar parametrləri" bölməsindən köçürməni başladın.' : 'Rəhbər köçürməni etməlidir.'}</span>
       ${admin ? '<button type="button" class="yzi-btn yzi-btn--gold" data-yzi-go="settings">Parametrlərə keç</button>' : ''}
     </div>`;
     body.querySelector('[data-yzi-go]')?.addEventListener('click', () => go('settings'));
