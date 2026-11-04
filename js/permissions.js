@@ -77,10 +77,61 @@ export const ALL_PERMISSIONS = [
       { key: 'waiter.manage', label: 'Qarson statusunu dəyişmək' },
       { key: 'staff.view',    label: 'İşçiləri görmək' },
     ]
+  },
+  {
+    group: 'Məhsul kataloqu',
+    icon: '<svg class="icon"><use href="#i-box"></use></svg>',
+    items: [
+      { key: 'catalog.view',     label: 'Məhsul kataloqunu görmək' },
+      { key: 'catalog.edit',     label: 'Məhsul yaratmaq və dəyişmək' },
+      { key: 'catalog.quickadd', label: 'Alışda yeni məhsul (qısa kart) yaratmaq' },
+      { key: 'catalog.price',    label: 'Satış qiymətini dəyişmək' },
+      { key: 'catalog.cost',     label: 'Maya dəyərini və alış qiymətlərini görmək' },
+      { key: 'warehouse.manage', label: 'Anbarları idarə etmək' },
+    ]
+  },
+  {
+    group: 'Alış və təchizatçılar',
+    icon: '<svg class="icon"><use href="#i-cash"></use></svg>',
+    items: [
+      { key: 'purchase.view',            label: 'Alış qaimələrini görmək' },
+      { key: 'purchase.create',          label: 'Qaimə yazmaq (təsdiqə göndərmək)' },
+      { key: 'purchase.approve',         label: 'Qaiməni təsdiqləmək (anbara və borca yazır)' },
+      { key: 'purchase.storno',          label: 'Təsdiqlənmiş qaiməni storno etmək' },
+      { key: 'supplier.manage',          label: 'Təchizatçıları idarə etmək' },
+      { key: 'supplier.payment.create',  label: 'Təchizatçıya ödəniş yazmaq' },
+      { key: 'supplier.payment.approve', label: 'Ödənişi təsdiqləmək' },
+      { key: 'supplier.payment.storno',  label: 'Ödənişi storno etmək' },
+    ]
+  },
+  {
+    group: 'Anbar əməliyyatları',
+    icon: '<svg class="icon"><use href="#i-clipboard"></use></svg>',
+    items: [
+      { key: 'stock.view',               label: 'Anbar qalıqlarını və sənədləri görmək' },
+      { key: 'stock.writeoff.create',    label: 'Silinmə aktı yazmaq' },
+      { key: 'stock.writeoff.approve',   label: 'Silinmə aktını təsdiqləmək' },
+      { key: 'stock.transfer.create',    label: 'Anbarlararası transfer yazmaq' },
+      { key: 'stock.transfer.approve',   label: 'Transferi təsdiqləmək' },
+      { key: 'stock.count.create',       label: 'Sayım (inventarizasiya) aparmaq' },
+      { key: 'stock.count.approve',      label: 'Sayım nəticəsini təsdiqləmək' },
+      { key: 'stock.production.create',  label: 'Hazırlama aktı yazmaq (yarımfabrikat)' },
+      { key: 'stock.production.approve', label: 'Hazırlama aktını təsdiqləmək' },
+      { key: 'stock.storno',             label: 'Anbar sənədini storno etmək' },
+      { key: 'stock.report',             label: 'Anbar hesabatları (hərəkətlər, sərf analizi)' },
+    ]
   }
 ];
 
 export const PERMISSION_PRESETS = {
+  accountant: {
+    label: '<svg class="icon"><use href="#i-cash"></use></svg> Mühasib',
+    perms: ['catalog.view','catalog.quickadd','catalog.price','catalog.cost','purchase.view','purchase.create','purchase.approve','purchase.storno','supplier.manage','supplier.payment.create','supplier.payment.approve','supplier.payment.storno','stock.view','stock.writeoff.approve','stock.transfer.approve','stock.count.approve','stock.production.approve','stock.storno','stock.report','report.daily','report.weekly']
+  },
+  storekeeper: {
+    label: '<svg class="icon"><use href="#i-box"></use></svg> Anbardar',
+    perms: ['catalog.view','catalog.quickadd','purchase.view','purchase.create','stock.view','stock.writeoff.create','stock.transfer.create','stock.count.create','stock.production.create']
+  },
   waiter: {
     label: '<svg class="icon"><use href="#i-bowtie"></use></svg> Adi Qarson',
     perms: ['table.view','table.open','order.create','order.view','order.add_item','bill.print','customer.respond','kitchen.notify','chat.send','note.write']
