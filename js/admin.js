@@ -1826,7 +1826,7 @@ export function renderTables() {
   }
 
   el.innerHTML = filtered.map(t => {
-    const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
+    const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: t.occupant === 'admin' ? 'Rəhbər' : '?' }).name : null;
     return `<div class="tile-card" onclick="selectTableMgmt('${t.id}')">
       <div class="tile-card__icon"><svg class="icon"><use href="#i-chair"></use></svg></div>
       <div class="tile-card__name">${esc(t.name)}</div>
@@ -1855,7 +1855,7 @@ export function selectTableMgmt(id) {
 function renderTableMgmtDetail(t) {
   const el = document.getElementById('tablesDetailBody');
   if (!el || !t) return;
-  const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
+ const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: t.occupant === 'admin' ? 'Rəhbər' : '?' }).name : null;
   el.innerHTML = `
     <div class="ct-detail-header" style="justify-content:center;text-align:center;">
       <span style="font-size:19px;"><svg class="icon"><use href="#i-chair"></use></svg> ${esc(t.name)}</span>
