@@ -341,3 +341,8 @@ body.yz-patron-zal #yzInvStaffBtn{display:none!important}
   .yzi-filters--cash>.yzi-pills{flex:1 1 100%}
   .yzi-acc-cards{grid-template-columns:1fr}
 }
+
+/* "+" düyməsi (əlavə et): işarə dairənin tam ortasında — şriftdən asılı olmayaraq iki xətlə çəkilir */
+.add-fab{display:flex;align-items:center;justify-content:center;padding:0;font-size:0!important;line-height:0;color:var(--yz-on-gold,#fff)}
+.add-fab::before,.add-fab::after{content:'';position:absolute;left:50%;top:50%;width:24px;height:3px;border-radius:2px;background:currentColor;transform:translate(-50%,-50%)}
+.add-fab::after{transform:translate(-50%,-50%) rotate(90deg)}
