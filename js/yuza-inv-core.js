@@ -90,17 +90,49 @@ export function isV2() {
 }
 const allLoaded = () => inv.loaded.products && inv.loaded.warehouses && inv.loaded.stock && inv.loaded.settings;
 
+/* ── Avtomatik başlanğıc: sistem HƏMİŞƏ yeni rejimdədir ──
+   • Boş baza (yeni quraşdırma, fabrika sıfırlaması) → dərhal yeni rejim + "Əsas anbar".
+   • Köhnə məlumat var, kataloq boşdur (yalnız köhnə bazanın ilk açılışı) → bir dəfəlik köçürmə təklif olunur.
+   Yazılar transaction ilədir — bir neçə cihaz eyni anda açılsa belə təkrarlanmır. */
+let initBusy = false;
+export const needsMigration = () => !!inv.needsMigration;
+async function maybeInit() {
+  if (initBusy || !allLoaded() || inv.settings.mode === 'v2') return;
+  initBusy = true;
+  try {
+    const [mi, ing] = await Promise.all([
+      db.ref('menuItems').limitToFirst(1).once('value'),
+      db.ref('ingredients').limitToFirst(1).once('value')
+    ]);
+    if ((mi.exists() || ing.exists()) && !Object.keys(inv.products).length) {
+      inv.needsMigration = true; emit('settings'); return;
+    }
+    inv.needsMigration = false;
+    let whId = Object.keys(inv.warehouses)[0];
+    if (!whId) {
+      whId = 'main';
+      await db.ref('warehouses/main').transaction(c => c || { name: 'Əsas anbar', order: 1, createdAt: Date.now() });
+    }
+    await db.ref('settings/inventory').transaction(c => {
+      const v = c || {};
+      if (v.mode === 'v2') return v;
+      return { ...v, mode: 'v2', defaultWarehouseId: v.defaultWarehouseId || whId, initAt: v.initAt || Date.now() };
+    });
+  } catch (e) { console.warn('[inv] başlanğıc', e); }
+  finally { initBusy = false; }
+}
+
 let started = false;
 export function startInv() {
   if (started) return; started = true;
-  db.ref('products').on('value', s => { inv.products = s.val() || {}; inv.loaded.products = true; emit('products'); flushPending(); });
-  db.ref('warehouses').on('value', s => { inv.warehouses = s.val() || {}; inv.loaded.warehouses = true; emit('warehouses'); flushPending(); });
-  db.ref('stock').on('value', s => { inv.stock = s.val() || {}; inv.loaded.stock = true; emit('stock'); flushPending(); });
+  db.ref('products').on('value', s => { inv.products = s.val() || {}; inv.loaded.products = true; emit('products'); flushPending(); maybeInit(); });
+  db.ref('warehouses').on('value', s => { inv.warehouses = s.val() || {}; inv.loaded.warehouses = true; emit('warehouses'); flushPending(); maybeInit(); });
+  db.ref('stock').on('value', s => { inv.stock = s.val() || {}; inv.loaded.stock = true; emit('stock'); flushPending(); maybeInit(); });
   db.ref('settings/inventory').on('value', s => {
     inv.settings = s.val() || {}; inv.loaded.settings = true;
     try { localStorage.setItem(MODE_KEY, inv.settings.mode || ''); } catch (e) {}
     document.body.classList.toggle('yz-inv-v2', inv.settings.mode === 'v2');
-    emit('settings'); flushPending();
+    emit('settings'); flushPending(); maybeInit();
   });
   /* orderByKey: app.js çıxışda R.menuItems.off() edəndə bu dinləyici silinməsin */
   db.ref('menuItems').orderByKey().on('child_changed', s => reverseSync(s.key, s.val()));
@@ -588,9 +620,4 @@ export async function migrateToV2({ dryRun = true } = {}) {
   return plan;
 }
 
-/* Geri qaytarma: rejimi köhnəyə çevirir (məlumat silinmir) */
-export async function rollbackMode() {
-  if (!isAdmin()) throw new Error('Yalnız admin');
-  await db.ref('settings/inventory/mode').set('legacy');
-  addLog('inventory', 'Anbar sistemi köhnə rejimə qaytarıldı', {});
-}
+/* Köçürmə birtərəflidir: yeni sistemdən köhnəyə qayıdış yoxdur. */
