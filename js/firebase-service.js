@@ -8,10 +8,16 @@
 // Test saytı (.pages.dev) TEST bazasına, əsl sayt əsl bazaya qoşulur
 
 const IS_TEST = location.hostname.startsWith('test-yuzapos') || location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
-const firebaseConfig = {
-  databaseURL: IS_TEST
-    ? "https://test-yuzapos-default-rtdb.europe-west1.firebasedatabase.app/" 
-    : "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
+const firebaseConfig = IS_TEST ? {
+  apiKey: "AIzaSyDICGSJrT-ZEwRALnn7rp3Jv_NPouIF4sA",
+  authDomain: "test-yuzapos.firebaseapp.com",
+  databaseURL: "https://test-yuzapos-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "test-yuzapos",
+  storageBucket: "test-yuzapos.firebasestorage.app",
+  messagingSenderId: "896410036346",
+  appId: "1:896410036346:web:095cec7fbc799f13d5b3c3"
+} : {
+  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
 };
 if (IS_TEST) {
   document.title = 'TEST · ' + document.title;
@@ -23,6 +29,9 @@ if (IS_TEST) {
   });
 }
 firebase.initializeApp(firebaseConfig);
+// Cihaz gözətçisi: giriş olmadan heç bir modul bazaya müraciət etmir (yuza-guard.js)
+import { guardDevice } from './yuza-guard.js';
+await guardDevice(firebaseConfig);
 
 export const db = firebase.database();
 export const R = {
