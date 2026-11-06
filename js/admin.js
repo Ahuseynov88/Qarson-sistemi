@@ -93,7 +93,7 @@ export function adminTab(sec, el) {
 
   document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes'||sec==='printers') ? 'flex':'none';
   if (sec==='settings') {
-        document.getElementById('currentKitchenPin').textContent = state.kitchenPin || 'təyin edilməyib';
+        
     db.ref('settings/menuUrl').once('value', snap => {
       if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
     });
@@ -3595,9 +3595,13 @@ function openKitchenStationModal(id) {
     <div class="form-group"><label>Məsul şəxs</label>
       <input type="text" id="ksResponsible" value="${esc(s?.responsible||'')}" placeholder="Ad Soyad">
     </div>
-    <div class="form-group"><label>PIN kodu (ən az 4 rəqəm)</label>
-      <input type="number" id="ksPin" value="${esc(s?.pin||'')}" placeholder="1234">
+        <div class="form-group"><label>Bu mətbəxin giriş PIN-i (4 rəqəm)</label>
+      <input type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" id="ksPin" value="${esc(s?.pin||'')}" placeholder="••••" style="letter-spacing:6px;">
+      <small style="color:var(--text3);">Hər mətbəxin öz PIN-i olur. Mətbəx ekranına bu PIN ilə girilir.</small>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;">
+      <input type="checkbox" id="ksShowAll" ${s?.showAll?'checked':''} style="width:18px;height:18px;"> Bütün sifarişləri görsün (ümumi mətbəx)
+    </label>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;">
       <input type="checkbox" id="ksActive" ${s?.active!==false?'checked':''} style="width:18px;height:18px;"> Aktiv
     </label>`;
@@ -3616,10 +3620,13 @@ function saveKitchenStation() {
   const responsible = document.getElementById('ksResponsible').value.trim();
   const active = document.getElementById('ksActive').checked;
   if (!name) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad daxil edin'); return; }
-  if (!pin || pin.length < 4) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ən az 4 rəqəmli PIN'); return; }
-  const dup = (state.kitchenStations||[]).find(s => s.pin===pin && s.id!==id);
+   const showAll = !!document.getElementById('ksShowAll')?.checked;
+  if (!/^\d{4}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> PIN 4 rəqəm olmalıdır'); return; }
+  if (['0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','1234'].includes(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN çox asandır'); return; }
+  const dup = (state.kitchenStations||[]).find(s => String(s.pin)===pin && s.id!==id);
   if (dup) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN "${dup.name}"-ə aiddir`); return; }
-  const data = { name, pin, responsible, active, updatedAt: Date.now() };
+  if ((state.staff||[]).some(s => String(s.pin)===pin) || String(ADMIN_PIN)===pin) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+  const data = { name, pin, responsible, active, showAll, updatedAt: Date.now() };
   if (id) {
     R.kitchenStations.child(id).update(data);
   } else {
