@@ -93,7 +93,7 @@ export function adminTab(sec, el) {
 
   document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes'||sec==='printers') ? 'flex':'none';
   if (sec==='settings') {
-    document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
+        document.getElementById('currentKitchenPin').textContent = state.kitchenPin || 'təyin edilməyib';
     db.ref('settings/menuUrl').once('value', snap => {
       if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
     });
