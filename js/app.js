@@ -45,29 +45,23 @@ function doLogin() {
       db.ref('settings/kitchenPin').once('value'),
       db.ref('kitchenStations').once('value')
     ]).then(([pinSnap, stationsSnap]) => {
-           const liveKitchenPin = pinSnap.val() || null;   // standart mətbəx PIN-i yoxdur
+                const legacyPin = pinSnap.val() || null;   // köhnə ümumi mətbəx PIN-i (yalnız bir dəfəlik keçid üçün)
       const liveStations = toArr(stationsSnap.val());
 
-      
-      // Köhnə tək mətbəx PIN-i
-      if (String(pin) === String(liveKitchenPin)) {
-        
-        state.kitchenPin = liveKitchenPin;
-        state.kitchenStations = liveStations;
-        state.user = { role: 'kitchen', name: 'Mətbəx' };
-        state._activeKitchen = null;
-        addLog('login', 'Mətbəx sistemə daxil oldu', { type: 'kitchen' });
-        initListeners();
-        showScreen('kitchenScreen');
-        return;
+            // Köhnə ümumi mətbəx PIN-i → bir dəfəlik avtomatik "Əsas mətbəx" stansiyasına çevrilir
+      // (bütün sifarişləri görür). Bundan sonra mətbəx PIN-i yalnız Mətbəxlər bölməsində idarə olunur.
+      if (legacyPin && String(pin) === String(legacyPin) && !liveStations.some(s => String(s.pin) === String(pin))) {
+        const ref = R.kitchenStations.push();
+        const st = { name: 'Əsas mətbəx', pin: String(legacyPin), responsible: '', active: true, showAll: true, menuItemIds: [], createdAt: Date.now(), updatedAt: Date.now() };
+        ref.set(st).then(() => db.ref('settings/kitchenPin').remove());
+        liveStations.push({ id: ref.key, ...st });
       }
 
       // Çoxlu mətbəx stansiyaları
       const matchStation = liveStations.find(s => s.active !== false && String(s.pin) === String(pin));
       if (matchStation) {
         console.log('[KitchenLogin] Stansiya ilə giriş:', matchStation.name);
-        state.kitchenPin = liveKitchenPin;
-        state.kitchenStations = liveStations;
+                state.kitchenStations = liveStations;
         state.user = { role: 'kitchen', name: matchStation.name };
         state._activeKitchen = matchStation;
         addLog('login', `"${matchStation.name}" mətbəxi daxil oldu`, { kitchenId: matchStation.id });
@@ -183,7 +177,7 @@ function showExitModal() { document.getElementById('exitModal').classList.add('o
 function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value = ''; }
 function confirmExit() {
   const pin = document.getElementById('exitPin').value;
-  if (String(pin) === String(ADMIN_PIN) || String(pin) === String(state.kitchenPin)) {
+    if (String(pin) === String(ADMIN_PIN)) {
     closeExitModal();
     logout();
   } else {
