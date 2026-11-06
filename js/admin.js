@@ -3694,6 +3694,16 @@ window.saveKitchenMenuAssign   = saveKitchenMenuAssign;
    TƏHLÜKƏLİ ƏMƏLİYYATLAR
 ═══════════════════════════════════════════ */
 
+// Yeni anbar sistemi: alış sənədləri silinəndə təchizatçı borcları da sıfırlanır
+async function _zeroSupplierDebts() {
+  const snap = await db.ref('suppliers').once('value');
+  const up = {};
+  snap.forEach(c => { up[c.key + '/totalDebt'] = 0; });
+  if (Object.keys(up).length) await db.ref('suppliers').update(up);
+}
+const INV_DOC_NODES = ['purchases','invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','stockMoves','stock','supplierLedger'];
+const CASH_DOC_NODES = ['invCash','cashCloses'];
+
 const DANGER_OPS = [
   {
     id: 'clearClosedOrders',
@@ -3725,10 +3735,20 @@ const DANGER_OPS = [
   {
     id: 'clearPurchases',
     icon: '📦',
-    title: 'Alış Qeydlərini Sil',
-    desc: 'Bütün məhsul alış qeydləri silinir. Təchizatçılar və məhsul kataloqu saxlanılır, yalnız alış tarixçəsi gedir.',
-    nodes: ['purchases'],
-    keepLabel: 'Təchizatçılar və məhsul kataloqu saxlanılır',
+       title: 'Anbar və Alış Sənədlərini Sil',
+    desc: 'Bütün alış qaimələri, təchizatçı ödənişləri, silinmə, transfer, sayım və hazırlama aktları, anbar hərəkətləri silinir. Bütün qalıqlar sıfırlanır, təchizatçı borcları sıfırlanır.',
+    nodes: INV_DOC_NODES,
+    after: _zeroSupplierDebts,
+    keepLabel: 'Məhsul kataloqu, anbarlar və təchizatçılar saxlanılır',
+    danger: 2
+  },
+  {
+    id: 'clearCashDocs',
+    icon: '💵',
+    title: 'Kassa Sənədlərini Sil',
+    desc: 'Əl ilə yazılan bütün kassa mədaxil, məxaric, transfer sənədləri və gün sonu bağlanışları silinir.',
+    nodes: CASH_DOC_NODES,
+    keepLabel: 'Kassa hesabları və onların başlanğıc qalıqları saxlanılır',
     danger: 1
   },
   {
@@ -3763,8 +3783,9 @@ const DANGER_OPS = [
     icon: '🗑️',
     title: 'Bütün Əməliyyat Məlumatlarını Sil',
     desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
-    nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals'],
-    keepLabel: 'İşçilər, məhsullar, masalar, müştərilər, ayarlar, printerlar, mətbəxlər saxlanılır',
+        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','customerRequests','feedbacks','chats', ...INV_DOC_NODES, ...CASH_DOC_NODES],
+    after: _zeroSupplierDebts,
+    keepLabel: 'İşçilər, məhsullar, anbarlar, kassa hesabları, masalar, müştərilər, ayarlar, printerlar, mətbəxlər saxlanılır',
     danger: 2
   },
   {
@@ -3772,7 +3793,10 @@ const DANGER_OPS = [
     icon: '☢️',
     title: 'Fabrika Sıfırlaması',
     desc: 'PROQRAMDAKİ HƏR ŞEY SİLİNİR. İşçilər, məhsullar, masalar, müştərilər, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlar. Bu əməliyyat GERİ QAYTARILMAZ.',
-    nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings'],
+       nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings',
+      'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients',
+      'products','warehouses','stock','stockMoves','supplierLedger','invCounters','invBackup',
+      'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses'],
     keepLabel: null,
     danger: 3
   }
@@ -3887,7 +3911,8 @@ function _runDangerOp(opId) {
         secondMsg,
         async () => {
           try {
-            await Promise.all(op.nodes.map(node => db.ref(node).remove()));
+                       await Promise.all(op.nodes.map(node => db.ref(node).remove()));
+            if (op.after) await op.after();
             if (!isFabrika) addLog('danger_op', `"${op.title}" əməliyyatı icra edildi`, { nodes: op.nodes });
             showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${op.title}" uğurla tamamlandı`);
           } catch (e) {
