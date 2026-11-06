@@ -6,7 +6,7 @@ import { state } from './state.js';
 import {
   inv, PTYPES, UNITS, product, productList, warehouseList, totalStock, stockIn, isLow, unitCost, recipeCost,
   netOf, marginInfo, saveProduct, findSimilar, can, isAdmin, isV2, fmtQty, fmtMoney, fmtDT, r2, r3, r4, num,
-  defaultWarehouseId, migrateToV2, rollbackMode, uname
+  defaultWarehouseId, migrateToV2, needsMigration, uname
 } from './yuza-inv-core.js';
 import {
   registerTab, modal, confirmBox, esc, $, ok, fail, numInput, typeChip, attachPicker, whOptions, go, fresh, blurIn
@@ -468,10 +468,10 @@ function renderSettings(el) {
     <div class="yzi-head"><div><div class="yzi-eyebrow">ANBAR</div><h1 class="yzi-h1">Parametrlər</h1></div></div>
     <section class="yzi-card">
       <h3>Sistem rejimi</h3>
-      <p class="yzi-p">Hazırkı rejim: <b class="${v2 ? 'yzi-ok' : 'yzi-warn'}">${v2 ? 'Yeni anbar sistemi (aktiv)' : 'Köhnə sistem'}</b>${s.migratedAt ? ` · köçürmə: ${fmtDT(s.migratedAt)} (${esc(s.migratedBy || '')})` : ''}</p>
-      ${v2 ? `<p class="yzi-hint">Geri qaytarmaq lazım olsa, rejimi köhnəyə çevirə bilərsiniz. Heç bir məlumat silinmir, amma köhnə rejimdə yeni kataloqdakı qalıqlar yenilənməyəcək.</p>
-        <button type="button" class="yzi-btn yzi-btn--ghost" data-rollback>Köhnə rejimə qaytar</button>`
-      : `<p class="yzi-p">Köçürmə zamanı: menyu malları → kataloq (sayıla bilən → <b>Hazır mal</b>, qalanı → <b>Yemək</b>), xammadə → <b>Xammal</b>, reseptlər → texnoloji kart, qalıqlar → "Əsas anbar", təchizatçı borcları → ilkin qalıq. Əvvəlcə bütün köhnə məlumatın ehtiyat nüsxəsi götürülür.</p>
+      <p class="yzi-p">Hazırkı rejim: <b class="${v2 ? 'yzi-ok' : 'yzi-warn'}">${v2 ? 'Yeni anbar sistemi (aktiv)' : needsMigration() ? 'Köhnə məlumat tapıldı — köçürmə gözləyir' : 'Hazırlanır…'}</b>${s.migratedAt ? ` · köçürmə: ${fmtDT(s.migratedAt)} (${esc(s.migratedBy || '')})` : ''}</p>
+      ${v2 ? `<p class="yzi-hint">Sistem yeni anbar rejimində işləyir.${s.migratedAt ? ' Köhnə məlumatların ehtiyat nüsxəsi saxlanılıb.' : ''}</p>`
+      : !needsMigration() ? '<p class="yzi-hint">Boş baza yeni rejimdə avtomatik qurulur.</p>'
+      : `<p class="yzi-p">Bu bazada köhnə proqramdan qalan məlumat var. Onu <b>bir dəfə</b> yeni sistemə köçürmək lazımdır. Köçürmə zamanı: menyu malları → kataloq (sayıla bilən → <b>Hazır mal</b>, qalanı → <b>Yemək</b>), xammadə → <b>Xammal</b>, reseptlər → texnoloji kart, qalıqlar → "Əsas anbar", təchizatçı borcları → ilkin qalıq. Əvvəlcə bütün köhnə məlumatın ehtiyat nüsxəsi götürülür.</p>
         <p class="yzi-warnbox"><b>Vacib:</b> köçürməni əvvəlcə TEST Firebase-də yoxlayın.</p>
         <button type="button" class="yzi-btn yzi-btn--ghost" data-dry>1) Nə köçürüləcəyini göstər</button>
         <div id="yziDry"></div>`}
@@ -495,10 +495,6 @@ function renderSettings(el) {
     const v = num(i.value); if (!Number.isFinite(v) || v < 0) { fail('Düzgün rəqəm yazın'); return; }
     await db.ref('settings/inventory/' + i.dataset.num).set(v); ok('Yadda saxlanıldı');
   }));
-  el.querySelector('[data-rollback]')?.addEventListener('click', async () => {
-    const c = await confirmBox('Rejim köhnəyə qaytarılsın? Satışda stok yenidən köhnə üsulla silinəcək.', { okCls: 'yzi-btn--red' });
-    if (c) { await rollbackMode(); ok('Köhnə rejim'); }
-  });
   el.querySelector('[data-dry]')?.addEventListener('click', async () => {
     try {
       const plan = await migrateToV2({ dryRun: true });
