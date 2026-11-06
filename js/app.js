@@ -45,7 +45,7 @@ function doLogin() {
       db.ref('settings/kitchenPin').once('value'),
       db.ref('kitchenStations').once('value')
     ]).then(([pinSnap, stationsSnap]) => {
-      const liveKitchenPin = pinSnap.val() || state.kitchenPin;
+           const liveKitchenPin = pinSnap.val() || null;   // standart mətbəx PIN-i yoxdur
       const liveStations = toArr(stationsSnap.val());
 
       
@@ -299,32 +299,11 @@ function onDataChange() {
 /* ── İlk Yükləmə / Demo Data ── */
 
 function seedDemoData() {
-  R.tables.once('value', snap => {
-    if (snap.val()) return;
-    ['Masa 1', 'Masa 2', 'Masa 3', 'VIP Otaq', 'Terras', 'Bar'].forEach(name => {
-      R.tables.push({ name, capacity: 4, occupant: null, notes: '', createdAt: Date.now() });
-    });
-  });
-
+  // Yeni şirkət BOŞ başlayır: demo masa, işçi yaradılmır — hamısını Rəhbər özü qeyd edir.
+  // Rəhbər PIN-i yoxdursa, standart "0000" yox, ekranda PIN yaratmaq pəncərəsi açılır.
   db.ref('settings/adminPin').once('value', snap => {
-    if (snap.val()) {
-      ADMIN_PIN = snap.val();
-      setAdminPin(snap.val());
-    } else {
-      ADMIN_PIN = '0000';
-      setAdminPin('0000');
-      db.ref('settings/adminPin').set('0000');
-      console.log('İlk admin PIN yaradıldı: 0000');
-    }
-  });
-
-  R.staff.once('value', snap => {
-    if (snap.val()) return;
-    [
-      { name:'Əli Məmmədov', firstname:'Əli', lastname:'Məmmədov', position:'Qarson', pin:'1111', avatar:'https://ui-avatars.com/api/?name=Ali+Mammadov&background=2ecc71&color=fff&size=200', status:'active', createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms },
-      { name:'Leyla Həsənli', firstname:'Leyla', lastname:'Həsənli', position:'Qarson', pin:'2222', avatar:'https://ui-avatars.com/api/?name=Leyla+Hasanli&background=3498db&color=fff&size=200', status:'active', createdAt:Date.now(), permissions: PERMISSION_PRESETS.waiter.perms },
-      { name:'Orxan Əliyev', firstname:'Orxan', lastname:'Əliyev', position:'Kassir', pin:'3333', avatar:'https://ui-avatars.com/api/?name=Orxan+Aliyev&background=8e44ad&color=fff&size=200', status:'offline', createdAt:Date.now(), permissions: PERMISSION_PRESETS.cashier.perms }
-    ].forEach(w => R.staff.push(w));
+    if (snap.val()) { ADMIN_PIN = snap.val(); setAdminPin(snap.val()); return; }
+    import('./yuza-firstrun.js').then(m => m.askFirstAdminPin()).then(pin => { ADMIN_PIN = pin; setAdminPin(pin); });
   });
 }
 
@@ -378,7 +357,7 @@ function bootstrap() {
   document.addEventListener('auth:pin-complete', doLogin);
 
     const _guest = /[?&](table|ref)=/.test(location.search);
-  if (!_guest) { seedDemoData(); ensureDefaultEventTypes(); }
+    if (!_guest) seedDemoData();
   checkCustomerMode();
   loadSavedTheme();
   const fab = document.getElementById('adminFab');
