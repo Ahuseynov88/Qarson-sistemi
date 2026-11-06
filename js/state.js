@@ -56,7 +56,7 @@ export const state = {
   noteTableId: null,
   pendingTableId: null,
   pendingCloseTableId: null,
-  kitchenPin: '9999',
+  kitchenPin: null,
   pinBuffer: '',
   _shownRequests: [],
   activeChatTableId: null,
