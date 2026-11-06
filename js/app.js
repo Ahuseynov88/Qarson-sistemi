@@ -48,13 +48,10 @@ function doLogin() {
       const liveKitchenPin = pinSnap.val() || state.kitchenPin;
       const liveStations = toArr(stationsSnap.val());
 
-      console.log('[KitchenLogin] PIN daxil edildi:', String(pin));
-      console.log('[KitchenLogin] Köhnə mətbəx PIN:', String(liveKitchenPin));
-      console.log('[KitchenLogin] Stansiyalar:', liveStations.map(s => ({ name: s.name, pin: s.pin, active: s.active })));
-
+      
       // Köhnə tək mətbəx PIN-i
       if (String(pin) === String(liveKitchenPin)) {
-        console.log('[KitchenLogin] Köhnə sistem PIN ilə giriş.');
+        
         state.kitchenPin = liveKitchenPin;
         state.kitchenStations = liveStations;
         state.user = { role: 'kitchen', name: 'Mətbəx' };
@@ -380,8 +377,8 @@ function bootstrap() {
 
   document.addEventListener('auth:pin-complete', doLogin);
 
-  seedDemoData();
-  ensureDefaultEventTypes();
+    const _guest = /[?&](table|ref)=/.test(location.search);
+  if (!_guest) { seedDemoData(); ensureDefaultEventTypes(); }
   checkCustomerMode();
   loadSavedTheme();
   const fab = document.getElementById('adminFab');
