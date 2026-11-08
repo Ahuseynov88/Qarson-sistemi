@@ -14,6 +14,7 @@ export const ALL_PERMISSIONS = [
       { key: 'table.open',     label: 'Masa açmaq' },
       { key: 'table.close',    label: 'Masanı bağlamaq' },
       { key: 'table.transfer', label: 'Masadan-masaya köçürmə' },
+      { key: 'table.reassign', label: 'Masanı başqa ofisianta ötürmək' },
       { key: 'waiter.view',    label: 'Digər işçilərin masalarını görmək' },
     ]
   },
@@ -76,6 +77,8 @@ export const ALL_PERMISSIONS = [
     items: [
       { key: 'waiter.manage', label: 'Qarson statusunu dəyişmək' },
       { key: 'staff.view',    label: 'İşçiləri görmək' },
+      { key: 'att.bind',      label: 'İşçi telefonunu aktivləşdirmək (davamiyyət)' },
+      { key: 'att.manual',    label: 'Smartfonu olmayan işçinin davamiyyətini qeyd etmək' },
     ]
   },
   {
