@@ -489,6 +489,15 @@ function renderReportPaymentsView(orders, el) {
 function renderReportStaffView(orders, el) {
   const byStaff = {};
   orders.forEach(o => {
+    // Masa başqa ofisianta ötürülübsə: hər ofisiant öz payını alır (ötürülənə qədər köhnə, sonra yeni)
+    if (Array.isArray(o.waiterSplit) && o.waiterSplit.length) {
+      o.waiterSplit.forEach(w => {
+        const nm = w.name || 'Naməlum';
+        if (!byStaff[nm]) byStaff[nm] = { count: 0, revenue: 0 };
+        byStaff[nm].count++; byStaff[nm].revenue += w.amount || 0;
+      });
+      return;
+    }
     // Sifarişi göndərən (satışı edən) işçiyə görə hesablanır - masanı bağlayan işçiyə görə
     // YOX, çünki başqa işçi bağlaya bilər. Köhnə qeydlərdə bu sahə yoxdursa, bağlayan işçiyə düşür.
     const name = o.orderedByName || o.staffName || 'Naməlum';
@@ -1680,6 +1689,7 @@ export function deleteStaff(id) {
   if (activeTable) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${s?.name}" adlı işçinin "${activeTable.name}" masası aktivdir! Əvvəlcə masanı bağlayın.`); return; }
   confirmAction(`"${esc(s?.name)}" adlı işçi silinsin?`, () => {
     db.ref('staff').child(id).remove();
+    db.ref('staffHR').child(id).remove();   // şəxsi məlumatlar da silinir
     addLog('staff_mgmt', `İşçi silindi: ${s?.name}`, { staffId: id });
     state.staff = state.staff.filter(x => x.id !== id);
     if (state._selectedStaffId === id) state._selectedStaffId = null;
@@ -1695,42 +1705,69 @@ export function openAddStaffModal() {
   document.getElementById('addModal').classList.add('open');
 }
 
+// İşçinin vəzifəsinə görə: POS/kassa/anbar ilə işləyən vəzifələr sistemə girişli, qalanları yalnız davamiyyət
+const STAFF_SYSTEM_POS = ['Qarson', 'Baş Qarson', 'Kassir', 'Barmen', 'Müdir', 'Mühasib', 'Anbardar'];
+const STAFF_NOSYS_POS = ['Mətbəx', 'Aşpaz köməkçisi', 'Qabyuyan', 'Xadimə', 'Mühafizəçi', 'Kuryer'];
 export function onStaffPositionChange() {
   const pos = document.getElementById('fs_position').value;
-    const map = { 'Qarson': 'waiter', 'Baş Qarson': 'head_waiter', 'Kassir': 'cashier', 'Müdir': 'manager', 'Mühasib': 'accountant', 'Anbardar': 'storekeeper' };
-  if (map[pos]) applyPermissionPreset(map[pos]);
+  const map = { 'Qarson': 'waiter', 'Baş Qarson': 'head_waiter', 'Kassir': 'cashier', 'Müdir': 'manager', 'Mühasib': 'accountant', 'Anbardar': 'storekeeper' };
+  const acc = document.getElementById('fs_access');
+  if (acc && STAFF_SYSTEM_POS.includes(pos)) acc.checked = true;
+  if (acc && STAFF_NOSYS_POS.includes(pos)) acc.checked = false;
+  window.fsToggleAccess?.();
+  if (map[pos] && acc?.checked) applyPermissionPreset(map[pos]);
 }
 
+// Həssas şəxsi məlumatlar (FİN, şəxsiyyət vəsiqəsi, VÖEN, SSN, IBAN, maaş, ünvan) AYRICA "staffHR"
+// bölməsində saxlanılır: POS cihazları işçi siyahısını yükləyəndə bunlar onlara getmir.
+const HR_FIELDS = ['birthDate', 'gender', 'fin', 'idCard', 'idExpiry', 'regAddress', 'address', 'voen', 'ssn',
+  'contractType', 'contractNo', 'hireDate', 'contractEnd', 'fireDate', 'salaryType', 'salaryAmount', 'bankName', 'iban',
+  'emergencyName', 'emergencyRelation', 'emergencyPhone', 'hrNote'];
+const hv = (id) => (document.getElementById('fs_' + id)?.value || '').trim();
+
 export function saveStaff() {
-  const firstname = (document.getElementById('fs_firstname')?.value||'').trim();
-  const lastname = (document.getElementById('fs_lastname')?.value||'').trim();
-  const position = (document.getElementById('fs_position')?.value||'').trim();
-  const pin = (document.getElementById('fs_pin')?.value||'').trim();
-  const phone = (document.getElementById('fs_phone')?.value||'').trim();
-  const fin = (document.getElementById('fs_fin')?.value||'').trim();
-  const avatarVal = (document.getElementById('fs_avatar')?.value||'').trim();
-  const permissions = readPermissionCheckboxes();
+  const firstname = hv('firstname'), lastname = hv('lastname'), position = hv('position');
+  const phone = hv('phone'), avatarVal = hv('avatar');
+  const systemAccess = !!document.getElementById('fs_access')?.checked;
+  const attNoPhone = !!document.getElementById('fs_nophone')?.checked;
+  const pin = systemAccess ? hv('pin') : '';
+  const permissions = systemAccess ? readPermissionCheckboxes() : [];
+  const err = (m) => showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + m);
 
-  if (!firstname || !lastname) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ad və Soyad mütləqdir'); return; }
-  if (!position) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Vəzifə seçilməlidir'); return; }
-  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> 4 rəqəmli PIN lazımdır'); return; }
-
-  const conflict = state.staff?.find(s => s.pin === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
-  if (conflict) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu PIN artıq istifadə olunur'); return; }
+  if (!firstname || !lastname) { err('Ad və Soyad mütləqdir'); return; }
+  if (!position) { err('Vəzifə seçilməlidir'); return; }
+  if (systemAccess) {
+    if (!/^\d{4}$/.test(pin)) { err('Sistemə girişi olan işçi üçün 4 rəqəmli PIN lazımdır'); return; }
+    const conflict = state.staff?.find(s => s.pin === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
+    if (conflict) { err('Bu PIN artıq istifadə olunur'); return; }
+    if ((state.kitchenStations || []).some(k => String(k.pin) === pin) || String(ADMIN_PIN) === pin) { err('Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+    if (!permissions.length) { err('Sistemə girişi olan işçiyə ən azı bir icazə verin'); return; }
+  }
+  const hr = {}; HR_FIELDS.forEach(k => { hr[k] = hv(k) || null; });
+  if (hr.fin) hr.fin = hr.fin.toUpperCase();
+  if (hr.fin && !/^[0-9A-Z]{7}$/.test(hr.fin)) { err('FİN 7 simvol olmalıdır (rəqəm və latın hərfləri)'); return; }
+  if (hr.voen && !/^\d{10}$/.test(hr.voen)) { err('VÖEN 10 rəqəm olmalıdır'); return; }
+  if (hr.iban) { hr.iban = hr.iban.replace(/\s+/g, '').toUpperCase(); if (!/^AZ\d{2}[A-Z0-9]{24}$/.test(hr.iban)) { err('IBAN AZ ilə başlamalı və 28 simvol olmalıdır'); return; } }
+  if (hr.salaryAmount != null) { const a = +String(hr.salaryAmount).replace(',', '.'); if (!(a >= 0)) { err('Əmək haqqı məbləği düzgün deyil'); return; } hr.salaryAmount = a; }
+  if (hr.contractEnd && hr.hireDate && hr.contractEnd < hr.hireDate) { err('Müqavilənin bitmə tarixi işə qəbul tarixindən əvvəl ola bilməz'); return; }
+  hr.updatedAt = Date.now();
 
   const name = `${firstname} ${lastname}`;
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
   const avatar = avatarVal || fallback;
-
-  const staffData = { name, firstname, lastname, position, pin, phone, fin, avatar, permissions };
+  // fin artıq staffHR-dədir; köhnə qeyddə qalıbsa silinir
+  const staffData = { name, firstname, lastname, position, pin, phone, avatar, permissions, systemAccess, attNoPhone,
+    contractType: hr.contractType || null, hireDate: hr.hireDate || null, fin: null };
 
   if (state.editTarget?.id) {
-    db.ref('staff').child(state.editTarget.id).update(staffData);
-    addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: state.editTarget.id });
+    const id = state.editTarget.id;
+    db.ref().update({ ...Object.fromEntries(Object.entries(staffData).map(([k, v]) => ['staff/' + id + '/' + k, v])), ['staffHR/' + id]: hr });
+    addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: id });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi yeniləndi');
   } else {
-    db.ref('staff').push({ ...staffData, status: 'active', createdAt: Date.now() });
-    addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, {});
+    const ref = db.ref('staff').push();
+    db.ref().update({ ['staff/' + ref.key]: { ...staffData, status: 'active', createdAt: Date.now() }, ['staffHR/' + ref.key]: hr });
+    addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, { staffId: ref.key });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi əlavə edildi');
   }
   closeAddModal();
@@ -1739,7 +1776,27 @@ export function saveStaff() {
 export function staffForm(s = {}) {
   const existingPerms = s.permissions || [];
   const currentPos = s.position || '';
+  // Köhnə işçilər üçün: sahə yoxdursa, PIN-i varsa sistemə girişli sayılır
+  const access = s.systemAccess != null ? !!s.systemAccess : (s.id ? !!s.pin : true);
+  const POS = ['Qarson', 'Baş Qarson', 'Kassir', 'Barmen', 'Müdir', 'Mühasib', 'Anbardar', 'Mətbəx', 'Aşpaz köməkçisi', 'Qabyuyan', 'Xadimə', 'Mühafizəçi', 'Kuryer', 'Digər'];
+  const inp = (id, label, type = 'text', ph = '', extra = '') => `<div class="form-group"><label>${label}</label><input type="${type}" id="fs_${id}" placeholder="${ph}" ${extra}></div>`;
+  const sel = (id, label, opts) => `<div class="form-group"><label>${label}</label><select id="fs_${id}" class="fs-sel">${opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>`;
+  const sec = (title, inner, open = false) => `<details class="fs-sec"${open ? ' open' : ''}><summary>${title}</summary><div class="fs-sec__b">${inner}</div></details>`;
+  if (s.id) setTimeout(() => fillStaffHR(s), 0);
+  else setTimeout(() => window.fsToggleAccess?.(), 0);
   return `
+    <style>
+      .fs-sel{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px}
+      .fs-sec{border:1px solid var(--border);border-radius:12px;margin:10px 0;background:var(--card)}
+      .fs-sec>summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+      .fs-sec>summary::after{content:'▾';color:var(--text3)}
+      .fs-sec[open]>summary::after{content:'▴'}
+      .fs-sec__b{padding:0 14px 6px}
+      .fs-switch{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin:8px 0;cursor:pointer}
+      .fs-switch input{width:20px;height:20px;margin-top:2px;flex-shrink:0}
+      .fs-switch small{display:block;color:var(--text3);font-size:12px;font-weight:500}
+      .fs-hint{font-size:12px;color:var(--text3);margin:-4px 0 10px}
+    </style>
     <div style="text-align:center;margin-bottom:16px;">
       <img id="fs_preview" class="avatar-preview" src="${esc(s.avatar||'')}" style="${s.avatar?'display:block':'display:none'}">
       <div class="avatar-upload-area" onclick="document.getElementById('fs_file').click()">
@@ -1749,39 +1806,72 @@ export function staffForm(s = {}) {
       </div>
       <input type="hidden" id="fs_avatar" value="${esc(s.avatar||'')}">
     </div>
-    <div class="modal-section-title"><svg class="icon"><use href="#i-user"></use></svg> Məlumatlar</div>
+    <div class="modal-section-title"><svg class="icon"><use href="#i-user"></use></svg> Əsas məlumatlar</div>
     <div class="form-row">
       <div class="form-group"><label>Ad *</label><input type="text" id="fs_firstname" value="${esc(s.firstname||s.name?.split(' ')[0]||'')}" placeholder="Əli"></div>
       <div class="form-group"><label>Soyad *</label><input type="text" id="fs_lastname" value="${esc(s.lastname||s.name?.split(' ')[1]||'')}" placeholder="Məmmədov"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Vəzifə *</label>
-        <select id="fs_position" onchange="onStaffPositionChange()" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;">
+      <div class="form-group"><label>Vəzifə *</label>
+        <select id="fs_position" class="fs-sel" onchange="onStaffPositionChange()">
           <option value="">Seçin...</option>
-          <option value="Qarson" ${currentPos==='Qarson'?'selected':''}><svg class="icon"><use href="#i-bowtie"></use></svg> Qarson</option>
-          <option value="Baş Qarson" ${currentPos==='Baş Qarson'?'selected':''}><svg class="icon"><use href="#i-star"></use></svg> Baş Qarson</option>
-          <option value="Kassir" ${currentPos==='Kassir'?'selected':''}><svg class="icon"><use href="#i-money"></use></svg> Kassir</option>
-          <option value="Müdir" ${currentPos==='Müdir'?'selected':''}><svg class="icon"><use href="#i-staff"></use></svg> Müdir</option>
-                    <option value="Mətbəx" ${currentPos==='Mətbəx'?'selected':''}><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</option>
-          <option value="Mühasib" ${currentPos==='Mühasib'?'selected':''}>Mühasib</option>
-          <option value="Anbardar" ${currentPos==='Anbardar'?'selected':''}>Anbardar</option>
-          <option value="Digər" ${currentPos==='Digər'?'selected':''}>Digər</option>
-        </select>
-      </div>
+          ${POS.map(p => `<option value="${p}" ${currentPos === p ? 'selected' : ''}>${p === 'Mətbəx' ? 'Mətbəx (aşpaz)' : p}</option>`).join('')}
+          ${currentPos && !POS.includes(currentPos) ? `<option value="${esc(currentPos)}" selected>${esc(currentPos)}</option>` : ''}
+        </select></div>
       <div class="form-group"><label>Telefon</label><input type="tel" id="fs_phone" value="${esc(s.phone||'')}" placeholder="+994 50 000 00 00"></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label>FİN nömrəsi</label><input type="text" id="fs_fin" value="${esc(s.fin||'')}" placeholder="1234ABC"></div>
-      <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
+
+    <label class="fs-switch"><input type="checkbox" id="fs_access" ${access ? 'checked' : ''} onchange="fsToggleAccess()">
+      <span><b>Sistemə girişi var</b><small>Ofisiant, kassir, müdir, mühasib, anbardar. İşarələnməsə, işçi POS-a girə bilməz — yalnız davamiyyətdə (QR) iştirak edir.</small></span></label>
+    <label class="fs-switch"><input type="checkbox" id="fs_nophone" ${s.attNoPhone ? 'checked' : ''}>
+      <span><b>Smartfonu yoxdur</b><small>Davamiyyəti davamiyyət ekranında səlahiyyətli şəxs (öz PIN-i ilə) qeyd edir.</small></span></label>
+
+    <div id="fs_accessBox">
+      <div class="form-row">
+        <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" inputmode="numeric" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
+      </div>
+      <div class="modal-section-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+        <span><svg class="icon"><use href="#i-key"></use></svg> İcazələr</span>
+        <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
+      </div>
+      ${renderPermissionCheckboxes(existingPerms)}
     </div>
-    <div class="modal-section-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
-      <span><svg class="icon"><use href="#i-key"></use></svg> İcazələr</span>
-      <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
-    </div>
-    ${renderPermissionCheckboxes(existingPerms)}
+
+    ${sec('İş və müqavilə', `
+      <div class="form-row">${sel('contractType', 'Müqavilə növü', [['', 'Seçin...'], ['labor', 'Əmək müqaviləsi'], ['civil', 'Mülki-hüquqi müqavilə'], ['trial', 'Sınaq müddəti'], ['none', 'Müqaviləsiz']])}
+        ${inp('contractNo', 'Müqavilə nömrəsi', 'text', 'məs. 12/2026')}</div>
+      <div class="form-row">${inp('hireDate', 'İşə qəbul tarixi', 'date')}${inp('contractEnd', 'Müqavilənin bitmə tarixi', 'date')}</div>
+      <div class="form-row">${inp('fireDate', 'İşdən çıxma tarixi', 'date')}<div class="form-group"></div></div>`, true)}
+    ${sec('Şəxsi məlumatlar', `
+      <div class="form-row">${inp('birthDate', 'Doğum tarixi', 'date')}${sel('gender', 'Cins', [['', 'Seçin...'], ['m', 'Kişi'], ['f', 'Qadın']])}</div>
+      <div class="form-row">${inp('fin', 'FİN', 'text', '1AB2C3D', 'maxlength="7" style="text-transform:uppercase"')}${inp('idCard', 'Şəxsiyyət vəsiqəsi (seriya və nömrə)', 'text', 'AA 1234567')}</div>
+      <div class="form-row">${inp('idExpiry', 'Vəsiqənin etibarlılıq tarixi', 'date')}<div class="form-group"></div></div>
+      ${inp('regAddress', 'Qeydiyyat ünvanı', 'text', 'Vəsiqədəki ünvan')}
+      ${inp('address', 'Faktiki yaşayış ünvanı', 'text', 'Hazırda yaşadığı ünvan')}`)}
+    ${sec('Vergi və sığorta', `
+      <div class="form-row">${inp('voen', 'VÖEN (10 rəqəm)', 'text', 'Mülki-hüquqi müqavilə üçün', 'inputmode="numeric" maxlength="10"')}${inp('ssn', 'SSN (sosial sığorta nömrəsi)', 'text', '')}</div>`)}
+    ${sec('Əmək haqqı (gələcək hesablamalar üçün)', `
+      <div class="form-row">${sel('salaryType', 'Əmək haqqı növü', [['', 'Seçin...'], ['monthly', 'Aylıq'], ['daily', 'Günlük'], ['hourly', 'Saatlıq']])}
+        ${inp('salaryAmount', 'Məbləğ (₼)', 'text', '0.00', 'inputmode="decimal"')}</div>
+      <div class="form-row">${inp('bankName', 'Bank', 'text', 'məs. Kapital Bank')}${inp('iban', 'IBAN (hesab nömrəsi)', 'text', 'AZ00XXXX0000000000000000000', 'maxlength="34"')}</div>`)}
+    ${sec('Təcili əlaqə və qeyd', `
+      <div class="form-row">${inp('emergencyName', 'Əlaqə şəxsi', 'text', 'Ad Soyad')}${inp('emergencyRelation', 'Qohumluq', 'text', 'məs. həyat yoldaşı')}</div>
+      <div class="form-row">${inp('emergencyPhone', 'Telefon', 'tel', '+994 50 000 00 00')}<div class="form-group"></div></div>
+      <div class="form-group"><label>Qeyd</label><textarea id="fs_hrNote" rows="2" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text)"></textarea></div>`)}
+    <p class="fs-hint">Şəxsi məlumatlar ayrıca, qorunan bölmədə saxlanılır və POS cihazlarına yüklənmir.</p>
   `;
 }
+async function fillStaffHR(s) {
+  window.fsToggleAccess?.();
+  let hr = {};
+  try { hr = (await db.ref('staffHR/' + s.id).once('value')).val() || {}; } catch (e) { /* */ }
+  if (!hr.fin && s.fin) hr.fin = s.fin;   // köhnə qeyddən
+  HR_FIELDS.forEach(k => { const el = document.getElementById('fs_' + k); if (el && hr[k] != null) el.value = hr[k]; });
+}
+window.fsToggleAccess = () => {
+  const on = !!document.getElementById('fs_access')?.checked;
+  const box = document.getElementById('fs_accessBox'); if (box) box.style.display = on ? '' : 'none';
+};
 
 export function previewStaffPhoto(input) {
   const file = input.files[0];
@@ -3801,7 +3891,7 @@ const DANGER_OPS = [
     title: 'Fabrika Sıfırlaması',
     desc: 'PROQRAMDAKİ HƏR ŞEY SİLİNİR. İşçilər, məhsullar, masalar, müştərilər, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlar. Bu əməliyyat GERİ QAYTARILMAZ.',
        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings',
-      'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients',
+      'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients','staffHR',
       'products','warehouses','stock','stockMoves','supplierLedger','invCounters','invBackup',
       'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses'],
     keepLabel: null,
