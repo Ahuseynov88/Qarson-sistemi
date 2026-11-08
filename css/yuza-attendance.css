@@ -1,0 +1,75 @@
+/* ═══════════════════════════════════════════════════════════════
+   YUZA POS — PERSONAL İZLƏMƏ (Rəhbər paneli)
+   yuza-attendance.js özü yükləyir. Əsas komponentlər yuza-inventory.css-dəndir.
+═══════════════════════════════════════════════════════════════ */
+#sec-att a.yzi-btn{text-decoration:none}
+.yza-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+.yza-tabs button{flex-shrink:0;display:inline-flex;align-items:center;gap:6px}
+
+.yza-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.yza-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);text-align:left;cursor:pointer;font:inherit;min-width:0}
+.yza-card:hover{border-color:var(--gold)}
+.yza-card:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.yza-card.is-in{border-left:4px solid var(--green)}
+.yza-card.is-stale{border-left:4px solid var(--red)}
+.yza-card__main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.yza-card__main b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yza-card__main span{font-size:12px;color:var(--text2)}
+.yza-card__main small{font-size:12px;color:var(--text3)}
+.yza-card__side{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.yza-ava{width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--card2)}
+.yza-ava--x{display:grid;place-items:center;font-weight:800;color:var(--gold-dark)}
+
+.yza-howto{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.yza-howto ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px;font-size:13.5px}
+.yzi-kpi--warn{border-color:var(--orange,#f0b34a)}
+.yzi-kpi--warn b{color:var(--orange,#f0b34a)}
+.yzi-chipbtn--gold{background:var(--gold);color:var(--yz-on-gold,#1a1205);border-color:transparent;font-weight:700}
+
+.yza-gps{display:block;font-size:11px;color:var(--text3)}
+.yza-rowbtns{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+
+.yza-qr{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.yza-qrbox{background:#fff;padding:14px;border-radius:14px;line-height:0}
+.yza-qrbox img,.yza-qrbox canvas{width:220px;height:220px}
+.yza-qr .yzi-mono{word-break:break-all}
+
+.yza-photos{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.yza-photo{margin:0;display:flex;flex-direction:column;gap:6px;align-items:center}
+.yza-photo img{width:200px;border-radius:12px;border:1px solid var(--border)}
+.yza-photo figcaption{font-size:12.5px;color:var(--text2)}
+
+.yza-set .yzi-card{display:flex;flex-direction:column;gap:10px}
+@media (max-width:820px){.yza-set{grid-template-columns:1fr}}
+
+/* Müvəqqəti çıxışlar */
+.yza-card.is-brk{border-left:4px solid var(--orange,#f0b34a)}
+.yza-brk{font-size:12.5px;line-height:1.35;padding:2px 0}
+.yza-brk small{display:block;color:var(--text3)}
+.yza-brk.is-paid b{color:var(--green)}
+.yza-brow{display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr auto;gap:8px;align-items:end;padding:8px 0;border-bottom:1px dashed var(--border)}
+.yza-brow [data-brm]{height:38px}
+@media (max-width:720px){.yza-brow{grid-template-columns:1fr 1fr}.yza-brow [data-brm]{grid-column:span 2}}
+.yza-exempt{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;padding:4px 0 6px}
+.yza-exempt small{flex-basis:100%;color:var(--text2)}
+.yza-exempt label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+
+/* Tabel */
+.yza-month{min-width:130px;text-align:center;font-size:15px}
+.yza-tabel-wrap{max-width:100%;overflow:auto}
+.yza-tabel{font-size:12px;border-collapse:separate;border-spacing:0}
+.yza-tabel th,.yza-tabel td{padding:5px 4px;text-align:center;white-space:nowrap}
+.yza-tabel th small{display:block;font-size:10px;color:var(--text3);font-weight:600}
+.yza-tabel th.is-we{color:var(--red)}
+.yza-tabel th.is-today{background:rgba(232,176,75,.2)}
+.yza-tabel .yza-tn{position:sticky;left:0;z-index:1;background:var(--card);text-align:left;min-width:130px;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.yza-tc{cursor:pointer;min-width:34px;border-left:1px solid var(--border)}
+.yza-tc:hover{outline:2px solid var(--gold);outline-offset:-2px}
+.yza-tc b{display:block;font-size:12px}
+.yza-tc span{display:block}
+.yza-mk{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:5px;font-weight:800;font-size:11px}
+.yza-mk--M{background:rgba(58,134,255,.16);color:#3a86ff}
+.yza-mk--X{background:rgba(239,106,96,.16);color:#e5534b}
+.yza-mk--Ü{background:rgba(240,179,74,.18);color:#c98a12}
+.yza-mk--Q{background:rgba(160,30,30,.2);color:#b42318}
+.yza-mk--İ{background:rgba(120,120,120,.16);color:var(--text2)}

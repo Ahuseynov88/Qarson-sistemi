@@ -1,0 +1,179 @@
+/* ═══════════════════════════════════════════════════════════════
+   YUZA POS — PERSONAL İZLƏMƏ: işçi telefonu və davamiyyət ekranı (izle.html)
+   Ayrıca səhifədir, POS-un stillərindən asılı deyil. Qara-qızılı brend dili.
+═══════════════════════════════════════════════════════════════ */
+:root{
+  color-scheme:dark;
+  --bg:#06080b; --card:#0e1217; --card2:#161c24; --line:rgba(232,176,75,.18);
+  --text:#f4eee2; --text2:#bdb5a5; --text3:#8e8777;
+  --gold:#e8b04b; --gold-grad:linear-gradient(180deg,#f6cf7c 0%,#e1a43e 100%); --on-gold:#1a1205;
+  --green:#3fd08a; --red:#ef6a60; --orange:#f0b34a;
+  --r:18px;
+  --font:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  --display:'Poppins','Inter',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:500 15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(circle at 85% -10%,rgba(232,176,75,.18) 0%,transparent 55%),var(--bg);min-height:100dvh}
+button{font:inherit}
+svg{width:1.15em;height:1.15em;flex-shrink:0}
+
+.iz{max-width:460px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px}
+.iz-loading{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text2)}
+
+/* Brend */
+.iz-brand{display:flex;align-items:center;gap:9px;font:700 16px var(--display);padding:4px 2px}
+.iz-brand b{color:var(--gold)}
+.iz-brand small{margin-left:auto;font:700 11px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.iz-logo{width:32px;height:32px;border-radius:10px;background:var(--gold-grad);color:var(--on-gold);display:grid;place-items:center;font:800 17px var(--display)}
+
+/* Kart */
+.iz-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 16px 36px rgba(0,0,0,.45)}
+.iz-card h1{margin:0;font:700 22px/1.25 var(--display)}
+.iz-card h2{margin:0;font:700 15px var(--display);color:var(--text2)}
+.iz-p{margin:0;color:var(--text);line-height:1.6}
+.iz-hint{margin:0;color:var(--text2);font-size:13.5px;line-height:1.55}
+.iz-err{margin:0;min-height:1.4em;color:var(--red);font-weight:600;font-size:14px}
+.iz-warn{margin:0;padding:10px 12px;border-radius:12px;background:rgba(240,179,74,.1);border:1px solid rgba(240,179,74,.35);color:var(--orange);font-size:14px;display:flex;gap:8px;align-items:flex-start}
+.iz-warn svg{margin-top:3px}
+
+.iz-ico{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;align-self:center}
+.iz-ico svg{width:34px;height:34px}
+.iz-ico--gold{background:rgba(232,176,75,.14);color:var(--gold)}
+.iz-ico--wait{background:rgba(240,179,74,.12);color:var(--orange)}
+.iz-ico--ok{background:rgba(63,208,138,.14);color:var(--green)}
+.iz-ico--bad{background:rgba(239,106,96,.13);color:var(--red)}
+.iz-card>h1,.iz-card>.iz-p{text-align:center}
+.iz-home h1,.iz-home .iz-p{text-align:left}
+
+/* Form */
+.iz-form{display:flex;flex-direction:column;gap:10px}
+.iz-f{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.03em}
+.iz-f input{height:58px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:700 26px var(--font);letter-spacing:.5em;text-align:center;padding:0 12px}
+.iz-f input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,176,75,.25)}
+
+/* Düymələr */
+.iz-btn{min-height:52px;padding:0 20px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-weight:700;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%;-webkit-tap-highlight-color:transparent}
+.iz-btn:active{transform:scale(.985)}
+.iz-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.iz-btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.iz-btn--gold{background:var(--gold-grad);color:var(--on-gold);border-color:transparent;font-weight:800}
+.iz-btn--ghost{background:transparent}
+.iz-btn--out{background:#2a1513;border-color:rgba(239,106,96,.55);color:#ffd9d5}
+.iz-btn--big{min-height:76px;font-size:21px;border-radius:20px;letter-spacing:.01em}
+.iz-btn--sm{min-height:38px;font-size:13px;width:auto;padding:0 14px}
+
+/* Əsas ekran */
+.iz-who{display:flex;gap:12px;align-items:center}
+.iz-who small{color:var(--text2);font-size:13px}
+.iz-who h1{font-size:24px}
+.iz-who span{color:var(--text3);font-size:13px}
+.iz-ava{width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--card2);border:2px solid var(--line);flex-shrink:0}
+.iz-ava--x{display:grid;place-items:center;font:800 24px var(--display);color:var(--gold)}
+.iz-clock{display:flex;align-items:baseline;gap:10px;padding:4px 0}
+.iz-clock b{font:800 44px/1 var(--display);letter-spacing:-.02em}
+.iz-clock span{color:var(--text2);font-weight:600}
+.iz-state{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:11px 13px;border-radius:12px;background:var(--card2);font-size:14px;color:var(--text2)}
+.iz-state.is-in{background:rgba(63,208,138,.09);color:#bff0d6}
+.iz-dot{width:9px;height:9px;border-radius:50%;background:var(--text3)}
+.iz-state.is-in .iz-dot{background:var(--green);box-shadow:0 0 0 4px rgba(63,208,138,.18)}
+.iz-checks{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--text3);font-size:12.5px}
+.iz-checks li{display:flex;align-items:center;gap:5px}
+
+/* Telefonun qoşulması (dəvət) */
+.iz-steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;color:var(--text);line-height:1.5}
+.iz-mut{color:var(--text3)}
+.iz-c{text-align:center}
+
+.iz-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.iz-list li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.iz-list li:first-child{border-top:0}
+.iz-list li>div{display:flex;flex-direction:column;min-width:0}
+.iz-list span{color:var(--text2);font-size:13px}
+.iz-list em{font-style:normal;color:var(--gold);font-weight:700;font-size:13px;white-space:nowrap}
+
+/* Addım və nəticə */
+.iz-step{align-items:center;text-align:center;padding:40px 18px}
+.iz-done,.iz-fail{align-items:center;text-align:center}
+.iz-big{margin:0;font:800 52px/1 var(--display)}
+.iz-chip{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:700}
+.iz-chip--ok{background:rgba(63,208,138,.14);color:var(--green)}
+.iz-chip--warn{background:rgba(240,179,74,.14);color:var(--orange)}
+.iz-chip--bad{background:rgba(239,106,96,.14);color:var(--red)}
+.iz-chip--muted{background:var(--card2);color:var(--text2)}
+
+.iz-spin{width:38px;height:38px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--gold);animation:izspin .8s linear infinite}
+@keyframes izspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.iz-spin{animation-duration:2.4s}}
+
+/* Kamera */
+.iz-cam__box{border-radius:16px;overflow:hidden;background:#000;aspect-ratio:3/4}
+.iz-cam__box video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+
+/* PIN klaviaturası */
+.iz-pad-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:grid;place-items:center;z-index:50;padding:16px}
+.iz-pad{width:min(360px,100%);background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 18px;display:flex;flex-direction:column;gap:10px;text-align:center}
+.iz-pad h2{margin:0;font:700 19px var(--display)}
+.iz-dots{display:flex;justify-content:center;gap:14px;padding:6px 0}
+.iz-dots i{width:15px;height:15px;border-radius:50%;border:2px solid var(--gold)}
+.iz-dots i.on{background:var(--gold)}
+.iz-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.iz-keys button{height:60px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:700 22px var(--font);cursor:pointer}
+.iz-keys button:active{background:rgba(232,176,75,.18)}
+
+.iz-toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px);opacity:0;background:#1d232c;color:var(--text);border:1px solid var(--line);padding:11px 16px;border-radius:12px;font-size:14px;transition:.2s;z-index:60;max-width:90vw;pointer-events:none}
+.iz-toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ═══ Davamiyyət ekranı (planşet / monitor) ═══ */
+body:has(.iz-kiosk) .iz{max-width:none;padding:0}
+.iz-kiosk{min-height:100dvh;display:flex;flex-direction:column;padding:16px 22px 22px;gap:14px}
+.iz-k-head{display:flex;align-items:center;gap:12px}
+.iz-k-head .iz-brand{flex:1}
+.iz-k-main{flex:1;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px}
+.iz-k-qr,.iz-k-list{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px}
+.iz-k-qr{align-items:center;text-align:center;justify-content:center}
+.iz-k-qr .iz-btn{max-width:360px}
+.iz-k-clock{display:flex;flex-direction:column;align-items:center}
+.iz-k-clock b{font:800 64px/1 var(--display);letter-spacing:-.02em}
+.iz-k-clock span{color:var(--text2);font-weight:600;font-size:17px}
+.iz-qrbox{background:#fff;padding:16px;border-radius:18px;line-height:0}
+.iz-qrbox img,.iz-qrbox canvas{display:block;width:260px;height:260px}
+.iz-bar{width:292px;height:5px;border-radius:3px;background:var(--card2);overflow:hidden}
+.iz-bar i{display:block;height:100%;width:100%;background:var(--gold-grad)}
+.iz-k-list h2{margin:0;font:700 20px var(--display);display:flex;align-items:center;gap:10px}
+.iz-k-list h2 span{min-width:34px;height:34px;padding:0 10px;border-radius:17px;background:var(--gold-grad);color:var(--on-gold);display:inline-grid;place-items:center;font-size:16px}
+.iz-k-list .iz-list{overflow:auto}
+.iz-flash{position:fixed;inset:0;background:rgba(6,8,11,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:70;text-align:center;padding:20px}
+.iz-flash h1{margin:0;font:800 34px var(--display)}
+.iz-flash p{margin:0;color:var(--text2);font-size:18px}
+@media (max-width:760px){
+  .iz-k-main{grid-template-columns:1fr}
+  .iz-kiosk{padding:12px 16px 20px}
+  .iz-k-clock b{font-size:48px}
+}
+
+/* Müvəqqəti çıxış */
+.iz-state.is-brk{background:rgba(240,179,74,.1);color:#ffe2b0}
+.iz-state.is-brk .iz-dot{background:var(--orange);box-shadow:0 0 0 4px rgba(240,179,74,.18)}
+.iz-btn--brk{background:rgba(240,179,74,.12);border-color:rgba(240,179,74,.5);color:#ffe2b0}
+.iz-radios{display:flex;flex-direction:column;gap:8px}
+.iz-radio{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--card2);cursor:pointer;text-align:left}
+.iz-radio:has(input:checked){border-color:var(--gold);background:rgba(232,176,75,.1)}
+.iz-radio input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--gold);flex-shrink:0}
+.iz-radio span{display:flex;flex-direction:column}
+.iz-radio small{color:var(--text3);font-size:12.5px}
+.iz-f--txt textarea{border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:500 16px var(--font);padding:12px;resize:vertical;text-align:left;letter-spacing:0}
+.iz-f--txt textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,176,75,.25)}
+.iz-list small.iz-brk{color:var(--orange);font-size:12px}
+.iz-k-sub{margin-top:8px!important}
+.iz-k-btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px}
+.iz-pad--wide{width:min(440px,100%);text-align:left}
+.iz-pad--wide h2,.iz-pad--wide>.iz-hint{text-align:center}
+.iz-qrbox--c{align-self:center}
+.iz-state.is-brk{align-items:flex-start;flex-wrap:nowrap}
+.iz-state.is-brk .iz-dot{margin-top:7px;flex-shrink:0}
+.iz-state.is-brk small{font-size:13px;opacity:.85}
+.iz-pick{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto}
+.iz-pick__i{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.iz-pick__i:hover{border-color:var(--gold)}
+.iz-pick__i small{color:var(--text3);font-size:12.5px}
