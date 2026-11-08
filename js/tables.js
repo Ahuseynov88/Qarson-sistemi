@@ -241,12 +241,14 @@ export class TableBoard {
     const orderedById = (order && order.waiterId) || t?.openedById || state.user?.id || null;
     const orderedByStaff = state.staff.find(s => s.id === orderedById);
     const orderedByName = orderedByStaff?.name || t?.openedByName || state.user?.name || '?';
+    // Masa başqa ofisianta ötürülübsə, satış ötürmə anına görə bölünür (yuza-table-reassign.js)
+    const waiterSplit = window.__yzSplitByWaiter ? window.__yzSplitByWaiter(order, orderedById, orderedByName) : null;
 
     const archiveData = {
       tableId, tableName: t?.name || '?',
       staffId: state.user?.id || null, staffName: state.user?.name || '?',
       openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
-      orderedById, orderedByName,
+      orderedById, orderedByName, waiterSplit,
       items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
       sessionId,
       sessionLog,
