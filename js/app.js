@@ -82,12 +82,21 @@ function doLogin() {
   }
 
   if (state.role === 'staff') {
-    R.staff.once('value', snap => {
+    R.staff.once('value', async snap => {
       const data = snap.val() || {};
       const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
       const s = list.find(x => x.pin === pin);
       if (!s) { showErr('PIN kod tapılmadı!'); return; }
       if (s.status === 'offline') { showErr('Hesabınız deaktivdir. Adminə müraciət edin.'); return; }
+      // Sistemə girişi olmayan işçi (aşpaz, qabyuyan, mühafizə...) və ya açılacaq bölməsi olmayan işçi girə bilməz.
+      // İşçi yalnız masalar ekranına (table.view) və ya anbar/kassa ekranına girir — Rəhbər panelinə YOX.
+      const _p = s.permissions || [];
+      if (s.systemAccess === false || !(_p.includes('table.view') || _p.some(k => /^(catalog|warehouse|purchase|supplier|stock|cash)\./.test(k)))) {
+        showErr('Sizin sistemə giriş icazəniz yoxdur'); return;
+      }
+      // Davamiyyət: ayarlarda açıqdırsa, QR ilə "İşə gəldim" etməyən işçi sistemə girə bilməz
+      const { attGate } = await import('./yuza-att-gate.js');
+      if (!(await attGate(s))) return;
 
       state.user = { ...s, role: 'staff', permissions: s.permissions || [] };
       R.staff.child(s.id).update({ status: 'online', lastLogin: Date.now() });
