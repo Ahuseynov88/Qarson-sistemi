@@ -5,6 +5,10 @@
      e-poçtu və parolu ilə daxil olur, sonra yadda saxlanılır. PIN ekranı
      əvvəlki kimi işləyir.
    • QR müştəri (?table=... və ya ?ref=...) — avtomatik "qonaq" (adsız) girişi.
+   • İşçinin davamiyyət telefonu (izle.html) — ayrıca "izle" girişi ilə adsız
+     daxil olur. Bu giriş restoran girişindən AYRIDIR: işçi eyni telefonda
+     qarson rejimində işləsə də, biri digərini silmir. Davamiyyət ekranı
+     (izle.html?ekran=1) isə restoran cihazıdır — restoran girişi tələb edir.
    firebase-service.js bu funksiyanı gözləyir, ona görə heç bir modul
    giriş olmadan bazaya müraciət etmir.
    Config-də apiKey yoxdursa (məs. hələ yenilənməmiş əsas sayt) — heç nə etmir.
@@ -14,6 +18,7 @@ const GUEST_MODE = (() => {
   const p = new URLSearchParams(location.search);
   return !!(p.get('table') || p.get('ref'));
 })();
+const ATT_PHONE = /\/izle(\.html)?\/?$/.test(location.pathname) && new URLSearchParams(location.search).get('ekran') !== '1';
 export const isGuestMode = () => GUEST_MODE;
 
 const ERR = {
@@ -133,6 +138,19 @@ function deviceCard(auth) {
 /* ── Əsas funksiya: firebase-service.js bunu gözləyir ── */
 export async function guardDevice(config) {
   if (!config?.apiKey || typeof firebase.auth !== 'function') return null;   // giriş qatı aktiv deyil
+  if (ATT_PHONE) {
+    // İşçi telefonu: ayrıca tətbiq nüsxəsi, öz adsız girişi (telefon → işçi bağlantısı bu girişə bağlıdır)
+    const app = firebase.apps.find(a => a.name === 'yzIzle') || firebase.initializeApp(config, 'yzIzle');
+    const a2 = app.auth();
+    a2.languageCode = 'az';
+    let u2 = await firstState(a2);
+    if (!u2) {
+      try { u2 = (await a2.signInAnonymously()).user; }
+      catch (e) { document.body.insertAdjacentHTML('beforeend', '<p style="color:#fff;padding:24px;text-align:center">İnternet bağlantısı yoxdur. Səhifəni yeniləyin.</p>'); throw e; }
+    }
+    window.__yzAttApp = app;
+    return u2;
+  }
   const auth = firebase.auth();
   auth.languageCode = 'az';
   let user = await firstState(auth);
