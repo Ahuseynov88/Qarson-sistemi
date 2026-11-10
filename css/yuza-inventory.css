@@ -217,7 +217,7 @@ body.dark-mode .yzi-card>h3{color:var(--gold)}
 .yzi-btn--left{margin-right:auto}
 
 /* Məhsul seçici */
-.yzi-pick{position:fixed;z-index:1300;max-height:340px;overflow:auto;background:var(--card);border:1px solid var(--gold);border-radius:12px;box-shadow:var(--shadow-lg);padding:4px}
+.yzi-pick{position:fixed;z-index:2460;max-height:340px;overflow:auto;background:var(--card);border:1px solid var(--gold);border-radius:12px;box-shadow:var(--shadow-lg);padding:4px}
 .yzi-pick__it{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:44px;padding:6px 10px;border:0;border-radius:8px;background:transparent;color:var(--text);font-family:var(--yzi-font);font-size:14px;cursor:pointer;text-align:left}
 .yzi-pick__it.is-on,.yzi-pick__it:hover{background:var(--yz-gold-tint)}
 .yzi-pick__meta{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text2);white-space:nowrap}
