@@ -787,7 +787,7 @@ export class ConfirmedOrder {
     const selKeys = Object.keys(selection).filter(k => fromOrderCheck?.items?.[k]);
     if (!selKeys.length) { this.closeItemTransferModal(); return; }
 
-    const movedList = [];
+    List = [];
     selKeys.forEach(itemKey => {
       const it = fromOrderCheck.items[itemKey];
       if (!it) return;

@@ -129,10 +129,9 @@ export function renderCustomerOrder(order) {
 
 export function showCustomerWaiterCard(waiterId) {
   if (!waiterId) return;
-   // Qonaq yalnız ofisiantın adını və şəklini oxuya bilər (PIN və s. yox)
-  Promise.all([R.staff.child(waiterId + '/name').once('value'), R.staff.child(waiterId + '/avatar').once('value')]).then(([nS, aS]) => {
-    const w = { name: nS.val(), avatar: aS.val() };
-    if (!w.name) return;
+  R.staff.child(waiterId).once('value', snap => {
+    const w = snap.val();
+    if (!w) return;
     const card = document.getElementById('custWaiterCard');
     const avatar = document.getElementById('custWaiterAvatar');
     const name = document.getElementById('custWaiterName');
@@ -140,9 +139,9 @@ export function showCustomerWaiterCard(waiterId) {
     const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(w.name||'?')}&background=2ecc71&color=fff&size=200`;
     avatar.src = w.avatar || fallback;
     avatar.onerror = () => { avatar.src = fallback; };
-        name.textContent = w.name || '—';
+    name.textContent = w.name || '—';
     card.style.display = 'flex';
-  }).catch(() => {});
+  });
 }
 
 export function openCustomerPanel(tableId, tableData) {

@@ -261,8 +261,9 @@ function hookPayment() {
 async function verifyPin(pin) {
   pin = String(pin || '').trim();
   if (!pin) return null;
-  let adminPin = ST.ADMIN_PIN;
-  if (adminPin == null) { try { adminPin = (await db.ref('settings/adminPin').once('value')).val(); } catch (e) { /* */ } }
+  const ownerMode = !!window.__yzOwner?.available?.();   // Rəhbər PIN-i yoxdur — Rəhbər parolu ilə təsdiqləyir
+  let adminPin = ownerMode ? null : ST.ADMIN_PIN;
+  if (adminPin == null && !ownerMode) { try { adminPin = (await db.ref('settings/adminPin').once('value')).val(); } catch (e) { /* */ } }
   if (adminPin != null && String(adminPin) === pin) return { id: 'admin', name: 'Rəhbər' };
   const s = (state.staff || []).find(x => String(x.pin) === pin && x.status !== 'offline' && (x.permissions || []).includes('table.min_approve'));
   return s ? { id: s.id, name: s.name } : null;
@@ -275,14 +276,22 @@ function approveMin(tid, { t, min, total }) {
       title: `${I('money')} Minimum hesab`,
       body: `<p class="yzi-p"><b>${esc(t?.name || '')}</b> masasında minimum hesab <b>${money(min)}</b>, cari hesab <b>${money(total)}</b>.<br>Çatmır: <b class="yzi-bad">${money(min - total)}</b></p>
         ${self ? '<p class="yzi-hint">Bu hesabla ödəniş qəbul etməyi təsdiqləyirsiniz?</p>'
-               : '<label class="yzi-f"><span>Rəhbərin və ya səlahiyyətli şəxsin PIN-i</span><input type="password" id="yzrvMinPin" inputmode="numeric" autocomplete="off"></label><p class="yzi-hint">Bu ödənişi yalnız Rəhbər və ya "minimum hesabı təsdiqləmək" icazəsi olan şəxs təsdiqləyə bilər.</p>'}
+               : '<label class="yzi-f"><span>' + (window.__yzOwner?.available?.() ? 'Səlahiyyətli şəxsin PIN-i' : 'Rəhbərin və ya səlahiyyətli şəxsin PIN-i') + '</span><input type="password" id="yzrvMinPin" inputmode="numeric" autocomplete="off"></label><p class="yzi-hint">Bu ödənişi yalnız Rəhbər və ya "minimum hesabı təsdiqləmək" icazəsi olan şəxs təsdiqləyə bilər.</p>'}
         <label class="yzi-f"><span>Səbəb (istəyə görə)</span><input type="text" id="yzrvMinWhy" maxlength="120" autocomplete="off"></label>
         <p class="yzrv-err" id="yzrvMinErr"></p>`,
       actions: [
         { label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' },
+        ...(!self && window.__yzOwner?.available?.() ? [{ label: `${I('key')} Rəhbər parolu ilə`, cls: 'yzi-btn--ghost', close: false, onClick: async (b, close) => {
+          if (!(await window.__yzOwner.verify({ title: 'Minimum hesab', text: 'Minimumdan aşağı ödənişi təsdiqləmək üçün Rəhbər parolunu yazın.' }))) return false;
+          b.querySelector('#yzrvMinPin').value = '';
+          b.dataset.rehber = '1';
+          b.closest('.yzi-modal')?.querySelector('.yzi-btn--gold')?.click();
+          return false;
+        } }] : []),
         { label: 'Təsdiqlə', cls: 'yzi-btn--gold', onClick: async (b) => {
           let by = me();
-          if (!self) {
+          if (!self && b.dataset.rehber === '1') by = { id: 'admin', name: 'Rəhbər' };
+          else if (!self) {
             by = await verifyPin(b.querySelector('#yzrvMinPin').value);
             if (!by) { b.querySelector('#yzrvMinErr').textContent = 'PIN səhvdir və ya bu şəxsin təsdiq icazəsi yoxdur.'; return false; }
           }
@@ -841,6 +850,8 @@ function refreshViews() {
     if (visible) render(h);
   });
 }
+/* Ayarlar mərkəzindən də açılır (Sistem → Ayarlar → Bölmələrin ayarları) */
+window.yzRsvSettings = () => openSettings();
 function openSettings() {
   modal({
     title: `${I('settings')} Rezerv ayarları`,
@@ -931,7 +942,7 @@ function openScreen() {
   if (!s) {
     s = document.createElement('div');
     s.id = 'yzrvScreen'; s.className = 'yzrv-screen';
-    s.innerHTML = `<div class="yzrv-screen__bar"><b>${I('clock')} Rezervasiyalar</b><button type="button" class="btn btn-ghost" data-close>${I('close')} Bağla</button></div><div class="yzrv-host"></div>`;
+    s.innerHTML = `<div class="yzrv-screen__bar"><b>${I('clock')} Rezervasiyalar</b><button type="button" class="btn btn-ghost yz-icon-only" data-close aria-label="Bağla" title="Bağla">${I('close')}</button></div><div class="yzrv-host"></div>`;
     s.querySelector('[data-close]').addEventListener('click', () => s.classList.remove('is-open'));
     document.body.appendChild(s);
   }

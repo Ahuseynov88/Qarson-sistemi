@@ -312,7 +312,9 @@ function renderSetup(el, host) {
   });
 }
 
-/* ── Parametrlər: hesablar, xəritə, kateqoriyalar ── */
+/* ── Parametrlər: hesablar, xəritə, kateqoriyalar ──
+   Ayarlar mərkəzindən də açılır (Sistem → Ayarlar → Bölmələrin ayarları) */
+window.yzCashSettings = () => openSettings();
 function openSettings() {
   watchCfg();
   const accs = accountList(true);

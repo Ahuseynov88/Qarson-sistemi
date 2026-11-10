@@ -22,12 +22,29 @@ import { raciaStart, raciaStop } from './racia.js';
 let ADMIN_PIN = null;
 let staffApp = null;
 
+/* Rəhbər hesabı (e-poçt + parol) aktivdirsə Rəhbər PIN-i işlənmir — yuza-owner.js */
+const ownerMode = () => window.__yzOwner ? !!window.__yzOwner.available()
+  : (typeof firebase !== 'undefined' && typeof firebase.auth === 'function' && !!firebase.app().options.apiKey);
+/* Rəhbər paneli açıqdır: Rəhbər və ya paneldə işləyən səlahiyyətli işçi */
+const panelOn = () => state.user?.role === 'admin'
+  || (state.user?.role === 'staff' && !!document.getElementById('adminScreen')?.classList.contains('active'));
+window.__yzPanelOn = panelOn;
+
+/* Rəhbər öz hesabı ilə daxil oldu (yuza-owner.js çağırır) */
+function enterAdmin(owner) {
+  state.user = { role: 'admin', name: 'Rəhbər', id: 'admin', ownerUid: owner?.uid || null, email: owner?.email || '' };
+  addLog('login', 'Rəhbər sistemə daxil oldu', { type: 'admin', email: owner?.email || '' });
+  initListeners();
+  showScreen('adminScreen');
+}
+
 /* ── Giriş / Çıxış ── */
 
 function doLogin() {
   const pin = state.pinBuffer;
   clearPin();
 
+  if (state.role === 'admin' && ownerMode()) { showErr('Rəhbər e-poçt və parolu ilə daxil olur'); return; }
   if (state.role === 'admin') {
     if (ADMIN_PIN === null) { showErr('Sistem hazırlanır, bir saniyə gözləyin...'); return; }
     if (String(pin) === String(ADMIN_PIN)) {
@@ -91,7 +108,8 @@ function doLogin() {
       // Sistemə girişi olmayan işçi (aşpaz, qabyuyan, mühafizə...) və ya açılacaq bölməsi olmayan işçi girə bilməz.
       // İşçi yalnız masalar ekranına (table.view) və ya anbar/kassa ekranına girir — Rəhbər panelinə YOX.
       const _p = s.permissions || [];
-      if (s.systemAccess === false || !(_p.includes('table.view') || _p.some(k => /^(catalog|warehouse|purchase|supplier|stock|cash)\./.test(k)))) {
+      const _panel = !!window.__yzAccess?.hasPanel({ ...s, role: 'staff', permissions: _p });
+      if (s.systemAccess === false || !(_p.includes('table.view') || _panel)) {
         showErr('Sizin sistemə giriş icazəniz yoxdur'); return;
       }
       // Davamiyyət: ayarlarda açıqdırsa, QR ilə "İşə gəldim" etməyən işçi sistemə girə bilməz
@@ -111,7 +129,9 @@ function doLogin() {
         if (roleBadge) roleBadge.textContent = esc(s.position || '');
         lockScreen();
       } else {
+        // Masa icazəsi yoxdur → Rəhbər paneli görünüşündə yalnız icazəli bölmələr
         showScreen('adminScreen');
+        window.__yzAccess?.openFirst?.();
         showToast('<svg class="icon"><use href="#i-check"></use></svg> Xoş gəldiniz, ' + s.name);
       }
 
@@ -150,7 +170,8 @@ function logout() {
     unlockScreen();
     closeWaiterChat();
   } else if (state.user?.role === 'admin') {
-    addLog('logout', 'Admin sistemdən çıxdı', { type: 'admin' });
+    addLog('logout', 'Rəhbər sistemdən çıxdı', { type: 'admin' });
+    if (state.user.ownerUid) window.__yzOwner?.signOut?.();
   } else if (state.user?.role === 'kitchen') {
     addLog('logout', 'Mətbəx sistemdən çıxdı', { type: 'kitchen' });
   }
@@ -182,7 +203,14 @@ function unlockScreen() {
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 }
 
-function showExitModal() { document.getElementById('exitModal').classList.add('open'); }
+function showExitModal() {
+  if (ownerMode()) {
+    window.__yzOwner.verify({ title: 'Kioskdan çıxış', text: 'Kiosk rejimindən çıxmaq üçün Rəhbər parolunu yazın.', okLabel: 'Çıx' })
+      .then(ok => { if (ok) logout(); });
+    return;
+  }
+  document.getElementById('exitModal').classList.add('open');
+}
 function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value = ''; }
 function confirmExit() {
   const pin = document.getElementById('exitPin').value;
@@ -211,13 +239,13 @@ function initListeners() {
   });
   db.ref('settings/serviceCharge').on('value', snap => {
     state.serviceCharge = snap.val() || { enabled: false, percent: 0 };
-    if (state.user?.role === 'admin') onDataChange();
+    if (panelOn()) onDataChange();
   });
 
   R.staff.on('value', snap => {
     state.staff = toArr(snap.val());
     onDataChange();
-    if (state.user?.role === 'admin') renderAdmin();
+    if (panelOn()) renderAdmin();
     if (state.user?.role === 'staff') {
       const me = state.staff.find(w => w.id === state.user.id);
       if (me && me.status === 'offline') {
@@ -229,18 +257,18 @@ function initListeners() {
   });
 
   R.tables.on('value', snap => { state.tables = toArr(snap.val()); onDataChange(); });
-  R.menuItems.on('value', snap => { state.menuItems = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
-  R.customers.on('value', snap => { state.customers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
+  R.menuItems.on('value', snap => { state.menuItems = toArr(snap.val()); if (panelOn()) onDataChange(); });
+  R.customers.on('value', snap => { state.customers = toArr(snap.val()); if (panelOn()) onDataChange(); });
   R.paymentMethods.on('value', snap => { state.paymentMethods = toArr(snap.val()); onDataChange(); });
-  R.closedOrders.limitToLast(200).on('value', snap => { state.closedOrders = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
-  R.loyaltyCustomers.on('value', snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
-  R.suppliers.on('value', snap => { state.suppliers = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
-  R.purchases.on('value', snap => { state.purchases = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
-  R.banquetHalls.on('value', snap => { state.banquetHalls = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
-  R.banquetEventTypes.on('value', snap => { state.banquetEventTypes = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
-  R.banquetEvents.on('value', snap => { state.banquetEvents = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
-  R.payments.limitToLast(500).on('value', snap => { state.payments = toArr(snap.val()); if (state.user?.role === 'admin') onDataChange(); });
-  R.customerCharges.on('value', snap => { state.customerCharges = toArr(snap.val()).reverse(); if (state.user?.role === 'admin') onDataChange(); });
+  R.closedOrders.limitToLast(200).on('value', snap => { state.closedOrders = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
+  R.loyaltyCustomers.on('value', snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
+  R.suppliers.on('value', snap => { state.suppliers = toArr(snap.val()); if (panelOn()) onDataChange(); });
+  R.purchases.on('value', snap => { state.purchases = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
+  R.banquetHalls.on('value', snap => { state.banquetHalls = toArr(snap.val()); if (panelOn()) onDataChange(); });
+  R.banquetEventTypes.on('value', snap => { state.banquetEventTypes = toArr(snap.val()); if (panelOn()) onDataChange(); });
+  R.banquetEvents.on('value', snap => { state.banquetEvents = toArr(snap.val()); if (panelOn()) onDataChange(); });
+  R.payments.limitToLast(500).on('value', snap => { state.payments = toArr(snap.val()); if (panelOn()) onDataChange(); });
+  R.customerCharges.on('value', snap => { state.customerCharges = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
   R.tableOrders.on('value', snap => { state.tableOrders = snap.val() || {}; onDataChange(); });
   R.orders.on('value', snap => {
     state.orders = toArr(snap.val());
@@ -249,7 +277,7 @@ function initListeners() {
   });
      R.kitchenStations.on('value', snap => {
     state.kitchenStations = toArr(snap.val());
-    if (state.user?.role === 'admin') renderAdmin();
+    if (panelOn()) renderAdmin();
   });
      R.kitchenOrders.limitToLast(50).on('value', snap => {
     state.kitchenOrders = toArr(snap.val());
@@ -258,7 +286,7 @@ function initListeners() {
   });
      R.notifSounds.on('value', snap => {
     state.notifSounds = toArr(snap.val());
-    if (state.user?.role === 'admin') renderAdmin();
+    if (panelOn()) renderAdmin();
   });
   db.ref('settings/notifSoundMap').on('value', snap => {
     state.notifSoundMap = snap.val() || {};
@@ -272,11 +300,11 @@ function initListeners() {
   });
   R.printers.on('value', snap => {
     state.printers = toArr(snap.val());
-    if (state.user?.role === 'admin' && state.adminSection === 'printers') renderPrinters();
+    if (panelOn() && state.adminSection === 'printers') renderPrinters();
   });
   R.logs.limitToLast(300).on('value', snap => {
     state.logs = toArr(snap.val()).reverse();
-    if (state.user?.role === 'admin') renderLogs();
+    if (panelOn()) renderLogs();
   });
 
   initCustomerRequestListener();
@@ -294,7 +322,7 @@ function removeListeners() {
 
 function onDataChange() {
   const r = state.user?.role;
-  if (r === 'admin') renderAdmin();
+  if (panelOn()) renderAdmin();
   if (r === 'kitchen') renderKitchen();
   if (r === 'staff' && staffApp) staffApp.render();
 }
@@ -306,6 +334,7 @@ function seedDemoData() {
   // Rəhbər PIN-i yoxdursa, standart "0000" yox, ekranda PIN yaratmaq pəncərəsi açılır.
   db.ref('settings/adminPin').once('value', snap => {
     if (snap.val()) { ADMIN_PIN = snap.val(); setAdminPin(snap.val()); return; }
+    if (ownerMode()) return;   // Rəhbər e-poçt + parolla girir — PIN lazım deyil
     import('./yuza-firstrun.js').then(m => m.askFirstAdminPin()).then(pin => { ADMIN_PIN = pin; setAdminPin(pin); });
   });
 }
@@ -369,6 +398,7 @@ function bootstrap() {
   // Mövcud statik HTML `onclick="..."` atributları ilə işlədiyi üçün
   // bu funksiyalar qlobal əlçatan olmalıdır.
   window.doLogin = doLogin;
+  window.__yzEnterAdmin = enterAdmin;
   window.logout = logout;
   window.confirmLogoutSelf = confirmLogoutSelf;
   window.setRole = setRole;

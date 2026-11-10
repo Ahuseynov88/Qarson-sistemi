@@ -5,33 +5,12 @@
    yüklənir), ona görə qlobal `firebase` obyektindən istifadə edirik və
    nəticəni digər modulların import edə biləcəyi kimi ixrac edirik.
 ═══════════════════════════════════════════ */
-// Test saytı (.pages.dev) TEST bazasına, əsl sayt əsl bazaya qoşulur
 
-const IS_TEST = location.hostname.startsWith('test-yuzapos') || location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
-const firebaseConfig = IS_TEST ? {
-  apiKey: "AIzaSyDICGSJrT-ZEwRALnn7rp3Jv_NPouIF4sA",
-  authDomain: "test-yuzapos.firebaseapp.com",
-  databaseURL: "https://test-yuzapos-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "test-yuzapos",
-  storageBucket: "test-yuzapos.firebasestorage.app",
-  messagingSenderId: "896410036346",
-  appId: "1:896410036346:web:095cec7fbc799f13d5b3c3"
-} : {
+const firebaseConfig = {
   databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
 };
-if (IS_TEST) {
-  document.title = 'TEST · ' + document.title;
-  window.addEventListener('DOMContentLoaded', () => {
-    const b = document.createElement('div');
-    b.textContent = 'TEST SAYTI — test bazası';
-    b.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#b3261e;color:#fff;font:700 11px sans-serif;padding:3px 12px;border-radius:0 0 8px 8px;pointer-events:none';
-    document.body.appendChild(b);
-  });
-}
+
 firebase.initializeApp(firebaseConfig);
-// Cihaz gözətçisi: giriş olmadan heç bir modul bazaya müraciət etmir (yuza-guard.js)
-import { guardDevice } from './yuza-guard.js';
-await guardDevice(firebaseConfig);
 
 export const db = firebase.database();
 export const R = {

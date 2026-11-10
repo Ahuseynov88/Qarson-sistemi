@@ -103,7 +103,7 @@ export class TableBoard {
   }
 
   render() {
-        if (!state.user || (state.user.role !== 'staff' && state.user.role !== 'admin')) return;
+    if (!state.user || state.user.role !== 'staff') return;
     this.renderCatTabs();
     this.renderStaffFilter();
 
@@ -127,7 +127,7 @@ export class TableBoard {
     this.el.innerHTML = filtered.map(t => {
       const isMine = t.occupant === state.user.id;
       const isOther = t.occupant && !isMine;
-       const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: t.occupant === 'admin' ? 'Patron' : '?' }) : null;
+      const otherW = isOther ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }) : null;
       const tableOrder = state.tableOrders[t.id];
       let cls = '', statusText = 'Boş masa';
       if (isMine) { cls = 'mine'; statusText = 'Sizin masanız'; }
@@ -241,14 +241,12 @@ export class TableBoard {
     const orderedById = (order && order.waiterId) || t?.openedById || state.user?.id || null;
     const orderedByStaff = state.staff.find(s => s.id === orderedById);
     const orderedByName = orderedByStaff?.name || t?.openedByName || state.user?.name || '?';
-    // Masa başqa ofisianta ötürülübsə, satış ötürmə anına görə bölünür (yuza-table-reassign.js)
-    const waiterSplit = window.__yzSplitByWaiter ? window.__yzSplitByWaiter(order, orderedById, orderedByName) : null;
 
     const archiveData = {
       tableId, tableName: t?.name || '?',
       staffId: state.user?.id || null, staffName: state.user?.name || '?',
       openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
-      orderedById, orderedByName, waiterSplit,
+      orderedById, orderedByName,
       items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
       sessionId,
       sessionLog,

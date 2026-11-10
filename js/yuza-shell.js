@@ -60,14 +60,15 @@ const MENU = [
     { s: 'loyaltyCustomers', l: 'Loyallıq üzvləri', i: 'star' },
     { s: 'paymentMethods', l: 'Ödəniş növləri', i: 'card' },
     { s: 'banquetHalls', l: 'Banket zalları', i: 'chair' },
-    { s: 'banquetEventTypes', l: 'Tədbir növləri', i: 'tag' }
+    { s: 'banquetEventTypes', l: 'Tədbir növləri', i: 'tag' },
+    { s: 'printers', l: 'Printerlər', i: 'printer' }
   ] },
   { g: 'sys', label: 'Sistem', icon: 'settings', items: [
-    { s: 'settings', l: 'Ümumi ayarlar', i: 'settings' },
-    { s: 'inv-settings', l: 'Anbar parametrləri', i: 'box' },
-    { s: 'printers', l: 'Printerlər', i: 'printer' },
-    { s: 'notifSounds', l: 'Bildiriş səsləri', i: 'bell' },
-    { s: 'dangerZone', l: 'Təhlükəli əməliyyatlar', i: 'warning', danger: 1 }
+    { s: 'settings', l: 'Ayarlar', i: 'settings' },
+    { s: 'dangerZone', l: 'Məlumatların silinməsi', i: 'trash', danger: 1 },
+    // Ayarlar bölməsinin içindən açılır (menyuda görünmür)
+    { s: 'inv-settings', l: 'Anbar ayarları', i: 'box', hide: 1 },
+    { s: 'notifSounds', l: 'Bildiriş səsləri', i: 'bell', hide: 1 }
   ] }
 ];
 const NEW_MENU = [
@@ -97,7 +98,7 @@ const NEW_MENU = [
   { k: 'inv:count', l: 'Sayım', i: 'clipboard', v2: 1 },
   { k: 'inv:production', l: 'Hazırlama aktı', i: 'chef', v2: 1 }
 ];
-const modeCls = (o) => o.v2 ? ' yz-only-v2' : o.legacy ? ' yz-only-legacy' : '';
+const modeCls = (o) => (o.v2 ? ' yz-only-v2' : o.legacy ? ' yz-only-legacy' : '') + (o.hide ? ' yz-tab-hidden' : '');
 const allItems = () => MENU.flatMap(g => g.items.filter(x => x.s));
 
 /* ── Sol menyu ── */
@@ -198,7 +199,7 @@ function ensureBell() {
   right.insertBefore(b, $('themeToggleBtn') || right.firstChild);
 }
 function updateBadges() {
-  const n = state.user?.role === 'admin' ? myPendingN() : 0;
+  const n = state.user ? myPendingN() : 0;
   const set = (el) => { if (!el) return; el.hidden = !n; el.textContent = n > 99 ? '99+' : String(n); };
   document.querySelectorAll('[data-badge="approvals"], [data-badge-group="acc"]').forEach(set);
   set(document.querySelector('#yzBell .yz-bell__n'));
@@ -234,8 +235,8 @@ function ensureZalBack() {
   const head = document.querySelector('#waiterScreen .waiter-header');
   if (!head || $('yzZalBack')) return;
   const b = document.createElement('button');
-  b.id = 'yzZalBack'; b.type = 'button'; b.className = 'btn btn-ghost yz-zal-back';
-  b.innerHTML = '← Panelə qayıt';
+  b.id = 'yzZalBack'; b.type = 'button'; b.className = 'btn btn-ghost yz-zal-back yz-icon-only';
+  b.innerHTML = `${I('back')}`; b.setAttribute('aria-label', 'Rəhbər panelinə qayıt'); b.title = 'Rəhbər panelinə qayıt';
   b.addEventListener('click', exitZal);
   head.insertBefore(b, $('themeToggleBtnWaiter') || null);
 }
@@ -252,20 +253,22 @@ function openStaffInv() { startInv(); showScreen('invScreen'); mount(staffHost()
 function syncStaffBack() {
   const b = $('yzInvStaffBack'); if (!b) return;
   const noFloor = state.user?.role === 'staff' && !(state.user.permissions || []).includes('table.view');
-  b.innerHTML = noFloor ? `${I('lock')} Çıxış` : `${I('close')} Geri`;
+  b.innerHTML = noFloor ? I('logout') : I('back');
+  b.setAttribute('aria-label', noFloor ? 'Çıxış' : 'Geri'); b.title = noFloor ? 'Çıxış' : 'Geri';
   b.dataset.mode = noFloor ? 'logout' : 'back';
 }
+/* Masalar ekranında işləyən, amma Rəhbər panelində də bölməsi olan işçi → "Panel" düyməsi */
 function ensureStaffButton() {
   const head = document.querySelector('#waiterScreen .waiter-header');
   if (!head) return;
   let b = $('yzInvStaffBtn');
-  const show = state.user?.role === 'staff' && hasAnyInvPerm();
+  const show = state.user?.role === 'staff' && !!window.__yzAccess?.hasPanel(state.user);
   if (!show) { b?.remove(); return; }
   if (b) return;
   b = document.createElement('button');
-  b.id = 'yzInvStaffBtn'; b.type = 'button'; b.className = 'btn btn-ghost yzi-staff-btn';
-  b.innerHTML = `${I('box')} Anbar`;
-  b.addEventListener('click', openStaffInv);
+  b.id = 'yzInvStaffBtn'; b.type = 'button'; b.className = 'btn btn-ghost yzi-staff-btn yz-icon-only';
+  b.innerHTML = I('admin'); b.setAttribute('aria-label', 'Panel'); b.title = 'Panel (icazəli bölmələr)';
+  b.addEventListener('click', () => { showScreen('adminScreen'); window.__yzAccess?.openFirst(); });
   head.insertBefore(b, $('themeToggleBtnWaiter') || null);
 }
 
@@ -281,8 +284,7 @@ function tick() {
     if (adminOn && !lastAdminOn) { watchDocs(); ensureBell(); updateBadges(); }
   }
   lastAdminOn = !!adminOn;
-  /* Masa icazəsi olmayan işçi (mühasib, anbardar) admin ekranına düşürsə → öz anbar ekranına */
-  if (u?.role === 'staff' && adminOn && hasAnyInvPerm()) openStaffInv();
+  /* İşçi artıq ayrıca "Anbar" ekranına keçirilmir — Rəhbər paneli görünüşündə icazəli bölmələri görür (yuza-access.js) */
   ensureStaffButton();
 }
 function measureTopbar() {

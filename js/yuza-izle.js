@@ -31,6 +31,8 @@ const ICON = {
   phone: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   cam: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+  back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h4M15 16l4-4-4-4M19 12H9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   qr: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
 };
 const brand = `<div class="iz-brand"><span class="iz-logo">Y</span><span>YuZa <b>POS</b></span><small>Davamiyyət</small></div>`;
@@ -259,7 +261,7 @@ function renderBreakForm() {
         <textarea id="izNote" rows="2" maxlength="200" placeholder="məs. bazara ərzaq almağa">${esc(brkDraft.note)}</textarea></label>
       <p id="izBrkErr" class="iz-err" role="alert"></p>
       <button id="izBrkGo" class="iz-btn iz-btn--gold iz-btn--big" type="button">Çıxışı qeyd et</button>
-      <button id="izBrkX" class="iz-btn iz-btn--ghost" type="button">Geri</button>
+      <button id="izBrkX" class="iz-btn iz-btn--ghost iz-btn--icon" type="button" aria-label="Geri" title="Geri">${ICON.back}</button>
     </section>`);
   $('izBrkX').onclick = () => renderHome();
   $('izBrkGo').onclick = () => {
@@ -362,7 +364,7 @@ function renderDone(r) {
       <p class="iz-p">${fmtDate(now())} · ${esc(me.name)}</p>
       ${r.kind === 'break' ? '<p class="iz-hint iz-c">Qayıdanda ekrandakı QR-ı oxudub <b>“Qayıtdım”</b> basmağı unutmayın.</p>' : ''}
       <span class="iz-chip iz-chip--${t.cls}">${t.label} qeyd</span>
-      <button id="izOk" class="iz-btn iz-btn--ghost" type="button">Bağla</button>
+      <button id="izOk" class="iz-btn iz-btn--ghost iz-btn--icon" type="button" aria-label="Bağla" title="Bağla">${ICON.x}</button>
     </section>`);
   if (navigator.vibrate) navigator.vibrate(60);
   const back = () => renderHome();
@@ -375,7 +377,7 @@ function renderFail(msg) {
       <div class="iz-ico iz-ico--bad">${ICON.x}</div>
       <h1>Qeyd alınmadı</h1>
       <p class="iz-p">${esc(msg)}</p>
-      <button id="izAgain" class="iz-btn iz-btn--gold" type="button">Geri</button>
+      <button id="izAgain" class="iz-btn iz-btn--gold iz-btn--icon" type="button" aria-label="Geri" title="Geri">${ICON.back}</button>
     </section>`);
   if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
   $('izAgain').onclick = () => renderHome();
@@ -411,13 +413,20 @@ const KIOSK_KEY = 'yzAttKiosk';
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { /* */ } }
 async function adminPin() { return String((await db.ref('settings/adminPin').once('value')).val() || ''); }
+/* Rəhbər hesabı (e-poçt + parol) aktivdirsə Rəhbər PIN-i burada da işləmir — Rəhbər parolu soruşulur */
+const ownerOn = () => { try { return typeof firebase.auth === 'function' && !!firebase.app().options.apiKey; } catch (e) { return false; } };
+async function rehberVerify(text) {
+  try { const O = await import('./yuza-owner.js'); return await O.ownerVerify({ title: 'Rəhbər təsdiqi', text }); }
+  catch (e) { return false; }
+}
+const isAdminPin = async (v) => !ownerOn() && v === await adminPin();
 async function staffList() {
   const snap = await db.ref('staff').once('value');
   const o = snap.val() || {};
   return Object.keys(o).map(id => ({ id, ...o[id] })).filter(x => x && x.name);
 }
 
-function pinPad({ title, sub = '', onDone }) {
+function pinPad({ title, sub = '', onDone, extra = null }) {
   const wrap = document.createElement('div');
   wrap.className = 'iz-pad-bg';
   wrap.innerHTML = `<div class="iz-pad" role="dialog" aria-modal="true" aria-label="${esc(title)}">
@@ -425,7 +434,8 @@ function pinPad({ title, sub = '', onDone }) {
     <div class="iz-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <p class="iz-err" role="alert"></p>
     <div class="iz-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '⌫'].map(k => `<button type="button" data-k="${k}">${k}</button>`).join('')}</div>
-    <button type="button" class="iz-btn iz-btn--ghost" data-x>Bağla</button></div>`;
+    ${extra ? `<button type="button" class="iz-btn iz-btn--ghost" data-extra>${esc(extra.label)}</button>` : ''}
+    <button type="button" class="iz-btn iz-btn--ghost iz-btn--icon" data-x aria-label="Bağla" title="Bağla">${ICON.x}</button></div>`;
   document.body.appendChild(wrap);
   let buf = '', fails = 0, lockUntil = 0;
   const dots = () => wrap.querySelectorAll('.iz-dots i').forEach((d, i) => d.classList.toggle('on', i < buf.length));
@@ -448,7 +458,11 @@ function pinPad({ title, sub = '', onDone }) {
   };
   const kb = (e) => { if (/^\d$/.test(e.key)) press(e.key); else if (e.key === 'Backspace') press('⌫'); else if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', kb);
-  wrap.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k); if (e.target.closest('[data-x]')) close(); });
+  wrap.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k);
+    if (e.target.closest('[data-x]')) close();
+    if (e.target.closest('[data-extra]') && extra) extra.onClick(close);
+  });
   return { close };
 }
 
@@ -456,8 +470,12 @@ async function startKiosk() {
   await settingsReady;
   if (lsGet(KIOSK_KEY) !== '1') {
     setView(`${brand}<section class="iz-card"><div class="iz-ico iz-ico--gold">${ICON.clock}</div>
-      <h1>Davamiyyət ekranı</h1><p class="iz-p">Bu cihazı restoranın davamiyyət ekranı etmək üçün <b>Rəhbər PIN</b>-i lazımdır.</p>
-      <button id="izKAuth" class="iz-btn iz-btn--gold" type="button">Rəhbər PIN-i daxil et</button></section>`);
+      <h1>Davamiyyət ekranı</h1><p class="iz-p">Bu cihazı restoranın davamiyyət ekranı etmək üçün <b>${ownerOn() ? 'Rəhbər parolu' : 'Rəhbər PIN'}</b>-i lazımdır.</p>
+      <button id="izKAuth" class="iz-btn iz-btn--gold" type="button">${ownerOn() ? 'Rəhbər parolunu daxil et' : 'Rəhbər PIN-i daxil et'}</button></section>`);
+    if (ownerOn()) {
+      $('izKAuth').onclick = async () => { if (await rehberVerify('Bu cihazı davamiyyət ekranı etmək üçün Rəhbər parolunu yazın.')) { lsSet(KIOSK_KEY, '1'); startKiosk(); } };
+      return;
+    }
     $('izKAuth').onclick = () => pinPad({ title: 'Rəhbər PIN', onDone: async (v, close) => {
       if (v !== await adminPin()) return 'PIN səhvdir';
       lsSet(KIOSK_KEY, '1'); close(); startKiosk(); return true;
@@ -475,7 +493,7 @@ async function renderKiosk() {
   try { kStaff = await staffList(); } catch (e) { kStaff = []; }
   const dyn = S.qrMode === 'dynamic';
   setView(`<div class="iz-kiosk">
-    <header class="iz-k-head">${brand}<button id="izKExit" class="iz-btn iz-btn--ghost iz-btn--sm" type="button">Ekrandan çıx</button></header>
+    <header class="iz-k-head">${brand}<button id="izKExit" class="iz-btn iz-btn--ghost iz-btn--sm iz-btn--icon" type="button" aria-label="Ekrandan çıx" title="Ekrandan çıx">${ICON.logout}</button></header>
     <div class="iz-k-main">
       <section class="iz-k-qr">
         <div class="iz-k-clock"><b id="izKClock">${fmtTime(now())}</b><span id="izKDate">${fmtDate(now())}</span></div>
@@ -488,7 +506,9 @@ async function renderKiosk() {
       <section class="iz-k-list"><h2>İndi işdə <span id="izKCount">0</span></h2><ul id="izKWho" class="iz-list"></ul>
         <h2 class="iz-k-sub">Müvəqqəti çıxışda <span id="izKBCount">0</span></h2><ul id="izKBrk" class="iz-list"></ul></section>
     </div></div>`);
-  $('izKExit').onclick = () => pinPad({ title: 'Rəhbər PIN', sub: 'Ekran rejimindən çıxmaq üçün', onDone: async (v, close) => {
+  const leaveKiosk = () => { lsSet(KIOSK_KEY, null); clearInterval(qrTimer); clearInterval(kTick); location.href = BASE + 'index.html'; };
+  if (ownerOn()) $('izKExit').onclick = async () => { if (await rehberVerify('Ekran rejimindən çıxmaq üçün Rəhbər parolunu yazın.')) leaveKiosk(); };
+  else $('izKExit').onclick = () => pinPad({ title: 'Rəhbər PIN', sub: 'Ekran rejimindən çıxmaq üçün', onDone: async (v, close) => {
     if (v !== await adminPin()) return 'PIN səhvdir';
     lsSet(KIOSK_KEY, null); close(); clearInterval(qrTimer); clearInterval(kTick); location.href = BASE + 'index.html'; return true;
   } });
@@ -540,9 +560,11 @@ function renderWho() {
 /* ═══ Telefon aktivləşdirmə: yalnız Rəhbər və ya "İşçi telefonunu aktivləşdirmək" icazəsi olan şəxs ═══
    Telefonsuz (PIN ilə) davamiyyət qeydi YOXDUR: PIN-i bilən başqası işçinin əvəzinə qeyd edə bilərdi. */
 function kioskActivate() {
-  pinPad({ title: 'Telefon aktivləşdir', sub: 'Rəhbərin və ya səlahiyyətli şəxsin öz PIN-i', onDone: async (v, close) => {
+  pinPad({ title: 'Telefon aktivləşdir', sub: ownerOn() ? 'Səlahiyyətli şəxsin öz PIN-i' : 'Rəhbərin və ya səlahiyyətli şəxsin öz PIN-i',
+    extra: ownerOn() ? { label: 'Rəhbər parolu ilə', onClick: async (close) => { close(); if (await rehberVerify('Telefonu aktivləşdirmək üçün Rəhbər parolunu yazın.')) pickWorker({ id: 'admin', name: 'Rəhbər' }); } } : null,
+    onDone: async (v, close) => {
     let actor = null;
-    if (v === await adminPin()) actor = { id: 'admin', name: 'Rəhbər' };
+    if (await isAdminPin(v)) actor = { id: 'admin', name: 'Rəhbər' };
     else {
       const s = kStaff.find(x => String(x.pin) === v && x.status !== 'offline');
       if (s && (s.permissions || []).includes('att.bind')) actor = { id: s.id, name: s.name };
@@ -556,15 +578,23 @@ function kioskActivate() {
 /* ═══ Smartfonu olmayan işçi: yalnız Rəhbər və ya "att.manual" icazəli şəxs, ÖZ PIN-i ilə, səbəb yazaraq.
    Yalnız işçi kartında "Smartfonu yoxdur" işarələnmiş işçilər üçün. Qeyd "Səlahiyyətli şəxs — Ad" kimi düşür. */
 function kioskProxy() {
-  pinPad({ title: 'Telefonsuz işçi qeydi', sub: 'Rəhbərin və ya səlahiyyətli şəxsin öz PIN-i', onDone: async (v, close) => {
+  pinPad({ title: 'Telefonsuz işçi qeydi', sub: ownerOn() ? 'Səlahiyyətli şəxsin öz PIN-i' : 'Rəhbərin və ya səlahiyyətli şəxsin öz PIN-i',
+    extra: ownerOn() ? { label: 'Rəhbər parolu ilə', onClick: async (close) => { close(); if (await rehberVerify('Telefonsuz işçinin qeydi üçün Rəhbər parolunu yazın.')) proxyPick({ id: 'admin', name: 'Rəhbər' }); } } : null,
+    onDone: async (v, close) => {
     let actor = null;
-    if (v === await adminPin()) actor = { id: 'admin', name: 'Rəhbər' };
+    if (await isAdminPin(v)) actor = { id: 'admin', name: 'Rəhbər' };
     else {
       const s = kStaff.find(x => String(x.pin) === v && x.status !== 'offline');
       if (s && (s.permissions || []).includes('att.manual')) actor = { id: s.id, name: s.name };
     }
     if (!actor) return 'PIN səhvdir və ya bu şəxsin icazəsi yoxdur';
     close();
+    proxyPick(actor);
+    return true;
+  } });
+}
+/* Telefonsuz işçinin seçimi (PIN və ya Rəhbər parolu ilə təsdiqdən sonra) */
+function proxyPick(actor) {
     const list = kStaff.filter(x => x.attNoPhone && x.status !== 'offline').sort((a, b) => String(a.name).localeCompare(String(b.name), 'az'));
     const box = document.createElement('div');
     box.className = 'iz-pad-bg';
@@ -572,7 +602,7 @@ function kioskProxy() {
       <h2>Kimi qeyd edirsiniz?</h2><p class="iz-hint">Qeyd edən: <b>${esc(actor.name)}</b>. Siyahıda yalnız “Smartfonu yoxdur” işarələnmiş işçilər var.</p>
       <div class="iz-pick">${list.map(x => { const ph = phaseOf(kStatus[x.id], S); return `<button type="button" class="iz-pick__i" data-sid="${esc(x.id)}">
         <b>${esc(x.name)}</b><small>${esc(x.position || '')} · ${ph === 'in' ? 'işdədir' : ph === 'break' ? 'müvəqqəti çıxışdadır' : 'işdə deyil'}</small></button>`; }).join('') || '<p class="iz-hint">Belə işçi yoxdur. Rəhbər işçi kartında “Smartfonu yoxdur” seçimini işarələməlidir.</p>'}</div>
-      <button type="button" class="iz-btn iz-btn--ghost" data-x>Bağla</button></div>`;
+      <button type="button" class="iz-btn iz-btn--ghost iz-btn--icon" data-x aria-label="Bağla" title="Bağla">${ICON.x}</button></div>`;
     document.body.appendChild(box);
     const t = setTimeout(() => box.remove(), 120000);
     box.addEventListener('click', (e) => {
@@ -581,8 +611,6 @@ function kioskProxy() {
       clearTimeout(t); box.remove();
       proxyActions(kStaff.find(x => x.id === b.dataset.sid), actor);
     });
-    return true;
-  } });
 }
 async function proxyActions(s, actor) {
   if (!s) return;
@@ -601,7 +629,7 @@ async function proxyActions(s, actor) {
       <button type="button" class="iz-btn iz-btn--brk" data-a="break">Müvəqqəti çıxdı</button>
       <button type="button" class="iz-btn iz-btn--out" data-a="out">İşdən çıxdı (günün sonu)</button>` : ''}
     <p class="iz-err" role="alert"></p>
-    <button type="button" class="iz-btn iz-btn--ghost" data-x>Bağla</button></div>`;
+    <button type="button" class="iz-btn iz-btn--ghost iz-btn--icon" data-x aria-label="Bağla" title="Bağla">${ICON.x}</button></div>`;
   document.body.appendChild(box);
   const errEl = box.querySelector('.iz-err');
   box.addEventListener('click', async (e) => {
@@ -638,7 +666,7 @@ async function pickWorker(actor) {
     <h2>Kimin telefonu?</h2><p class="iz-hint">Aktivləşdirən: <b>${esc(actor.name)}</b></p>
     <div class="iz-pick">${list.map(x => { const a = dev[x.id]?.approved; return `<button type="button" class="iz-pick__i" data-sid="${esc(x.id)}">
       <b>${esc(x.name)}</b><small>${esc(x.position || '')}${a?.uid ? ' · telefon: ' + esc(a.model || 'var') + ' (dəyişəcək)' : ' · telefon yoxdur'}</small></button>`; }).join('') || '<p class="iz-hint">İşçi yoxdur.</p>'}</div>
-    <button type="button" class="iz-btn iz-btn--ghost" data-x>Bağla</button></div>`;
+    <button type="button" class="iz-btn iz-btn--ghost iz-btn--icon" data-x aria-label="Bağla" title="Bağla">${ICON.x}</button></div>`;
   document.body.appendChild(box);
   const t = setTimeout(() => box.remove(), 120000);
   box.addEventListener('click', (e) => {
@@ -662,7 +690,7 @@ async function showInvite(s, actor) {
     <p class="iz-hint">Bu QR-ı <b>${esc(s.firstname || s.name)}</b> öz telefonunun kamerası ilə oxutsun. ${before ? 'Köhnə telefon avtomatik bağlanacaq.' : ''}</p>
     <div class="iz-qrbox iz-qrbox--c" id="izInvBox"></div>
     <p class="iz-hint">Qalan vaxt: <b id="izInvLeft">${INVITE_MIN}:00</b> · aktivləşdirən: ${esc(actor.name)}</p>
-    <button type="button" class="iz-btn iz-btn--ghost" data-x>Bağla</button></div>`;
+    <button type="button" class="iz-btn iz-btn--ghost iz-btn--icon" data-x aria-label="Bağla" title="Bağla">${ICON.x}</button></div>`;
   document.body.appendChild(box);
   // eslint-disable-next-line no-undef
   new QRCode(box.querySelector('#izInvBox'), { text: IZLE_URL + '?inv=' + code, width: 240, height: 240, colorDark: '#0b0d10', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
