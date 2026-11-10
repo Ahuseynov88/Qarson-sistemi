@@ -152,7 +152,7 @@ body.dark-mode .yzrv-tag__r{color:var(--gold)}
 .yzrv-admin-tab{margin-bottom:4px}
 
 /* Bildiriş pəncərələri */
-.yzrv-alerts{position:fixed;right:14px;bottom:14px;z-index:2450;display:flex;flex-direction:column;gap:10px;width:min(360px,calc(100vw - 28px));max-height:70vh;overflow-y:auto}
+.yzrv-alerts{position:fixed;right:14px;bottom:14px;z-index:2100;display:flex;flex-direction:column;gap:10px;width:min(360px,calc(100vw - 28px));max-height:70vh;overflow-y:auto}
 .yzrv-alert{background:var(--card);border:1px solid var(--border);border-left:5px solid var(--gold);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:8px;font-size:13.5px}
 .yzrv-alert--warn{border-left-color:var(--orange)}
 .yzrv-alert--alert{border-left-color:var(--red);animation:yzrvAlert 1.4s ease-in-out infinite}
