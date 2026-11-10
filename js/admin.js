@@ -68,8 +68,11 @@ export function renderAdmin() {
   if (state.adminSection==='banquetHalls') renderBanquetHalls();
   if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
      if (state.adminSection==='kitchenStations') renderKitchenStations();
-     if (state.adminSection==='notifSounds') renderNotifSounds();
-     if (state.adminSection==='printers') { renderPrinters(); renderReceiptTemplateSettings(); }
+     // Ayarlar mərkəzi (yuza-settings.js): səslər və çek şablonu oradakı pəncərədə göstərilir
+     const _hub = state.adminSection === 'settings' && typeof window.__yzSettingsPane === 'function' ? window.__yzSettingsPane() : null;
+     if (state.adminSection==='notifSounds' || _hub === 'sounds') renderNotifSounds();
+     if (state.adminSection==='printers') renderPrinters();
+     // çek şablonu yalnız pəncərə açılanda çəkilir (yuza-settings.js) — yazılan mətn hər məlumat dəyişikliyində silinməsin
      if (state.adminSection==='dangerZone') renderDangerZone();
 }
 
@@ -109,7 +112,8 @@ export function adminTab(sec, el) {
     });
   }
   if (sec==='dangerZone') {
-    openDangerZonePinModal(null);
+    if (_ownerMode() || state.user?.role === 'staff') renderDangerZone();
+    else openDangerZonePinModal(null);
   }
 }
 
@@ -3876,11 +3880,20 @@ const DANGER_OPS = [
     danger: 1
   },
   {
+    id: 'clearReservations',
+    icon: '📅',
+    title: 'Rezervasiyaları Sil',
+    desc: 'Bütün rezerv qeydləri (gələcək və keçmiş) silinir. Masaların tutum və minimum hesab ayarları saxlanılır.',
+    nodes: ['reservations'],
+    keepLabel: 'Masalar, kabinetlər və rezerv ayarları saxlanılır',
+    danger: 1
+  },
+  {
     id: 'clearAllOperational',
     icon: '🗑️',
     title: 'Bütün Əməliyyat Məlumatlarını Sil',
-    desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
-        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','customerRequests','feedbacks','chats', ...INV_DOC_NODES, ...CASH_DOC_NODES],
+    desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, rezervasiyalar, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
+        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','customerRequests','feedbacks','chats','reservations', ...INV_DOC_NODES, ...CASH_DOC_NODES],
     after: _zeroSupplierDebts,
     keepLabel: 'İşçilər, məhsullar, anbarlar, kassa hesabları, masalar, müştərilər, ayarlar, printerlar, mətbəxlər saxlanılır',
     danger: 2
@@ -3888,16 +3901,43 @@ const DANGER_OPS = [
   {
     id: 'factoryReset',
     icon: '☢️',
-    title: 'Fabrika Sıfırlaması',
-    desc: 'PROQRAMDAKİ HƏR ŞEY SİLİNİR. İşçilər, məhsullar, masalar, müştərilər, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlar. Bu əməliyyat GERİ QAYTARILMAZ.',
+    title: 'Sistemi Tam Sıfırla',
+    desc: 'PROQRAMDAKİ BÜTÜN MƏLUMATLAR SİLİNİR: işçilər, məhsullar, masalar, rezervasiyalar, sifarişlər, kassa, anbar, davamiyyət, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlayır. Yalnız Rəhbər hesabı saxlanılır. Bu əməliyyat GERİ QAYTARILMAZ.',
+    all: true,
        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings',
       'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients','staffHR',
       'products','warehouses','stock','stockMoves','supplierLedger','invCounters','invBackup',
-      'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses'],
+      'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses','reservations'],
     keepLabel: null,
     danger: 3
   }
 ];
+
+// Silmə icazələri: Rəhbər hər əməliyyatı ayrıca işçiyə verə bilər. "Sistemi tam sıfırla" yalnız Rəhbərdədir.
+if (!ALL_PERMISSIONS.some(g => g.items?.some(i => i.key?.startsWith('danger.')))) {
+  ALL_PERMISSIONS.push({
+    group: 'Məlumatların silinməsi',
+    icon: '<svg class="icon"><use href="#i-trash"></use></svg>',
+    items: DANGER_OPS.filter(o => !o.all).map(o => ({ key: 'danger.' + o.id, label: o.title }))
+  });
+}
+const _ownerMode = () => !!window.__yzOwner?.available?.();
+const _isRehber = () => state.user?.role === 'admin';
+const _canDanger = (op) => _isRehber() || (!op.all && hasPermission('danger.' + op.id));
+
+/* Bazadakı bütün bölmələrin adları (server "shallow" sorğusu) — "Sistemi tam sıfırla" heç nəyi buraxmasın */
+async function _allRootKeys(fallback) {
+  try {
+    const u = firebase.auth?.().currentUser;
+    const base = (firebase.app().options.databaseURL || '').replace(/\/+$/, '');
+    if (u && base) {
+      const tok = await u.getIdToken();
+      const r = await fetch(`${base}/.json?shallow=true&auth=${encodeURIComponent(tok)}`);
+      if (r.ok) { const j = await r.json(); if (j && typeof j === 'object') return [...new Set([...Object.keys(j), ...fallback])]; }
+    }
+  } catch (e) { console.warn('[sıfırla] bölmə siyahısı alınmadı, əvvəlcədən bilinən siyahı işlənir', e); }
+  return fallback;
+}
 
 // ── Parol modal ──
 // opId: null = bölməyə giriş üçün, string = konkret əməliyyat üçün
@@ -3910,12 +3950,13 @@ function openDangerZonePinModal(opId) {
   document.getElementById('dzPinInput').value = '';
   document.getElementById('dzPinError').textContent = '';
   const isEntry = opId === null;
+  const own = state.user?.role === 'staff';
   document.getElementById('dzPinTitle').textContent = isEntry
-    ? '🔐 Təhlükəli Əməliyyatlar'
-    : '🔑 Əməliyyatı Təsdiqlə';
+    ? '🔐 Məlumatların silinməsi'
+    : '🔑 Silməni təsdiqləyin';
   document.getElementById('dzPinSubtitle').textContent = isEntry
-    ? 'Bu bölməyə giriş üçün Admin PIN kodunuzu daxil edin.'
-    : 'Silmə əməliyyatını icra etmək üçün Admin PIN kodunuzu daxil edin.';
+    ? 'Bu bölməyə giriş üçün Rəhbər PIN kodunu daxil edin.'
+    : (own ? 'Silmək üçün ÖZ PIN kodunuzu daxil edin.' : 'Silmə əməliyyatını icra etmək üçün Rəhbər PIN kodunu daxil edin.');
   el.classList.add('open');
   setTimeout(() => document.getElementById('dzPinInput')?.focus(), 100);
 }
@@ -3932,7 +3973,7 @@ function closeDangerZonePinModal() {
 
 function confirmDangerZonePin() {
   const entered = document.getElementById('dzPinInput').value.trim();
-  const current = String(ADMIN_PIN || '');
+  const current = state.user?.role === 'staff' ? String(state.user.pin || '') : String(ADMIN_PIN || '');
   if (String(entered) !== current) {
     document.getElementById('dzPinError').textContent = '❌ PIN yanlışdır. Yenidən cəhd edin.';
     document.getElementById('dzPinInput').value = '';
@@ -3960,11 +4001,11 @@ function renderDangerZone() {
         <svg class="icon" style="width:22px;height:22px;color:var(--red);flex-shrink:0;margin-top:1px;"><use href="#i-warning"></use></svg>
         <div>
           <div style="font-weight:700;color:var(--red);margin-bottom:4px;">Diqqət! Bu bölmədəki əməliyyatlar GERİ QAYTARILMAZ.</div>
-          <div style="font-size:13px;color:var(--text2);line-height:1.6;">Firebase bazasından məlumatlar tam olaraq silinir. Hər əməliyyatdan əvvəl Admin PIN + 2 dəfə təsdiq tələb olunur. Əmin olmadığınız heç bir əməliyyatı icra etməyin.</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;">Bazadan məlumatlar tam olaraq silinir. Hər əməliyyatdan əvvəl ${_isRehber() && _ownerMode() ? 'Rəhbər parolu' : (_isRehber() ? 'Rəhbər PIN-i' : 'öz PIN kodunuz')} + 2 dəfə təsdiq tələb olunur. Əmin olmadığınız heç bir əməliyyatı icra etməyin.${_isRehber() ? ' İşçiyə ayrı-ayrı silmə icazəsini <b>İşçilər → İcazələr → Məlumatların silinməsi</b> bölməsindən verə bilərsiniz.' : ''}</div>
         </div>
       </div>
 
-      ${DANGER_OPS.map(op => `
+      ${DANGER_OPS.filter(_canDanger).map(op => `
         <div class="table-card" style="margin-bottom:12px;${op.danger===3?'border:2px solid var(--red);background:rgba(220,53,69,.07);':op.danger===2?'border:1.5px solid rgba(220,53,69,.5);':''}">
           <div style="display:flex;align-items:flex-start;gap:12px;">
             <div style="font-size:26px;line-height:1;flex-shrink:0;">${op.icon}</div>
@@ -3975,7 +4016,7 @@ function renderDangerZone() {
               <button class="btn btn-red" onclick="executeDangerOp('${op.id}')"
                 style="padding:9px 18px;font-size:13px;${op.danger===3?'width:100%;padding:13px;font-size:15px;font-weight:700;':''}">
                 <svg class="icon"><use href="#i-trash"></use></svg>
-                ${op.danger===3?'⚠️ '+op.title+' — Hər Şeyi Sil':op.title}
+                ${op.danger===3?'⚠️ '+op.title+' — hər şey silinir':op.title}
               </button>
             </div>
           </div>
@@ -3985,8 +4026,15 @@ function renderDangerZone() {
   `;
 }
 
-function executeDangerOp(opId) {
-  // Hər silmə əməliyyatından əvvəl PIN istə
+async function executeDangerOp(opId) {
+  const op = DANGER_OPS.find(o => o.id === opId);
+  if (!op || !_canDanger(op)) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu əməliyyat üçün icazəniz yoxdur'); return; }
+  // Rəhbər: parol (Firebase serveri yoxlayır) · işçi: öz PIN-i · köhnə rejim: Rəhbər PIN-i
+  if (_isRehber() && _ownerMode()) {
+    const ok = await window.__yzOwner.verify({ title: 'Silməni təsdiqləyin', text: `<b>${op.title}</b> — davam etmək üçün Rəhbər parolunu yazın.`, okLabel: 'Davam et' });
+    if (ok) _runDangerOp(opId);
+    return;
+  }
   openDangerZonePinModal(opId);
 }
 
@@ -4001,23 +4049,31 @@ function _runDangerOp(opId) {
     `<strong>${op.icon} ${op.title}</strong><br><br>${op.desc}${op.keepLabel ? `<br><br><span style="color:var(--green);">✓ ${op.keepLabel}</span>` : ''}<br><br>Bu əməliyyat <strong style="color:var(--red);">GERİ QAYTARILMAZ</strong>. Davam etmək istəyirsiniz?`,
     () => {
       const secondMsg = isFabrika
-        ? `<span style="color:var(--red);font-size:15px;font-weight:700;">☢️ SON XƏBƏRDARLIQ!</span><br><br>PROQRAMDAKİ <strong>HƏR ŞEY</strong> silinəcək. Proqram fabrika vəziyyətinə qayıdacaq.<br><br>Bu əməliyyatı TƏSDİQLƏYİRSİNİZ?`
+        ? `<span style="color:var(--red);font-size:15px;font-weight:700;">☢️ SON XƏBƏRDARLIQ!</span><br><br>PROQRAMDAKİ <strong>BÜTÜN MƏLUMATLAR</strong> silinəcək. Proqram yeni qurulmuş kimi boş başlayacaq.<br><br>Bu əməliyyatı TƏSDİQLƏYİRSİNİZ?`
         : `Son dəfə soruşuram: <strong>${op.title}</strong> əməliyyatı <strong>${nodeCount} verilənlər qrupunu</strong> həmişəlik siləcək.<br><br>Tam əminsinizmi?`;
 
       confirmAction(
         secondMsg,
         async () => {
           try {
-                       await Promise.all(op.nodes.map(node => db.ref(node).remove()));
+            if (op.all) {
+              // Bütün bölmələr bir yazıda silinir; yalnız Rəhbər hesabı (owners) saxlanılır
+              const keys = (await _allRootKeys(op.nodes)).filter(k => k !== 'owners');
+              await db.ref().update(Object.fromEntries(keys.map(k => [k, null])));
+              showToast(`<svg class="icon"><use href="#i-check"></use></svg> Sistem tam sıfırlandı. Proqram yenidən açılır…`);
+              setTimeout(() => { try { window.logout?.(); } catch (e) { /* */ } location.reload(); }, 1500);
+              return;
+            }
+            await Promise.all(op.nodes.map(node => db.ref(node).remove()));
             if (op.after) await op.after();
-            if (!isFabrika) addLog('danger_op', `"${op.title}" əməliyyatı icra edildi`, { nodes: op.nodes });
+            addLog('danger_op', `"${op.title}" əməliyyatı icra edildi`, { nodes: op.nodes, by: state.user?.name || 'Rəhbər' });
             showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${op.title}" uğurla tamamlandı`);
           } catch (e) {
             showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Xəta: ${e.message}`);
           }
         },
         {
-          title: isFabrika ? '☢️ Fabrika Sıfırlaması' : 'Son Təsdiq',
+          title: isFabrika ? '☢️ Sistemi tam sıfırla' : 'Son Təsdiq',
           okLabel: `<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Sil`,
           okClass: 'btn-red'
         }

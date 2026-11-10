@@ -82,7 +82,7 @@ function build() {
     <div class="yz-qa__listhead"><span>Siyahı</span><span id="yzIngCount">0</span></div>
     <input id="yzIngSearch" class="yz-ing__search" placeholder="Axtar..." autocomplete="off">
     <div class="yz-qa__list yz-ing__list" id="yzIngList"></div>
-    <div class="modal-actions"><button type="button" class="btn btn-ghost" data-cancel id="yzIngDone">Bağla</button></div>
+    <div class="modal-actions"><button type="button" class="btn btn-ghost yz-icon-only" data-cancel id="yzIngDone" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button></div>
   </div>`;
   document.body.appendChild(w);
   $('yzIngDone').addEventListener('click', close);
