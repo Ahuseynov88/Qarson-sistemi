@@ -124,8 +124,6 @@ const TABS = [
   { id: 'settings', l: 'Ayarlar' }
 ];
 let cur = 'live';
-/* Ayarlar mərkəzindən birbaşa lazım olan bölməni açmaq üçün */
-window.yzAttOpen = (tab) => { cur = TABS.some(t => t.id === tab) ? tab : 'live'; window.adminTab?.('att'); };
 const host = () => $('yzAttHost');
 const isOpen = () => $('sec-att')?.classList.contains('active') && $('adminScreen')?.classList.contains('active');
 
@@ -763,9 +761,9 @@ function drawSettings(el) {
       <label class="yzi-f"><span>Şəkillər neçə gün saxlansın</span><input type="number" id="yzaPD" min="7" max="365" value="${esc(S.photoDays)}"></label>
     </div>
     <div class="yzi-card"><h3 class="yzi-h3">POS girişi və telefonlar</h3>
-      <p class="yzi-p">“Gəlişini qeyd etməyən işçi sistemə girə bilməsin” ayarı bütün sistemə aid olduğu üçün <b>Sistem → Ayarlar → Giriş və təhlükəsizlik</b> bölməsindədir.
-        Hazırda: <b>${S.gateLogin ? 'açıq' : 'sönük'}</b>.</p>
-      <div class="yzi-actions"><button type="button" class="yzi-btn yzi-btn--sm" id="yzaGoGate">${I('settings')} Ayara keç</button></div>
+      ${sw('gateLogin', 'Gəlişini qeyd etməyən işçi POS-a girə bilməsin', 'İşçi PIN ilə sistemə girməzdən əvvəl QR ilə “İşə gəldim” etməlidir. Müvəqqəti çıxışda olan da girə bilmir.')}
+      <div class="yza-exempt"><small>Bu işçilər yoxlanmasın (məs. mühasib, menecer):</small>
+        ${staffAll().map(x => `<label><input type="checkbox" data-ex="${esc(x.id)}" ${S.gateExempt?.[x.id] ? 'checked' : ''}> ${esc(x.name)}</label>`).join('') || '<span class="mut">İşçi yoxdur</span>'}</div>
       <p class="yzi-hint">Telefonu Rəhbər (burada, “Telefonlar” bölməsində) və ya <b>“İşçi telefonunu aktivləşdirmək”</b> icazəsi olan şəxs (davamiyyət ekranında) aktivləşdirir. İcazə: Qeydiyyat → İşçilər → İcazələr.</p>
     </div>
     <div class="yzi-card"><h3 class="yzi-h3">Qaydalar</h3>
@@ -786,7 +784,6 @@ function drawSettings(el) {
   el.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => { const k = b.dataset.sw; draft[k] = !draft[k]; b.classList.toggle('is-on', draft[k]); b.setAttribute('aria-checked', String(draft[k])); });
   el.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => { draft.qrMode = b.dataset.qr; el.querySelectorAll('[data-qr]').forEach(x => x.classList.toggle('is-on', x === b)); qrHint(); });
   el.querySelector('[data-act="qr"]').addEventListener('click', showWorkerQr);
-  $('yzaGoGate')?.addEventListener('click', () => { try { sessionStorage.setItem('yzSetPane', 'security'); } catch (e) { /* */ } window.adminTab?.('settings'); });
   $('yzaHere').onclick = async () => {
     const b = $('yzaHere'); b.disabled = true; b.textContent = 'Yer təyin edilir…';
     try { const p = await getPosition(20000); $('yzaLL').value = `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`; ok(`Yer götürüldü (dəqiqlik ±${p.acc} m). İndi “Yadda saxla” basın.`); }
@@ -806,9 +803,10 @@ function drawSettings(el) {
     const next = {
       qrMode: draft.qrMode === 'static' ? 'static' : 'dynamic', gps: !!draft.gps, faceId: !!draft.faceId, selfie: !!draft.selfie,
       lat, lng, radius: num('yzaRad', 30, 2000, 150), photoDays: num('yzaPD', 7, 365, 60), maxHours: num('yzaMH', 4, 24, 16), minGapMin: num('yzaMG', 0, 30, 1),
-      // POS girişi ayarı Ayarlar mərkəzindədir — burada olduğu kimi saxlanılır
-      gateLogin: !!S.gateLogin, gateExempt: (S.gateExempt && Object.keys(S.gateExempt).length) ? S.gateExempt : null
+      gateLogin: !!draft.gateLogin, gateExempt: {}
     };
+    el.querySelectorAll('[data-ex]').forEach(c => { if (c.checked) next.gateExempt[c.dataset.ex] = true; });
+    if (!Object.keys(next.gateExempt).length) next.gateExempt = null;
     if (next.gps && lat == null) { if (!(await confirmBox('GPS yoxlaması açıqdır, amma restoranın yeri yazılmayıb. Yer olmadan GPS yoxlanmayacaq. Davam edilsin?'))) return; }
     const changed = Object.keys(next).filter(k => JSON.stringify(next[k] || null) !== JSON.stringify((k === 'gateExempt' && S[k] && !Object.keys(S[k]).length) ? null : (S[k] ?? null)));
     if (!changed.length) { ok('Dəyişiklik yoxdur'); return; }

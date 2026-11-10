@@ -14,7 +14,7 @@ export function renderKitchen() {
 
   const orders = (state.kitchenOrders || [])
     .filter(ko => {
-      if (kitchen && ko.kitchenId !== kitchen.id) return false;
+           if (kitchen && !kitchen.showAll && ko.kitchenId !== kitchen.id) return false;
 
       return !ko.allReady || !ko.waiterAccepted;
     })

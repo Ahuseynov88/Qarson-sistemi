@@ -51,7 +51,8 @@ export async function attGate(staff) {
 setInterval(() => {
   const u = state.user;
   if (u?.role !== 'staff' || !document.getElementById('adminScreen')?.classList.contains('active')) return;
-  if (window.__yzAccess?.hasPanel(u)) return;   // Rəhbər panelində icazəli bölməsi var
+  const p = u.permissions || [];
+  if (p.some(k => /^(catalog|warehouse|purchase|supplier|stock|cash)\./.test(k))) return;
   try { window.logout?.(); } catch (e) { /* */ }
   notice('Giriş icazəsi yoxdur', 'Bu bölmə yalnız Rəhbər üçündür.');
 }, 1000);

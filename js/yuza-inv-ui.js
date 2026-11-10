@@ -133,14 +133,12 @@ export function fresh(host) {
 }
 
 /* ── Pəncərə (modal) ── */
-/* Pəncərənin alt hissəsində yalnız naviqasiya düymələri ikonla göstərilir (Ləğv/Təsdiqlə kimi qərar düymələri mətnli qalır) */
-const NAV_ICONS = { 'Bağla': 'close', 'Geri': 'back' };
 export function modal({ title, body, wide = false, actions = [], onClose } = {}) {
   const bg = document.createElement('div');
   bg.className = 'modal-bg open yzi-modal-bg';
   bg.innerHTML = `<div class="modal yzi-modal${wide ? ' yzi-modal--wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title || '')}">
     <div class="yzi-modal__head"><h2>${title || ''}</h2>
-      <button type="button" class="yzi-x" data-cancel aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button></div>
+      <button type="button" class="yzi-x" data-cancel aria-label="Bağla">✕</button></div>
     <div class="yzi-modal__body"></div>
     <div class="yzi-modal__foot"></div>
   </div>`;
@@ -149,16 +147,10 @@ export function modal({ title, body, wide = false, actions = [], onClose } = {})
   const foot = bg.querySelector('.yzi-modal__foot');
   const close = () => { bg.remove(); onClose && onClose(); };
   actions.forEach(a => {
-    if (a.cancel && NAV_ICONS[String(a.label || '').trim()] === 'close') return;   // yuxarıdakı ✕ eyni işi görür — iki dəfə göstərilmir
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'yzi-btn ' + (a.cls || '');
-    const navIco = a.cancel && NAV_ICONS[String(a.label || '').trim()];
-    if (navIco) {
-      b.classList.add('yz-icon-only');
-      b.innerHTML = `<svg class="icon"><use href="#i-${navIco}"></use></svg>`;
-      b.setAttribute('aria-label', a.label); b.title = a.label;
-    } else b.innerHTML = a.label;
+    b.innerHTML = a.label;
     if (a.cancel) b.setAttribute('data-cancel', '');
     b.addEventListener('click', async () => {
       if (a.cancel) { close(); return; }
@@ -170,7 +162,7 @@ export function modal({ title, body, wide = false, actions = [], onClose } = {})
     });
     foot.appendChild(b);
   });
-  if (!foot.children.length) foot.remove();
+  if (!actions.length) foot.remove();
   bg.querySelector('.yzi-x').addEventListener('click', close);
   bg.addEventListener('mousedown', (e) => { if (e.target === bg) close(); });
   document.body.appendChild(bg);

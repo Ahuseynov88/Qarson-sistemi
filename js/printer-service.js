@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { addLog, showToast } from './utils.js';
+import { addLog, showToast, computeVat } from './utils.js';
 
 /* ─── Şablon ayarlarını hər dəfə fresh oxu ─── */
 async function getTemplateSettings() {
@@ -79,7 +79,8 @@ export async function printReceipt(tableId) {
       serviceChargeAmount:  order?.serviceChargeAmount  || 0,
       serviceChargePercent: order?.serviceChargePercent || 0,
       discountValue:        order?.discountValue || 0,
-      paymentType:          order?.paymentType  || '',
+           paymentType:          order?.paymentType  || '',
+      vatRows:              computeVat(order?.items).rows,   // [{rate, included, amount}] — mallara görə ƏDV
       status:    'pending',
       createdAt: Date.now(),
       /* ── Şablon ayarları — Agent birbaşa buradan oxuyur ── */
@@ -111,7 +112,7 @@ export async function printReceipt(tableId) {
         currency:            tplSettings.currency        || 'AZN',
         dividerType:         tplSettings.dividerType     || 'dash',
         bottomLines:         tplSettings.bottomLines     || 5,
-        vatPercent:          tplSettings.vatPercent      || 0,
+ 
         footerMessage:       tplSettings.footerMessage   || 'Tesekkur edirik!',
         restaurantNameFont:     tplSettings.restaurantNameFont     || tplSettings.headerFont || 'Arial',
         restaurantNameFontSize: tplSettings.restaurantNameFontSize || tplSettings.headerFontSize || tplSettings.restaurantNameSize || 'large',

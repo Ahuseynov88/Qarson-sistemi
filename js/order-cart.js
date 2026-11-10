@@ -192,7 +192,7 @@ export class OrderCart {
       if (!m) return '';
            const lineTotal = (m.price||0) * line.qty + (line.extraFee||0);
       draftTotal += lineTotal;
-      if (m.vatIncluded === false && Number(m.vatRate) > 0) draftVat += lineTotal * Number(m.vatRate) / 100;
+          if (state.vatMode === 'added' && Number(m.vatRate) > 0) draftVat += lineTotal * Number(m.vatRate) / 100;
       const noteOpen = this._noteOpenKeys.has(lineKey);
       const hasNote = !!(line.note && line.note.trim());
       const hasFee = !!(line.extraFee);
@@ -270,7 +270,7 @@ export class OrderCart {
         if (!m) return;
         const cleanKey = makeLineKey(draft.menuItemId, draft.note || '', draft.extraFee || 0);
         if (items[cleanKey]) items[cleanKey] = { ...items[cleanKey], qty: items[cleanKey].qty + draft.qty };
-        else items[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price || 0, qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0, vatRate: Number(m.vatRate) || 0, vatIncluded: m.vatIncluded !== false };
+        else items[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price || 0, qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0, vatRate: Number(m.vatRate) || 0, vatIncluded: state.vatMode !== 'added' };
       });
 
       const _tot = computeOrderTotals(items);
