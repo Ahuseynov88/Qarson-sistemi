@@ -20,7 +20,7 @@ const TS = () => firebase.database.ServerValue.TIMESTAMP;
 const isRehber = () => state.user?.role === 'admin';
 const active = () => !!$('sec-devices')?.classList.contains('active');
 
-let devices = {}, accounts = {}, devRef = null, accRef = null;
+let devices = {}, accounts = {};
 
 /* ── Təsdiq edən: Rəhbər (açıq sessiya) və ya səlahiyyətli şəxsin öz girişi ── */
 async function getApprover(reason) {
@@ -82,20 +82,26 @@ function ensureSection() {
   new MutationObserver(() => { if (active()) start(); else stop(); }).observe(d, { attributes: true, attributeFilter: ['class'] });
   return true;
 }
+// Dinləyici YALNIZ öz funksiyası ilə söndürülür (ref.off() yoldakı başqa dinləyiciləri də silərdi)
+let offDev = null, offAcc = null;
 function start() {
-  if (!devRef) {
-    devRef = db.ref('sys/devices');
-    devRef.on('value', s => { devices = s.val() || {}; render(); }, (e) => { devices = {}; render(e); });
+  if (!offDev) {
+    const ref = db.ref('sys/devices');
+    const fn = s => { devices = s.val() || {}; render(); };
+    ref.on('value', fn, (e) => { devices = {}; offDev = null; render(e); });
+    offDev = () => ref.off('value', fn);
   }
-  if (isRehber() && !accRef) {
-    accRef = db.ref('sys/accounts');
-    accRef.on('value', s => { accounts = s.val() || {}; render(); }, () => { accounts = {}; render(); });
+  if (isRehber() && !offAcc) {
+    const ref = db.ref('sys/accounts');
+    const fn = s => { accounts = s.val() || {}; render(); };
+    ref.on('value', fn, () => { accounts = {}; offAcc = null; render(); });
+    offAcc = () => ref.off('value', fn);
   }
   render();
 }
 function stop() {
-  devRef?.off(); devRef = null;
-  accRef?.off(); accRef = null;
+  offDev?.(); offDev = null;
+  offAcc?.(); offAcc = null;
 }
 
 function render(err) {

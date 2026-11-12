@@ -24,7 +24,7 @@ const QR_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const X_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 let S = withDefaults(null), status = {}, staff = [];
-let sRef = null, stRef = null, sfRef = null, qrTimer = null, clockTimer = null, running = false, sheetOpen = false, lastStatic = '';
+let qrTimer = null, clockTimer = null, running = false, sheetOpen = false, lastStatic = '';
 
 function build() {
   const root = $('yzLogin'), stage = root?.querySelector('.yz-stage');
@@ -65,12 +65,19 @@ function sync() {
   else if (!shouldRun && running) stopRun();
 }
 
+/* Dinləyicilər öz funksiyası ilə qoşulur və YALNIZ özləri söndürülür.
+   Diqqət: ref.off() (funksiyasız) həmin yoldakı BÜTÜN dinləyiciləri silir — məs. app.js-in
+   işçi siyahısı dinləyicisini də. Ona görə həmişə off('value', fn) işlədilir. */
+const subs = [];
+function sub(ref, fn) { ref.on('value', fn, () => {}); subs.push(() => ref.off('value', fn)); }
 function startRun() {
   running = true;
-  if (!sRef) { sRef = A('settings'); sRef.on('value', s => { S = withDefaults(s.val()); if (running) { restartQr(); renderWho(); } }, () => {}); }
-  if (!stRef) { stRef = A('status'); stRef.on('value', s => { status = s.val() || {}; renderWho(); }, () => {}); }
-  // PIN ekranında işçi siyahısı hələ yüklənməyib (state.staff girişdən sonra dolur) — adları özümüz oxuyuruq
-  if (!sfRef) { sfRef = adb.ref('staff'); sfRef.on('value', s => { const o = s.val() || {}; staff = Object.keys(o).map(id => ({ id, name: o[id]?.name || '', position: o[id]?.position || '' })).filter(x => x.name); renderWho(); }, () => {}); }
+  if (!subs.length) {
+    sub(A('settings'), s => { S = withDefaults(s.val()); if (running) { restartQr(); renderWho(); } });
+    sub(A('status'), s => { status = s.val() || {}; renderWho(); });
+    // PIN ekranında işçi siyahısı hələ yüklənməyib (state.staff girişdən sonra dolur) — adları özümüz oxuyuruq
+    sub(adb.ref('staff'), s => { const o = s.val() || {}; staff = Object.keys(o).map(id => ({ id, name: o[id]?.name || '', position: o[id]?.position || '' })).filter(x => x.name); renderWho(); });
+  }
   tickClock(); clockTimer = setInterval(() => { tickClock(); renderWho(); }, 20000);
   restartQr();
 }
@@ -78,9 +85,7 @@ function stopRun() {
   running = false;
   clearInterval(qrTimer); qrTimer = null;
   clearInterval(clockTimer); clockTimer = null;
-  stRef?.off(); stRef = null;
-  sRef?.off(); sRef = null;
-  sfRef?.off(); sfRef = null;
+  subs.splice(0).forEach(off => off());
   lastStatic = '';
 }
 function restartQr() {
