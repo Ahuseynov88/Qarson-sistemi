@@ -304,3 +304,63 @@
 #yzLogin .yz-owner__link{display:block; margin:.9em auto 0; border:0; background:none; color:var(--g2); font-size:.82em; font-weight:600; text-decoration:underline; cursor:pointer;}
 #yzLogin .yz-owner__who{margin:0; text-align:center; color:var(--text-soft); font-size:.9em;}
 #yzLogin .yz-owner__who b{color:var(--text);}
+
+/* ═══ PIN EKRANI + DAVAMİYYƏT QR (yuza-login-att.js) ═══════════════
+   Geniş ekran: brend hissəsinin yerinə davamiyyət paneli (PIN kartı sağda qalır).
+   Dar ekran: yuxarıda "Davamiyyət" düyməsi → panel ekranın üstündə açılır. */
+#yzLogin .yz-attp, #yzLogin .yz-attbtn{display:none;}
+#yzLogin.yz-att-on .yz-brand{display:none;}
+#yzLogin.yz-att-on .yz-attp{
+  display:flex; flex-direction:column; align-self:stretch; width:31em; min-height:51.8em; box-sizing:border-box;
+  padding:2em 2em 1.6em; border-radius:1.85em; color:var(--text);
+  background:var(--card-bg); border:1px solid var(--ctl-bd);
+  backdrop-filter:blur(1.4em) saturate(1.1); -webkit-backdrop-filter:blur(1.4em) saturate(1.1);
+  box-shadow:0 0 3.2em var(--card-glow), 0 2.2em 5em rgba(0,0,0,.45);
+}
+#yzLogin .yz-attp__head{display:flex; align-items:center; gap:.9em;}
+#yzLogin .yz-attp__ic{flex:none; width:3em; height:3em; border-radius:.9em; display:flex; align-items:center; justify-content:center; color:var(--g2); background:rgba(232,176,75,.14);}
+#yzLogin .yz-attp__ic svg{width:1.6em; height:1.6em;}
+#yzLogin .yz-attp__head b{display:block; font-size:1.3em; font-weight:700;}
+#yzLogin .yz-attp__head small{display:block; font-size:.85em; color:var(--muted);}
+#yzLogin .yz-attp__x{display:none; margin-left:auto; width:2.8em; height:2.8em; border-radius:50%; border:1px solid var(--ctl-bd); background:var(--ctl-bg); color:var(--text); cursor:pointer; align-items:center; justify-content:center;}
+#yzLogin .yz-attp__x svg{width:1.2em; height:1.2em;}
+#yzLogin .yz-attp__clock{display:flex; align-items:baseline; gap:.7em; margin:1.2em 0 .8em;}
+#yzLogin .yz-attp__clock b{font:700 2.6em/1 'Poppins','Inter',sans-serif; letter-spacing:-.02em;}
+#yzLogin .yz-attp__clock span{color:var(--muted); font-size:.95em;}
+#yzLogin .yz-attp__qrwrap{align-self:center; padding:.9em; border-radius:1.2em; background:#fff; box-shadow:0 .6em 1.8em rgba(0,0,0,.35);}
+#yzLogin .yz-attp__qr{width:220px; height:220px;}
+#yzLogin .yz-attp__qr img, #yzLogin .yz-attp__qr canvas{display:block; width:220px !important; height:220px !important;}
+#yzLogin .yz-attp__bar{height:5px; margin-top:.7em; border-radius:9px; background:#e9e4d8; overflow:hidden;}
+#yzLogin .yz-attp__bar[hidden]{display:none;}
+#yzLogin .yz-attp__bar i{display:block; height:100%; width:100%; background:linear-gradient(90deg,var(--g1),var(--g3));}
+#yzLogin .yz-attp__hint{margin:1em 0 0; text-align:center; font-size:.92em; line-height:1.5; color:var(--text-soft);}
+#yzLogin .yz-attp__who{flex:1; min-height:0; display:flex; flex-direction:column; margin-top:1.2em; border-top:1px solid var(--pin-bd); padding-top:1em;}
+#yzLogin .yz-attp__who h4{margin:0 0 .6em; font-size:.95em; font-weight:700; display:flex; align-items:center; gap:.5em;}
+#yzLogin .yz-attp__who h4 span{font-size:.85em; padding:.15em .7em; border-radius:99em; background:rgba(53,217,164,.16); color:var(--role-kitchen);}
+#yzLogin .yz-attp__who ul{list-style:none; margin:0; padding:0; overflow:auto; max-height:15em; display:flex; flex-direction:column; gap:.4em;}
+#yzLogin .yz-attp__who li{display:flex; align-items:center; gap:.7em; padding:.5em .6em; border-radius:.8em; background:var(--pin-bg); border:1px solid var(--pin-bd);}
+#yzLogin .yz-attp__who li div{flex:1; min-width:0;}
+#yzLogin .yz-attp__who li b{display:block; font-size:.9em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+#yzLogin .yz-attp__who li small{display:block; font-size:.75em; color:var(--muted);}
+#yzLogin .yz-attp__who li em{font-style:normal; font-size:.75em; color:var(--muted); white-space:nowrap;}
+#yzLogin .yz-attp__who li.is-brk{opacity:.7;}
+#yzLogin .yz-attp__av{flex:none; width:2.1em; height:2.1em; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85em; color:#1a1205; background:linear-gradient(180deg,var(--g1),var(--g2));}
+#yzLogin .yz-attp__empty{justify-content:center; color:var(--muted); font-size:.85em; background:none !important; border-style:dashed !important;}
+
+@media (max-width:959px){
+  #yzLogin.yz-att-on .yz-attbtn{
+    display:flex; align-items:center; gap:.45em; height:2.5em; padding:0 1em; border-radius:99em; cursor:pointer;
+    background:linear-gradient(180deg,var(--g1),var(--g2)); color:#1a1205; border:0; font:700 .92em/1 inherit; font-family:inherit;
+  }
+  #yzLogin .yz-attbtn svg{width:1.25em; height:1.25em;}
+  #yzLogin.yz-att-on .yz-attp{display:none;}
+  #yzLogin.yz-att-sheet .yz-stage{transform:none;}   /* fixed panel bütün ekranı tutsun */
+  #yzLogin.yz-att-on.yz-att-sheet .yz-attp{
+    display:flex; position:fixed; inset:0; z-index:40; width:auto; min-height:0; max-width:none; border-radius:0; margin:0;
+    padding:1.2em 1.2em calc(1.2em + env(safe-area-inset-bottom)); overflow:auto;
+    background:var(--bg-base); border:0;
+  }
+  #yzLogin.yz-att-sheet .yz-attp__x{display:flex;}
+  #yzLogin.yz-att-sheet .yz-attp__qrwrap{margin-top:.4em;}
+  #yzLogin.yz-att-sheet .yz-attp__who ul{max-height:none;}
+}
