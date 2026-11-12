@@ -68,8 +68,11 @@ export function renderAdmin() {
   if (state.adminSection==='banquetHalls') renderBanquetHalls();
   if (state.adminSection==='banquetEventTypes') renderBanquetEventTypes();
      if (state.adminSection==='kitchenStations') renderKitchenStations();
-     if (state.adminSection==='notifSounds') renderNotifSounds();
-     if (state.adminSection==='printers') { renderPrinters(); renderReceiptTemplateSettings(); }
+     // Ayarlar mərkəzi (yuza-settings.js): səslər və çek şablonu oradakı pəncərədə göstərilir
+     const _hub = state.adminSection === 'settings' && typeof window.__yzSettingsPane === 'function' ? window.__yzSettingsPane() : null;
+     if (state.adminSection==='notifSounds' || _hub === 'sounds') renderNotifSounds();
+     if (state.adminSection==='printers') renderPrinters();
+     // çek şablonu yalnız pəncərə açılanda çəkilir (yuza-settings.js) — yazılan mətn hər məlumat dəyişikliyində silinməsin
      if (state.adminSection==='dangerZone') renderDangerZone();
 }
 
@@ -93,7 +96,7 @@ export function adminTab(sec, el) {
 
   document.getElementById('adminFab').style.display = (sec==='tables'||sec==='menu'||sec==='staff'||sec==='customers'||sec==='paymentMethods'||sec==='suppliers'||sec==='purchases'||sec==='banquetHalls'||sec==='kitchenStations'||sec==='banquetEventTypes'||sec==='printers') ? 'flex':'none';
   if (sec==='settings') {
-    document.getElementById('currentKitchenPin').textContent = state.kitchenPin;
+        
     db.ref('settings/menuUrl').once('value', snap => {
       if (snap.val()) document.getElementById('menuUrlInput').value = snap.val();
     });
@@ -109,7 +112,8 @@ export function adminTab(sec, el) {
     });
   }
   if (sec==='dangerZone') {
-    openDangerZonePinModal(null);
+    if (_ownerMode() || state.user?.role === 'staff') renderDangerZone();
+    else openDangerZonePinModal(null);
   }
 }
 
@@ -407,6 +411,11 @@ function buildKassaLedger(orders) {
     expense.push({ ts: p.createdAt||0, category: 'Təchizatçı Ödənişi', method: p.paymentType==='cash'?'Nağd':p.paymentType==='transfer'?'Köçürmə':p.paymentType==='card'?'Kart':p.paymentType, amount: p.paidAmount||0, source: p.supplierName||'Təchizatçı', who: p.staffName||'?' });
   });
 
+    // 5) Yeni anbar sistemindən təchizatçı ödənişləri (yalnız təsdiqlənmiş)
+  (state.invPayments||[]).filter(p => inRange(p.at||0)).forEach(p => {
+    expense.push({ ts: p.at||0, category: 'Təchizatçı Ödənişi', method: p.method==='cash'?'Nağd':p.method==='transfer'?'Köçürmə':p.method==='card'?'Kart':p.method, amount: p.amount||0, source: p.supplierName||'Təchizatçı', who: p.approvedByName||p.createdByName||'?' });
+  });
+
   income.sort((a,b) => b.ts - a.ts);
   expense.sort((a,b) => b.ts - a.ts);
   return { income, expense };
@@ -484,6 +493,15 @@ function renderReportPaymentsView(orders, el) {
 function renderReportStaffView(orders, el) {
   const byStaff = {};
   orders.forEach(o => {
+    // Masa başqa ofisianta ötürülübsə: hər ofisiant öz payını alır (ötürülənə qədər köhnə, sonra yeni)
+    if (Array.isArray(o.waiterSplit) && o.waiterSplit.length) {
+      o.waiterSplit.forEach(w => {
+        const nm = w.name || 'Naməlum';
+        if (!byStaff[nm]) byStaff[nm] = { count: 0, revenue: 0 };
+        byStaff[nm].count++; byStaff[nm].revenue += w.amount || 0;
+      });
+      return;
+    }
     // Sifarişi göndərən (satışı edən) işçiyə görə hesablanır - masanı bağlayan işçiyə görə
     // YOX, çünki başqa işçi bağlaya bilər. Köhnə qeydlərdə bu sahə yoxdursa, bağlayan işçiyə düşür.
     const name = o.orderedByName || o.staffName || 'Naməlum';
@@ -1675,6 +1693,7 @@ export function deleteStaff(id) {
   if (activeTable) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> "${s?.name}" adlı işçinin "${activeTable.name}" masası aktivdir! Əvvəlcə masanı bağlayın.`); return; }
   confirmAction(`"${esc(s?.name)}" adlı işçi silinsin?`, () => {
     db.ref('staff').child(id).remove();
+    db.ref('staffHR').child(id).remove();   // şəxsi məlumatlar da silinir
     addLog('staff_mgmt', `İşçi silindi: ${s?.name}`, { staffId: id });
     state.staff = state.staff.filter(x => x.id !== id);
     if (state._selectedStaffId === id) state._selectedStaffId = null;
@@ -1690,42 +1709,69 @@ export function openAddStaffModal() {
   document.getElementById('addModal').classList.add('open');
 }
 
+// İşçinin vəzifəsinə görə: POS/kassa/anbar ilə işləyən vəzifələr sistemə girişli, qalanları yalnız davamiyyət
+const STAFF_SYSTEM_POS = ['Qarson', 'Baş Qarson', 'Kassir', 'Barmen', 'Müdir', 'Mühasib', 'Anbardar'];
+const STAFF_NOSYS_POS = ['Mətbəx', 'Aşpaz köməkçisi', 'Qabyuyan', 'Xadimə', 'Mühafizəçi', 'Kuryer'];
 export function onStaffPositionChange() {
   const pos = document.getElementById('fs_position').value;
-  const map = { 'Qarson': 'waiter', 'Baş Qarson': 'head_waiter', 'Kassir': 'cashier', 'Müdir': 'manager' };
-  if (map[pos]) applyPermissionPreset(map[pos]);
+  const map = { 'Qarson': 'waiter', 'Baş Qarson': 'head_waiter', 'Kassir': 'cashier', 'Müdir': 'manager', 'Mühasib': 'accountant', 'Anbardar': 'storekeeper' };
+  const acc = document.getElementById('fs_access');
+  if (acc && STAFF_SYSTEM_POS.includes(pos)) acc.checked = true;
+  if (acc && STAFF_NOSYS_POS.includes(pos)) acc.checked = false;
+  window.fsToggleAccess?.();
+  if (map[pos] && acc?.checked) applyPermissionPreset(map[pos]);
 }
 
+// Həssas şəxsi məlumatlar (FİN, şəxsiyyət vəsiqəsi, VÖEN, SSN, IBAN, maaş, ünvan) AYRICA "staffHR"
+// bölməsində saxlanılır: POS cihazları işçi siyahısını yükləyəndə bunlar onlara getmir.
+const HR_FIELDS = ['birthDate', 'gender', 'fin', 'idCard', 'idExpiry', 'regAddress', 'address', 'voen', 'ssn',
+  'contractType', 'contractNo', 'hireDate', 'contractEnd', 'fireDate', 'salaryType', 'salaryAmount', 'bankName', 'iban',
+  'emergencyName', 'emergencyRelation', 'emergencyPhone', 'hrNote'];
+const hv = (id) => (document.getElementById('fs_' + id)?.value || '').trim();
+
 export function saveStaff() {
-  const firstname = (document.getElementById('fs_firstname')?.value||'').trim();
-  const lastname = (document.getElementById('fs_lastname')?.value||'').trim();
-  const position = (document.getElementById('fs_position')?.value||'').trim();
-  const pin = (document.getElementById('fs_pin')?.value||'').trim();
-  const phone = (document.getElementById('fs_phone')?.value||'').trim();
-  const fin = (document.getElementById('fs_fin')?.value||'').trim();
-  const avatarVal = (document.getElementById('fs_avatar')?.value||'').trim();
-  const permissions = readPermissionCheckboxes();
+  const firstname = hv('firstname'), lastname = hv('lastname'), position = hv('position');
+  const phone = hv('phone'), avatarVal = hv('avatar');
+  const systemAccess = !!document.getElementById('fs_access')?.checked;
+  const attNoPhone = !!document.getElementById('fs_nophone')?.checked;
+  const pin = systemAccess ? hv('pin') : '';
+  const permissions = systemAccess ? readPermissionCheckboxes() : [];
+  const err = (m) => showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + m);
 
-  if (!firstname || !lastname) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ad və Soyad mütləqdir'); return; }
-  if (!position) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Vəzifə seçilməlidir'); return; }
-  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> 4 rəqəmli PIN lazımdır'); return; }
-
-  const conflict = state.staff?.find(s => s.pin === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
-  if (conflict) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu PIN artıq istifadə olunur'); return; }
+  if (!firstname || !lastname) { err('Ad və Soyad mütləqdir'); return; }
+  if (!position) { err('Vəzifə seçilməlidir'); return; }
+  if (systemAccess) {
+    if (!/^\d{4}$/.test(pin)) { err('Sistemə girişi olan işçi üçün 4 rəqəmli PIN lazımdır'); return; }
+    const conflict = state.staff?.find(s => s.pin === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
+    if (conflict) { err('Bu PIN artıq istifadə olunur'); return; }
+    if ((state.kitchenStations || []).some(k => String(k.pin) === pin) || String(ADMIN_PIN) === pin) { err('Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+    if (!permissions.length) { err('Sistemə girişi olan işçiyə ən azı bir icazə verin'); return; }
+  }
+  const hr = {}; HR_FIELDS.forEach(k => { hr[k] = hv(k) || null; });
+  if (hr.fin) hr.fin = hr.fin.toUpperCase();
+  if (hr.fin && !/^[0-9A-Z]{7}$/.test(hr.fin)) { err('FİN 7 simvol olmalıdır (rəqəm və latın hərfləri)'); return; }
+  if (hr.voen && !/^\d{10}$/.test(hr.voen)) { err('VÖEN 10 rəqəm olmalıdır'); return; }
+  if (hr.iban) { hr.iban = hr.iban.replace(/\s+/g, '').toUpperCase(); if (!/^AZ\d{2}[A-Z0-9]{24}$/.test(hr.iban)) { err('IBAN AZ ilə başlamalı və 28 simvol olmalıdır'); return; } }
+  if (hr.salaryAmount != null) { const a = +String(hr.salaryAmount).replace(',', '.'); if (!(a >= 0)) { err('Əmək haqqı məbləği düzgün deyil'); return; } hr.salaryAmount = a; }
+  if (hr.contractEnd && hr.hireDate && hr.contractEnd < hr.hireDate) { err('Müqavilənin bitmə tarixi işə qəbul tarixindən əvvəl ola bilməz'); return; }
+  hr.updatedAt = Date.now();
 
   const name = `${firstname} ${lastname}`;
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
   const avatar = avatarVal || fallback;
-
-  const staffData = { name, firstname, lastname, position, pin, phone, fin, avatar, permissions };
+  // fin artıq staffHR-dədir; köhnə qeyddə qalıbsa silinir
+  const staffData = { name, firstname, lastname, position, pin, phone, avatar, permissions, systemAccess, attNoPhone,
+    contractType: hr.contractType || null, hireDate: hr.hireDate || null, fin: null };
 
   if (state.editTarget?.id) {
-    db.ref('staff').child(state.editTarget.id).update(staffData);
-    addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: state.editTarget.id });
+    const id = state.editTarget.id;
+    db.ref().update({ ...Object.fromEntries(Object.entries(staffData).map(([k, v]) => ['staff/' + id + '/' + k, v])), ['staffHR/' + id]: hr });
+    addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: id });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi yeniləndi');
   } else {
-    db.ref('staff').push({ ...staffData, status: 'active', createdAt: Date.now() });
-    addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, {});
+    const ref = db.ref('staff').push();
+    db.ref().update({ ['staff/' + ref.key]: { ...staffData, status: 'active', createdAt: Date.now() }, ['staffHR/' + ref.key]: hr });
+    addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, { staffId: ref.key });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi əlavə edildi');
   }
   closeAddModal();
@@ -1734,7 +1780,36 @@ export function saveStaff() {
 export function staffForm(s = {}) {
   const existingPerms = s.permissions || [];
   const currentPos = s.position || '';
+  // Köhnə işçilər üçün: sahə yoxdursa, PIN-i varsa sistemə girişli sayılır
+  const access = s.systemAccess != null ? !!s.systemAccess : (s.id ? !!s.pin : true);
+  const POS = ['Qarson', 'Baş Qarson', 'Kassir', 'Barmen', 'Müdir', 'Mühasib', 'Anbardar', 'Mətbəx', 'Aşpaz köməkçisi', 'Qabyuyan', 'Xadimə', 'Mühafizəçi', 'Kuryer', 'Digər'];
+  const inp = (id, label, type = 'text', ph = '', extra = '') => `<div class="form-group"><label>${label}</label><input type="${type}" id="fs_${id}" placeholder="${ph}" ${extra}></div>`;
+  const sel = (id, label, opts) => `<div class="form-group"><label>${label}</label><select id="fs_${id}" class="fs-sel">${opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>`;
+  const sec = (title, inner, open = false) => `<details class="fs-sec"${open ? ' open' : ''}><summary>${title}</summary><div class="fs-sec__b">${inner}</div></details>`;
+  if (s.id) setTimeout(() => fillStaffHR(s), 0);
+  else setTimeout(() => window.fsToggleAccess?.(), 0);
+  setTimeout(() => {
+    window.fsPermCount = () => {
+      const el = document.getElementById('fs_permCnt'); if (!el) return;
+      const n = document.querySelectorAll('[name=staff_perm]:checked').length;
+      el.textContent = n ? `· ${n} seçilib` : '· seçilməyib';
+    };
+    document.getElementById('fs_permSec')?.addEventListener('change', window.fsPermCount);
+    window.fsPermCount();
+  }, 0);
   return `
+    <style>
+      .fs-sel{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px}
+      .fs-sec{border:1px solid var(--border);border-radius:12px;margin:10px 0;background:var(--card)}
+      .fs-sec>summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+      .fs-sec>summary::after{content:'▾';color:var(--text3)}
+      .fs-sec[open]>summary::after{content:'▴'}
+      .fs-sec__b{padding:0 14px 6px}
+      .fs-switch{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin:8px 0;cursor:pointer}
+      .fs-switch input{width:20px;height:20px;margin-top:2px;flex-shrink:0}
+      .fs-switch small{display:block;color:var(--text3);font-size:12px;font-weight:500}
+      .fs-hint{font-size:12px;color:var(--text3);margin:-4px 0 10px}
+    </style>
     <div style="text-align:center;margin-bottom:16px;">
       <img id="fs_preview" class="avatar-preview" src="${esc(s.avatar||'')}" style="${s.avatar?'display:block':'display:none'}">
       <div class="avatar-upload-area" onclick="document.getElementById('fs_file').click()">
@@ -1744,37 +1819,76 @@ export function staffForm(s = {}) {
       </div>
       <input type="hidden" id="fs_avatar" value="${esc(s.avatar||'')}">
     </div>
-    <div class="modal-section-title"><svg class="icon"><use href="#i-user"></use></svg> Məlumatlar</div>
+    <div class="modal-section-title"><svg class="icon"><use href="#i-user"></use></svg> Əsas məlumatlar</div>
     <div class="form-row">
       <div class="form-group"><label>Ad *</label><input type="text" id="fs_firstname" value="${esc(s.firstname||s.name?.split(' ')[0]||'')}" placeholder="Əli"></div>
       <div class="form-group"><label>Soyad *</label><input type="text" id="fs_lastname" value="${esc(s.lastname||s.name?.split(' ')[1]||'')}" placeholder="Məmmədov"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Vəzifə *</label>
-        <select id="fs_position" onchange="onStaffPositionChange()" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;">
+      <div class="form-group"><label>Vəzifə *</label>
+        <select id="fs_position" class="fs-sel" onchange="onStaffPositionChange()">
           <option value="">Seçin...</option>
-          <option value="Qarson" ${currentPos==='Qarson'?'selected':''}><svg class="icon"><use href="#i-bowtie"></use></svg> Qarson</option>
-          <option value="Baş Qarson" ${currentPos==='Baş Qarson'?'selected':''}><svg class="icon"><use href="#i-star"></use></svg> Baş Qarson</option>
-          <option value="Kassir" ${currentPos==='Kassir'?'selected':''}><svg class="icon"><use href="#i-money"></use></svg> Kassir</option>
-          <option value="Müdir" ${currentPos==='Müdir'?'selected':''}><svg class="icon"><use href="#i-staff"></use></svg> Müdir</option>
-          <option value="Mətbəx" ${currentPos==='Mətbəx'?'selected':''}><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</option>
-          <option value="Digər" ${currentPos==='Digər'?'selected':''}>Digər</option>
-        </select>
-      </div>
+          ${POS.map(p => `<option value="${p}" ${currentPos === p ? 'selected' : ''}>${p === 'Mətbəx' ? 'Mətbəx (aşpaz)' : p}</option>`).join('')}
+          ${currentPos && !POS.includes(currentPos) ? `<option value="${esc(currentPos)}" selected>${esc(currentPos)}</option>` : ''}
+        </select></div>
       <div class="form-group"><label>Telefon</label><input type="tel" id="fs_phone" value="${esc(s.phone||'')}" placeholder="+994 50 000 00 00"></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label>FİN nömrəsi</label><input type="text" id="fs_fin" value="${esc(s.fin||'')}" placeholder="1234ABC"></div>
-      <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
+
+    <label class="fs-switch"><input type="checkbox" id="fs_access" ${access ? 'checked' : ''} onchange="fsToggleAccess()">
+      <span><b>Sistemə girişi var</b><small>Ofisiant, kassir, müdir, mühasib, anbardar. İşarələnməsə, işçi POS-a girə bilməz — yalnız davamiyyətdə (QR) iştirak edir.</small></span></label>
+    <label class="fs-switch"><input type="checkbox" id="fs_nophone" ${s.attNoPhone ? 'checked' : ''}>
+      <span><b>Smartfonu yoxdur</b><small>Davamiyyəti davamiyyət ekranında səlahiyyətli şəxs (öz PIN-i ilə) qeyd edir.</small></span></label>
+
+    <div id="fs_accessBox">
+      <div class="form-row">
+        <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" inputmode="numeric" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
+      </div>
+      <details class="fs-sec" id="fs_permSec">
+        <summary><span><svg class="icon"><use href="#i-key"></use></svg> İcazələr <small id="fs_permCnt" style="font-weight:600;color:var(--text3)"></small></span></summary>
+        <div class="fs-sec__b">
+          <div style="display:flex;justify-content:flex-end;margin:2px 0 8px;">
+            <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false);window.fsPermCount?.()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
+          </div>
+          ${renderPermissionCheckboxes(existingPerms)}
+        </div>
+      </details>
     </div>
-    <div class="modal-section-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
-      <span><svg class="icon"><use href="#i-key"></use></svg> İcazələr</span>
-      <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
-    </div>
-    ${renderPermissionCheckboxes(existingPerms)}
+
+    ${sec('İş və müqavilə', `
+      <div class="form-row">${sel('contractType', 'Müqavilə növü', [['', 'Seçin...'], ['labor', 'Əmək müqaviləsi'], ['civil', 'Mülki-hüquqi müqavilə'], ['trial', 'Sınaq müddəti'], ['none', 'Müqaviləsiz']])}
+        ${inp('contractNo', 'Müqavilə nömrəsi', 'text', 'məs. 12/2026')}</div>
+      <div class="form-row">${inp('hireDate', 'İşə qəbul tarixi', 'date')}${inp('contractEnd', 'Müqavilənin bitmə tarixi', 'date')}</div>
+      <div class="form-row">${inp('fireDate', 'İşdən çıxma tarixi', 'date')}<div class="form-group"></div></div>`, true)}
+    ${sec('Şəxsi məlumatlar', `
+      <div class="form-row">${inp('birthDate', 'Doğum tarixi', 'date')}${sel('gender', 'Cins', [['', 'Seçin...'], ['m', 'Kişi'], ['f', 'Qadın']])}</div>
+      <div class="form-row">${inp('fin', 'FİN', 'text', '1AB2C3D', 'maxlength="7" style="text-transform:uppercase"')}${inp('idCard', 'Şəxsiyyət vəsiqəsi (seriya və nömrə)', 'text', 'AA 1234567')}</div>
+      <div class="form-row">${inp('idExpiry', 'Vəsiqənin etibarlılıq tarixi', 'date')}<div class="form-group"></div></div>
+      ${inp('regAddress', 'Qeydiyyat ünvanı', 'text', 'Vəsiqədəki ünvan')}
+      ${inp('address', 'Faktiki yaşayış ünvanı', 'text', 'Hazırda yaşadığı ünvan')}`)}
+    ${sec('Vergi və sığorta', `
+      <div class="form-row">${inp('voen', 'VÖEN (10 rəqəm)', 'text', 'Mülki-hüquqi müqavilə üçün', 'inputmode="numeric" maxlength="10"')}${inp('ssn', 'SSN (sosial sığorta nömrəsi)', 'text', '')}</div>`)}
+    ${sec('Əmək haqqı (gələcək hesablamalar üçün)', `
+      <div class="form-row">${sel('salaryType', 'Əmək haqqı növü', [['', 'Seçin...'], ['monthly', 'Aylıq'], ['daily', 'Günlük'], ['hourly', 'Saatlıq']])}
+        ${inp('salaryAmount', 'Məbləğ (₼)', 'text', '0.00', 'inputmode="decimal"')}</div>
+      <div class="form-row">${inp('bankName', 'Bank', 'text', 'məs. Kapital Bank')}${inp('iban', 'IBAN (hesab nömrəsi)', 'text', 'AZ00XXXX0000000000000000000', 'maxlength="34"')}</div>`)}
+    ${sec('Təcili əlaqə və qeyd', `
+      <div class="form-row">${inp('emergencyName', 'Əlaqə şəxsi', 'text', 'Ad Soyad')}${inp('emergencyRelation', 'Qohumluq', 'text', 'məs. həyat yoldaşı')}</div>
+      <div class="form-row">${inp('emergencyPhone', 'Telefon', 'tel', '+994 50 000 00 00')}<div class="form-group"></div></div>
+      <div class="form-group"><label>Qeyd</label><textarea id="fs_hrNote" rows="2" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text)"></textarea></div>`)}
+    <p class="fs-hint">Şəxsi məlumatlar ayrıca, qorunan bölmədə saxlanılır və POS cihazlarına yüklənmir.</p>
   `;
 }
+async function fillStaffHR(s) {
+  window.fsToggleAccess?.();
+  let hr = {};
+  try { hr = (await db.ref('staffHR/' + s.id).once('value')).val() || {}; } catch (e) { /* */ }
+  if (!hr.fin && s.fin) hr.fin = s.fin;   // köhnə qeyddən
+  HR_FIELDS.forEach(k => { const el = document.getElementById('fs_' + k); if (el && hr[k] != null) el.value = hr[k]; });
+}
+window.fsToggleAccess = () => {
+  const on = !!document.getElementById('fs_access')?.checked;
+  const box = document.getElementById('fs_accessBox'); if (box) box.style.display = on ? '' : 'none';
+};
 
 export function previewStaffPhoto(input) {
   const file = input.files[0];
@@ -1819,7 +1933,7 @@ export function renderTables() {
   }
 
   el.innerHTML = filtered.map(t => {
-    const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
+    const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: t.occupant === 'admin' ? 'Rəhbər' : '?' }).name : null;
     return `<div class="tile-card" onclick="selectTableMgmt('${t.id}')">
       <div class="tile-card__icon"><svg class="icon"><use href="#i-chair"></use></svg></div>
       <div class="tile-card__name">${esc(t.name)}</div>
@@ -1848,7 +1962,7 @@ export function selectTableMgmt(id) {
 function renderTableMgmtDetail(t) {
   const el = document.getElementById('tablesDetailBody');
   if (!el || !t) return;
-  const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: '?' }).name : null;
+ const occ = t.occupant ? (state.staff.find(s => s.id === t.occupant) || { name: t.occupant === 'admin' ? 'Rəhbər' : '?' }).name : null;
   el.innerHTML = `
     <div class="ct-detail-header" style="justify-content:center;text-align:center;">
       <span style="font-size:19px;"><svg class="icon"><use href="#i-chair"></use></svg> ${esc(t.name)}</span>
@@ -3480,7 +3594,7 @@ window.editStaff = editStaff;
 window.editTable = editTable;
 window.generateDailyReport = generateDailyReport;
 window.onMenuCategorySelectChange = onMenuCategorySelectChange;
-window.onStaffPositionChange = onStaffPositionChange;
+window.onStaffPositionChange = () => { onStaffPositionChange(); window.fsPermCount?.(); };
 window.openAddModal = openAddModal;
 window.openKitchenPinModal = openKitchenPinModal;
 window.previewMenuItemPhoto = previewMenuItemPhoto;
@@ -3588,9 +3702,13 @@ function openKitchenStationModal(id) {
     <div class="form-group"><label>Məsul şəxs</label>
       <input type="text" id="ksResponsible" value="${esc(s?.responsible||'')}" placeholder="Ad Soyad">
     </div>
-    <div class="form-group"><label>PIN kodu (ən az 4 rəqəm)</label>
-      <input type="number" id="ksPin" value="${esc(s?.pin||'')}" placeholder="1234">
+        <div class="form-group"><label>Bu mətbəxin giriş PIN-i (4 rəqəm)</label>
+      <input type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" id="ksPin" value="${esc(s?.pin||'')}" placeholder="••••" style="letter-spacing:6px;">
+      <small style="color:var(--text3);">Hər mətbəxin öz PIN-i olur. Mətbəx ekranına bu PIN ilə girilir.</small>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;">
+      <input type="checkbox" id="ksShowAll" ${s?.showAll?'checked':''} style="width:18px;height:18px;"> Bütün sifarişləri görsün (ümumi mətbəx)
+    </label>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;">
       <input type="checkbox" id="ksActive" ${s?.active!==false?'checked':''} style="width:18px;height:18px;"> Aktiv
     </label>`;
@@ -3609,10 +3727,13 @@ function saveKitchenStation() {
   const responsible = document.getElementById('ksResponsible').value.trim();
   const active = document.getElementById('ksActive').checked;
   if (!name) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad daxil edin'); return; }
-  if (!pin || pin.length < 4) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ən az 4 rəqəmli PIN'); return; }
-  const dup = (state.kitchenStations||[]).find(s => s.pin===pin && s.id!==id);
+   const showAll = !!document.getElementById('ksShowAll')?.checked;
+  if (!/^\d{4}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> PIN 4 rəqəm olmalıdır'); return; }
+  if (['0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','1234'].includes(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN çox asandır'); return; }
+  const dup = (state.kitchenStations||[]).find(s => String(s.pin)===pin && s.id!==id);
   if (dup) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN "${dup.name}"-ə aiddir`); return; }
-  const data = { name, pin, responsible, active, updatedAt: Date.now() };
+  if ((state.staff||[]).some(s => String(s.pin)===pin) || String(ADMIN_PIN)===pin) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+  const data = { name, pin, responsible, active, showAll, updatedAt: Date.now() };
   if (id) {
     R.kitchenStations.child(id).update(data);
   } else {
@@ -3687,6 +3808,16 @@ window.saveKitchenMenuAssign   = saveKitchenMenuAssign;
    TƏHLÜKƏLİ ƏMƏLİYYATLAR
 ═══════════════════════════════════════════ */
 
+// Yeni anbar sistemi: alış sənədləri silinəndə təchizatçı borcları da sıfırlanır
+async function _zeroSupplierDebts() {
+  const snap = await db.ref('suppliers').once('value');
+  const up = {};
+  snap.forEach(c => { up[c.key + '/totalDebt'] = 0; });
+  if (Object.keys(up).length) await db.ref('suppliers').update(up);
+}
+const INV_DOC_NODES = ['purchases','invAttach','invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','stockMoves','stock','supplierLedger'];
+const CASH_DOC_NODES = ['invCash','cashCloses'];
+
 const DANGER_OPS = [
   {
     id: 'clearClosedOrders',
@@ -3718,10 +3849,20 @@ const DANGER_OPS = [
   {
     id: 'clearPurchases',
     icon: '📦',
-    title: 'Alış Qeydlərini Sil',
-    desc: 'Bütün məhsul alış qeydləri silinir. Təchizatçılar və məhsul kataloqu saxlanılır, yalnız alış tarixçəsi gedir.',
-    nodes: ['purchases'],
-    keepLabel: 'Təchizatçılar və məhsul kataloqu saxlanılır',
+       title: 'Anbar və Alış Sənədlərini Sil',
+    desc: 'Bütün alış qaimələri, təchizatçı ödənişləri, silinmə, transfer, sayım və hazırlama aktları, anbar hərəkətləri silinir. Bütün qalıqlar sıfırlanır, təchizatçı borcları sıfırlanır.',
+    nodes: INV_DOC_NODES,
+    after: _zeroSupplierDebts,
+    keepLabel: 'Məhsul kataloqu, anbarlar və təchizatçılar saxlanılır',
+    danger: 2
+  },
+  {
+    id: 'clearCashDocs',
+    icon: '💵',
+    title: 'Kassa Sənədlərini Sil',
+    desc: 'Əl ilə yazılan bütün kassa mədaxil, məxaric, transfer sənədləri və gün sonu bağlanışları silinir.',
+    nodes: CASH_DOC_NODES,
+    keepLabel: 'Kassa hesabları və onların başlanğıc qalıqları saxlanılır',
     danger: 1
   },
   {
@@ -3752,24 +3893,64 @@ const DANGER_OPS = [
     danger: 1
   },
   {
+    id: 'clearReservations',
+    icon: '📅',
+    title: 'Rezervasiyaları Sil',
+    desc: 'Bütün rezerv qeydləri (gələcək və keçmiş) silinir. Masaların tutum və minimum hesab ayarları saxlanılır.',
+    nodes: ['reservations'],
+    keepLabel: 'Masalar, kabinetlər və rezerv ayarları saxlanılır',
+    danger: 1
+  },
+  {
     id: 'clearAllOperational',
     icon: '🗑️',
     title: 'Bütün Əməliyyat Məlumatlarını Sil',
-    desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
-    nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals'],
-    keepLabel: 'İşçilər, məhsullar, masalar, müştərilər, ayarlar, printerlar, mətbəxlər saxlanılır',
+    desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, rezervasiyalar, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
+        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','customerRequests','feedbacks','chats','reservations', ...INV_DOC_NODES, ...CASH_DOC_NODES],
+    after: _zeroSupplierDebts,
+    keepLabel: 'İşçilər, məhsullar, anbarlar, kassa hesabları, masalar, müştərilər, ayarlar, printerlar, mətbəxlər saxlanılır',
     danger: 2
   },
   {
     id: 'factoryReset',
     icon: '☢️',
-    title: 'Fabrika Sıfırlaması',
-    desc: 'PROQRAMDAKİ HƏR ŞEY SİLİNİR. İşçilər, məhsullar, masalar, müştərilər, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlar. Bu əməliyyat GERİ QAYTARILMAZ.',
-    nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings'],
+    title: 'Sistemi Tam Sıfırla',
+    desc: 'PROQRAMDAKİ BÜTÜN MƏLUMATLAR SİLİNİR: işçilər, məhsullar, masalar, rezervasiyalar, sifarişlər, kassa, anbar, davamiyyət, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlayır. Yalnız Rəhbər hesabı və təsdiqlənmiş cihazlar saxlanılır. Bu əməliyyat GERİ QAYTARILMAZ.',
+    all: true,
+       nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings',
+      'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients','staffHR',
+      'products','warehouses','stock','stockMoves','supplierLedger','invCounters','invBackup',
+      'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses','reservations'],
     keepLabel: null,
     danger: 3
   }
 ];
+
+// Silmə icazələri: Rəhbər hər əməliyyatı ayrıca işçiyə verə bilər. "Sistemi tam sıfırla" yalnız Rəhbərdədir.
+if (!ALL_PERMISSIONS.some(g => g.items?.some(i => i.key?.startsWith('danger.')))) {
+  ALL_PERMISSIONS.push({
+    group: 'Məlumatların silinməsi',
+    icon: '<svg class="icon"><use href="#i-trash"></use></svg>',
+    items: DANGER_OPS.filter(o => !o.all).map(o => ({ key: 'danger.' + o.id, label: o.title }))
+  });
+}
+const _ownerMode = () => !!window.__yzOwner?.available?.();
+const _isRehber = () => state.user?.role === 'admin';
+const _canDanger = (op) => _isRehber() || (!op.all && hasPermission('danger.' + op.id));
+
+/* Bazadakı bütün bölmələrin adları (server "shallow" sorğusu) — "Sistemi tam sıfırla" heç nəyi buraxmasın */
+async function _allRootKeys(fallback) {
+  try {
+    const u = firebase.auth?.().currentUser;
+    const base = (firebase.app().options.databaseURL || '').replace(/\/+$/, '');
+    if (u && base) {
+      const tok = await u.getIdToken();
+      const r = await fetch(`${base}/.json?shallow=true&auth=${encodeURIComponent(tok)}`);
+      if (r.ok) { const j = await r.json(); if (j && typeof j === 'object') return [...new Set([...Object.keys(j), ...fallback])]; }
+    }
+  } catch (e) { console.warn('[sıfırla] bölmə siyahısı alınmadı, əvvəlcədən bilinən siyahı işlənir', e); }
+  return fallback;
+}
 
 // ── Parol modal ──
 // opId: null = bölməyə giriş üçün, string = konkret əməliyyat üçün
@@ -3782,12 +3963,13 @@ function openDangerZonePinModal(opId) {
   document.getElementById('dzPinInput').value = '';
   document.getElementById('dzPinError').textContent = '';
   const isEntry = opId === null;
+  const own = state.user?.role === 'staff';
   document.getElementById('dzPinTitle').textContent = isEntry
-    ? '🔐 Təhlükəli Əməliyyatlar'
-    : '🔑 Əməliyyatı Təsdiqlə';
+    ? '🔐 Məlumatların silinməsi'
+    : '🔑 Silməni təsdiqləyin';
   document.getElementById('dzPinSubtitle').textContent = isEntry
-    ? 'Bu bölməyə giriş üçün Admin PIN kodunuzu daxil edin.'
-    : 'Silmə əməliyyatını icra etmək üçün Admin PIN kodunuzu daxil edin.';
+    ? 'Bu bölməyə giriş üçün Rəhbər PIN kodunu daxil edin.'
+    : (own ? 'Silmək üçün ÖZ PIN kodunuzu daxil edin.' : 'Silmə əməliyyatını icra etmək üçün Rəhbər PIN kodunu daxil edin.');
   el.classList.add('open');
   setTimeout(() => document.getElementById('dzPinInput')?.focus(), 100);
 }
@@ -3804,7 +3986,7 @@ function closeDangerZonePinModal() {
 
 function confirmDangerZonePin() {
   const entered = document.getElementById('dzPinInput').value.trim();
-  const current = String(ADMIN_PIN || '');
+  const current = state.user?.role === 'staff' ? String(state.user.pin || '') : String(ADMIN_PIN || '');
   if (String(entered) !== current) {
     document.getElementById('dzPinError').textContent = '❌ PIN yanlışdır. Yenidən cəhd edin.';
     document.getElementById('dzPinInput').value = '';
@@ -3832,11 +4014,11 @@ function renderDangerZone() {
         <svg class="icon" style="width:22px;height:22px;color:var(--red);flex-shrink:0;margin-top:1px;"><use href="#i-warning"></use></svg>
         <div>
           <div style="font-weight:700;color:var(--red);margin-bottom:4px;">Diqqət! Bu bölmədəki əməliyyatlar GERİ QAYTARILMAZ.</div>
-          <div style="font-size:13px;color:var(--text2);line-height:1.6;">Firebase bazasından məlumatlar tam olaraq silinir. Hər əməliyyatdan əvvəl Admin PIN + 2 dəfə təsdiq tələb olunur. Əmin olmadığınız heç bir əməliyyatı icra etməyin.</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;">Bazadan məlumatlar tam olaraq silinir. Hər əməliyyatdan əvvəl ${_isRehber() && _ownerMode() ? 'Rəhbər parolu' : (_isRehber() ? 'Rəhbər PIN-i' : 'öz PIN kodunuz')} + 2 dəfə təsdiq tələb olunur. Əmin olmadığınız heç bir əməliyyatı icra etməyin.${_isRehber() ? ' İşçiyə ayrı-ayrı silmə icazəsini <b>İşçilər → İcazələr → Məlumatların silinməsi</b> bölməsindən verə bilərsiniz.' : ''}</div>
         </div>
       </div>
 
-      ${DANGER_OPS.map(op => `
+      ${DANGER_OPS.filter(_canDanger).map(op => `
         <div class="table-card" style="margin-bottom:12px;${op.danger===3?'border:2px solid var(--red);background:rgba(220,53,69,.07);':op.danger===2?'border:1.5px solid rgba(220,53,69,.5);':''}">
           <div style="display:flex;align-items:flex-start;gap:12px;">
             <div style="font-size:26px;line-height:1;flex-shrink:0;">${op.icon}</div>
@@ -3847,7 +4029,7 @@ function renderDangerZone() {
               <button class="btn btn-red" onclick="executeDangerOp('${op.id}')"
                 style="padding:9px 18px;font-size:13px;${op.danger===3?'width:100%;padding:13px;font-size:15px;font-weight:700;':''}">
                 <svg class="icon"><use href="#i-trash"></use></svg>
-                ${op.danger===3?'⚠️ '+op.title+' — Hər Şeyi Sil':op.title}
+                ${op.danger===3?'⚠️ '+op.title+' — hər şey silinir':op.title}
               </button>
             </div>
           </div>
@@ -3857,8 +4039,15 @@ function renderDangerZone() {
   `;
 }
 
-function executeDangerOp(opId) {
-  // Hər silmə əməliyyatından əvvəl PIN istə
+async function executeDangerOp(opId) {
+  const op = DANGER_OPS.find(o => o.id === opId);
+  if (!op || !_canDanger(op)) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu əməliyyat üçün icazəniz yoxdur'); return; }
+  // Rəhbər: parol (Firebase serveri yoxlayır) · işçi: öz PIN-i · köhnə rejim: Rəhbər PIN-i
+  if (_isRehber() && _ownerMode()) {
+    const ok = await window.__yzOwner.verify({ title: 'Silməni təsdiqləyin', text: `<b>${op.title}</b> — davam etmək üçün Rəhbər parolunu yazın.`, okLabel: 'Davam et' });
+    if (ok) _runDangerOp(opId);
+    return;
+  }
   openDangerZonePinModal(opId);
 }
 
@@ -3873,22 +4062,40 @@ function _runDangerOp(opId) {
     `<strong>${op.icon} ${op.title}</strong><br><br>${op.desc}${op.keepLabel ? `<br><br><span style="color:var(--green);">✓ ${op.keepLabel}</span>` : ''}<br><br>Bu əməliyyat <strong style="color:var(--red);">GERİ QAYTARILMAZ</strong>. Davam etmək istəyirsiniz?`,
     () => {
       const secondMsg = isFabrika
-        ? `<span style="color:var(--red);font-size:15px;font-weight:700;">☢️ SON XƏBƏRDARLIQ!</span><br><br>PROQRAMDAKİ <strong>HƏR ŞEY</strong> silinəcək. Proqram fabrika vəziyyətinə qayıdacaq.<br><br>Bu əməliyyatı TƏSDİQLƏYİRSİNİZ?`
+        ? `<span style="color:var(--red);font-size:15px;font-weight:700;">☢️ SON XƏBƏRDARLIQ!</span><br><br>PROQRAMDAKİ <strong>BÜTÜN MƏLUMATLAR</strong> silinəcək. Proqram yeni qurulmuş kimi boş başlayacaq.<br><br>Bu əməliyyatı TƏSDİQLƏYİRSİNİZ?`
         : `Son dəfə soruşuram: <strong>${op.title}</strong> əməliyyatı <strong>${nodeCount} verilənlər qrupunu</strong> həmişəlik siləcək.<br><br>Tam əminsinizmi?`;
 
       confirmAction(
         secondMsg,
         async () => {
           try {
+            if (op.all) {
+              // Bütün bölmələr bir yazıda silinir; Rəhbər hesabı (owners) və cihaz təsdiqləri (sys) saxlanılır —
+              // əks halda bütün cihazlar o an kilidlənərdi. Səlahiyyətli hesablar (işçilərə bağlıdır) ayrıca silinir.
+              const keys = (await _allRootKeys(op.nodes)).filter(k => k !== 'owners' && k !== 'sys');
+              await db.ref().update(Object.fromEntries(keys.map(k => [k, null])));
+              try {
+                const odb = window.__yzOwner?.db?.();
+                if (odb) {
+                  const up = {};
+                  for (const n of ['accounts', 'logins']) Object.keys((await odb.ref('sys/' + n).once('value')).val() || {}).forEach(k => { up[n + '/' + k] = null; });
+                  if (Object.keys(up).length) await odb.ref('sys').update(up);
+                }
+              } catch (e) { console.warn('[sıfırla] səlahiyyətli hesablar silinmədi', e); }
+              showToast(`<svg class="icon"><use href="#i-check"></use></svg> Sistem tam sıfırlandı. Proqram yenidən açılır…`);
+              setTimeout(() => { try { window.logout?.(); } catch (e) { /* */ } location.reload(); }, 1500);
+              return;
+            }
             await Promise.all(op.nodes.map(node => db.ref(node).remove()));
-            if (!isFabrika) addLog('danger_op', `"${op.title}" əməliyyatı icra edildi`, { nodes: op.nodes });
+            if (op.after) await op.after();
+            addLog('danger_op', `"${op.title}" əməliyyatı icra edildi`, { nodes: op.nodes, by: state.user?.name || 'Rəhbər' });
             showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${op.title}" uğurla tamamlandı`);
           } catch (e) {
             showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Xəta: ${e.message}`);
           }
         },
         {
-          title: isFabrika ? '☢️ Fabrika Sıfırlaması' : 'Son Təsdiq',
+          title: isFabrika ? '☢️ Sistemi tam sıfırla' : 'Son Təsdiq',
           okLabel: `<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Sil`,
           okClass: 'btn-red'
         }
