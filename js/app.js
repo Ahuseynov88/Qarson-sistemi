@@ -44,6 +44,7 @@ function doLogin() {
   const pin = state.pinBuffer;
   clearPin();
 
+  if (window.__yzPhone) state.role = 'staff';   // işçinin öz telefonu: yalnız işçi girişi
   if (state.role === 'admin' && ownerMode()) { showErr('Rəhbər e-poçt və parolu ilə daxil olur'); return; }
   if (state.role === 'admin') {
     if (ADMIN_PIN === null) { showErr('Sistem hazırlanır, bir saniyə gözləyin...'); return; }
@@ -104,6 +105,9 @@ function doLogin() {
       const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
       const s = list.find(x => x.pin === pin);
       if (!s) { showErr('PIN kod tapılmadı!'); return; }
+      // İşçinin öz telefonu: yalnız telefonun sahibi girə bilər
+      const _ph = window.__yzPhone;
+      if (_ph && s.id !== _ph.staffId) { showErr(`Bu telefonla yalnız ${_ph.name || 'telefonun sahibi'} daxil ola bilər`); return; }
       if (s.status === 'offline') { showErr('Hesabınız deaktivdir. Adminə müraciət edin.'); return; }
       // Sistemə girişi olmayan işçi (aşpaz, qabyuyan, mühafizə...) və ya açılacaq bölməsi olmayan işçi girə bilməz.
       // İşçi yalnız masalar ekranına (table.view) və ya anbar/kassa ekranına girir — Rəhbər panelinə YOX.

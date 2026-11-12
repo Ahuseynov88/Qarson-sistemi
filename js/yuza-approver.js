@@ -51,7 +51,7 @@ export async function loginEmail(login) {
   if (login.includes('@')) return login;
   const u = normUser(login);
   if (!validUser(u)) throw { code: 'yz/bad-user' };
-  const v = (await firebase.database().ref('sys/logins/' + u).once('value')).val();
+  const v = (await (window.__yzDbApp || firebase.app()).database().ref('sys/logins/' + u).once('value')).val();
   if (!v?.email) throw { code: 'auth/invalid-credential' };
   return v.email;
 }

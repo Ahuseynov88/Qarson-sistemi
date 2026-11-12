@@ -1,12 +1,15 @@
 /* ═══════════════════════════════════════════
    YUZA POS — CİHAZ GÖZƏTÇİSİ (v2 · 12.11.2026: cihaz təsdiqi)
    Baza ilə işləməzdən ƏVVƏL cihazın kim olduğunu müəyyən edir:
-   • Restoran cihazı (kassa, ofisiant telefonu, mətbəx, davamiyyət ekranı) —
-     öz "cihaz kimliyi" ilə işləyir. Cihazı BİR DƏFƏ Rəhbər və ya səlahiyyətli
-     şəxs öz istifadəçi adı + parolu ilə təsdiqləyir (parol cihazda qalmır).
-     Təsdiqlənmiş cihazlar "Sistem → Cihazlar və girişlər"də görünür, istənilən
-     biri ayrıca söndürülə bilər — söndürülən cihaz dərhal işləməz olur.
-     Ortaq restoran parolu artıq yoxdur.
+   • Ortaq cihaz (kassa, mətbəx, zal planşeti, davamiyyət ekranı) — öz "cihaz
+     kimliyi" ilə işləyir. BİR DƏFƏ Rəhbər və ya səlahiyyətli şəxs öz istifadəçi
+     adı + parolu ilə təsdiqləyir (parol cihazda qalmır). "Sistem → Cihazlar və
+     girişlər"də görünür, hər biri ayrıca söndürülə bilər.
+   • İşçinin öz telefonu — AYRICA təsdiq yoxdur: davamiyyətə qoşulmuş telefon
+     (Personal izləmə → Telefonlar) tanınır. İşçi işdədirsə (QR ilə "İşə gəldim")
+     PIN ekranı açılır və bu telefonla YALNIZ onun özü girə bilir; işdə deyilsə
+     "Əvvəlcə işə gəlişinizi qeyd edin" yazılır. Baza qaydaları da bunu yoxlayır.
+     Ortaq restoran parolu yoxdur.
    • QR müştəri (?table=... və ya ?ref=...) — avtomatik "qonaq" girişi.
    • İşçinin davamiyyət telefonu (izle.html) — ayrıca "izle" girişi, dəyişmir.
    firebase-service.js bu funksiyanı gözləyir, ona görə heç bir modul
@@ -67,6 +70,8 @@ const CSS = `
 #yzGate p.g-hint{font-size:13px;color:#c9bfae;text-align:center;margin:0 0 6px;line-height:1.5}
 #yzGate .g-code{display:flex;justify-content:center;gap:8px;align-items:center;margin:10px 0 4px;font-size:12px;color:#8f8676}
 #yzGate .g-code b{font:700 14px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:#f4eee2;background:rgba(0,0,0,.35);padding:6px 10px;border-radius:8px}
+#yzGate .g-note{font-size:13px;line-height:1.5;color:#f4eee2;background:rgba(232,176,75,.12);border:1px solid rgba(232,176,75,.35);border-radius:12px;padding:10px 12px;margin:10px 0 8px;text-align:center}
+#yzGate .g-big{font:700 34px/1 Poppins,Inter,sans-serif;text-align:center;margin:6px 0 2px}
 #yzGate .g-warn{font-size:13px;line-height:1.45;color:#ffcf9a;background:rgba(232,120,40,.12);border:1px solid rgba(232,120,40,.35);border-radius:12px;padding:10px 12px;margin:10px 0 0}
 #yzGate label{display:block;font-size:12px;font-weight:700;color:#c9bfae;margin:12px 0 6px}
 #yzGate input,#yzGate select{width:100%;box-sizing:border-box;padding:13px 14px;border-radius:12px;border:1px solid rgba(232,176,75,.35);background:rgba(0,0,0,.35);color:#fff;font-size:16px;outline:none;font-family:inherit}
@@ -76,11 +81,6 @@ const CSS = `
 #yzGate .g-pw input{padding-right:52px}
 #yzGate .g-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;background:none;border:none;color:#c9bfae;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #yzGate .g-eye svg{width:20px;height:20px}
-#yzGate .g-kind{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-#yzGate .g-kind label{margin:0;display:flex;flex-direction:column;gap:2px;padding:11px 12px;border-radius:12px;border:1px solid rgba(232,176,75,.25);background:rgba(0,0,0,.25);cursor:pointer;font-weight:700;color:#f4eee2;font-size:13.5px}
-#yzGate .g-kind label small{font-weight:500;color:#a99f8e;font-size:11.5px;line-height:1.35}
-#yzGate .g-kind input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
-#yzGate .g-kind label:has(input:checked){border-color:#e8b04b;background:rgba(232,176,75,.14)}
 #yzGate .g-btn{width:100%;margin-top:18px;padding:14px;border:none;border-radius:12px;background:linear-gradient(180deg,#f6cf7c,#e1a43e);color:#1a1205;font-weight:800;font-size:15px;cursor:pointer}
 #yzGate .g-btn[disabled]{opacity:.6;cursor:wait}
 #yzGate .g-ghost{width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(232,176,75,.35);background:transparent;color:#f4eee2;font-weight:700;font-size:14px;cursor:pointer}
@@ -102,8 +102,9 @@ function showEnroll(uid, prev) {
       <form class="g-card" novalidate autocomplete="off">
         <div class="g-brand">YuZa<b>POS</b></div>
         <div class="g-ico">${ICO_DEV}</div>
-        <h1>Bu cihaz təsdiqlənməyib</h1>
-        <p class="g-hint">Cihazı <b>bir dəfə</b> Rəhbər və ya səlahiyyətli şəxs öz istifadəçi adı və parolu ilə təsdiqləyir. Parol bu cihazda <b>saxlanmır</b>. Sonra işçilər öz PIN-ləri ilə girir.</p>
+        <h1>Bu cihaz qeydiyyatdan keçməyib</h1>
+        <p class="g-note"><b>İşçisinizsə:</b> telefonunuz hələ qeydiyyatdan keçməyib. Rəhbərə və ya növbə müdirinə müraciət edin — telefonunuzu davamiyyətə qoşsunlar. Sonra işə gələndə QR-ı oxudun, sistem özü açılacaq.</p>
+        <p class="g-hint"><b>Ortaq cihaz</b> (kassa, mətbəx, zal planşeti): Rəhbər və ya səlahiyyətli şəxs öz istifadəçi adı və parolu ilə <b>bir dəfə</b> təsdiqləyir. Parol bu cihazda saxlanmır.</p>
         <div class="g-code">Cihaz kodu <b>${devCode(uid)}</b></div>
         ${off ? `<p class="g-warn">Bu cihaz ${prev.offAt ? fmtDT(prev.offAt) + ' tarixində ' : ''}${prev.offBy ? '<b>' + esc(prev.offBy) + '</b> tərəfindən ' : ''}söndürülüb. İşləmək üçün yenidən təsdiq lazımdır.</p>` : ''}
         <div data-step="1">
@@ -116,17 +117,8 @@ function showEnroll(uid, prev) {
         </div>
         <div data-step="2" hidden>
           <p class="g-who">Təsdiq edən: <b></b></p>
-          <label>Cihazın növü</label>
-          <div class="g-kind">
-            <label><input type="radio" name="yzGK" value="shared" checked>Ortaq cihaz<small>Kassa, zal, mətbəx ekranı — hamı PIN ilə girir</small></label>
-            <label><input type="radio" name="yzGK" value="personal">İşçinin telefonu<small>Bir işçinin öz telefonu</small></label>
-          </div>
-          <div data-staff hidden>
-            <label for="yzGS">Kimin telefonu?</label>
-            <select id="yzGS"><option value="">— seçin —</option></select>
-          </div>
           <label for="yzGN">Cihazın adı</label>
-          <input id="yzGN" maxlength="40" placeholder="məs. Kassa kompüteri">
+          <input id="yzGN" maxlength="40" placeholder="məs. Kassa kompüteri, Mətbəx planşeti">
           <button type="submit" class="g-btn">Cihazı təsdiqlə</button>
           <button type="button" class="g-ghost" data-back>Başqa hesabla</button>
         </div>
@@ -137,22 +129,9 @@ function showEnroll(uid, prev) {
     const $ = (s) => box.querySelector(s);
     const err = (t) => { $('.g-err').textContent = t || ''; };
     const step = (n) => { box.querySelectorAll('[data-step]').forEach(d => { d.hidden = d.dataset.step !== String(n); }); err(''); };
-    let appr = null, staff = [];
+    let appr = null;
     const release = () => { const a = appr; appr = null; a?.release(); };
     $('.g-eye').onclick = () => { const i = $('#yzGP'); i.type = i.type === 'password' ? 'text' : 'password'; };
-    const kind = () => box.querySelector('input[name="yzGK"]:checked')?.value || 'shared';
-    const syncKind = () => {
-      const per = kind() === 'personal';
-      $('[data-staff]').hidden = !per;
-      $('#yzGN').placeholder = per ? 'məs. Əlinin telefonu' : 'məs. Kassa kompüteri';
-    };
-    box.querySelectorAll('input[name="yzGK"]').forEach(r => { r.onchange = syncKind; });
-    $('#yzGS').onchange = () => {
-      const s = staff.find(x => x.id === $('#yzGS').value);
-      const n = $('#yzGN');
-      if (s && (!n.value || n.dataset.auto)) { n.value = `${s.name} — telefon`; n.dataset.auto = '1'; }
-    };
-    $('#yzGN').oninput = () => { delete $('#yzGN').dataset.auto; };
     $('[data-back]').onclick = () => { release(); $('#yzGP').value = ''; step(1); $('#yzGL').focus(); };
 
     $('form').addEventListener('submit', async (ev) => {
@@ -165,24 +144,13 @@ function showEnroll(uid, prev) {
           appr = await approverSignIn($('#yzGL').value, $('#yzGP').value);
           $('#yzGP').value = '';
           $('.g-who b').textContent = appr.name;
-          staff = [];
-          try {
-            const o = (await appr.db.ref('staff').once('value')).val() || {};
-            staff = Object.keys(o).map(id => ({ id, name: o[id]?.name || '' })).filter(x => x.name)
-              .sort((a, b) => a.name.localeCompare(b.name, 'az'));
-          } catch (e) { /* işçi siyahısı oxunmadı — ad əl ilə yazılır */ }
-          $('#yzGS').innerHTML = '<option value="">— seçin —</option>' + staff.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
           if (prev?.name && !$('#yzGN').value) $('#yzGN').value = prev.name;
-          step(2); syncKind(); $('#yzGN').focus();
+          step(2); $('#yzGN').focus();
         } else {
           if (!appr) { step(1); return; }
-          const k = kind();
-          const sid = k === 'personal' ? $('#yzGS').value : '';
-          const s = staff.find(x => x.id === sid);
           const name = $('#yzGN').value.trim();
-          if (k === 'personal' && staff.length && !s) { err('Telefonun kimə aid olduğunu seçin.'); return; }
           if (!name) { err('Cihaza ad verin (siyahıda tanımaq üçün).'); $('#yzGN').focus(); return; }
-          const rec = { on: true, name, kind: k, staffId: s?.id || null, staffName: s?.name || null, model: deviceModel(), by: appr.name, byUid: appr.uid, at: TS() };
+          const rec = { on: true, name, kind: 'shared', model: deviceModel(), by: appr.name, byUid: appr.uid, at: TS() };
           await appr.db.ref('sys/devices/' + uid).set(rec);
           release();
           ls.set(K_OK, uid);
@@ -192,7 +160,7 @@ function showEnroll(uid, prev) {
       } catch (e) { err(apprErr(e)); if (s1) { $('#yzGP').value = ''; $('#yzGP').focus(); } }
       finally { btn.disabled = false; }
     });
-    setTimeout(() => $('#yzGL').focus(), 50);
+    if (window.matchMedia('(min-width:700px)').matches) setTimeout(() => $('#yzGL').focus(), 50);   // telefonda klaviatura özü açılmasın
   });
 }
 
@@ -220,7 +188,6 @@ function renderCard(uid) {
   const qrOn = ls.get(LOGIN_QR) === '1';
   card.innerHTML = `<h3 style="margin-bottom:8px;">🔒 Bu cihaz</h3>
     <div class="yzs-kv"><span>Ad</span><b>${esc(d.name || '—')}</b></div>
-    <div class="yzs-kv"><span>Növ</span><b>${d.kind === 'personal' ? 'İşçinin telefonu' + (d.staffName ? ' — ' + esc(d.staffName) : '') : 'Ortaq cihaz'}</b></div>
     <div class="yzs-kv"><span>Cihaz kodu</span><b>${devCode(uid)}</b></div>
     <div class="yzs-kv"><span>Təsdiqləyən</span><b>${esc(d.by || '—')} · ${fmtDT(d.at)}</b></div>
     <label class="yzs-switch" style="margin-top:12px"><span><b>Giriş ekranında davamiyyət QR-ı</b>
@@ -238,6 +205,45 @@ function renderCard(uid) {
     ls.set(K_OK, null);
     location.reload();
   };
+}
+
+/* ── İşçinin telefonu: davamiyyətə qoşulmuş telefon tanınır ── */
+const ICO_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const isApproved = (r) => !!r && r.on === true && r.kind !== 'personal';   // köhnə "şəxsi telefon" təsdiqi artıq keçərli deyil
+async function findPhone(config) {
+  try {
+    const app = firebase.apps.find(a => a.name === 'yzIzle') || firebase.initializeApp(config, 'yzIzle');
+    const a2 = app.auth(); a2.languageCode = 'az';
+    const u = await firstState(a2);
+    if (!u) return null;
+    const d = app.database();
+    const ph = (await d.ref('att/phones/' + u.uid).once('value')).val();
+    if (!ph?.staffId) return null;
+    const ap = (await d.ref('att/devices/' + ph.staffId + '/approved/uid').once('value')).val();
+    if (ap !== u.uid) return null;
+    return { app, user: u, uid: u.uid, staffId: ph.staffId, name: ph.staffName || '', firstname: ph.firstname || ph.staffName || '' };
+  } catch (e) { return null; }
+}
+function notAtWork(ph, st) {
+  const box = document.createElement('div');
+  box.id = 'yzGate';
+  const brk = st?.state === 'break';
+  const izle = location.pathname.replace(/[^/]*$/, '') + 'izle.html';
+  box.innerHTML = `<style>${CSS}</style>
+    <div class="g-card">
+      <div class="g-brand">YuZa<b>POS</b></div>
+      <div class="g-ico">${ICO_CLOCK}</div>
+      <h1>${brk ? 'Siz müvəqqəti çıxışdasınız' : 'Siz işdə deyilsiniz'}</h1>
+      <p class="g-hint">Salam, <b>${esc(ph.firstname)}</b>. Sistemə girmək üçün əvvəlcə restorandakı ekranda olan QR-ı bu telefonla oxudub <b>“${brk ? 'Qayıtdım' : 'İşə gəldim'}”</b> basın. Sonra sistem özü açılacaq.</p>
+      <div class="g-big" data-clock></div>
+      <a class="g-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box" href="${izle}">Davamiyyət səhifəsi</a>
+      <button type="button" class="g-ghost" data-retry>Yenidən yoxla</button>
+      <div class="g-lock">Bu telefon: ${esc(ph.name)}</div>
+    </div>`;
+  document.body.appendChild(box);
+  const tick = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); const c = box.querySelector('[data-clock]'); if (c) c.textContent = `${p(d.getHours())}:${p(d.getMinutes())}`; };
+  tick(); setInterval(tick, 15000);
+  box.querySelector('[data-retry]').onclick = () => location.reload();
 }
 
 /* ── Əsas funksiya: firebase-service.js bunu gözləyir ── */
@@ -261,7 +267,28 @@ export async function guardDevice(config) {
     if (!user) user = await signInAnon(auth);
     return user;
   }
-  // Köhnə "ortaq restoran hesabı" girişi → cihaz öz kimliyinə keçir (təsdiq bir dəfə soruşulacaq)
+  // 1) Təsdiqlənmiş ortaq cihaz deyilsə — işçinin davamiyyətə qoşulmuş telefonudurmu?
+  const sharedCached = !!user && user.isAnonymous && ls.get(K_OK) === user.uid;
+  if (!sharedCached && !IS_IZLE) {
+    const ph = await findPhone(config);
+    if (ph) {
+      const sref = ph.app.database().ref('att/status/' + ph.staffId);
+      let st = null;
+      try { st = (await sref.once('value')).val(); } catch (e) { /* */ }
+      // İşdən / müvəqqəti çıxanda (və ya işə gələndə) səhifə yenilənir — baza da girişi bu vəziyyətə görə açır/bağlayır
+      const was = st?.state === 'in';
+      sref.on('value', (x) => { if ((x.val()?.state === 'in') !== was) location.reload(); }, () => {});
+      if (!was) { notAtWork(ph, st); return new Promise(() => {}); }
+      window.__yzDbApp = ph.app;          // firebase-service.js bu tətbiqin bazasını işlədir
+      window.__yzAttApp = ph.app;
+      window.__yzPhone = { staffId: ph.staffId, name: ph.name, firstname: ph.firstname, uid: ph.uid };
+      window.__yzDevice = { uid: ph.uid, phone: true, rec: () => null, code: devCode(ph.uid) };
+      try { localStorage.setItem('yzPosPhone', '1'); } catch (e) { /* */ }
+      ph.app.auth().onAuthStateChanged(u => { if (!u || u.uid !== ph.uid) location.reload(); });
+      return ph.user;
+    }
+  }
+  // 2) Ortaq cihaz. Köhnə "ortaq restoran hesabı" girişi → cihaz öz kimliyinə keçir (təsdiq bir dəfə soruşulacaq)
   if (user && !user.isAnonymous) { try { await auth.signOut(); } catch (e) { /* */ } user = null; }
   if (!user) user = await signInAnon(auth);
   const uid = user.uid;
@@ -273,14 +300,14 @@ export async function guardDevice(config) {
     fetchRec().then(r => { if (r) { devRec = r; renderCard(uid); } });
   } else {
     const rec = await fetchRec();
-    devRec = (rec && rec.on === true) ? rec : await showEnroll(uid, rec);
+    devRec = isApproved(rec) ? rec : await showEnroll(uid, rec);
     ls.set(K_OK, uid);
   }
   window.__yzDevice = { uid, rec: () => devRec, code: devCode(uid) };
   // Söndürüləndə / silinəndə dərhal təsdiq ekranına qayıdır
   ref.on('value', (s) => {
     const r = s.val();
-    if (r && r.on === true) { devRec = r; renderCard(uid); return; }
+    if (isApproved(r)) { devRec = r; renderCard(uid); return; }
     ls.set(K_OK, null);
     location.reload();
   }, () => {});

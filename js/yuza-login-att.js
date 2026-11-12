@@ -17,7 +17,7 @@ const KEY = 'yzLoginQr';
 const ROTATE = 15000;
 const IZLE_URL = location.origin + location.pathname.replace(/[^/]*$/, '') + 'izle.html';
 const wideMq = window.matchMedia('(min-width:960px)');
-const enabled = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+const enabled = () => { if (window.__yzPhone) return false; try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
 const loginActive = () => !!$('loginScreen')?.classList.contains('active');
 
 const QR_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>';
@@ -130,7 +130,31 @@ function renderWho() {
     || '<li class="yz-attp__empty">Hələ heç kim qeyd etməyib.</li>';
 }
 
+/* İşçinin öz telefonu: yalnız ofisiant/işçi girişi, rol seçimi gizlənir, salamlama göstərilir */
+function phoneMode() {
+  const ph = window.__yzPhone; const root = $('yzLogin');
+  if (!ph || !root) return;
+  root.classList.add('yz-phone-mode');
+  const card = root.querySelector('.yz-card');
+  if (card && !$('yzPhoneHi')) {
+    const hi = document.createElement('p');
+    hi.id = 'yzPhoneHi'; hi.className = 'yz-phone-hi';
+    hi.innerHTML = `Salam, <b>${esc(ph.firstname || ph.name)}</b>!<br><span>PIN kodunuzu daxil edin</span>`;
+    card.insertBefore(hi, card.querySelector('.yz-pad'));
+  }
+  const pick = () => {
+    const btn = root.querySelector('.yz-role--staff');
+    if (typeof window.setRole !== 'function' || !btn) return false;
+    if (!btn.classList.contains('active')) window.setRole('staff', btn);
+    return true;
+  };
+  if (!pick()) { const t = setInterval(() => { if (pick()) clearInterval(t); }, 150); setTimeout(() => clearInterval(t), 15000); }
+  // Çıxışdan sonra da işçi rolu seçili qalsın
+  new MutationObserver(() => { if (loginActive()) pick(); }).observe($('loginScreen') || document.body, { attributes: true, attributeFilter: ['class'] });
+}
+
 function init() {
+  phoneMode();
   if (!build()) { const t = setInterval(() => { if (build()) { clearInterval(t); init(); } }, 200); setTimeout(() => clearInterval(t), 15000); return; }
   const ls = $('loginScreen');
   if (ls) new MutationObserver(sync).observe(ls, { attributes: true, attributeFilter: ['class'] });

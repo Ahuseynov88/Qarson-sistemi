@@ -77,7 +77,7 @@ async function startWorker() {
     return;
   }
   await settingsReady;
-  onSettings = () => { if (me) renderHome(); };
+  onSettings = () => { if (me && !resultOpen()) renderHome(); };
   if (inviteCode) { await handleInvite(inviteCode, uid); return; }
   await openBound(uid);
 }
@@ -106,7 +106,8 @@ async function openBound(uid) {
     if (!a || a.uid !== uid) { lost(); return; }
     if (first) { first = false; renderHome(); }
   }, lost);
-  listen(A('status/' + ph.staffId), (s) => { myStatus = s.val(); if (me && !busy) renderHome(); });
+  // Nəticə ekranı (qeyd edildi / alınmadı) açıqdırsa üstündən yazılmır — istifadəçi bağlayanda əsas ekran yenilənir
+  listen(A('status/' + ph.staffId), (s) => { myStatus = s.val(); if (me && !busy && !resultOpen()) renderHome(); });
   // Bu işçinin açıq masaları: masası olan işçi işdən / müvəqqəti çıxa bilməz (əvvəlcə ötürülməlidir)
   listen(adb.ref('tables').orderByChild('occupant').equalTo(ph.staffId), (s) => {
     myTables = []; s.forEach(c => { myTables.push(c.val()?.name || c.key); });
@@ -191,6 +192,7 @@ async function handleInvite(code, uid) {
   };
 }
 
+const resultOpen = () => !!document.querySelector('.iz-done, .iz-fail');
 /* ── 2) Əsas ekran ── */
 let tick = null, busy = false;
 function renderHome() {
@@ -356,6 +358,8 @@ async function go(action, brk = null) {
 const DONE = { in: 'İşə gəldiniz', out: 'İşdən çıxdınız', break: 'Müvəqqəti çıxış qeyd edildi', back: 'Xoş gəldiniz, qayıdış qeyd edildi' };
 function renderDone(r) {
   const t = TRUST[r.trust] || TRUST.medium;
+  const toPos = r.kind === 'in' || r.kind === 'back';
+  let autoPos = false; try { autoPos = toPos && localStorage.getItem('yzPosPhone') === '1'; } catch (e) { /* */ }
   setView(`${brand}
     <section class="iz-card iz-done">
       <div class="iz-ico iz-ico--ok">${ICON.check}</div>
@@ -364,12 +368,15 @@ function renderDone(r) {
       <p class="iz-p">${fmtDate(now())} · ${esc(me.name)}</p>
       ${r.kind === 'break' ? '<p class="iz-hint iz-c">Qayıdanda ekrandakı QR-ı oxudub <b>“Qayıtdım”</b> basmağı unutmayın.</p>' : ''}
       <span class="iz-chip iz-chip--${t.cls}">${t.label} qeyd</span>
+      ${toPos ? `<a id="izPos" class="iz-btn iz-btn--gold" style="text-decoration:none;box-sizing:border-box;margin-top:12px" href="${BASE}index.html">Sistemə daxil ol (PIN)</a>${autoPos ? '<p class="iz-hint iz-c">PIN ekranı açılır…</p>' : ''}` : ''}
       <button id="izOk" class="iz-btn iz-btn--ghost iz-btn--icon" type="button" aria-label="Bağla" title="Bağla">${ICON.x}</button>
     </section>`);
   if (navigator.vibrate) navigator.vibrate(60);
   const back = () => renderHome();
   $('izOk').onclick = back;
-  setTimeout(() => { if ($('izOk')) back(); }, 6000);
+  // İşə gəlib / qayıdıb: bu telefonda əvvəl sistemə girilibsə, PIN ekranı özü açılır
+  if (autoPos) { setTimeout(() => { if ($('izPos')) location.href = BASE + 'index.html'; }, 2500); return; }
+  setTimeout(() => { if ($('izOk')) back(); }, toPos ? 15000 : 6000);
 }
 function renderFail(msg) {
   setView(`${brand}

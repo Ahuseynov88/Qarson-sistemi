@@ -33,7 +33,8 @@ firebase.initializeApp(firebaseConfig);
 import { guardDevice } from './yuza-guard.js';
 await guardDevice(firebaseConfig);
 
-export const db = firebase.database();
+// İşçinin öz telefonunda (davamiyyətə qoşulmuş telefon) baza həmin telefonun girişi ilə işləyir (yuza-guard.js)
+export const db = (window.__yzDbApp || firebase.app()).database();
 export const R = {
   payments:    db.ref('payments'),
   staff:       db.ref('staff'),

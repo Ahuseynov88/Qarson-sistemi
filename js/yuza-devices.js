@@ -115,7 +115,7 @@ function render(err) {
       <p class="yzd-err" id="yzdErr" hidden></p>
       <section class="table-card yzs-card">
         <h3>${I('phone')} Cihazlar <span class="yzd-cnt" id="yzdDevCnt"></span></h3>
-        <p class="yzd-note">Yeni cihaz: həmin cihazda saytı açın — "Bu cihaz təsdiqlənməyib" ekranında Rəhbər və ya səlahiyyətli şəxs öz girişi ilə təsdiqləyir.</p>
+        <p class="yzd-note">Burada <b>ortaq cihazlar</b> var (kassa, mətbəx, zal planşeti). Yeni cihaz: həmin cihazda saytı açın — Rəhbər və ya səlahiyyətli şəxs öz girişi ilə təsdiqləyir. İşçilərin öz telefonları ayrıca təsdiq olunmur: davamiyyətə qoşulmuş telefon (Personal izləmə → Telefonlar) işçi işdə olanda avtomatik açılır.</p>
         <div class="yzd-list" id="yzdDevList"></div>
       </section>
       ${owner ? accountsHtml() : `<p class="yzd-note">${I('key')} Səlahiyyətli hesabları yalnız Rəhbər idarə edir.</p>`}`;
@@ -137,6 +137,7 @@ function devRow(d, me) {
       <b>${esc(d.name || 'Adsız cihaz')}${d.uid === me ? ' <em class="yzd-me">bu cihaz</em>' : ''}</b>
       <small>${d.kind === 'personal' ? 'İşçinin telefonu' + (d.staffName ? ' — ' + esc(d.staffName) : '') : 'Ortaq cihaz'} · ${esc(d.model || '')} · kod ${devCode(d.uid)}</small>
       <small>Təsdiqləyən: ${esc(d.by || '—')} · ${fmtDT(d.at)}${d.seen ? ` · son aktivlik: ${fmtDT(d.seen)}` : ''}</small>
+      ${d.kind === 'personal' ? '<small class="yzd-offtxt">Keçərsizdir: işçi telefonları artıq davamiyyət qeydiyyatı ilə tanınır (Personal izləmə → Telefonlar). Siyahıdan silə bilərsiniz.</small>' : ''}
       ${off ? `<small class="yzd-offtxt">Söndürülüb${d.offBy ? ': ' + esc(d.offBy) : ''}${d.offAt ? ' · ' + fmtDT(d.offAt) : ''}</small>` : ''}
     </div>
     <div class="yzd-acts">
