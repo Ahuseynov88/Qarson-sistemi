@@ -33,7 +33,9 @@ function build() {
   const sec = $('sec-settings');
   if (!sec || sec.dataset.yzHub) return !!sec;
   sec.dataset.yzHub = '1';
-  const old = sec.firstElementChild;                       // köhnə kartlar qabı
+  // Köhnə kartlar qabı. "Bu cihaz" kartı (yuza-guard.js) bölmənin əvvəlinə ondan TEZ əlavə oluna bilər —
+  // onu qab sanıb silməmək üçün qabı içindəki kartlara görə tapırıq.
+  const old = [...sec.children].find(el => el.id !== 'yzDeviceCard' && el.querySelector(':scope > .table-card'));
   const cards = old ? [...old.querySelectorAll(':scope > .table-card')] : [];
   const byTitle = (re) => cards.find(c => re.test(c.querySelector('h3')?.textContent || ''));
   const hub = document.createElement('div');
@@ -262,7 +264,10 @@ async function renderGate() {
 /* "Bu cihaz" kartı (yuza-guard.js yaradır) → Giriş və təhlükəsizlik */
 function moveDeviceCard() {
   const c = $('yzDeviceCard'), host = $('yzsDevice');
-  if (c && host && c.parentElement !== host) host.appendChild(c);
+  if (!c || !host || c.parentElement === host) return;
+  c.classList.add('yzs-card'); c.style.maxWidth = '';
+  const h = c.querySelector('h3'); if (h) h.innerHTML = `${I('lock')} Bu cihaz — ortaq restoran girişi`;
+  host.appendChild(c);
 }
 
 /* ── Düymələr ── */
