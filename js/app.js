@@ -163,11 +163,11 @@ function confirmLogoutSelf() {
   });
 }
 
-function logout() {
+function logout(opts = {}) {
   if (state.user?.role === 'staff') {
     R.staff.child(state.user.id).update({ status: 'ready', lastActive: Date.now() });
     addLog('logout', `"${state.user.name}" sistemdən çıxdı`, { staffId: state.user.id });
-    unlockScreen();
+    if (!opts.keepKiosk) unlockScreen();
     closeWaiterChat();
   } else if (state.user?.role === 'admin') {
     addLog('logout', 'Rəhbər sistemdən çıxdı', { type: 'admin' });
@@ -201,6 +201,13 @@ function lockScreen() {
 
 function unlockScreen() {
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+}
+
+/* Ofisiantın çıxışı: parolsuz, dərhal ümumi PIN ekranına. Kiosk (tam ekran) rejimi davam edir —
+   növbəti işçi öz PIN-i ilə girir. Rəhbər üçün (Zal rejimi) köhnə qayda: Rəhbər parolu. */
+function staffExit() {
+  if (state.user?.role === 'staff') { logout({ keepKiosk: true }); lockScreen(); return; }
+  showExitModal();
 }
 
 function showExitModal() {
@@ -404,6 +411,7 @@ function bootstrap() {
   window.setRole = setRole;
   window.numPress = numPress;
   window.showExitModal = showExitModal;
+  window.staffExit = staffExit;
   window.closeExitModal = closeExitModal;
   window.confirmExit = confirmExit;
 }

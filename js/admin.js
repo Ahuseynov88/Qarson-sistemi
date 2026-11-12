@@ -3915,7 +3915,7 @@ const DANGER_OPS = [
     id: 'factoryReset',
     icon: '☢️',
     title: 'Sistemi Tam Sıfırla',
-    desc: 'PROQRAMDAKİ BÜTÜN MƏLUMATLAR SİLİNİR: işçilər, məhsullar, masalar, rezervasiyalar, sifarişlər, kassa, anbar, davamiyyət, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlayır. Yalnız Rəhbər hesabı saxlanılır. Bu əməliyyat GERİ QAYTARILMAZ.',
+    desc: 'PROQRAMDAKİ BÜTÜN MƏLUMATLAR SİLİNİR: işçilər, məhsullar, masalar, rezervasiyalar, sifarişlər, kassa, anbar, davamiyyət, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlayır. Yalnız Rəhbər hesabı və təsdiqlənmiş cihazlar saxlanılır. Bu əməliyyat GERİ QAYTARILMAZ.',
     all: true,
        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings',
       'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients','staffHR',
@@ -4070,9 +4070,18 @@ function _runDangerOp(opId) {
         async () => {
           try {
             if (op.all) {
-              // Bütün bölmələr bir yazıda silinir; yalnız Rəhbər hesabı (owners) saxlanılır
-              const keys = (await _allRootKeys(op.nodes)).filter(k => k !== 'owners');
+              // Bütün bölmələr bir yazıda silinir; Rəhbər hesabı (owners) və cihaz təsdiqləri (sys) saxlanılır —
+              // əks halda bütün cihazlar o an kilidlənərdi. Səlahiyyətli hesablar (işçilərə bağlıdır) ayrıca silinir.
+              const keys = (await _allRootKeys(op.nodes)).filter(k => k !== 'owners' && k !== 'sys');
               await db.ref().update(Object.fromEntries(keys.map(k => [k, null])));
+              try {
+                const odb = window.__yzOwner?.db?.();
+                if (odb) {
+                  const up = {};
+                  for (const n of ['accounts', 'logins']) Object.keys((await odb.ref('sys/' + n).once('value')).val() || {}).forEach(k => { up[n + '/' + k] = null; });
+                  if (Object.keys(up).length) await odb.ref('sys').update(up);
+                }
+              } catch (e) { console.warn('[sıfırla] səlahiyyətli hesablar silinmədi', e); }
               showToast(`<svg class="icon"><use href="#i-check"></use></svg> Sistem tam sıfırlandı. Proqram yenidən açılır…`);
               setTimeout(() => { try { window.logout?.(); } catch (e) { /* */ } location.reload(); }, 1500);
               return;

@@ -19,7 +19,7 @@ const K_PANE = 'yzSetPane';
 const PANES = [
   { id: 'general',  l: 'Ümumi',                  i: 'home',     d: 'Menyu linki, iş gününün başlama saatı.' },
   { id: 'sales',    l: 'Satış və hesab',         i: 'money',    d: 'Xidmət haqqı, ƏDV və loyallıq bonusları.' },
-  { id: 'security', l: 'Giriş və təhlükəsizlik', i: 'lock',     d: 'Rəhbər hesabı, işçilərin girişi, bu cihaz.' },
+  { id: 'security', l: 'Giriş və təhlükəsizlik', i: 'lock',     d: 'Rəhbər hesabı, cihazlar və səlahiyyətli hesablar, işçilərin girişi.' },
   { id: 'print',    l: 'Çek və çap',             i: 'printer',  d: 'Hesab çeki və mətbəx çekinin görünüşü.', wide: 1 },
   { id: 'kitchen',  l: 'Mətbəx',                 i: 'chef',     d: 'Hazır sifariş siqnalının təkrarlanması.' },
   { id: 'sounds',   l: 'Bildiriş səsləri',       i: 'bell',     d: 'Hansı hadisədə hansı səs çalınsın.', wide: 1 },
@@ -88,7 +88,10 @@ function build() {
   const snd = $('notifSoundsSection');
   if (snd) pane('sounds').appendChild(snd);
   // Giriş və təhlükəsizlik + bölmələrin ayarları — yeni kartlar
-  pane('security').insertAdjacentHTML('beforeend', `<div id="yzsOwner"></div><div id="yzsGate"></div><div id="yzsDevice"></div>`);
+  pane('security').insertAdjacentHTML('beforeend', `<div id="yzsOwner"></div>
+    <div class="yzs-list yzs-card yzs-card--flat"><button type="button" class="yzs-row" data-go="devices">
+      <span class="yzs-row__i">${I('lock')}</span><span class="yzs-row__t"><b>Cihazlar və girişlər</b><small>Təsdiqlənmiş kompüter və telefonlar, söndürmək; səlahiyyətli şəxslərin istifadəçi adı və parolu</small></span>${I('chevron')}</button></div>
+    <div id="yzsGate"></div><div id="yzsDevice"></div>`);
   pane('modules').insertAdjacentHTML('beforeend', modulesHtml());
   if (snd) snd.classList.add('yzs-card');
 
@@ -266,7 +269,6 @@ function moveDeviceCard() {
   const c = $('yzDeviceCard'), host = $('yzsDevice');
   if (!c || !host || c.parentElement === host) return;
   c.classList.add('yzs-card'); c.style.maxWidth = '';
-  const h = c.querySelector('h3'); if (h) h.innerHTML = `${I('lock')} Bu cihaz — ortaq restoran girişi`;
   host.appendChild(c);
 }
 

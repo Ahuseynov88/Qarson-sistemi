@@ -7,13 +7,13 @@
    • Sessiya ən çox 12 saat davam edir. 15 dəqiqə toxunulmasa panel kilidlənir,
      açmaq üçün parol yenidən yazılır.
    • "Çıxış" sessiyanı bitirir — növbəti girişdə parol yenə soruşulur.
-   • Rəhbər hesabı restoran cihaz hesabından AYRIDIR (ayrıca "yzOwner" tətbiq nüsxəsi):
-     cihazın restoran girişi pozulmur.
+   • Rəhbər hesabı cihaz kimliyindən AYRIDIR (ayrıca "yzOwner" tətbiq nüsxəsi):
+     cihazın təsdiqi pozulmur.
    • İlk dəfə daxil olan Rəhbər hesabı bazada "owners" siyahısına yazılır.
      Siyahı doldurulduqdan sonra başqa hesab özünü Rəhbər edə bilməz (qaydalar bağlayır).
    • Konfiqurasiyada apiKey yoxdursa (köhnə əsas sayt) — modul işə düşmür, köhnə PIN qalır.
 
-   Digər modullar üçün:  window.__yzOwner = { available, verify, signOut, email }
+   Digər modullar üçün:  window.__yzOwner = { available, verify, signOut, email, sendReset, db }
 ═══════════════════════════════════════════ */
 import { state } from './state.js';
 
@@ -58,7 +58,7 @@ const ERR = {
   'auth/too-many-requests': 'Çox sayda səhv cəhd. Server girişi müvəqqəti bağladı — bir neçə dəqiqə sonra yenidən cəhd edin.',
   'auth/network-request-failed': 'İnternet bağlantısı yoxdur.',
   'auth/user-disabled': 'Bu hesab dayandırılıb.',
-  'yz/same': 'Bu, restoran cihazının hesabıdır. Rəhbər üçün AYRICA hesab lazımdır (təlimata baxın).',
+  'yz/same': 'Bu hesab Rəhbər hesabı kimi istifadə oluna bilməz.',
   'yz/not-owner': 'Bu hesab Rəhbər hesabı deyil.'
 };
 export const ownerErr = (e) => ERR[e?.code] || 'Giriş alınmadı. Yenidən cəhd edin.';
@@ -92,6 +92,15 @@ async function sessionAlive() {
   if (!u) return null;
   const at = +ls.get(K_AT) || 0, act = +ls.get(K_ACT) || 0, t = Date.now();
   return (t - at < SESSION_MAX && t - act < IDLE_MAX) ? u : null;
+}
+/* Rəhbər sessiyası açıqdırsa onun baza bağlantısı (Rəhbərə məxsus yazılar üçün: hesablar, cihazlar) */
+export function ownerDbNow() {
+  if (!ownerAvailable()) return null;
+  const u = oAuth().currentUser;
+  if (!u) return null;
+  const at = +ls.get(K_AT) || 0, act = +ls.get(K_ACT) || 0, t = Date.now();
+  if (t - at >= SESSION_MAX || t - act >= IDLE_MAX) return null;
+  return oApp().database();
 }
 export async function sendReset(email) {
   email = String(email || '').trim();
@@ -294,7 +303,8 @@ window.__yzOwner = {
   verify: ownerVerify,
   signOut: ownerSignOut,
   email: ownerEmail,
-  sendReset
+  sendReset,
+  db: ownerDbNow
 };
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -65,6 +65,7 @@ const MENU = [
   ] },
   { g: 'sys', label: 'Sistem', icon: 'settings', items: [
     { s: 'settings', l: 'Ayarlar', i: 'settings' },
+    { s: 'devices', l: 'Cihazlar və girişlər', i: 'lock' },
     { s: 'dangerZone', l: 'Məlumatların silinməsi', i: 'trash', danger: 1 },
     // Ayarlar bölməsinin içindən açılır (menyuda görünmür)
     { s: 'inv-settings', l: 'Anbar ayarları', i: 'box', hide: 1 },

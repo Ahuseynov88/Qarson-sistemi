@@ -35,7 +35,8 @@ const PANEL_PERMS = [
   { key: 'panel.printers',       label: 'Printerlərin qeydiyyatı' },
   { key: 'panel.paymentMethods', label: 'Ödəniş növləri' },
   { key: 'panel.loyalty',        label: 'Loyallıq üzvləri' },
-  { key: 'panel.att',            label: 'Personal izləmə' }
+  { key: 'panel.att',            label: 'Personal izləmə' },
+  { key: 'panel.devices',        label: 'Cihazlar (siyahını görmək; söndürmək üçün öz səlahiyyətli hesabı lazımdır)' }
 ];
 if (!ALL_PERMISSIONS.some(g => g.items?.some(i => i.key === 'panel.reports'))) {
   ALL_PERMISSIONS.push({
@@ -84,7 +85,8 @@ const ACCESS = {
   paymentMethods: any('panel.paymentMethods'),
   printers: any('panel.printers'),
   att: any('panel.att'),
-  dangerZone: any('danger.*')
+  dangerZone: any('danger.*'),
+  devices: any('panel.devices')
   // settings, inv-settings, notifSounds — yalnız Rəhbər
 };
 const perms = (u) => u?.permissions || [];
