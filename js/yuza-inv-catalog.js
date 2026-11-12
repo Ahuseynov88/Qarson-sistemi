@@ -6,8 +6,20 @@ import { state } from './state.js';
 import {
   inv, PTYPES, UNITS, product, productList, warehouseList, totalStock, stockIn, isLow, unitCost, recipeCost,
   netOf, marginInfo, saveProduct, findSimilar, can, isAdmin, isV2, fmtQty, fmtMoney, fmtDT, r2, r3, r4, num,
-  defaultWarehouseId, migrateToV2, needsMigration, uname
+  defaultWarehouseId, migrateToV2, needsMigration, uname, purchaseHistory
 } from './yuza-inv-core.js';
+/* Mal kartında alış qiymətləri tarixçəsi (təsdiqlənmiş qaimələrdən) */
+function priceHistHtml(pid, unit) {
+  const h = purchaseHistory(pid).slice(0, 12);
+  if (!h.length) return '';
+  return `<details class="yzi-phist" open><summary>Alış qiymətləri tarixçəsi <span class="mut">(son ${h.length})</span></summary>
+    <div class="yzi-table-wrap"><table class="yzi-table yzi-table--mini"><thead><tr><th>Tarix və saat</th><th>Təchizatçı</th><th class="n">Miqdar</th><th class="n">Qiymət / ${esc(unit || 'vahid')}</th><th class="n">Dəyişmə</th></tr></thead><tbody>
+    ${h.map((x, i) => {
+      const p = h[i + 1]; const pct = p && p.unitCost > 0 ? (x.unitCost - p.unitCost) / p.unitCost * 100 : null;
+      const ch = pct === null || Math.abs(pct) < 0.5 ? '<span class="mut">—</span>' : `<span class="${pct > 0 ? 'yzi-bad' : 'yzi-ok'}">${pct > 0 ? '▲ +' : '▼ '}${r2(pct)}%</span>`;
+      return `<tr><td>${fmtDT(x.at)}<br><small class="mut yzi-mono">${esc(x.no || '')}</small></td><td>${esc(x.supplierName || '—')}</td><td class="n">${fmtQty(x.qty)} ${esc(x.packName || x.unit || '')}</td><td class="n"><b>${fmtMoney(x.unitCost)}</b></td><td class="n">${ch}</td></tr>`;
+    }).join('')}</tbody></table></div></details>`;
+}
 import {
   registerTab, modal, confirmBox, esc, $, ok, fail, numInput, typeChip, attachPicker, whOptions, go, fresh, blurIn
 } from './yuza-inv-ui.js';
@@ -225,7 +237,7 @@ export function openEditor(id) {
             <label class="yzi-f"><span>Sifariş miqdarı</span>${numInput(`id="yziEdReorder" ${dis}`, d.reorderQty)}</label>
             <label class="yzi-f"><span>Son istifadə izlənsin</span><select id="yziEdExp" ${dis}><option value="">Xeyr</option><option value="1"${d.trackExpiry ? ' selected' : ''}>Bəli</option></select></label>
           </div>
-          ${showCost ? `<div class="yzi-mini-kpis"><div><small>Orta çəkili maya</small><b>${fmtMoney(d.avgCost)}</b></div><div><small>Son alış qiyməti</small><b>${fmtMoney(d.lastCost)}${d.lastCostAt ? ` <small>· ${fmtDT(d.lastCostAt)}</small>` : ''}</b></div></div>` : ''}
+          ${showCost ? `<div class="yzi-mini-kpis"><div><small>Orta çəkili maya</small><b>${fmtMoney(d.avgCost)}</b></div><div><small>Son alış qiyməti</small><b>${fmtMoney(d.lastCost)}${d.lastCostAt ? ` <small>· ${fmtDT(d.lastCostAt)}</small>` : ''}</b></div></div>${id ? priceHistHtml(id, d.unit) : ''}` : ''}
         </section>` : ''}
 
         ${t.recipe ? `<section class="yzi-card yzi-card--wide">

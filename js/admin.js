@@ -3802,7 +3802,7 @@ async function _zeroSupplierDebts() {
   snap.forEach(c => { up[c.key + '/totalDebt'] = 0; });
   if (Object.keys(up).length) await db.ref('suppliers').update(up);
 }
-const INV_DOC_NODES = ['purchases','invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','stockMoves','stock','supplierLedger'];
+const INV_DOC_NODES = ['purchases','invAttach','invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','stockMoves','stock','supplierLedger'];
 const CASH_DOC_NODES = ['invCash','cashCloses'];
 
 const DANGER_OPS = [

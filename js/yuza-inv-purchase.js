@@ -9,13 +9,15 @@ import {
   inv, DOCS, STATUS, PTYPES, product, docList, suppliers, supplierList, packsOf, can, canCreate, canApprove,
   createDoc, updateDoc, submitDoc, approveDoc, rejectDoc, stornoDoc, deleteDraft, registerPoster,
   postStockEvent, ledgerPost, fmtMoney, fmtQty, fmtDT, toLocalInput, fromLocalInput, r2, r3, r4, num, uname, uid, isAdmin,
-  defaultWarehouseId, whName, totalStock
+  defaultWarehouseId, whName, totalStock, prevPurchase
 } from './yuza-inv-core.js';
+import { mountGallery, uploadAttachments } from './yuza-inv-attach.js';
 import {
   registerTab, modal, confirmBox, esc, $, ok, fail, numInput, attachPicker, whOptions, packOptions, fresh, go, blurIn
 } from './yuza-inv-ui.js';
 
 const METHODS = { cash: 'Nağd (kassa)', transfer: 'Bank köçürməsi', card: 'Kart' };
+const I = (id) => `<svg class="icon"><use href="#i-${id}"></use></svg>`;
 const DAY = 86400000;
 
 /* ── Hesablama ── */
@@ -174,7 +176,7 @@ function renderPurchases(host) {
         const ret = d.kind === 'preturn';
         return `<tr data-open="${d.id}" data-kind="${d.kind}" tabindex="0" class="${d.status === 'storno' ? 'is-void' : ''}">
           <td>${fmtDT(d.at)}</td>
-          <td><b class="yzi-mono">${esc(d.no)}</b>${d.invoiceNo ? `<br><small class="mut">e-qaimə ${esc(d.invoiceNo)}</small>` : ''}${ret ? '<br><small class="yzi-warn">Qaytarma</small>' : ''}</td>
+          <td><b class="yzi-mono">${esc(d.no)}</b>${d.attachN ? ` <span class="mut" title="${d.attachN} şəkil / fayl">${I('clip')}${d.attachN}</span>` : ''}${d.invoiceNo ? `<br><small class="mut">e-qaimə ${esc(d.invoiceNo)}</small>` : ''}${ret ? '<br><small class="yzi-warn">Qaytarma</small>' : ''}</td>
           <td><b>${esc(d.supplierName || '—')}</b></td>
           <td class="mut">${esc(whName(d.whId))}</td>
           <td class="n"><b>${ret ? '−' : ''}${fmtMoney(docTotal(d))}</b></td>
@@ -207,13 +209,15 @@ export function openPurchaseEditor(id, preset = {}) {
   };
   let lines = Object.values(d.lines || {}).map(l => ({ ...l, _k: Math.random().toString(36).slice(2) }));
   const jump = Number(inv.settings.priceJumpPct ?? 15);
-  const m = modal({ title: old ? `Qaimə ${esc(old.no)}` : 'Yeni alış qaiməsi', wide: true, body: '<div id="yziPE"></div>', actions: [
+  const pendingAtt = [];   // yeni qaimədə: saxlananda yüklənəcək şəkillər
+  const m = modal({ title: old ? `Qaimə ${esc(old.no)}` : 'Yeni alış qaiməsi', wide: true, body: '<div id="yziPE"></div><div id="yziPEAtt" class="yzi-pe__att"></div>', actions: [
     { label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' },
     { label: 'Qaralama saxla', cls: 'yzi-btn--ghost', onClick: () => save('draft') },
     { label: 'Təsdiqə göndər', cls: 'yzi-btn--ghost', onClick: () => save('pending') },
     ...(canApprove('purchase', old || { createdBy: uid() }) ? [{ label: 'Təsdiqlə və anbara yaz', cls: 'yzi-btn--gold', onClick: () => save('approve') }] : [])
   ] });
   const root = m.body.querySelector('#yziPE');
+  mountGallery(m.body.querySelector('#yziPEAtt'), old ? { doc: { ...old, id } } : { pending: pendingAtt });
   function sup() { return suppliers[d.supplierId] || null; }
   function draw() {
     blurIn(root);
@@ -348,7 +352,11 @@ export function openPurchaseEditor(id, preset = {}) {
       if (mode === 'pending' || mode === 'approve') await submitDoc('purchase', id);
       if (mode === 'approve') await approveDoc('purchase', id);
     } else {
-      await createDoc('purchase', data, { asDraft: mode === 'draft', approveNow: mode === 'approve' });
+      const newId = await createDoc('purchase', data, { asDraft: mode === 'draft', approveNow: mode === 'approve' });
+      if (pendingAtt.length) {
+        try { await uploadAttachments(newId, pendingAtt); }
+        catch (e) { fail('Qaimə saxlanıldı, amma şəkil yüklənmədi — qaiməni açıb yenidən əlavə edin'); }
+      }
     }
     ok(mode === 'approve' ? 'Qaimə təsdiqləndi və anbara yazıldı' : mode === 'pending' ? 'Təsdiqə göndərildi' : 'Qaralama saxlanıldı');
   }
@@ -364,6 +372,20 @@ export function openPurchaseView(id, kind = 'purchase') {
   const ps = payState(d);
   const lines = Object.values(d.lines || {});
   const pays = docList('payment', p => p.allocations && p.allocations[id] !== undefined);
+  /* Əvvəlki alışla müqayisə — təsdiq edən hansı malın bahalaşdığını görür */
+  const jump = Number(inv.settings.priceJumpPct ?? 15);
+  const deltas = kind === 'purchase' ? lines.map(l => {
+    const prev = prevPurchase(l.pid, d.at, d.id), cur = Number(l.unitCost);
+    if (!prev || !(cur > 0) || !(prev.unitCost > 0)) return null;
+    const pct = (cur - prev.unitCost) / prev.unitCost * 100;
+    return Math.abs(pct) < 0.5 ? null : { pct, prev, up: pct > 0, big: pct >= jump };
+  }) : [];
+  const ups = deltas.map((x, i) => x && x.up ? { ...x, l: lines[i] } : null).filter(Boolean);
+  const deltaHtml = (i) => {
+    const x = deltas[i]; if (!x) return '';
+    const l = lines[i];
+    return `<br><small class="${x.big ? 'yzi-bad' : x.up ? 'yzi-warn' : 'yzi-ok'}">${x.up ? '▲ +' : '▼ '}${r2(x.pct)}% · əvvəlki ${fmtMoney(x.prev.unitCost)}/${esc(l.unit || '')}${x.prev.at ? ` · ${fmtDT(x.prev.at)}` : ''}${x.prev.supplierName ? ` · ${esc(x.prev.supplierName)}` : ''}</small>`;
+  };
   const acts = [{ label: 'Bağla', cancel: true, cls: 'yzi-btn--ghost' }];
   if (d.status === 'pending' && canApprove(kind, d)) {
     acts.push({ label: 'Rədd et', cls: 'yzi-btn--ghost', onClick: async () => { const r = await confirmBox('Rədd səbəbi?', { input: 'Səbəb', okLabel: 'Rədd et', okCls: 'yzi-btn--red' }); if (!r) return false; await rejectDoc(kind, id, r); ok('Rədd edildi'); } });
@@ -383,7 +405,7 @@ export function openPurchaseView(id, kind = 'purchase') {
   } });
   if (['pending', 'rejected', 'draft'].includes(d.status) && (d.createdBy === uid() || isAdmin())) acts.splice(1, 0, { label: 'Sil', cls: 'yzi-btn--ghost yzi-btn--left', onClick: async () => { const c = await confirmBox(`${esc(d.no)} silinsin?`, { okCls: 'yzi-btn--red', okLabel: 'Sil' }); if (!c) return false; await deleteDraft(kind, id); ok('Silindi'); } });
 
-  modal({ title: `${DOCS[kind].label} ${esc(d.no)}`, wide: true, actions: acts, body: `
+  const mv = modal({ title: `${DOCS[kind].label} ${esc(d.no)}`, wide: true, actions: acts, body: `
     <div class="yzi-docmeta">
       <div><small>Status</small><b><span class="yzi-st yzi-st--${st.cls}">${st.label}</span>${ps ? ` <span class="yzi-st yzi-st--${ps.cls}">${ps.label}</span>` : ''}</b></div>
       <div><small>Təchizatçı</small><b>${esc(d.supplierName)}</b></div>
@@ -398,14 +420,18 @@ export function openPurchaseView(id, kind = 'purchase') {
       ${d.reason ? `<div><small>Səbəb</small><b>${esc(d.reason)}</b></div>` : ''}
     </div>
     ${d.postError ? `<p class="yzi-warnbox"><b>Son yazılış xətası:</b> ${esc(d.postError)}</p>` : ''}
+    ${ups.length ? `<div class="yzi-warnbox yzi-pricebox"><span class="yzi-pricebox__h">${I('warning')} ${ups.length} malın alış qiyməti əvvəlki alışdan bahadır</span>
+      <ul>${ups.map(x => `<li>${esc(x.l.name)} — <span class="${x.big ? 'yzi-bad' : 'yzi-warn'}">+${r2(x.pct)}%</span> <span class="mut">(${fmtMoney(x.prev.unitCost)} → ${fmtMoney(x.l.unitCost)} / ${esc(x.l.unit || '')})</span></li>`).join('')}</ul></div>` : ''}
     <div class="yzi-table-wrap"><table class="yzi-table yzi-table--mini">
       <thead><tr><th>Mal</th><th class="n">Miqdar</th><th class="n">Qiymət</th><th class="n">ƏDV</th><th class="n">Cəmi</th><th class="n">Anbara</th></tr></thead>
-      <tbody>${lines.map(l => `<tr><td><b>${esc(l.name)}</b></td><td class="n">${fmtQty(l.qty)} ${esc(l.packName || l.unit || '')}</td><td class="n">${l.price !== undefined ? fmtMoney(l.price) : '—'}</td><td class="n">${l.vat !== undefined ? fmtMoney(l.vat) : '—'}</td><td class="n"><b>${fmtMoney(l.gross)}</b></td><td class="n mut">${fmtQty(l.baseQty)} ${esc(l.unit || '')}</td></tr>`).join('')}</tbody>
+      <tbody>${lines.map((l, li) => `<tr class="${deltas[li]?.big ? 'is-jump' : ''}"><td><b>${esc(l.name)}</b>${deltaHtml(li)}</td><td class="n">${fmtQty(l.qty)} ${esc(l.packName || l.unit || '')}</td><td class="n">${l.price !== undefined ? fmtMoney(l.price) : '—'}</td><td class="n">${l.vat !== undefined ? fmtMoney(l.vat) : '—'}</td><td class="n"><b>${fmtMoney(l.gross)}</b></td><td class="n mut">${fmtQty(l.baseQty)} ${esc(l.unit || '')}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td colspan="3">ƏDV-siz ${fmtMoney(d.totals?.net)} · ƏDV ${fmtMoney(d.totals?.vat)}</td><td></td><td class="n"><b class="yzi-gold">${fmtMoney(d.totals?.gross)}</b></td><td></td></tr></tfoot>
     </table></div>
     ${kind === 'purchase' && d.status === 'approved' ? `<h3 class="yzi-h3">Ödənişlər · qalıq ${fmtMoney(docDue(d))}</h3>
       ${pays.length ? pays.map(p => `<div class="yzi-row"><span>${fmtDT(p.at)} · <b class="yzi-mono">${esc(p.no)}</b> · ${esc(METHODS[p.method] || p.method)} <span class="yzi-st yzi-st--${STATUS[p.status]?.cls}">${STATUS[p.status]?.label}</span></span><b>${fmtMoney(p.allocations[id])}</b></div>`).join('') : '<p class="yzi-hint">Ödəniş yoxdur.</p>'}` : ''}
-    ${d.note ? `<p class="yzi-p"><b>Qeyd:</b> ${esc(d.note)}</p>` : ''}` });
+    ${d.note ? `<p class="yzi-p"><b>Qeyd:</b> ${esc(d.note)}</p>` : ''}
+    ${kind === 'purchase' ? '<div id="yziPvAtt" class="yzi-pe__att"></div>' : ''}` });
+  if (kind === 'purchase') mountGallery(mv?.body?.querySelector('#yziPvAtt'), { doc: d });
 }
 
 /* ═══ TƏCHİZATÇIYA QAYTARMA ═══ */

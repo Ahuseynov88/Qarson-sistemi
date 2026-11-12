@@ -98,6 +98,7 @@ export const ALL_PERMISSIONS = [
     icon: '<svg class="icon"><use href="#i-cash"></use></svg>',
     items: [
       { key: 'purchase.view',            label: 'Alış qaimələrini görmək' },
+      { key: 'purchase.attach.view',     label: 'Alış qaimələrinin şəkillərini / fayllarını görmək' },
       { key: 'purchase.create',          label: 'Qaimə yazmaq (təsdiqə göndərmək)' },
       { key: 'purchase.approve',         label: 'Qaiməni təsdiqləmək (anbara və borca yazır)' },
       { key: 'purchase.storno',          label: 'Təsdiqlənmiş qaiməni storno etmək' },
@@ -141,7 +142,7 @@ export const ALL_PERMISSIONS = [
 export const PERMISSION_PRESETS = {
   accountant: {
     label: '<svg class="icon"><use href="#i-cash"></use></svg> Mühasib',
-    perms: ['catalog.view','catalog.quickadd','catalog.price','catalog.cost','purchase.view','purchase.create','purchase.approve','purchase.storno','supplier.manage','supplier.payment.create','supplier.payment.approve','supplier.payment.storno','stock.view','stock.writeoff.approve','stock.transfer.approve','stock.count.approve','stock.production.approve','stock.storno','stock.report','cash.view','cash.create','cash.approve','cash.storno','cash.close.create','cash.close.approve','report.daily','report.weekly']
+    perms: ['catalog.view','catalog.quickadd','catalog.price','catalog.cost','purchase.view','purchase.attach.view','purchase.create','purchase.approve','purchase.storno','supplier.manage','supplier.payment.create','supplier.payment.approve','supplier.payment.storno','stock.view','stock.writeoff.approve','stock.transfer.approve','stock.count.approve','stock.production.approve','stock.storno','stock.report','cash.view','cash.create','cash.approve','cash.storno','cash.close.create','cash.close.approve','report.daily','report.weekly']
   },
   storekeeper: {
     label: '<svg class="icon"><use href="#i-box"></use></svg> Anbardar',

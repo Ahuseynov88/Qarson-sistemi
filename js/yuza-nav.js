@@ -225,9 +225,21 @@ function updateBackBtn() {
   btn.style.display = (onAdmin && depth > 0) ? '' : 'none';
 }
 
-/* ═══ 5. BAŞLANĞIC ═══ */
+/* ═══ 5. TELEFONDA DETAL PANELİ (masa, işçi, mal kartı...) ═══
+   Panel bölmənin içində olduğu üçün yuxarı hissəsi (← zolağı) başlıq zolağının altında qalırdı.
+   Telefonda paneli başlıq zolağının altından başladırıq ki, ← həmişə görünsün. */
+function fitDetails() {
+  const open = document.querySelectorAll('#adminScreen .tile-detail-overlay.open');
+  if (!open.length) return;
+  const top = isDesktop() ? 0 : Math.max(0, Math.round($('adminTopbar')?.getBoundingClientRect().bottom || 0));
+  open.forEach(el => { const v = top ? top + 'px' : ''; if (el.style.top !== v) el.style.top = v; });
+}
+window.addEventListener('resize', fitDetails);
+
+/* ═══ 6. BAŞLANĞIC ═══ */
 function onMutate() {
   stackLayers();
+  fitDetails();
   record();
 }
 function init() {

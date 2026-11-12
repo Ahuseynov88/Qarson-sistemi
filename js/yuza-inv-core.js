@@ -171,6 +171,25 @@ export function watchDocs() {
     emit('suppliers');
   });
 }
+/* Malın alış qiymətləri tarixçəsi: təsdiqlənmiş qaimələrin sətirlərindən (yeni → köhnə).
+   unitCost = baza vahidinin mayası (qablaşma və ƏDV rejimi nəzərə alınıb). */
+export function purchaseHistory(pid) {
+  const out = [];
+  docList('purchase', d => d.status === 'approved').forEach(d => {
+    Object.values(d.lines || {}).forEach(l => {
+      if (l.pid === pid && Number(l.unitCost) > 0) out.push({ docId: d.id, no: d.no, at: d.at || d.createdAt || 0, supplierName: d.supplierName || '', unitCost: Number(l.unitCost), qty: l.qty, packName: l.packName || '', unit: l.unit || '' });
+    });
+  });
+  return out.sort((a, b) => b.at - a.at);
+}
+/* Bu qaimədən ƏVVƏLKİ son alış (təsdiqlənmiş). Tarixçə yoxdursa — kartdakı son alış qiyməti (köhnə məlumat üçün). */
+export function prevPurchase(pid, beforeAt, excludeDocId) {
+  const h = purchaseHistory(pid).find(x => x.docId !== excludeDocId && x.at <= (beforeAt || Infinity));
+  if (h) return h;
+  const p = product(pid);
+  return (!excludeDocId || !purchaseHistory(pid).some(x => x.docId === excludeDocId)) && Number(p?.lastCost) > 0
+    ? { unitCost: Number(p.lastCost), at: p.lastCostAt || 0, supplierName: '', no: '' } : null;
+}
 export function docList(kind, filter) {
   const node = DOCS[kind].node;
   return Object.entries(docs[node] || {}).map(([id, d]) => ({ id, ...d }))
