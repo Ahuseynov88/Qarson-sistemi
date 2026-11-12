@@ -146,7 +146,21 @@ export async function guardDevice(config) {
     let u2 = await firstState(a2);
     if (!u2) {
       try { u2 = (await a2.signInAnonymously()).user; }
-      catch (e) { document.body.insertAdjacentHTML('beforeend', '<p style="color:#fff;padding:24px;text-align:center">İnternet bağlantısı yoxdur. Səhifəni yeniləyin.</p>'); throw e; }
+      catch (e) {
+        // Həqiqi səbəbi göstəririk (əvvəl hər xətada "internet yoxdur" yazılırdı)
+        const why = {
+          'auth/network-request-failed': 'İnternet bağlantısı yoxdur. İnterneti yoxlayıb səhifəni yeniləyin.',
+          'auth/operation-not-allowed': 'Firebase-də adsız giriş (Anonymous) söndürülüb. Rəhbərə müraciət edin.',
+          'auth/admin-restricted-operation': 'Firebase-də yeni giriş yaratmaq (sign-up) bağlanıb. Rəhbərə müraciət edin.',
+          'auth/too-many-requests': 'Çox sayda cəhd. Bir neçə dəqiqə sonra yenidən yoxlayın.'
+        }[e?.code] || 'Giriş alınmadı. Səhifəni yeniləyin.';
+        const p = document.createElement('p');
+        p.style.cssText = 'color:#fff;padding:24px;text-align:center;line-height:1.5';
+        p.textContent = why;
+        const c = document.createElement('small'); c.style.cssText = 'display:block;opacity:.6;margin-top:8px'; c.textContent = 'Kod: ' + (e?.code || e?.message || 'naməlum');
+        p.appendChild(c); document.body.appendChild(p);
+        throw e;
+      }
     }
     window.__yzAttApp = app;
     return u2;
