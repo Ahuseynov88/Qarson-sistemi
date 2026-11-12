@@ -364,3 +364,9 @@
   #yzLogin.yz-att-sheet .yz-attp__qrwrap{margin-top:.4em;}
   #yzLogin.yz-att-sheet .yz-attp__who ul{max-height:none;}
 }
+
+/* İşçinin öz telefonu (davamiyyətə qoşulmuş): rol seçimi yoxdur, yalnız öz PIN-i */
+#yzLogin.yz-phone-mode .yz-roles, #yzLogin.yz-phone-mode .yz-card__hint, #yzLogin.yz-phone-mode .yz-owner{display:none !important;}
+#yzLogin.yz-phone-mode .yz-pad{display:block !important;}
+#yzLogin .yz-phone-hi{margin:.9em 0 .4em; font-size:1.15em; line-height:1.45; color:var(--text);}
+#yzLogin .yz-phone-hi span{font-size:.78em; color:var(--muted);}
