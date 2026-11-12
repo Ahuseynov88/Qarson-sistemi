@@ -1788,6 +1788,15 @@ export function staffForm(s = {}) {
   const sec = (title, inner, open = false) => `<details class="fs-sec"${open ? ' open' : ''}><summary>${title}</summary><div class="fs-sec__b">${inner}</div></details>`;
   if (s.id) setTimeout(() => fillStaffHR(s), 0);
   else setTimeout(() => window.fsToggleAccess?.(), 0);
+  setTimeout(() => {
+    window.fsPermCount = () => {
+      const el = document.getElementById('fs_permCnt'); if (!el) return;
+      const n = document.querySelectorAll('[name=staff_perm]:checked').length;
+      el.textContent = n ? `· ${n} seçilib` : '· seçilməyib';
+    };
+    document.getElementById('fs_permSec')?.addEventListener('change', window.fsPermCount);
+    window.fsPermCount();
+  }, 0);
   return `
     <style>
       .fs-sel{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px}
@@ -1834,11 +1843,15 @@ export function staffForm(s = {}) {
       <div class="form-row">
         <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" inputmode="numeric" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
       </div>
-      <div class="modal-section-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
-        <span><svg class="icon"><use href="#i-key"></use></svg> İcazələr</span>
-        <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
-      </div>
-      ${renderPermissionCheckboxes(existingPerms)}
+      <details class="fs-sec" id="fs_permSec">
+        <summary><span><svg class="icon"><use href="#i-key"></use></svg> İcazələr <small id="fs_permCnt" style="font-weight:600;color:var(--text3)"></small></span></summary>
+        <div class="fs-sec__b">
+          <div style="display:flex;justify-content:flex-end;margin:2px 0 8px;">
+            <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false);window.fsPermCount?.()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
+          </div>
+          ${renderPermissionCheckboxes(existingPerms)}
+        </div>
+      </details>
     </div>
 
     ${sec('İş və müqavilə', `
@@ -3581,7 +3594,7 @@ window.editStaff = editStaff;
 window.editTable = editTable;
 window.generateDailyReport = generateDailyReport;
 window.onMenuCategorySelectChange = onMenuCategorySelectChange;
-window.onStaffPositionChange = onStaffPositionChange;
+window.onStaffPositionChange = () => { onStaffPositionChange(); window.fsPermCount?.(); };
 window.openAddModal = openAddModal;
 window.openKitchenPinModal = openKitchenPinModal;
 window.previewMenuItemPhoto = previewMenuItemPhoto;
