@@ -218,9 +218,10 @@ function buildLoginForm() {
   f.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const b = f.querySelector('button[type="submit"]'); b.disabled = true; setErr('');
+    signingIn = true;
     try { const u = await ownerSignIn($('yzOwEmail').value, $('yzOwPw').value); $('yzOwPw').value = ''; enterAdmin(u); }
     catch (e) { setErr(ownerErr(e)); $('yzOwPw').value = ''; }
-    finally { b.disabled = false; }
+    finally { b.disabled = false; signingIn = false; }
   });
   f.querySelector('[data-forgot]').onclick = async () => {
     try { await sendReset($('yzOwEmail').value); setErr('Parolu yeniləmək üçün link e-poçtunuza göndərildi.', true); }
@@ -233,6 +234,7 @@ function buildLoginForm() {
   };
 }
 let _role = 'admin';
+let signingIn = false;
 async function syncLoginForm() {
   const root = $('yzLogin'); const f = $('yzOwnerForm');
   if (!root || !f) return;
@@ -243,10 +245,12 @@ async function syncLoginForm() {
   if (!isOwner) return;
   const em = ownerEmail();
   if (em && !$('yzOwEmail').value) $('yzOwEmail').value = em;
-  const u = await sessionAlive();
-  f.querySelector('.yz-owner__resume').hidden = !u;
-  f.querySelector('.yz-owner__fields').hidden = !!u;
-  if (u) f.querySelector('.yz-owner__who b').textContent = u.email || em;
+  // Hər girişdə parol tələb olunur: giriş ekranına qayıdanda (çıxış, səhifənin yenilənməsi, brauzerin bağlanması)
+  // açıq qalmış Rəhbər sessiyası bağlanır — "Panelə daxil ol" ilə parolsuz qayıtmaq yoxdur.
+  const open = oAuth().currentUser || await firstUser();
+  if (open && !signingIn && !state.user && $('loginScreen')?.classList.contains('active')) await ownerSignOut();
+  f.querySelector('.yz-owner__resume').hidden = true;
+  f.querySelector('.yz-owner__fields').hidden = false;
 }
 function wrapSetRole() {
   if (typeof window.setRole !== 'function' || window.setRole.__yzOwner) return typeof window.setRole === 'function';
