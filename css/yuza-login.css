@@ -370,3 +370,28 @@
 #yzLogin.yz-phone-mode .yz-pad{display:block !important;}
 #yzLogin .yz-phone-hi{margin:.9em 0 .4em; font-size:1.15em; line-height:1.45; color:var(--text);}
 #yzLogin .yz-phone-hi span{font-size:.78em; color:var(--muted);}
+
+/* ═══ Rəhbər girişi gizli: küncdəki açar ikonu → ayrıca pəncərə (yuza-owner.js) ═══ */
+html.yz-owner-on #yzLogin .yz-role--admin{display:none !important;}
+html.yz-owner-on #yzLogin .yz-roles{grid-template-columns:repeat(2,minmax(0,1fr));}
+#yzLogin .yz-keybtn{
+  display:flex; align-items:center; justify-content:center; width:2.875em; height:2.875em; padding:0;
+  border-radius:50%; background:var(--ctl-bg); border:1px solid var(--ctl-bd); color:var(--muted); cursor:pointer;
+  backdrop-filter:blur(.6em); -webkit-backdrop-filter:blur(.6em); transition:color .2s, border-color .2s;
+}
+#yzLogin .yz-keybtn:hover, #yzLogin .yz-keybtn:focus-visible{color:var(--g2); border-color:var(--g2);}
+#yzLogin .yz-keybtn svg{width:1.2em; height:1.2em;}
+#yzLogin.yz-phone-mode .yz-keybtn{display:none;}
+#yzLogin .yz-ownbox{position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:1.2em;
+  background:rgba(5,4,2,.62); backdrop-filter:blur(.35em); -webkit-backdrop-filter:blur(.35em);}
+#yzLogin .yz-ownbox[hidden]{display:none;}
+#yzLogin .yz-ownbox__card{position:relative; width:100%; max-width:24em; box-sizing:border-box; padding:2em 1.8em 1.6em; border-radius:1.4em;
+  background:var(--card-bg); border:1px solid var(--ctl-bd); box-shadow:0 0 3em var(--card-glow), 0 2em 4.5em rgba(0,0,0,.5); color:var(--text);}
+#yzLogin .yz-ownbox__card{background:#12100c;}
+#yzLogin[data-yz-theme="light"] .yz-ownbox__card{background:#fffaf0;}
+#yzLogin .yz-ownbox__x{position:absolute; top:.8em; right:.8em; width:2.5em; height:2.5em; border-radius:50%; border:1px solid var(--ctl-bd); background:var(--ctl-bg); color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center;}
+#yzLogin .yz-ownbox__x svg{width:1.1em; height:1.1em;}
+#yzLogin .yz-ownbox__ico{width:3.3em; height:3.3em; margin:0 auto .6em; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--g2); background:rgba(232,176,75,.14);}
+#yzLogin .yz-ownbox__ico svg{width:1.6em; height:1.6em;}
+#yzLogin .yz-ownbox__t{margin:0 0 .4em; text-align:center; font-size:1.3em; font-weight:700;}
+#yzLogin .yz-ownbox .yz-owner{display:block; width:100%; margin-top:0;}
