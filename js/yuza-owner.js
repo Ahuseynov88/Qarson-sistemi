@@ -45,7 +45,8 @@ const oAuth = () => oApp().auth();
 function firstUser() {
   return new Promise(res => { const off = oAuth().onAuthStateChanged(u => { off(); res(u); }); });
 }
-export const ownerEmail = () => ls.get(K_EMAIL) || '';
+// E-poçt cihazda SAXLANMIR (ortaq ekranda görünməsin). Yalnız açıq Rəhbər sessiyasından götürülür.
+export const ownerEmail = () => { try { return (ownerAvailable() && oAuth().currentUser?.email) || ''; } catch (e) { return ''; } };
 
 const ERR = {
   'auth/invalid-credential': 'E-poçt və ya parol səhvdir.',
@@ -79,7 +80,7 @@ export async function ownerSignIn(email, pw) {
   const u = cred.user;
   if (firebase.auth().currentUser && firebase.auth().currentUser.uid === u.uid) { await oAuth().signOut(); throw { code: 'yz/same' }; }
   if (!(await checkOwner(u))) { await oAuth().signOut(); throw { code: 'yz/not-owner' }; }
-  ls.set(K_EMAIL, email); ls.set(K_AT, Date.now()); ls.set(K_ACT, Date.now());
+  ls.set(K_AT, Date.now()); ls.set(K_ACT, Date.now());
   return u;
 }
 export async function ownerSignOut() {
@@ -145,23 +146,22 @@ export function ownerVerify({ title = 'Rəhbər təsdiqi', text = 'Davam etmək 
   if (_pending) return _pending;
   ensureCss();
   _pending = new Promise(resolve => {
-    const em = ownerEmail();
+    const em = '';   // e-poçt hər dəfə yazılır — ekranda göstərilmir
     const box = document.createElement('div');
     box.id = 'yzOwV'; box.className = lock ? 'is-lock' : '';
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
-    box.innerHTML = `<form novalidate autocomplete="on">
+    box.innerHTML = `<form novalidate autocomplete="off">
       <div class="ow-ico">${lock ? ICO_LOCK : ICO_KEY}</div>
       <h2>${esc(title)}</h2><p>${text}</p>
       <label for="yzOwVE">E-poçt</label>
-      <input id="yzOwVE" type="email" autocomplete="username" value="${esc(em)}" ${em ? 'readonly' : ''}>
+      <input id="yzOwVE" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true">
       <label for="yzOwVP">Parol</label>
-      <input id="yzOwVP" type="password" autocomplete="current-password">
+      <input id="yzOwVP" type="password" autocomplete="new-password" data-lpignore="true">
       <div class="ow-err" role="alert"></div>
       <div class="ow-row">
         <button type="button" class="ow-no" aria-label="${lock ? 'Çıxış' : 'Bağla'}" title="${lock ? 'Çıxış' : 'Bağla'}">${lock ? ICO_OUT : ICO_X}</button>
         <button type="submit" class="ow-ok">${esc(okLabel)}</button>
       </div>
-      ${em ? '<button type="button" class="ow-link" data-other>Başqa hesabla</button>' : ''}
     </form>`;
     document.body.appendChild(box);
     const f = box.querySelector('form'), errEl = box.querySelector('.ow-err'), okB = box.querySelector('.ow-ok');
@@ -188,38 +188,54 @@ export function ownerVerify({ title = 'Rəhbər təsdiqi', text = 'Davam etmək 
 function enterAdmin(u) {
   if (typeof window.__yzEnterAdmin === 'function') window.__yzEnterAdmin({ uid: u.uid, email: u.email || ownerEmail() });
 }
+/* Rəhbər girişi giriş ekranında açıq görünmür: yuxarı küncdəki kiçik açar ikonu
+   ayrıca pəncərə açır. E-poçt və parol hər dəfə boş açılır, brauzer yadda saxlamır. */
+const ICO_KEYBTN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M17 6l3 3M14.5 8.5l2 2"/></svg>';
 function buildLoginForm() {
-  const card = document.querySelector('#yzLogin .yz-card');
-  if (!card || $('yzOwnerForm')) return;
-  const pad = card.querySelector('.yz-pad');
-  const f = document.createElement('form');
-  f.id = 'yzOwnerForm'; f.className = 'yz-owner'; f.noValidate = true; f.autocomplete = 'on';
-  f.innerHTML = `
-    <div class="yz-owner__resume" hidden>
-      <p class="yz-owner__who">Rəhbər: <b></b></p>
-      <button type="button" class="yz-owner__btn" data-resume>Panelə daxil ol</button>
-    </div>
-    <div class="yz-owner__fields">
-      <label class="yz-owner__lbl" for="yzOwEmail">E-poçt</label>
-      <input class="yz-owner__in" id="yzOwEmail" type="email" autocomplete="username" inputmode="email" placeholder="rehber@restoran.az">
-      <label class="yz-owner__lbl" for="yzOwPw">Parol</label>
-      <div class="yz-owner__pw">
-        <input class="yz-owner__in" id="yzOwPw" type="password" autocomplete="current-password" placeholder="••••••••">
-        <button type="button" class="yz-owner__eye" aria-label="Parolu göstər" title="Parolu göstər"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      </div>
-      <div class="yz-owner__err" role="alert" aria-live="assertive"></div>
-      <button type="submit" class="yz-owner__btn">Daxil ol</button>
-      <button type="button" class="yz-owner__link" data-forgot>Parolu unutmusunuz?</button>
-    </div>`;
-  card.insertBefore(f, pad);
+  const root = $('yzLogin');
+  if (!root || $('yzOwnerForm')) return;
+  // Açar düyməsi (dil / tema düymələrinin yanında, yazısız)
+  const top = root.querySelector('.yz-topbar');
+  if (top && !$('yzKeyBtn')) {
+    const k = document.createElement('button');
+    k.type = 'button'; k.id = 'yzKeyBtn'; k.className = 'yz-keybtn';
+    k.setAttribute('aria-label', 'Rəhbər girişi'); k.title = 'Rəhbər girişi';
+    k.innerHTML = ICO_KEYBTN;
+    top.appendChild(k);
+    k.onclick = () => openBox();
+  }
+  const box = document.createElement('div');
+  box.id = 'yzOwnerBox'; box.className = 'yz-ownbox'; box.hidden = true;
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Rəhbər girişi');
+  box.innerHTML = `<div class="yz-ownbox__card">
+      <button type="button" class="yz-ownbox__x" data-close aria-label="Bağla" title="Bağla">${ICO_X}</button>
+      <div class="yz-ownbox__ico">${ICO_KEY}</div>
+      <h2 class="yz-ownbox__t">Rəhbər girişi</h2>
+      <form id="yzOwnerForm" class="yz-owner" novalidate autocomplete="off">
+        <label class="yz-owner__lbl" for="yzOwEmail">E-poçt</label>
+        <input class="yz-owner__in" id="yzOwEmail" name="yz-o1" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="email" data-lpignore="true">
+        <label class="yz-owner__lbl" for="yzOwPw">Parol</label>
+        <div class="yz-owner__pw">
+          <input class="yz-owner__in" id="yzOwPw" name="yz-o2" type="password" autocomplete="new-password" data-lpignore="true">
+          <button type="button" class="yz-owner__eye" aria-label="Parolu göstər" title="Parolu göstər"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <div class="yz-owner__err" role="alert" aria-live="assertive"></div>
+        <button type="submit" class="yz-owner__btn">Daxil ol</button>
+        <button type="button" class="yz-owner__link" data-forgot>Parolu unutmusunuz?</button>
+      </form></div>`;
+  root.appendChild(box);
+  const f = $('yzOwnerForm');
   const errEl = f.querySelector('.yz-owner__err');
   const setErr = (m, okMsg) => { errEl.textContent = m || ''; errEl.classList.toggle('is-ok', !!okMsg); };
   f.querySelector('.yz-owner__eye').onclick = () => { const p = $('yzOwPw'); p.type = p.type === 'password' ? 'text' : 'password'; };
+  box.querySelector('[data-close]').onclick = () => closeBox();
+  box.addEventListener('mousedown', (e) => { if (e.target === box) closeBox(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) closeBox(); });
   f.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const b = f.querySelector('button[type="submit"]'); b.disabled = true; setErr('');
     signingIn = true;
-    try { const u = await ownerSignIn($('yzOwEmail').value, $('yzOwPw').value); $('yzOwPw').value = ''; enterAdmin(u); }
+    try { const u = await ownerSignIn($('yzOwEmail').value, $('yzOwPw').value); closeBox(); enterAdmin(u); }
     catch (e) { setErr(ownerErr(e)); $('yzOwPw').value = ''; }
     finally { b.disabled = false; signingIn = false; }
   });
@@ -227,39 +243,41 @@ function buildLoginForm() {
     try { await sendReset($('yzOwEmail').value); setErr('Parolu yeniləmək üçün link e-poçtunuza göndərildi.', true); }
     catch (e) { setErr(ownerErr(e)); }
   };
-  f.querySelector('[data-resume]').onclick = async () => {
-    const u = await sessionAlive();
-    if (u) { ls.set(K_ACT, Date.now()); enterAdmin(u); }
-    else { await ownerSignOut(); syncLoginForm(); }
-  };
 }
-let _role = 'admin';
+function clearBox() {
+  ['yzOwEmail', 'yzOwPw'].forEach(id => { const i = $(id); if (i) i.value = ''; });
+  const p = $('yzOwPw'); if (p) p.type = 'password';
+  const e = document.querySelector('#yzOwnerForm .yz-owner__err'); if (e) { e.textContent = ''; e.classList.remove('is-ok'); }
+}
+function openBox() {
+  const box = $('yzOwnerBox'); if (!box) return;
+  clearBox(); box.hidden = false;
+  setTimeout(() => $('yzOwEmail')?.focus(), 60);
+}
+function closeBox() {
+  const box = $('yzOwnerBox'); if (!box) return;
+  box.hidden = true; clearBox();
+}
 let signingIn = false;
+/* Giriş ekranı: Rəhbər rolu düyməsi gizlidir → həmişə işçi/mətbəx PIN-i; açıq qalmış Rəhbər sessiyası bağlanır */
 async function syncLoginForm() {
-  const root = $('yzLogin'); const f = $('yzOwnerForm');
-  if (!root || !f) return;
-  const isOwner = _role === 'admin';
-  root.classList.toggle('yz-owner-mode', isOwner);
+  const root = $('yzLogin');
+  if (!root || !$('yzOwnerForm')) return;
+  root.classList.remove('yz-owner-mode');
+  if (state.role === 'admin' || !state.role) {
+    const st = root.querySelector('.yz-role--staff');
+    if (st && typeof window.setRole === 'function') window.setRole('staff', st);
+  }
   const hint = root.querySelector('.yz-card__hint');
-  if (hint) hint.textContent = isOwner ? 'Rəhbər öz e-poçtu və parolu ilə daxil olur.' : 'Zəhmət olmasa, rolunuzu seçin və PIN kodunuzu daxil edin.';
-  if (!isOwner) return;
-  const em = ownerEmail();
-  if (em && !$('yzOwEmail').value) $('yzOwEmail').value = em;
+  if (hint && !root.classList.contains('yz-phone-mode')) hint.textContent = 'Zəhmət olmasa, rolunuzu seçin və PIN kodunuzu daxil edin.';
+  if (!$('loginScreen')?.classList.contains('active')) return;
+  closeBox();
   // Hər girişdə parol tələb olunur: giriş ekranına qayıdanda (çıxış, səhifənin yenilənməsi, brauzerin bağlanması)
-  // açıq qalmış Rəhbər sessiyası bağlanır — "Panelə daxil ol" ilə parolsuz qayıtmaq yoxdur.
+  // açıq qalmış Rəhbər sessiyası bağlanır.
   const open = oAuth().currentUser || await firstUser();
   if (open && !signingIn && !state.user && $('loginScreen')?.classList.contains('active')) await ownerSignOut();
-  f.querySelector('.yz-owner__resume').hidden = true;
-  f.querySelector('.yz-owner__fields').hidden = false;
 }
-function wrapSetRole() {
-  if (typeof window.setRole !== 'function' || window.setRole.__yzOwner) return typeof window.setRole === 'function';
-  const orig = window.setRole;
-  const w = function (r, el) { _role = r; orig(r, el); syncLoginForm(); };
-  w.__yzOwner = true;
-  window.setRole = w;
-  return true;
-}
+function wrapSetRole() { return typeof window.setRole === 'function'; }
 
 /* ═══ 4. KİLİD: 15 dəqiqə toxunulmasa · 12 saatdan sonra ═══ */
 let lastWrite = 0;
@@ -291,8 +309,8 @@ function init() {
   document.documentElement.classList.add('yz-owner-on');
   ensureCss();
   buildLoginForm();
-  if (!wrapSetRole()) { const t = setInterval(() => { if (wrapSetRole()) clearInterval(t); }, 150); setTimeout(() => clearInterval(t), 15000); }
-  _role = (typeof state.role === 'string' ? state.role : 'admin');
+  ls.del(K_EMAIL);   // əvvəlki versiyanın yadda saxladığı e-poçt silinir
+  if (!wrapSetRole()) { const t = setInterval(() => { if (wrapSetRole()) { clearInterval(t); syncLoginForm(); } }, 150); setTimeout(() => clearInterval(t), 15000); }
   syncLoginForm();
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (state.user?.role === 'admin') touch(); }, { passive: true, capture: true }));
   setInterval(lockCheck, 15000);
