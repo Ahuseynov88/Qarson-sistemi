@@ -16,6 +16,7 @@ import {
   nextKind, isStale, phaseOf, shiftStart, BREAKS, breakLabel, breakList, workedMs, ACTION_LABEL, TRUST, deviceModel,
   faceIdAvailable, faceIdRegister, faceIdVerify, faceIdError, attUid, bindPhone, newCode, createInvite, INVITE_MIN, adb
 } from './yuza-att-core.js';
+import { scanQr } from './yuza-qr-scan.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -55,6 +56,36 @@ if (scan.code || inviteCode) {
 }
 const SCAN_TTL = 110000;   // QR oxunandan sonra ~2 dəqiqə ərzində qeyd edilməlidir (baza da 2 dəq qəbul edir)
 const scanFresh = () => !!scan.code && (Date.now() - scan.at) < SCAN_TTL;
+
+/* ── Səhifə içi skaner: yalnız bu saytın izle.html QR-larını qəbul edir ── */
+function parseIzleQr(text) {
+  let u; try { u = new URL(String(text).trim()); } catch (e) { return null; }
+  if (u.origin !== location.origin || !/\/izle\.html$/.test(u.pathname)) return null;
+  const ok = (c) => !!c && /^[a-z0-9]{6,40}$/.test(c);
+  const k = u.searchParams.get('k'), inv = u.searchParams.get('inv');
+  if (ok(inv)) return { inv };
+  if (ok(k)) return { k };
+  return null;
+}
+async function inAppScan() {
+  const text = await scanQr({
+    title: 'QR kodu oxudun',
+    hint: 'Kameranı davamiyyət ekranındakı və ya Rəhbərin göstərdiyi QR-a tutun.',
+    accept: (t) => parseIzleQr(t) ? true : 'Bu, YuZa davamiyyət QR-ı deyil.'
+  });
+  const p = text && parseIzleQr(text);
+  if (!p) return;
+  const uid = attUid();
+  if (p.inv) { offAll(); me = null; await handleInvite(p.inv, uid); return; }
+  if (!me) {
+    logAttempt(null, null, 'Qeydiyyatsız telefon davamiyyət QR-ını oxutdu', { model: deviceModel() });
+    toast('Telefonunuz hələ qoşulmayıb. Rəhbərə müraciət edin.');
+    return;
+  }
+  scan.code = p.k; scan.at = Date.now();
+  renderHome();
+  toast('QR oxundu');
+}
 
 /* ── Ayarlar ── */
 let S = withDefaults(null);
@@ -124,10 +155,12 @@ function renderNotBound() {
       <ol class="iz-steps">
         <li>Rəhbərə yaxınlaşın.</li>
         <li>Rəhbər öz panelində: <b>Personal izləmə → Cihazlar → adınızın yanında “Telefon qoş”</b>.</li>
-        <li>Ekranda çıxan QR-ı bu telefonun kamerası ilə oxudun.</li>
+        <li>Aşağıdakı <b>“QR oxu”</b> düyməsini basın və ekranda çıxan QR-a tutun.</li>
       </ol>
+      <button id="izScanInv" class="iz-btn iz-btn--gold" type="button">${ICON.qr} QR oxu</button>
       <p class="iz-hint">Dəvət QR-ı 10 dəqiqə etibarlıdır və yalnız bir telefona qoşulur.</p>
     </section>`);
+  $('izScanInv').onclick = inAppScan;
 }
 
 function renderInfo(icon, tone, title, html, btn) {
@@ -223,7 +256,8 @@ function renderHome() {
       </div>
       <div class="iz-clock"><b id="izClock">${fmtTime(now())}</b><span id="izDate">${fmtDate(now())}</span></div>
       ${stateBox}
-      ${dis ? `<p class="iz-warn">${ICON.qr}<span>Qeyd üçün restorandakı <b>davamiyyət ekranında</b> görünən QR kodu telefonun kamerası ilə oxudun.</span></p>` : ''}
+      ${dis ? `<p class="iz-warn">${ICON.qr}<span>Qeyd üçün <b>“QR oxu”</b> basın və restorandakı <b>davamiyyət ekranında</b> görünən QR-a tutun.</span></p>
+        <button id="izScan" class="iz-btn iz-btn--big iz-btn--gold" type="button">${ICON.qr} QR oxu</button>` : ''}
       ${ph === 'in' && myTables.length ? `<p class="iz-warn">${ICON.x}<span>Sizdə <b>${myTables.length}</b> açıq masa var (${esc(myTables.join(', '))}). İşdən və ya müvəqqəti çıxmaq üçün əvvəlcə masalar başqa ofisianta ötürülməlidir — Rəhbərə və ya növbə müdirinə müraciət edin.</span></p>` : ''}
       ${buttons}
       <ul class="iz-checks" aria-label="Yoxlamalar">
@@ -238,6 +272,7 @@ function renderHome() {
   $('izOut') && ($('izOut').onclick = () => go('out'));
   $('izBack') && ($('izBack').onclick = () => go('back'));
   $('izBrk') && ($('izBrk').onclick = renderBreakForm);
+  $('izScan') && ($('izScan').onclick = inAppScan);
   clearInterval(tick);
   tick = setInterval(() => {
     const c = $('izClock'); if (!c) { clearInterval(tick); return; }
@@ -506,7 +541,7 @@ async function renderKiosk() {
         <div class="iz-k-clock"><b id="izKClock">${fmtTime(now())}</b><span id="izKDate">${fmtDate(now())}</span></div>
         <div id="izQrBox" class="iz-qrbox" aria-label="Davamiyyət QR kodu"></div>
         ${dyn ? '<div class="iz-bar"><i id="izBar"></i></div>' : ''}
-        <p class="iz-p">Telefonunuzun kamerası ilə QR-ı oxudun və <b>“İşə gəldim”</b> basın.</p>
+        <p class="iz-p">Telefonunuzda YuZa davamiyyət səhifəsini açın, <b>“QR oxu”</b> basıb bu QR-a tutun və <b>“İşə gəldim”</b> basın.</p>
         <div class="iz-k-btns"><button id="izKProxy" class="iz-btn iz-btn--ghost" type="button">Smartfonu olmayan işçinin qeydi</button>
           <button id="izKBind" class="iz-btn iz-btn--ghost" type="button">Telefon aktivləşdir (Rəhbər / səlahiyyətli)</button></div>
       </section>
