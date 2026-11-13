@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   YUZA POS — PIN EKRANI + DAVAMİYYƏT QR (12.11.2026)
+   YUZA POS — PIN EKRANI + DAVAMİYYƏT QR (12.11.2026 · 13.11: işçi telefonunda "Davamiyyət" keçidi)
    Ortaq cihazda (məs. kassa kompüteri) PIN ekranının yanında davamiyyət QR-ı:
    • Geniş ekran: ekran ikiyə bölünür — solda QR + "İndi işdə", sağda PIN.
    • Dar ekran (telefon, şaquli planşet): yuxarıda "Davamiyyət" düyməsi —
@@ -146,6 +146,14 @@ function phoneMode() {
     hi.id = 'yzPhoneHi'; hi.className = 'yz-phone-hi';
     hi.innerHTML = `Salam, <b>${esc(ph.firstname || ph.name)}</b>!<br><span>PIN kodunuzu daxil edin</span>`;
     card.insertBefore(hi, card.querySelector('.yz-pad'));
+  }
+  // Davamiyyət səhifəsinə keçid: müvəqqəti çıxış / işdən çıxış üçün işçi əvvəlcə sistemdən çıxır, sonra buradan keçir
+  if (card && !$('yzPhoneAtt')) {
+    const a = document.createElement('a');
+    a.id = 'yzPhoneAtt'; a.href = IZLE_URL;
+    a.setAttribute('style', 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;margin-top:14px;padding:13px 14px;border-radius:12px;border:1px solid rgba(232,176,75,.55);background:rgba(232,176,75,.12);color:#e8b04b;font-weight:700;font-size:15px;line-height:1.2;text-decoration:none;cursor:pointer');
+    a.innerHTML = `${QR_ICO.replace('<svg ', '<svg width="20" height="20" style="flex-shrink:0" ')}<span>Davamiyyət (müvəqqəti çıxış / işdən çıxış)</span>`;
+    card.insertBefore(a, card.querySelector('.yz-secure'));
   }
   const pick = () => {
     const btn = root.querySelector('.yz-role--staff');
