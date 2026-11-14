@@ -10,6 +10,7 @@ import { esc, toArr, showToast, showCustomerToast, addLog } from './utils.js';
 import { triggerCustomerAlarm } from './alarm.js';
 import { renderFeedbackSection } from './admin.js';
 import { initCustomerLoyalty, initReferralRegisterScreen } from './loyalty.js';
+import { voiceBubbleHtml, onCustomerChatMsgs, initCustomerVoice, setCustomerVoiceActive, initWaiterVoice } from './chat-voice.js';
 
 export function initCustomerRequestListener() {
   db.ref('customerRequests').orderByChild('status').equalTo('pending').on('value', snap => {
@@ -68,6 +69,7 @@ export function checkCustomerMode() {
         window._customerTableId = tableId;
         window._customerTableData = t;
         initCustomerChat(tableId);
+        initCustomerVoice(tableId);          // səsli mesaj — yalnız masa aktiv olanda
         initCustomerRequestTracking(tableId);
         R.tableOrders.child(tableId).on('value', s => renderCustomerOrder(s.val()));
       }
@@ -75,6 +77,7 @@ export function checkCustomerMode() {
     }
     document.getElementById('customerTableName').textContent = t.name || 'Masa';
     document.getElementById('customerInactiveOverlay').classList.add('show');
+    setCustomerVoiceActive(false);
     if (window._customerTableId) {
       window._customerTableId = null;
       window._customerTableData = null;
@@ -244,10 +247,11 @@ export function renderCustomerChatMsgs(msgsObj) {
   el.innerHTML = msgs.map(m=>`
     <div class="cust-bubble ${m.sender}">
       ${m.sender==='waiter'?`<span style="font-size:11px;font-weight:700;display:block;margin-bottom:2px;">${esc(m.senderName||'Qarson')}</span>`:''}
-      ${esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span>
+      ${m.type === 'voice' ? voiceBubbleHtml(m) : esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span>
     </div>
   `).join('');
   el.scrollTop = el.scrollHeight;
+  onCustomerChatMsgs(msgs);   // ofisiantın yeni səsli cavabı avtomatik səslənir
 }
 
 export function sendCustomerMsg() {
@@ -284,6 +288,7 @@ export function sendFeedback() {
 }
 
 export function initWaiterChatListener() {
+  initWaiterVoice();
   db.ref('chats').on('value', snap => {
     const data = snap.val() || {};
     Object.keys(data).forEach(tableId => {
@@ -325,7 +330,7 @@ export function renderWaiterChatMsgs(msgsObj) {
   const currentSessionId = t?.sessionId || null;
   const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
   const el = document.getElementById('waiterChatMsgList');
-  el.innerHTML = msgs.map(m=>`<div class="chat-bubble ${m.sender}">${esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span></div>`).join('');
+  el.innerHTML = msgs.map(m=>`<div class="chat-bubble ${m.sender}">${m.type === 'voice' ? voiceBubbleHtml(m) : esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span></div>`).join('');
   el.scrollTop = el.scrollHeight;
   msgs.filter(m=>m.sender==='customer'&&!m.readByWaiter).forEach(m=>{
     db.ref(`chats/${state.activeChatTableId}/messages/${m.id}`).update({ readByWaiter: true });
