@@ -159,3 +159,41 @@ body.dark-mode .rc-play{color:var(--gold);}
 @media (prefers-reduced-motion:reduce){
   .rc-sheet,.rc-now--tap,.rc-rec--live .rc-rec__mic,.rc-now__wave i{animation:none;}
 }
+
+/* ═══ MÜŞTƏRİ ↔ OFİSİANT SƏSLİ MESAJ (chat-voice.js) ═══ */
+.cust-input-row .cv-mic,
+.chat-input-row .cv-mic{
+  width:48px; min-width:48px; height:48px; padding:0; flex-shrink:0; align-self:flex-end;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  border-radius:50%; border:1px solid rgba(138,90,11,.55);
+  background:var(--yz-gold-grad); color:var(--yz-on-gold);
+  box-shadow:0 3px 12px rgba(201,141,46,.35);
+  transition:transform .1s, box-shadow .15s;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:none; -webkit-tap-highlight-color:transparent;
+}
+.cv-mic[hidden], .cv-hint[hidden]{display:none !important;}
+.cv-mic svg{width:24px; height:24px;}
+.cust-input-row .cv-mic.rc-pressed,
+.chat-input-row .cv-mic.rc-pressed{transform:scale(.92); background:var(--red); color:#fff; border-color:var(--red); box-shadow:0 0 0 6px rgba(179,38,30,.3);}
+.cust-input-row{align-items:flex-end;}
+.cv-hint{display:flex; align-items:center; gap:6px; margin:8px 2px 0; font-size:12px; color:rgba(255,255,255,.55);}
+.cv-hint svg{width:14px; height:14px; flex-shrink:0; color:var(--yz-gold-1);}
+.cv-hint b{color:rgba(255,255,255,.85);}
+
+/* Söhbətdə səsli mesaj balonu */
+.cv-voice{
+  display:inline-flex; align-items:center; gap:9px; padding:2px 4px 2px 2px; margin:0 0 2px;
+  background:transparent; border:none; color:inherit; cursor:pointer; font-family:inherit; vertical-align:middle;
+}
+.cv-voice__play{
+  width:34px; height:34px; flex-shrink:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--yz-gold-grad); color:var(--yz-on-gold);
+}
+.cv-voice__play svg{width:15px; height:15px; margin-left:2px;}
+.cv-voice__wave{display:flex; align-items:center; gap:3px; height:20px;}
+.cv-voice__wave i{width:3px; border-radius:2px; background:currentColor; opacity:.55;}
+.cv-voice__wave i:nth-child(1){height:8px;} .cv-voice__wave i:nth-child(2){height:16px;}
+.cv-voice__wave i:nth-child(3){height:11px;} .cv-voice__wave i:nth-child(4){height:18px;}
+.cv-voice__wave i:nth-child(5){height:9px;}
+.cv-voice__dur{font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; opacity:.85;}
