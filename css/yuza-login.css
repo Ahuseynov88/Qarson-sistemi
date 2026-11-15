@@ -112,7 +112,7 @@
 /* ── Sol sütun: brend ─────────────────────────────────────────── */
 #yzLogin .yz-brand{margin-top:-3.06em; min-width:0;}
 #yzLogin .yz-lockup{width:21.6em; margin-left:1.1em; text-align:center;}
-#yzLogin .yz-mark{width:7.57em; height:6.63em; margin:0 auto; transform:translateX(-.9em); filter:drop-shadow(0 .2em .6em rgba(0,0,0,.45));}
+#yzLogin .yz-mark{width:7.57em; height:6.63em; margin:0 auto; filter:drop-shadow(0 .2em .6em rgba(0,0,0,.45));}
 #yzLogin .yz-wordmark{display:flex; justify-content:center; align-items:baseline; gap:.2em; line-height:1;}
 #yzLogin .yz-wordmark span{font-family:'Poppins','Inter',sans-serif; font-weight:600; letter-spacing:-.025em; line-height:1;}
 #yzLogin .yz-wm-a{color:var(--text);}
@@ -395,3 +395,8 @@ html.yz-owner-on #yzLogin .yz-roles{grid-template-columns:repeat(2,minmax(0,1fr)
 #yzLogin .yz-ownbox__ico svg{width:1.6em; height:1.6em;}
 #yzLogin .yz-ownbox__t{margin:0 0 .4em; text-align:center; font-size:1.3em; font-weight:700;}
 #yzLogin .yz-ownbox .yz-owner{display:block; width:100%; margin-top:0;}
+
+/* YuZa loqosu: işıqlı rejimdə açıq fonda itməsin deyə keçid tündləşdirilir */
+#yzLogin[data-yz-theme="light"] #yzMarkG stop:nth-child(1){stop-color:#e3a63f;}
+#yzLogin[data-yz-theme="light"] #yzMarkG stop:nth-child(2){stop-color:#c98a2a;}
+#yzLogin[data-yz-theme="light"] #yzMarkG stop:nth-child(3){stop-color:#8a5512;}
