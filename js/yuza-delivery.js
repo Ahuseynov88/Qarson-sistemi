@@ -21,6 +21,7 @@ import { esc, showToast, addLog, makeLineKey, updateStock, computeVat } from './
 import { modal, confirmBox } from './yuza-inv-ui.js';
 import { printReceipt, printKitchenJobs } from './printer-service.js';
 import * as ADM from './admin.js';
+import { NOTIF_EVENTS, playNotifSound } from './notifSounds.js';
 
 /* ═══ 1. Sabitlər və köməkçilər ═══ */
 const DO = db.ref('deliveryOrders');
@@ -110,7 +111,8 @@ const PERMS = [
   { key: 'delivery.take',    label: 'Paket sifarişi qəbul etmək (telefon, yerində)' },
   { key: 'delivery.manage',  label: 'Paketləri idarə etmək: kuryer təyin etmək, təhvil vermək, ləğv etmək, qara siyahı; "Hazırdır" bildirişlərini almaq (növbə müdiri)' },
   { key: 'delivery.courier', label: 'Kuryer kimi işləmək (sifarişi qəbul etmək, yola çıxmaq, təhvil vermək)' },
-  { key: 'delivery.settle',  label: 'Kuryerdən nağd pulu təhvil almaq (kassa təhvili)' }
+  { key: 'delivery.settle',  label: 'Kuryerdən nağd pulu təhvil almaq (kassa təhvili)' },
+  { key: 'delivery.item_cancel', label: 'Təsdiqlənmiş paket sifarişindən mal ləğv etmək (səbəb yazılır). Mal əlavə etməyi sifarişi qəbul edən özü edə bilir' }
 ];
 (function addPerms() {
   if (!ALL_PERMISSIONS.some(g => g.items?.some(i => i.key === 'delivery.take'))) {
@@ -118,11 +120,19 @@ const PERMS = [
   }
   const add = (k, list) => { const p = PERMISSION_PRESETS?.[k]; if (p) list.forEach(x => { if (!p.perms.includes(x)) p.perms.push(x); }); };
   add('manager', PERMS.map(p => p.key));
-  add('cashier', ['delivery.take', 'delivery.manage', 'delivery.settle']);
+  add('cashier', ['delivery.take', 'delivery.manage', 'delivery.settle', 'delivery.item_cancel']);
   add('head_waiter', ['delivery.take']);
   if (PERMISSION_PRESETS && !PERMISSION_PRESETS.courier) {
     PERMISSION_PRESETS.courier = { label: `${I('box')} Kuryer`, perms: ['delivery.courier'] };
   }
+  // Bildiriş səsləri: Sistem → Bildiriş səsləri bölməsində hər hadisəyə yüklənmiş səs seçilir
+  Object.assign(NOTIF_EVENTS, {
+    delivery_courier_new:   'Paket: yeni çatdırılma / təyin edildi (kuryerə)',
+    delivery_courier_ready: 'Paket: sifariş hazırdır (kuryerə)',
+    delivery_changed:       'Paket: sifariş dəyişdirildi (kuryerə)',
+    delivery_ready:         'Paket: hazırdır (növbə müdirinə / qəbul edənə)',
+    delivery_alert:         'Paket: gecikmə, problem, kuryer qəbul etməyib (növbə müdirinə)'
+  });
   if (ADM.LOG_TYPE_INFO && !ADM.LOG_TYPE_INFO.delivery) {
     ADM.LOG_TYPE_INFO.delivery = { label: 'PAKET', color: '#c98d2e', group: 'table_ops' };
   }
@@ -905,6 +915,7 @@ async function submitNew(btn) {
       status: scheduledAt ? 'scheduled' : 'sending', active: true,
       customer: { name: draft.name.trim(), phone: draft.phone.trim(), phoneKey: pk },
       address, items, subtotal: t.subtotal, vatAdded: t.vatAdded, fee: t.fee, total: t.total,
+      baseFee: calcFee(draft.type, address?.zoneId, 0),
       payMethod: draft.pay, prepaidMethod: draft.pay === 'prepaid' ? draft.prepaidMethod : null,
       cashGiven: draft.pay === 'cash' && num(draft.cashGiven) > 0 ? r2(num(draft.cashGiven)) : null,
       kitchenNote: draft.kitchenNote.trim(), scheduledAt,
@@ -931,6 +942,228 @@ async function submitNew(btn) {
     console.error('[paket]', e);
     showToast(`${I('error')} Sifariş yazılmadı: ${esc(e?.message || e)}`);
   } finally { btn.disabled = false; }
+}
+
+/* ═══ 8b. TƏSDİQDƏN SONRA DƏYİŞİKLİK (15.11.2026) ═══
+   • Mal əlavə etmək: sifarişi qəbul edən işçi, delivery.manage və ya Rəhbər.
+     Kuryer yoldadırsa əlavə olunmur.
+   • Mal ləğv etmək: yalnız delivery.item_cancel icazəsi (və Rəhbər), səbəb məcburidir.
+   • Mətbəxə "ƏLAVƏ" / "LƏĞV" çeki və kart gedir, anbar düzəlir, cəm yenidən hesablanır,
+     kuryer varsa ona bildiriş gedir. Ləğvlər "Ləğvetmələr" hesabatına düşür. */
+const canAddTo = (o) => !!o && ['scheduled', 'sending', 'cooking', 'ready'].includes(o.status)
+  && (isRehber() || can('delivery.manage') || (o.createdById && o.createdById === me().id));
+const canCancelItem = (o) => !!o && ACTIVE.includes(o.status) && can('delivery.item_cancel');
+function recalc(o, items) {
+  const t0 = totals(items, 0);
+  const base = o.baseFee ?? o.fee ?? 0;
+  const fee = o.type === 'delivery' ? (num(S.freeOver) > 0 && t0.subtotal >= num(S.freeOver) ? 0 : r2(base)) : 0;
+  return totals(items, fee);
+}
+function notifyCourierChange(o, text) {
+  if (o.type === 'delivery' && o.courierId) DO.child(o.id).child('changeSeq').transaction(c => (c || 0) + 1);
+  histPush(o.id, text);
+}
+
+/* Sifarişi dəyiş pəncərəsi */
+function openEdit(id) {
+  const o0 = byId(id); if (!o0) return;
+  if (!canAddTo(o0) && !canCancelItem(o0)) {
+    showToast(`${I('ban')} ${o0.status === 'onway' ? 'Kuryer yoldadır — mal əlavə olunmur. Ləğv üçün "Mal ləğv etmək" icazəsi lazımdır' : 'Bu sifarişi dəyişmək icazəniz yoxdur'}`);
+    return;
+  }
+  const add = {};   // { lineKey: { menuItemId, qty, note, free } }
+  let cat = 'all', q = '';
+  const body = document.createElement('div');
+  body.className = 'yzp-edit';
+  const draw = () => {
+    const o = byId(id); if (!o) return;
+    const cur = Object.entries(o.items || {});
+    const canAdd = canAddTo(o), canCan = canCancelItem(o);
+    const menu = (state.menuItems || []).filter(menuOk);
+    const cats = ['all', ...new Set(menu.map(m => m.category || 'Digər'))];
+    const shown = menu.filter(m => q ? String(m.name).toLowerCase().includes(q.toLowerCase()) : cat === 'all' || (m.category || 'Digər') === cat);
+    const addItems = {};
+    Object.entries(add).forEach(([k, l]) => { const m = state.menuItems.find(x => x.id === l.menuItemId); if (m) { const pack = isPackItem(m); addItems['n_' + k] = { menuItemId: m.id, name: m.name, price: pack && l.free ? 0 : r2(m.price), qty: l.qty, note: l.note, vatRate: Number(m.vatRate) || 0, vatIncluded: state.vatMode !== 'added', pack, free: !!(pack && l.free), listPrice: r2(m.price) }; } });
+    const merged = { ...(o.items || {}), ...addItems };
+    const t = recalc(o, merged);
+    body.innerHTML = `
+      <p class="yzi-hint"><b>${esc(o.code)}</b> · ${esc(o.customer?.name || '')} · <span class="yzp-st yzp-st--${ST[o.status]?.c}">${ST[o.status]?.l || ''}</span>${o.status === 'onway' ? ' · kuryer yoldadır, yalnız ləğv mümkündür' : ''}</p>
+      <h4 class="yzp-h">Sifarişdəki mallar</h4>
+      <div class="yzp-edit__cur">${cur.map(([k, i]) => `<div class="yzp-edit__row"><span><b>${i.qty} ×</b> ${esc(i.name)}${i.note ? ` <small>(${esc(i.note)})</small>` : ''}${i.free ? ' <span class="yzp-chip">pulsuz qab</span>' : ''}</span><b>${money(i.price * i.qty)}</b>
+        ${canCan ? `<button type="button" class="yzi-btn yzi-btn--sm yzi-btn--ghost yzp-btn-red" data-cancel-line="${esc(k)}">Ləğv</button>` : ''}</div>`).join('')}</div>
+      ${!canCan ? `<p class="yzi-hint">Mal ləğv etmək üçün "Paket: təsdiqlənmiş sifarişdən mal ləğv etmək" icazəsi lazımdır.</p>` : ''}
+      ${canAdd ? `<h4 class="yzp-h">Mal əlavə et</h4>
+        <input type="search" class="yzp-input" id="yzpEQ" placeholder="Məhsul axtar…" value="${esc(q)}" aria-label="Məhsul axtar">
+        <div class="yzp-cats">${cats.map(c => `<button type="button" class="yzp-cat${cat === c ? ' is-on' : ''}" data-ecat="${esc(c)}">${c === 'all' ? 'Hamısı' : esc(c)}</button>`).join('')}</div>
+        <div class="yzp-prods yzp-prods--sm">${shown.map(m => { const oos = m.stock !== undefined && m.stock !== null && m.stock <= 0; return `<button type="button" class="yzp-prod${oos ? ' is-oos' : ''}" data-emid="${esc(m.id)}" ${oos ? 'disabled' : ''}><span class="yzp-prod__n">${esc(m.name)}</span><span class="yzp-prod__p">${money(m.price)}</span></button>`; }).join('') || '<p class="yzi-empty">Məhsul tapılmadı</p>'}</div>
+        ${Object.keys(addItems).length ? `<h4 class="yzp-h">Əlavə olunacaq</h4><div class="yzp-edit__cur">${Object.entries(add).map(([k, l]) => { const it = addItems['n_' + k]; if (!it) return ''; return `<div class="yzp-edit__row yzp-edit__row--new">
+          <span>${esc(it.name)}${it.pack ? ` <label class="yzp-check yzp-check--sm"><input type="checkbox" data-efree="${esc(k)}" ${it.free ? 'checked' : ''}> Pulsuz</label>` : ''}</span>
+          <div class="yzp-qty"><button type="button" data-eq="-1" data-k="${esc(k)}" aria-label="Azalt">−</button><b>${it.qty}</b><button type="button" data-eq="1" data-k="${esc(k)}" aria-label="Artır">+</button></div>
+          <input type="text" class="yzp-line__note" data-enote="${esc(k)}" value="${esc(l.note)}" placeholder="Qeyd" maxlength="80" aria-label="${esc(it.name)} üçün qeyd"></div>`; }).join('')}</div>` : ''}` : ''}
+      <div class="yzp-totals">
+        <div><span>Əvvəlki cəm</span><b>${money(o.total)}</b></div>
+        <div class="yzp-totals__sum"><span>Yeni cəm</span><b>${money(t.total)}</b></div>
+      </div>`;
+    body.querySelector('#yzpEQ')?.addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; draw(); const n = body.querySelector('#yzpEQ'); n.focus(); n.setSelectionRange(pos, pos); });
+    body.querySelectorAll('[data-ecat]').forEach(b => b.addEventListener('click', () => { cat = b.dataset.ecat; draw(); }));
+    body.querySelectorAll('[data-emid]').forEach(b => b.addEventListener('click', () => {
+      const m = state.menuItems.find(x => x.id === b.dataset.emid); if (!m) return;
+      const k = makeLineKey(m.id, '', 0);
+      if (add[k]) add[k].qty += 1; else add[k] = { menuItemId: m.id, qty: 1, note: '', free: isPackItem(m) ? S.packFree !== false : false };
+      draw();
+    }));
+    body.querySelectorAll('[data-eq]').forEach(b => b.addEventListener('click', () => { const l = add[b.dataset.k]; if (!l) return; l.qty += +b.dataset.eq; if (l.qty <= 0) delete add[b.dataset.k]; draw(); }));
+    body.querySelectorAll('[data-efree]').forEach(c => c.addEventListener('change', () => { if (add[c.dataset.efree]) { add[c.dataset.efree].free = c.checked; draw(); } }));
+    body.querySelectorAll('[data-enote]').forEach(i => i.addEventListener('change', () => { if (add[i.dataset.enote]) add[i.dataset.enote].note = i.value.trim(); }));
+    body.querySelectorAll('[data-cancel-line]').forEach(b => b.addEventListener('click', () => openCancelItem(byId(id), b.dataset.cancelLine, draw)));
+  };
+  draw();
+  const off = setInterval(() => { if (!body.isConnected) clearInterval(off); }, 2000);
+  modal({
+    title: `Sifarişi dəyiş · ${esc(o0.code)}`, body, wide: true,
+    actions: [
+      { label: 'Bağla', cancel: true, cls: 'yzi-btn--ghost' },
+      ...(canAddTo(o0) ? [{ label: 'Əlavələri təsdiqlə', cls: 'yzi-btn--gold', onClick: async () => {
+        if (!Object.keys(add).length) throw new Error('Əlavə ediləcək mal seçin');
+        await addItemsToOrder(id, add);
+      } }] : [])
+    ]
+  });
+}
+
+async function addItemsToOrder(id, add) {
+  const o = byId(id);
+  if (!canAddTo(o)) throw new Error(o?.status === 'onway' ? 'Kuryer yoldadır — mal əlavə olunmur' : 'Bu sifarişə mal əlavə etmək icazəniz yoxdur');
+  for (const l of Object.values(add)) {
+    const m = state.menuItems.find(x => x.id === l.menuItemId);
+    if (m && m.stock !== undefined && m.stock !== null && l.qty > m.stock) throw new Error(`"${m.name}" anbarda kifayət qədər yoxdur`);
+  }
+  const u = me(), now = Date.now();
+  const lines = {};
+  Object.values(add).forEach(l => {
+    const m = state.menuItems.find(x => x.id === l.menuItemId); if (!m) return;
+    const pack = isPackItem(m), free = !!(pack && l.free);
+    const k = makeLineKey(m.id, l.note || '', 0) + (free ? '_f' : '');
+    lines[k] = { menuItemId: m.id, name: m.name, listPrice: r2(m.price), price: free ? 0 : r2(m.price), qty: l.qty, note: l.note || '', extraFee: 0, vatRate: Number(m.vatRate) || 0, vatIncluded: state.vatMode !== 'added', pack, free };
+  });
+  let before = null;
+  const res = await DO.child(id).transaction(cur => {
+    if (!cur || !['scheduled', 'sending', 'cooking', 'ready'].includes(cur.status)) return undefined;
+    before = cur.status;
+    const items = { ...(cur.items || {}) };
+    Object.entries(lines).forEach(([k, l]) => { items[k] = items[k] ? { ...items[k], qty: items[k].qty + l.qty } : l; });
+    const t = recalc({ id, ...cur }, items);
+    return { ...cur, items, subtotal: t.subtotal, vatAdded: t.vatAdded, fee: t.fee, total: t.total, editedAt: now };
+  });
+  if (!res.committed) throw new Error('Sifariş artıq dəyişdirilə bilməz (yola çıxıb və ya bağlanıb)');
+  const fresh = { id, ...res.snapshot.val() };
+  const txt = Object.values(lines).map(l => `${l.qty}× ${l.name}${l.free ? ' (pulsuz)' : ''}`).join(', ');
+  if (fresh.stockOut) {
+    Object.values(lines).forEach(l => updateStock(l.menuItemId, -l.qty, state.menuItems));
+    const label = orderLabel(fresh) + ' · ƏLAVƏ';
+    const groups = {}, pg = { _orderNote: `ƏLAVƏ — ${fresh.type === 'delivery' ? 'PAKET, KURYER İLƏ' : 'PAKET, ÖZÜ APARIR'}` };
+    Object.values(lines).forEach(l => {
+      if (l.pack) return;
+      const m = state.menuItems.find(x => x.id === l.menuItemId);
+      const kid = m?.kitchenId || 'default';
+      if (!groups[kid]) groups[kid] = { kitchenId: kid, kitchenName: (state.kitchenStations || []).find(k => k.id === kid)?.name || 'Mətbəx', items: [] };
+      groups[kid].items.push({ name: l.name, qty: l.qty, note: l.note || '', ready: false, cooking: false, waiterAccepted: false, addedAt: now });
+      const c = m?.category || 'Digər'; (pg[c] = pg[c] || []).push({ name: l.name, qty: l.qty, note: l.note || '' });
+    });
+    const kids = {};
+    Object.values(groups).forEach(g => {
+      const ref = R.kitchenOrders.push(); kids[ref.key] = true;
+      ref.set({ tableId: 'dlv_' + id, tableName: label, deliveryId: id, waiterId: u.id, waiterName: u.name,
+        kitchenId: g.kitchenId, kitchenName: g.kitchenName, items: g.items, orderNote: pg._orderNote,
+        changeNote: `Yeni əlavə: ${g.items.map(i => i.qty + '× ' + i.name).join(', ')}`,
+        status: 'pending', allReady: false, waiterAccepted: false, createdAt: now, time: new Date(now).toLocaleTimeString('az-AZ') });
+    });
+    if (Object.keys(kids).length) {
+      printKitchenJobs('dlv_' + id, pg, { table: { name: label } }).catch(() => {});
+      const upd = {}; Object.keys(kids).forEach(k => { upd['kitchenIds/' + k] = true; });
+      if (fresh.status === 'ready') { upd.status = 'cooking'; upd.readyAt = null; }
+      await DO.child(id).update(upd);
+    }
+  }
+  notifyCourierChange(fresh, `Əlavə edildi: ${txt} · yeni cəm ${money(fresh.total)}${before === 'ready' && fresh.stockOut ? ' · yenidən mətbəxdə' : ''}`);
+  addLog('delivery', `${u.name} "Paket ${fresh.code}" sifarişinə əlavə etdi: ${txt} (yeni cəm ${money(fresh.total)})`, { deliveryId: id });
+  if (S.autoPrint !== false && fresh.stockOut) printBill(fresh, 1);
+  showToast(`${I('check')} Əlavə edildi · yeni cəm ${money(fresh.total)}`);
+}
+
+function openCancelItem(o, key, after) {
+  if (!canCancelItem(o)) { showToast(`${I('ban')} Mal ləğv etmək icazəniz yoxdur`); return; }
+  const it = o.items?.[key]; if (!it) return;
+  if (Object.keys(o.items).length === 1 && !(it.qty > 1)) { showToast(`${I('warning')} Bu, sifarişdəki yeganə maldır — bütöv sifarişi "Ləğv et" ilə ləğv edin`); return; }
+  const sent = !!o.stockOut;
+  modal({
+    title: `Mal ləğvi · ${esc(o.code)}`,
+    body: `<p class="yzi-p"><b>${esc(it.name)}</b> · sifarişdə ${it.qty} ədəd · ${money(it.price)}</p>
+      ${it.qty > 1 ? `<label class="yzi-f"><span>Neçə ədəd ləğv edilsin</span><input type="number" id="yzpCiQ" min="1" max="${it.qty}" value="${it.qty}"></label>` : ''}
+      <label class="yzi-f"><span>Səbəb *</span><select id="yzpCiR"><option>Müştəri fikrini dəyişdi</option><option>Səhv sifariş</option><option>Məhsul bitib</option><option>Zayolma</option><option value="__other">Digər…</option></select></label>
+      <label class="yzi-f" id="yzpCiOW" hidden><span>Səbəbi yazın *</span><input type="text" id="yzpCiO" maxlength="150"></label>
+      ${sent ? `<label class="yzp-check"><input type="checkbox" id="yzpCiB" ${['cooking', 'scheduled', 'sending'].includes(o.status) ? 'checked' : ''}> Anbara qaytarılsın (hazırlanmayıbsa)</label>` : ''}
+      ${sent && !it.pack ? `<p class="yzi-hint">Mətbəxə "LƏĞV" çeki gedəcək və mətbəx kartı yenilənəcək.</p>` : ''}`,
+    actions: [
+      { label: 'Bağla', cancel: true, cls: 'yzi-btn--ghost' },
+      { label: 'Ləğv et', cls: 'yzi-btn--red', onClick: async (b) => {
+        const qn = Math.min(it.qty, Math.max(1, Math.round(num(b.querySelector('#yzpCiQ')?.value || it.qty))));
+        let reason = b.querySelector('#yzpCiR').value;
+        if (reason === '__other') { reason = b.querySelector('#yzpCiO').value.trim(); if (!reason) throw new Error('Səbəbi yazın'); }
+        await cancelItem(o.id, key, qn, reason, !!b.querySelector('#yzpCiB')?.checked);
+        after && after();
+      } }
+    ]
+  }).body.querySelector('#yzpCiR').addEventListener('change', (e) => { const w = e.target.closest('.yzi-modal__body').querySelector('#yzpCiOW'); w.hidden = e.target.value !== '__other'; });
+}
+
+async function cancelItem(id, key, qn, reason, back) {
+  const o = byId(id);
+  if (!canCancelItem(o)) throw new Error('Mal ləğv etmək icazəniz yoxdur');
+  const u = me(), now = Date.now();
+  let it = null;
+  const res = await DO.child(id).transaction(cur => {
+    if (!cur || !ACTIVE.includes(cur.status) || !cur.items?.[key]) return undefined;
+    it = cur.items[key];
+    const items = { ...cur.items };
+    const q = Math.min(qn, it.qty);
+    if (q >= it.qty) delete items[key]; else items[key] = { ...it, qty: it.qty - q };
+    if (!Object.keys(items).length) return undefined;
+    const t = recalc({ id, ...cur }, items);
+    return { ...cur, items, subtotal: t.subtotal, vatAdded: t.vatAdded, fee: t.fee, total: t.total, editedAt: now };
+  });
+  if (!res.committed) throw new Error('Ləğv alınmadı (sifariş dəyişib və ya bağlanıb)');
+  const fresh = { id, ...res.snapshot.val() };
+  const q = Math.min(qn, it.qty);
+  if (fresh.stockOut && back && it.menuItemId) updateStock(it.menuItemId, q, state.menuItems);
+  // Mətbəx kartı: ən yeni sətirdən başlayaraq miqdarı azalt (masalardakı qayda ilə eyni)
+  if (fresh.stockOut && !it.pack) {
+    let remaining = q;
+    const kos = Object.keys(fresh.kitchenIds || {}).map(k => (state.kitchenOrders || []).find(x => x.id === k)).filter(Boolean)
+      .filter(ko => !ko.cancelled).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    for (const ko of kos) {
+      if (remaining <= 0) break;
+      const items = [...(ko.items || [])];
+      let touched = false;
+      for (let i = items.length - 1; i >= 0 && remaining > 0; i--) {
+        if (items[i].name !== it.name || items[i].cancelled || !(items[i].qty > 0)) continue;
+        const c = Math.min(items[i].qty, remaining); remaining -= c; touched = true;
+        if (items[i].qty - c > 0) items[i] = { ...items[i], qty: items[i].qty - c }; else items.splice(i, 1);
+      }
+      if (!touched) continue;
+      const note = `LƏĞV: ${it.name} — ${q} ədəd. Səbəb: ${reason}`;
+      if (!items.length) R.kitchenOrders.child(ko.id).update({ items: [], allReady: true, waiterAccepted: true, cancelled: true, changeNote: note });
+      else R.kitchenOrders.child(ko.id).update({ items, allReady: items.every(x => x.ready || x.cancelled), changeNote: note });
+    }
+    const m = state.menuItems.find(x => x.id === it.menuItemId);
+    printKitchenJobs('dlv_' + id, { _orderNote: `LƏĞV — ${reason}`, [m?.category || 'Digər']: [{ name: 'LƏĞV: ' + it.name, qty: q, note: 'LƏĞV EDİLDİ' }] }, { table: { name: 'LƏĞV · ' + orderLabel(fresh) } }).catch(() => {});
+  }
+  const amount = r2(it.price * q);
+  notifyCourierChange(fresh, `Ləğv edildi: ${q}× ${it.name} · səbəb: ${reason}${fresh.stockOut && back ? ' · anbara qaytarıldı' : ''} · yeni cəm ${money(fresh.total)}`);
+  addLog('order_cancel', `${u.name} "Paket ${fresh.code}" sifarişindən "${it.name}" malından ${q} ədəd ləğv etdi (${amount.toFixed(2)} ₼) — Sifarişi vermiş: ${fresh.createdByName || '?'} — Səbəb: ${reason}`,
+    { tableId: 'dlv_' + id, tableName: `Paket ${fresh.code}`, deliveryId: id, menuItemId: it.menuItemId, itemName: it.name, qty: q, amount, reason,
+      staffId: u.id, staffName: u.name, orderOwnerId: fresh.createdById || null, orderOwnerName: fresh.createdByName || '?' });
+  showToast(`${I('check')} Ləğv edildi · yeni cəm ${money(fresh.total)}`);
 }
 
 /* ═══ 9. LÖVHƏ ═══ */
@@ -1094,6 +1327,7 @@ function openDetail(id) {
   if (activeO && mg) acts.push({ label: 'Ləğv et', cls: 'yzi-btn--red', onClick: () => cancelOrder(o) });
   else if (activeO && o.status === 'scheduled' && o.createdById === me().id) acts.push({ label: 'Ləğv et', cls: 'yzi-btn--red', onClick: () => cancelOrder(o) });
   if (activeO && o.type === 'delivery' && mg && o.status !== 'onway') acts.push({ label: 'Kuryer', cls: 'yzi-btn--ghost', onClick: () => assignCourier(o) });
+  if (canAddTo(o) || canCancelItem(o)) acts.push({ label: `${I('edit')} Dəyiş`, cls: 'yzi-btn--ghost', onClick: () => openEdit(o.id) });
   if (o.problem && activeO && mg) acts.push({ label: 'Problemi bağla', cls: 'yzi-btn--ghost', onClick: async () => { await DO.child(o.id).child('problem').set(null); histPush(o.id, 'Problem həll edildi'); } });
   const [pa, pl] = primaryAction(o);
   if (activeO && pa !== 'detail') acts.push({ label: pl, cls: 'yzi-btn--gold', onClick: () => doAction(pa, o) });
@@ -1350,7 +1584,7 @@ function alertBox() {
   if (!b) { b = document.createElement('div'); b.id = 'yzpAlerts'; b.className = 'yzp-alerts'; b.setAttribute('aria-live', 'assertive'); document.body.appendChild(b); }
   return b;
 }
-function showAlert(key, o, lvl, text, { accept = false } = {}) {
+function showAlert(key, o, lvl, text, { accept = false, sound = 'delivery_alert' } = {}) {
   const box = alertBox();
   if (box.querySelector(`[data-k="${CSS.escape(key)}"]`)) return;
   box.querySelectorAll(`.yzp-alert[data-id="${CSS.escape(o.id)}"]`).forEach(el => el.remove());
@@ -1363,7 +1597,8 @@ function showAlert(key, o, lvl, text, { accept = false } = {}) {
   d.querySelector('[data-acc]')?.addEventListener('click', async () => { const cur = byId(o.id); if (cur && await courierAccept(cur)) { courierOpenId = o.id; } d.remove(); openScreen(); });
   d.querySelector('[data-see]').addEventListener('click', () => { d.remove(); if (canBoard()) openDetail(o.id); else { courierOpenId = (byId(o.id)?.courierId === me().id) ? o.id : null; openScreen(); } });
   box.prepend(d);
-  beep(lvl === 'alert');
+  if ((state.notifSoundMap || {})[sound]) { playNotifSound(sound); navigator.vibrate?.([200, 100, 200]); }
+  else beep(lvl === 'alert');
 }
 const fire = (key, fn) => { if (fired[key]) return; fired[key] = Date.now(); saveFired(); fn(); };
 function checkAlerts() {
@@ -1387,15 +1622,17 @@ function checkAlerts() {
     const isMine = o.courierId === u.id;
     if (cr && o.type === 'delivery') {
       if (!o.courierId && S.dispatch !== 'manual' && !o.rejectedBy?.[u.id] && o.status !== 'scheduled')
-        fire(`${o.id}:offer`, () => showAlert(`${o.id}:offer`, o, 'warn', 'Yeni çatdırılma — qəbul edirsiniz?', { accept: true }));
+        fire(`${o.id}:offer`, () => showAlert(`${o.id}:offer`, o, 'warn', 'Yeni çatdırılma — qəbul edirsiniz?', { accept: true, sound: 'delivery_courier_new' }));
       if (isMine && o.courierStatus === 'assigned')
-        fire(`${o.id}:asg:${o.courierAssignedAt || 0}`, () => showAlert(`${o.id}:asg`, o, 'warn', 'Sizə çatdırılma təyin edildi', { accept: true }));
+        fire(`${o.id}:asg:${o.courierAssignedAt || 0}`, () => showAlert(`${o.id}:asg`, o, 'warn', 'Sizə çatdırılma təyin edildi', { accept: true, sound: 'delivery_courier_new' }));
+      if (isMine && o.changeSeq)
+        fire(`${o.id}:chg:${o.changeSeq}`, () => showAlert(`${o.id}:chg`, o, 'alert', `Sifariş dəyişdi — yeni cəm ${money(o.total)}`, { sound: 'delivery_changed' }));
       if (o.status === 'ready' && (isMine || (!o.courierId && S.dispatch !== 'manual')))
-        fire(`${o.id}:ready:c`, () => showAlert(`${o.id}:ready`, o, 'alert', isMine ? 'Sifarişiniz hazırdır — götürün' : 'Hazır çatdırılma — kuryer gözlənilir', { accept: !isMine }));
+        fire(`${o.id}:ready:c`, () => showAlert(`${o.id}:ready`, o, 'alert', isMine ? 'Sifarişiniz hazırdır — götürün' : 'Hazır çatdırılma — kuryer gözlənilir', { accept: !isMine, sound: 'delivery_courier_ready' }));
     }
     if (mg || isRehber()) {
       if (o.status === 'ready')
-        fire(`${o.id}:ready:m`, () => showAlert(`${o.id}:ready:m`, o, 'warn', o.type === 'pickup' ? 'Hazırdır — müştəri götürə bilər' : (o.courierId ? `Hazırdır — kuryer: ${o.courierName || ''}` : 'Hazırdır — kuryer təyin edilməyib')));
+        fire(`${o.id}:ready:m`, () => showAlert(`${o.id}:ready:m`, o, 'warn', o.type === 'pickup' ? 'Hazırdır — müştəri götürə bilər' : (o.courierId ? `Hazırdır — kuryer: ${o.courierName || ''}` : 'Hazırdır — kuryer təyin edilməyib'), { sound: 'delivery_ready' }));
       if (o.status === 'ready' && o.type === 'delivery' && o.courierStatus !== 'accepted' && mins(o.readyAt || now) >= num(S.acceptTimeoutMin || 3))
         fire(`${o.id}:noacc`, () => showAlert(`${o.id}:noacc`, o, 'alert', `Kuryer ${num(S.acceptTimeoutMin)} dəqiqədir qəbul etməyib`));
       if (o.status === 'cooking' && mins(o.sentAt || now) >= num(S.prepTarget || 20))
@@ -1406,7 +1643,7 @@ function checkAlerts() {
         fire(`${o.id}:rej:${Object.keys(o.rejectedBy).length}`, () => showAlert(`${o.id}:rej`, o, 'warn', 'Kuryer imtina etdi — başqasını təyin edin'));
     }
     if (o.createdById === u.id && o.type === 'pickup' && o.status === 'ready' && !mg)
-      fire(`${o.id}:ready:own`, () => showAlert(`${o.id}:ready:own`, o, 'warn', 'Paket hazırdır — müştəri götürə bilər'));
+      fire(`${o.id}:ready:own`, () => showAlert(`${o.id}:ready:own`, o, 'warn', 'Paket hazırdır — müştəri götürə bilər', { sound: 'delivery_ready' }));
   });
   if (cr && num(S.cashLimit) > 0) {
     const c = cashOf(u.id);
@@ -1579,4 +1816,4 @@ function init() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
 window.yzDeliverySettings = openSettings;
-window.__yzDelivery = { openScreen, openNew, openDetail, openSettlement, courierHome, openCourierHome: openScreen };
+window.__yzDelivery = { openScreen, openNew, openDetail, openEdit, openSettlement, courierHome, openCourierHome: openScreen };
