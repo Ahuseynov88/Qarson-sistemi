@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="css/yuza-reserve.css">
 <link rel="stylesheet" href="css/yuza-inventory.css">
 <link rel="stylesheet" href="css/racia.css">
+<link rel="stylesheet" href="css/yuza-delivery.css">
 </head>
 <body>
 
@@ -226,6 +227,8 @@
               <div class="yz-dot" id="d1"></div>
               <div class="yz-dot" id="d2"></div>
               <div class="yz-dot" id="d3"></div>
+              <div class="yz-dot" id="d4"></div>
+              <div class="yz-dot" id="d5"></div>
             </div>
             <div class="yz-err" id="loginErr" role="alert" aria-live="assertive"></div>
           </div>
@@ -1059,7 +1062,7 @@
   <div class="modal" style="max-width:320px;text-align:center;">
     <h2><svg class="icon"><use href="#i-lock"></use></svg> Çıxış Təsdiqi</h2>
     <p style="color:var(--text2);margin-bottom:20px;font-size:14px;">Rəhbər PIN kodunu daxil edin</p>
-    <div class="form-group"><input type="password" id="exitPin" placeholder="••••" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
+    <div class="form-group"><input type="password" id="exitPin" placeholder="••••••" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeExitModal()">Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmExit()">Çıxış</button>
@@ -1155,9 +1158,9 @@
 <div class="modal-bg" id="kitchenPinModal">
   <div class="modal" style="max-width:340px;text-align:center;">
     <h2><svg class="icon"><use href="#i-key"></use></svg> Mətbəx PIN</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 4 rəqəmli PIN daxil edin</p>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 6 rəqəmli PIN daxil edin</p>
     <div class="form-group">
-      <input type="text" id="newKitchenPin" maxlength="4" placeholder="1234" style="text-align:center;font-size:24px;letter-spacing:10px;">
+      <input type="text" id="newKitchenPin" maxlength="6" placeholder="••••••" style="text-align:center;font-size:24px;letter-spacing:10px;">
     </div>
     <div style="display:flex;gap:10px;margin-top:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeKitchenPinModal()">Ləğv</button>
@@ -1778,6 +1781,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module" src="js/app.js"></script>
 <script type="module" src="js/yuza-reserve.js"></script>
+<script type="module" src="js/yuza-delivery.js"></script>
 <script type="module" src="js/yuza-login.js"></script>
 <script type="module" src="js/yuza-nav.js"></script>
 <script type="module" src="js/yuza-quickadd.js"></script>
