@@ -30,7 +30,7 @@ export class AuditTrail {
     const summaryHtml = `<div class="audit-summary-header">
       <div class="audit-summary-header__block">
         <span class="audit-summary-header__label">İlk əməliyyat</span>
-        <span class="audit-summary-header__value">${firstEntry ? `${firstEntry.date} ${firstEntry.time}` : '—'}</span>
+        <span class="audit-summary-header__value">${firstEntry ? `${esc(firstEntry.date||'')} ${esc(firstEntry.time||'')}` : '—'}</span>
       </div>
       <div class="audit-summary-header__block" style="align-items:flex-end;">
         <span class="audit-summary-header__label">Cari cəm</span>
@@ -43,7 +43,7 @@ export class AuditTrail {
     } else {
       const rows = relevant.map(l => `
         <div class="audit-timeline-item">
-          <div class="audit-timeline-time">${l.time}</div>
+          <div class="audit-timeline-time">${esc(l.time||'')}</div>
           <div class="audit-timeline-text">${esc(stripTableName(l.message, tableName))}</div>
         </div>
       `).join('');

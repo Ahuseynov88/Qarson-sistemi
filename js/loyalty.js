@@ -284,7 +284,7 @@ export function shareReferralLink() {
   // hər hansı masada və ya masasız açıb qeydiyyatdan keçə bilsin.
   const url = `${location.origin}${location.pathname}?ref=${code}`;
   if (navigator.share) {
-    navigator.share({ title: 'İpək Yolu Restoranı', text: 'Bu link ilə qeydiyyatdan keç, hər ikimiz bonus qazanaq!', url }).catch(() => {});
+    navigator.share({ title: document.title || 'Loyallıq proqramı', text: 'Bu link ilə qeydiyyatdan keç, hər ikimiz bonus qazanaq!', url }).catch(() => {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(() => {
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Dəvət linki kopyalandı!');

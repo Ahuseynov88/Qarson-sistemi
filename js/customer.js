@@ -245,9 +245,9 @@ export function renderCustomerChatMsgs(msgsObj) {
   const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
   const el = document.getElementById('custMsgList');
   el.innerHTML = msgs.map(m=>`
-    <div class="cust-bubble ${m.sender}">
+    <div class="cust-bubble ${m.sender === 'waiter' ? 'waiter' : 'customer'}">
       ${m.sender==='waiter'?`<span style="font-size:11px;font-weight:700;display:block;margin-bottom:2px;">${esc(m.senderName||'Qarson')}</span>`:''}
-      ${m.type === 'voice' ? voiceBubbleHtml(m) : esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span>
+      ${m.type === 'voice' ? voiceBubbleHtml(m) : esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${esc(m.time||'')}</span>
     </div>
   `).join('');
   el.scrollTop = el.scrollHeight;
@@ -330,7 +330,7 @@ export function renderWaiterChatMsgs(msgsObj) {
   const currentSessionId = t?.sessionId || null;
   const msgs = toArr(msgsObj).filter(m => !currentSessionId || m.sessionId === currentSessionId).sort((a,b)=>a.createdAt-b.createdAt);
   const el = document.getElementById('waiterChatMsgList');
-  el.innerHTML = msgs.map(m=>`<div class="chat-bubble ${m.sender}">${m.type === 'voice' ? voiceBubbleHtml(m) : esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${m.time||''}</span></div>`).join('');
+  el.innerHTML = msgs.map(m=>`<div class="chat-bubble ${m.sender === 'waiter' ? 'waiter' : 'customer'}">${m.type === 'voice' ? voiceBubbleHtml(m) : esc(m.text)}<span style="font-size:10px;opacity:.6;margin-left:8px;">${esc(m.time||'')}</span></div>`).join('');
   el.scrollTop = el.scrollHeight;
   msgs.filter(m=>m.sender==='customer'&&!m.readByWaiter).forEach(m=>{
     db.ref(`chats/${state.activeChatTableId}/messages/${m.id}`).update({ readByWaiter: true });

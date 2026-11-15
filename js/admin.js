@@ -7,6 +7,8 @@
 import { R, db } from './firebase-service.js';
 import { state, ADMIN_PIN } from './state.js';
 import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf, computeVat } from './utils.js';
+// Müştəri tərəfindən yaradıla bilən qeydlərin ID-si onclick atributuna yalnız təhlükəsiz simvollarla düşür
+const jsId = (id) => String(id ?? '').replace(/[^-\w]/g, '');
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 import { renderNotifSounds } from './notifSounds.js';
@@ -1058,10 +1060,10 @@ export function renderFeedbackSection() {
       </div>`;
       html += reqs.map(r=>`
         <div class="log-item" style="border-left:3px solid ${reqColors[r.type]||'#aaa'};margin-bottom:6px;">
-          <input type="checkbox" onchange="toggleRequestSelect('${r.id}')" ${state._selectedRequestIds.includes(r.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
+          <input type="checkbox" onchange="toggleRequestSelect('${jsId(r.id)}')" ${state._selectedRequestIds.includes(r.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
           <span class="log-badge" style="background:${reqColors[r.type]||'#aaa'}22;color:${reqColors[r.type]||'#aaa'}">${reqIcons[r.type]||'<svg class="icon"><use href="#i-clipboard"></use></svg>'} ${esc(r.tableName||'')}</span>
           <span class="log-text">${esc(r.message||'')}</span>
-          <span class="log-time">${r.time||''}</span>
+          <span class="log-time">${esc(r.time||'')}</span>
         </div>
       `).join('');
     }
@@ -1079,10 +1081,10 @@ export function renderFeedbackSection() {
       </div>`;
       html += feedbacks.map(f=>`
         <div class="log-item" style="margin-bottom:6px;">
-          <input type="checkbox" onchange="toggleFeedbackSelect('${f.id}')" ${state._selectedFeedbackIds.includes(f.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
+          <input type="checkbox" onchange="toggleFeedbackSelect('${jsId(f.id)}')" ${state._selectedFeedbackIds.includes(f.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
           <span class="log-badge" style="background:#2ecc7122;color:#2ecc71"><svg class="icon"><use href="#i-note"></use></svg> ${esc(f.tableName||'')}</span>
           <span class="log-text">${esc(f.message)}</span>
-          <span class="log-time">${f.time} ${f.date||''}</span>
+          <span class="log-time">${esc(f.time||'')} ${esc(f.date||'')}</span>
         </div>
       `).join('');
     }
@@ -1537,14 +1539,6 @@ export function saveItem() {
   closeAddModal();
 }
 
-/* 6 rəqəmli PIN: təxmin edilməsi asan olanlar qəbul edilmir */
-function weakPin(pin) {
-  if (/^(\d)\1{5}$/.test(pin)) return true;                       // 111111
-  if ('0123456789012'.includes(pin) || '9876543210987'.includes(pin)) return true;   // 123456, 654321
-  if (/^(\d\d)\1\1$/.test(pin) || /^(\d{3})\1$/.test(pin)) return true;   // 121212, 123123
-  return false;
-}
-
 export function openKitchenPinModal() {
   document.getElementById('newKitchenPin').value = '';
   document.getElementById('kitchenPinModal').classList.add('open');
@@ -1554,8 +1548,7 @@ export function closeKitchenPinModal() { document.getElementById('kitchenPinModa
 
 export function saveKitchenPin() {
   const pin = document.getElementById('newKitchenPin').value.trim();
-  if (!/^\d{6}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> 6 rəqəmli PIN daxil edin'); return; }
-  if (weakPin(pin)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu PIN çox asandır'); return; }
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> 4 rəqəmli PIN daxil edin'); return; }
   if (String(pin) === String(ADMIN_PIN)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Admin PIN ilə eyni ola bilməz'); return; }
   db.ref('settings/kitchenPin').set(pin);
   state.kitchenPin = pin;
@@ -1750,9 +1743,8 @@ export function saveStaff() {
   if (!firstname || !lastname) { err('Ad və Soyad mütləqdir'); return; }
   if (!position) { err('Vəzifə seçilməlidir'); return; }
   if (systemAccess) {
-    if (!/^\d{6}$/.test(pin)) { err('Sistemə girişi olan işçi üçün 6 rəqəmli PIN lazımdır'); return; }
-    if (weakPin(pin)) { err('Bu PIN çox asandır (məs. 111111, 123456). Başqa PIN seçin'); return; }
-    const conflict = state.staff?.find(s => String(s.pin || '') === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
+    if (!/^\d{4}$/.test(pin)) { err('Sistemə girişi olan işçi üçün 4 rəqəmli PIN lazımdır'); return; }
+    const conflict = state.staff?.find(s => s.pin === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
     if (conflict) { err('Bu PIN artıq istifadə olunur'); return; }
     if ((state.kitchenStations || []).some(k => String(k.pin) === pin) || String(ADMIN_PIN) === pin) { err('Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
     if (!permissions.length) { err('Sistemə girişi olan işçiyə ən azı bir icazə verin'); return; }
@@ -1776,13 +1768,11 @@ export function saveStaff() {
   if (state.editTarget?.id) {
     const id = state.editTarget.id;
     db.ref().update({ ...Object.fromEntries(Object.entries(staffData).map(([k, v]) => ['staff/' + id + '/' + k, v])), ['staffHR/' + id]: hr });
-    const loc = state.staff?.find(s => s.id === id); if (loc) Object.assign(loc, staffData); // siyahı gecikməsində dublikat PIN-in qarşısı
     addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: id });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi yeniləndi');
   } else {
     const ref = db.ref('staff').push();
     db.ref().update({ ['staff/' + ref.key]: { ...staffData, status: 'active', createdAt: Date.now() }, ['staffHR/' + ref.key]: hr });
-    if (Array.isArray(state.staff) && !state.staff.some(s => s.id === ref.key)) state.staff.push({ id: ref.key, ...staffData, status: 'active' }); // dublikat PIN qoruması
     addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, { staffId: ref.key });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi əlavə edildi');
   }
@@ -1853,7 +1843,7 @@ export function staffForm(s = {}) {
 
     <div id="fs_accessBox">
       <div class="form-row">
-        <div class="form-group"><label>PIN kod * (6 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="6" inputmode="numeric" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
+        <div class="form-group"><label>PIN kod * (4 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="4" inputmode="numeric" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
       </div>
       <details class="fs-sec" id="fs_permSec">
         <summary><span><svg class="icon"><use href="#i-key"></use></svg> İcazələr <small id="fs_permCnt" style="font-weight:600;color:var(--text3)"></small></span></summary>
@@ -2134,10 +2124,10 @@ export function renderLogs() {
     : '';
   el.innerHTML = barHtml + noticeHtml + visible.map(l=>`
     <div class="log-item">
-      <input type="checkbox" onchange="toggleLogSelect('${l.id}')" ${state._selectedLogIds.includes(l.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
+      <input type="checkbox" onchange="toggleLogSelect('${jsId(l.id)}')" ${state._selectedLogIds.includes(l.id)?'checked':''} style="width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;">
       <span class="log-badge" style="background:${(LOG_TYPE_INFO[l.type]?.color||'#666')}22;color:${LOG_TYPE_INFO[l.type]?.color||'#aaa'}">${LOG_TYPE_INFO[l.type]?.label||'LOG'}</span>
       <span class="log-text">${esc(l.message)}</span>
-      <span class="log-time">${l.time} ${l.date}</span>
+      <span class="log-time">${esc(l.time||'')} ${esc(l.date||'')}</span>
     </div>
   `).join('');
 }
@@ -2406,7 +2396,7 @@ export function openCustomerHistoryModal(customerId) {
             <span style="color:var(--text2);font-size:12px;">${typeLabel}</span><br>
             <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
           </div>
-          <div class="audit-timeline-time">${ch.time||''} — ${ch.date||''}</div>
+          <div class="audit-timeline-time">${esc(ch.time||'')} — ${esc(ch.date||'')}</div>
         </div>`;
       }
       const itemsStr = (ch.items||[]).map(it => `${it.qty}x ${it.name}`).join(', ');
@@ -2419,7 +2409,7 @@ export function openCustomerHistoryModal(customerId) {
           <span style="color:var(--text2);font-size:12px;">${esc(itemsStr)}</span><br>
           <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
         </div>
-        <div class="audit-timeline-time">${ch.time||''} — ${ch.date||''}</div>
+        <div class="audit-timeline-time">${esc(ch.time||'')} — ${esc(ch.date||'')}</div>
       </div>`;
     }).join('');
   }
@@ -2922,9 +2912,9 @@ export function renderLoyaltyCustomers() {
   }
 
   listEl.innerHTML = filtered.map(c => `
-    <div class="tile-card" onclick="selectLoyaltyCustomer('${c.id}')" style="position:relative;">
+    <div class="tile-card" onclick="selectLoyaltyCustomer('${jsId(c.id)}')" style="position:relative;">
       <label style="position:absolute;top:8px;left:8px;z-index:1;" onclick="event.stopPropagation()">
-        <input type="checkbox" onchange="toggleLoyaltyCustomerSelect('${c.id}')" ${state._selectedLoyaltyCustomerIds.includes(c.id)?'checked':''} style="width:17px;height:17px;cursor:pointer;">
+        <input type="checkbox" onchange="toggleLoyaltyCustomerSelect('${jsId(c.id)}')" ${state._selectedLoyaltyCustomerIds.includes(c.id)?'checked':''} style="width:17px;height:17px;cursor:pointer;">
       </label>
       <div class="tile-card__icon"><svg class="icon"><use href="#i-users"></use></svg></div>
       <div class="tile-card__name">${esc(c.firstName)} ${esc(c.lastName)}</div>
@@ -2981,8 +2971,8 @@ function renderLoyaltyCustomerDetail(c) {
       <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-users"></use></svg> Dəvət etdiyi şəxslər (${completedCount}/${referrals.length} tamamlanıb)</div>
       ${referralsHtml}
       <div class="ct-detail-actions">
-        <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="openLoyaltyEditModal('${c.id}')"><svg class="icon"><use href="#i-tag"></use></svg> Redaktə Et</button>
-        <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteSingleLoyaltyCustomer('${c.id}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+        <button class="btn btn-blue" style="flex:1;padding:11px;" onclick="openLoyaltyEditModal('${jsId(c.id)}')"><svg class="icon"><use href="#i-tag"></use></svg> Redaktə Et</button>
+        <button class="btn btn-red" style="flex:1;padding:11px;" onclick="deleteSingleLoyaltyCustomer('${jsId(c.id)}')"><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
       </div>
     `;
   });
@@ -3026,7 +3016,7 @@ export function deleteSelectedLoyaltyCustomers() {
 export function deleteSingleLoyaltyCustomer(id) {
   const c = state.loyaltyCustomers.find(x=>x.id===id);
   if (!c) return;
-  confirmDelete2x(1, `"${c.firstName} ${c.lastName}" adlı müştəri`, () => {
+  confirmDelete2x(1, `"${esc(c.firstName||'')} ${esc(c.lastName||'')}" adlı müştəri`, () => {
     db.ref('loyaltyCustomers/' + id).remove();
     addLog('loyalty_mgmt', `Admin qeydiyyatlı müştərini sildi: ${c.firstName} ${c.lastName}`, {});
     state.loyaltyCustomers = state.loyaltyCustomers.filter(x => x.id !== id);
@@ -3179,7 +3169,7 @@ export function deleteSupplier(id) {
   const s = state.suppliers.find(x=>x.id===id);
   if (!s) return;
   if ((s.totalDebt||0) > 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Borcu olan təchizatçı silinə bilməz, əvvəlcə borcu sıfırlayın'); return; }
-  confirmDelete2x(1, `"${s.name}" adlı təchizatçı`, () => {
+  confirmDelete2x(1, `"${esc(s.name)}" adlı təchizatçı`, () => {
     db.ref('suppliers/'+id).remove();
     addLog('supplier_mgmt', `Təchizatçı silindi: ${s.name}`, {});
     state.suppliers = state.suppliers.filter(x => x.id !== id);
@@ -3266,7 +3256,7 @@ function renderPurchaseDetail(p) {
 export function deletePurchase(id) {
   const p = state.purchases.find(x=>x.id===id);
   if (!p) return;
-  confirmDelete2x(1, `"${p.supplierName}" təchizatçısından alış qeydi`, () => {
+  confirmDelete2x(1, `"${esc(p.supplierName)}" təchizatçısından alış qeydi`, () => {
     // Silinəndə əvvəlcə bu alışın borc/stok təsiri geri alınır - əks halda təchizatçının
     // borcu və mal stoku bu alışın hesabına yanlış qalardı.
     const debtDelta = Math.round(((p.totalAmount||0) - (p.paidAmount||0)) * 100) / 100;
@@ -3715,8 +3705,8 @@ function openKitchenStationModal(id) {
     <div class="form-group"><label>Məsul şəxs</label>
       <input type="text" id="ksResponsible" value="${esc(s?.responsible||'')}" placeholder="Ad Soyad">
     </div>
-        <div class="form-group"><label>Bu mətbəxin giriş PIN-i (6 rəqəm)</label>
-      <input type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" id="ksPin" value="${esc(s?.pin||'')}" placeholder="••••" style="letter-spacing:6px;">
+        <div class="form-group"><label>Bu mətbəxin giriş PIN-i (4 rəqəm)</label>
+      <input type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" id="ksPin" value="${esc(s?.pin||'')}" placeholder="••••" style="letter-spacing:6px;">
       <small style="color:var(--text3);">Hər mətbəxin öz PIN-i olur. Mətbəx ekranına bu PIN ilə girilir.</small>
     </div>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;">
@@ -3741,19 +3731,17 @@ function saveKitchenStation() {
   const active = document.getElementById('ksActive').checked;
   if (!name) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad daxil edin'); return; }
    const showAll = !!document.getElementById('ksShowAll')?.checked;
-  if (!/^\d{6}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> PIN 6 rəqəm olmalıdır'); return; }
-  if (weakPin(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN çox asandır'); return; }
+  if (!/^\d{4}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> PIN 4 rəqəm olmalıdır'); return; }
+  if (['0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','1234'].includes(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN çox asandır'); return; }
   const dup = (state.kitchenStations||[]).find(s => String(s.pin)===pin && s.id!==id);
   if (dup) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN "${dup.name}"-ə aiddir`); return; }
   if ((state.staff||[]).some(s => String(s.pin)===pin) || String(ADMIN_PIN)===pin) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
   const data = { name, pin, responsible, active, showAll, updatedAt: Date.now() };
   if (id) {
     R.kitchenStations.child(id).update(data);
-    const loc = (state.kitchenStations||[]).find(s => s.id === id); if (loc) loc.pin = pin; // dublikat PIN qoruması
   } else {
     data.createdAt = Date.now(); data.menuItemIds = [];
-    const nref = R.kitchenStations.push(data);
-    if (Array.isArray(state.kitchenStations) && nref?.key && !state.kitchenStations.some(s => s.id === nref.key)) state.kitchenStations.push({ id: nref.key, ...data });
+    R.kitchenStations.push(data);
   }
   addLog('kitchen_station', `"${name}" mətbəxi ${id?'yeniləndi':'yaradıldı'}`, { id });
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı');
@@ -3763,7 +3751,7 @@ function saveKitchenStation() {
 function deleteKitchenStation(id) {
   const s = (state.kitchenStations||[]).find(x=>x.id===id);
   if (!s) return;
-  confirmAction(`"${s.name}" mətbəxini silmək istəyirsiniz?`, () => {
+  confirmAction(`"${esc(s.name)}" mətbəxini silmək istəyirsiniz?`, () => {
     R.kitchenStations.child(id).remove();
     showToast('<svg class="icon"><use href="#i-check"></use></svg> Silindi');
   });

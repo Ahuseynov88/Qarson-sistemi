@@ -104,7 +104,7 @@ export function deleteBanquetHall(id) {
   if (!h) return;
   const hasEvents = state.banquetEvents.some(e => e.hallId === id && e.status !== 'cancelled');
   if (hasEvents) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bu zalda aktiv tədbirlər var, əvvəlcə onları ləğv edin'); return; }
-  confirmDelete2x(1, `"${h.name}" adlı zal`, () => {
+  confirmDelete2x(1, `"${esc(h.name)}" adlı zal`, () => {
     R.banquetHalls.child(id).remove();
     addLog('table_mgmt', `Banket zalı silindi: ${h.name}`, {});
     state.banquetHalls = state.banquetHalls.filter(x => x.id !== id);
@@ -474,7 +474,7 @@ export function addBanquetPayment(eventId) {
 export function deleteBanquetEvent(id) {
   const e = state.banquetEvents.find(x => x.id === id);
   if (!e) return;
-  confirmDelete2x(1, `"${e.clientName}" tədbiri`, () => {
+  confirmDelete2x(1, `"${esc(e.clientName)}" tədbiri`, () => {
     R.banquetEvents.child(id).remove();
     db.ref(`banquetHallBookings/${e.hallId}/${e.date}/${id}`).remove();
     addLog('table_mgmt', `Banket tədbiri silindi: ${e.clientName} (${e.date})`, {});

@@ -78,7 +78,6 @@ function doLogin() {
       // Çoxlu mətbəx stansiyaları
       const matchStation = liveStations.find(s => s.active !== false && String(s.pin) === String(pin));
       if (matchStation) {
-        console.log('[KitchenLogin] Stansiya ilə giriş:', matchStation.name);
                 state.kitchenStations = liveStations;
         state.user = { role: 'kitchen', name: matchStation.name };
         state._activeKitchen = matchStation;
@@ -90,7 +89,6 @@ function doLogin() {
         return;
       }
 
-      console.warn('[KitchenLogin] PIN uyğun gəlmədi. Daxil edilən:', String(pin), '| Sistem PIN:', String(liveKitchenPin), '| Stansiyalar:', liveStations.map(s=>s.pin));
       showErr('PIN kod səhvdir!');
     }).catch(err => {
       console.error('[KitchenLogin] Firebase oxuma xətası:', err);
