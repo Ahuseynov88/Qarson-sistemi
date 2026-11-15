@@ -36,7 +36,8 @@ const ICON = {
   logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h4M15 16l4-4-4-4M19 12H9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   qr: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
 };
-const brand = `<div class="iz-brand"><span class="iz-logo">Y</span><span>YuZa <b>POS</b></span><small>Davamiyyət</small></div>`;
+const LOGO = '<svg class="iz-logo" viewBox="0 0 1000 866.0" aria-hidden="true"><defs><linearGradient id="izLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbe0a0"/><stop offset="0.5" stop-color="#e3a63f"/><stop offset="1" stop-color="#a86b1c"/></linearGradient></defs><path fill="url(#izLogoG)" d="M0.0 0.0L210.2 364.0L330.2 364.0L376.2 364.0L402.7 410.0L402.7 410.0L555.7 675.0L509.7 675.0L356.7 410.0L236.7 410.0L500.0 866.0L643.0 618.3L286.0 0.0L166.0 0.0L331.1 286.0L285.1 286.0L120.0 0.0ZM1000.0 0.0L332.0 0.0L384.0 90.0L828.0 90.0L801.5 136.0L410.5 136.0L666.0 578.5L840.7 276.0L720.7 276.0L666.0 370.7L611.3 276.0L611.3 276.0L584.8 230.0L747.2 230.0L867.2 230.0Z"/></svg>';
+const brand = `<div class="iz-brand">${LOGO}<span>YuZa <b>POS</b></span><small>Davamiyyət</small></div>`;
 
 function toast(msg) {
   const t = $('izToast'); if (!t) return;

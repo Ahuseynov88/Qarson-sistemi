@@ -62,6 +62,7 @@ const CSS = `
 #yzGate{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;
   background:radial-gradient(circle at 50% 0%,#3a2a0e 0%,#14100a 55%,#0b0906 100%);font-family:Inter,system-ui,sans-serif;color:#f4eee2}
 #yzGate .g-card{width:100%;max-width:400px;margin:auto;background:rgba(255,255,255,.05);border:1px solid rgba(232,176,75,.35);border-radius:20px;padding:26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#yzGate .g-logo{display:block;width:72px;height:62px;margin:0 auto 10px}
 #yzGate .g-brand{text-align:center;font:700 28px/1 Poppins,Inter,sans-serif;letter-spacing:.02em}
 #yzGate .g-brand b{color:#e8b04b}
 #yzGate .g-ico{width:54px;height:54px;border-radius:50%;margin:16px auto 0;display:flex;align-items:center;justify-content:center;background:rgba(232,176,75,.14);color:#e8b04b}
@@ -89,6 +90,7 @@ const CSS = `
 #yzGate .g-who b{color:#e8b04b}
 #yzGate .g-lock{text-align:center;font-size:12px;color:#8f8676;margin-top:14px}
 #yzGate [hidden]{display:none!important}`;
+const LOGO = '<svg class="g-logo" viewBox="0 0 1000 866.0" aria-hidden="true"><defs><linearGradient id="yzGateLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbe0a0"/><stop offset="0.5" stop-color="#e3a63f"/><stop offset="1" stop-color="#a86b1c"/></linearGradient></defs><path fill="url(#yzGateLogoG)" d="M0.0 0.0L210.2 364.0L330.2 364.0L376.2 364.0L402.7 410.0L402.7 410.0L555.7 675.0L509.7 675.0L356.7 410.0L236.7 410.0L500.0 866.0L643.0 618.3L286.0 0.0L166.0 0.0L331.1 286.0L285.1 286.0L120.0 0.0ZM1000.0 0.0L332.0 0.0L384.0 90.0L828.0 90.0L801.5 136.0L410.5 136.0L666.0 578.5L840.7 276.0L720.7 276.0L666.0 370.7L611.3 276.0L611.3 276.0L584.8 230.0L747.2 230.0L867.2 230.0Z"/></svg>';
 const ICO_DEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/><path d="M9.5 9.5l1.8 1.8 3.4-3.6"/></svg>';
 const ICO_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 
@@ -100,7 +102,7 @@ function showEnroll(uid, prev) {
     const off = prev && prev.on === false;
     box.innerHTML = `<style>${CSS}</style>
       <form class="g-card" novalidate autocomplete="off">
-        <div class="g-brand">YuZa<b>POS</b></div>
+        ${LOGO}<div class="g-brand">YuZa<b>POS</b></div>
         <div class="g-ico">${ICO_DEV}</div>
         <h1>Bu cihaz qeydiyyatdan keçməyib</h1>
         <p class="g-note"><b>İşçisinizsə:</b> telefonunuz hələ qeydiyyatdan keçməyib. Rəhbərə və ya növbə müdirinə müraciət edin — telefonunuzu davamiyyətə qoşsunlar. Sonra işə gələndə QR-ı oxudun, sistem özü açılacaq.</p>
@@ -231,7 +233,7 @@ function notAtWork(ph, st) {
   const izle = location.pathname.replace(/[^/]*$/, '') + 'izle.html';
   box.innerHTML = `<style>${CSS}</style>
     <div class="g-card">
-      <div class="g-brand">YuZa<b>POS</b></div>
+      ${LOGO}<div class="g-brand">YuZa<b>POS</b></div>
       <div class="g-ico">${ICO_CLOCK}</div>
       <h1>${brk ? 'Siz müvəqqəti çıxışdasınız' : 'Siz işdə deyilsiniz'}</h1>
       <p class="g-hint">Salam, <b>${esc(ph.firstname)}</b>. Sistemə girmək üçün əvvəlcə restorandakı ekranda olan QR-ı bu telefonla oxudub <b>“${brk ? 'Qayıtdım' : 'İşə gəldim'}”</b> basın. Sonra sistem özü açılacaq.</p>
