@@ -6,11 +6,14 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0b0906">
+<meta name="theme-color" content="#1a1a2e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
-<title>YuzaPOS</title>
+<title>Restoran Sistemi</title>
+<link rel="icon" type="image/svg+xml" href="img/yuza-icon.svg">
+<link rel="icon" type="image/png" sizes="512x512" href="img/yuza-icon-512.png">
+<link rel="apple-touch-icon" href="img/yuza-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Kalam:wght@400&display=swap" rel="stylesheet">
@@ -31,26 +34,20 @@
   <!-- İkon və loqo simvolları (yalnız giriş ekranı üçün) -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <defs>
+      <linearGradient id="yzMarkG" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fbe0a0"/>
+        <stop offset="0.5" stop-color="#e3a63f"/>
+        <stop offset="1" stop-color="#a86b1c"/>
+      </linearGradient>
       <linearGradient id="yzGold" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#f8d283"/>
         <stop offset="1" stop-color="#d99a36"/>
       </linearGradient>
     </defs>
 
-    <!-- Loqo: aşpaz papağı + çəngəl və bıçaq -->
-    <symbol id="yz-mark" viewBox="-4 0 128 112">
-      <g fill="none" stroke="url(#yzGold)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M30 68A24.6 21 0 0 1 9.7 33A23.4 20 0 0 1 43.2 15A25.7 22 0 0 1 83.4 14A22.2 19 0 0 1 110.3 32A24.6 21 0 0 1 90 68"/>
-        <path d="M30 68V98A6 6 0 0 0 36 104H84A6 6 0 0 0 90 98V68"/>
-        <path d="M30 98L24 104M90 98L96 104"/>
-      </g>
-      <g fill="url(#yzGold)" stroke="none">
-        <rect x="40.4" y="40" width="4.8" height="24" rx="2.4"/>
-        <rect x="47.8" y="40" width="4.8" height="24" rx="2.4"/>
-        <rect x="55.2" y="40" width="4.8" height="24" rx="2.4"/>
-        <path d="M40.4 60H60V66C60 74 56 78 52.8 79.4V106.6a2.6 2.6 0 0 1-5.2 0V79.4C44.4 78 40.4 74 40.4 66Z"/>
-        <path d="M68.5 40C77 44.5 80 56 79 70V83H75.5V108.6a3.4 3.4 0 0 1-7 0Z"/>
-      </g>
+    <!-- Loqo: YuZa üçbucaq YZ monoqramı (şirkət loqosu, qızılı keçid) -->
+    <symbol id="yz-mark" viewBox="0 0 1000 866.0">
+      <path fill="url(#yzMarkG)" d="M0.0 0.0L210.2 364.0L330.2 364.0L376.2 364.0L402.7 410.0L402.7 410.0L555.7 675.0L509.7 675.0L356.7 410.0L236.7 410.0L500.0 866.0L643.0 618.3L286.0 0.0L166.0 0.0L331.1 286.0L285.1 286.0L120.0 0.0ZM1000.0 0.0L332.0 0.0L384.0 90.0L828.0 90.0L801.5 136.0L410.5 136.0L666.0 578.5L840.7 276.0L720.7 276.0L666.0 370.7L611.3 276.0L611.3 276.0L584.8 230.0L747.2 230.0L867.2 230.0Z"/>
     </symbol>
 
     <!-- Rol ikonları -->
@@ -230,6 +227,8 @@
               <div class="yz-dot" id="d1"></div>
               <div class="yz-dot" id="d2"></div>
               <div class="yz-dot" id="d3"></div>
+              <div class="yz-dot" id="d4"></div>
+              <div class="yz-dot" id="d5"></div>
             </div>
             <div class="yz-err" id="loginErr" role="alert" aria-live="assertive"></div>
           </div>
@@ -1063,7 +1062,7 @@
   <div class="modal" style="max-width:320px;text-align:center;">
     <h2><svg class="icon"><use href="#i-lock"></use></svg> Çıxış Təsdiqi</h2>
     <p style="color:var(--text2);margin-bottom:20px;font-size:14px;">Rəhbər PIN kodunu daxil edin</p>
-    <div class="form-group"><input type="password" id="exitPin" placeholder="••••" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
+    <div class="form-group"><input type="password" id="exitPin" placeholder="••••••" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeExitModal()">Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmExit()">Çıxış</button>
@@ -1159,9 +1158,9 @@
 <div class="modal-bg" id="kitchenPinModal">
   <div class="modal" style="max-width:340px;text-align:center;">
     <h2><svg class="icon"><use href="#i-key"></use></svg> Mətbəx PIN</h2>
-    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 4 rəqəmli PIN daxil edin</p>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 6 rəqəmli PIN daxil edin</p>
     <div class="form-group">
-      <input type="text" id="newKitchenPin" maxlength="4" placeholder="1234" style="text-align:center;font-size:24px;letter-spacing:10px;">
+      <input type="text" id="newKitchenPin" maxlength="6" placeholder="••••••" style="text-align:center;font-size:24px;letter-spacing:10px;">
     </div>
     <div style="display:flex;gap:10px;margin-top:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeKitchenPinModal()">Ləğv</button>
@@ -1189,7 +1188,7 @@
     <div class="cust-header">
       <div class="icon"><svg class="icon"><use href="#i-gift"></use></svg></div>
       <h1>Sizi Dəvət Etdilər!</h1>
-      <p id="refScreenSubtitle">Restoranımızın loyallıq proqramına qoşulun</p>
+      <p id="refScreenSubtitle">İpək Yolu Restoranının loyallıq proqramına qoşulun</p>
     </div>
 
     <div class="cust-glass-card" id="refAlreadyMemberBlock" style="display:none;text-align:center;">
@@ -1212,7 +1211,7 @@
     <div class="cust-glass-card" id="refThanksBlock" style="display:none;text-align:center;">
       <svg class="icon" style="width:40px;height:40px;color:var(--gold);margin-bottom:10px;"><use href="#i-check"></use></svg>
       <h2 style="color:#fff;font-size:19px;margin-bottom:8px;">Qeydiyyatdan keçdiyiniz üçün təşəkkür edirik!</h2>
-      <p style="color:rgba(255,255,255,.75);font-size:14px;line-height:1.6;">Restoranımıza gələrək xidmətlərimizdən istifadə edə bilərsiniz.<br>Sizə xoş və uğurlu gün arzulayırıq!</p>
+      <p style="color:rgba(255,255,255,.75);font-size:14px;line-height:1.6;">İpək Yolu Restoranına gələrək xidmətlərimizdən istifadə edə bilərsiniz.<br>Sizə xoş və uğurlu gün arzulayırıq!</p>
     </div>
   </div>
 </div>
@@ -1222,7 +1221,7 @@
   <div class="modal-bg" id="custWelcomeModal" style="z-index:9999;">
     <div class="cust-loyalty-modal">
       <svg class="icon" style="width:44px;height:44px;color:var(--gold);margin-bottom:12px;"><use href="#i-utensils"></use></svg>
-      <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">Xoş gəlmisiniz!</h2>
+      <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">İpək Yolu Restoranına xoş gəlmisiniz!</h2>
       <p style="color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;margin-bottom:16px;">Qeydiyyatdan keçərək aşağıdakı üstünlüklərdən yararlana bilərsiniz:</p>
       <ul style="text-align:left;color:rgba(255,255,255,.85);font-size:13.5px;line-height:2;list-style:none;padding:0;margin-bottom:22px;">
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-star"></use></svg> Bonus xalları toplamaq</li>
