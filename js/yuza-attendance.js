@@ -24,7 +24,17 @@ const DAY = 86400000;
 const PATRON = 'Rəhbər';
 
 /* ── Canlı məlumat ── */
-const D = { settings: withDefaults(null), status: {}, devices: {}, today: [], attemptsToday: 0, started: false };
+const D = { settings: withDefaults(null), status: {}, devices: {}, today: [], attemptsToday: 0, attTimes: [], seenAt: 0, started: false };
+/* Şübhəli cəhdlər: nişanda yalnız OXUNMAMIŞ (baxılmamış) cəhdlər sayılır.
+   Kim hansı ana qədər baxıb — att/seen/{şəxs}/attempts (bazada; başqa cihazda da sıfırlanmış görünür) */
+const seenKey = () => (state.user?.role === 'admin' ? 'admin' : (state.user?.id || 'admin'));
+const unreadAttempts = () => D.attTimes.filter(t => t > (D.seenAt || 0)).length;
+function markAttemptsSeen() {
+  if (!unreadAttempts()) return;
+  D.seenAt = now();            // nişan dərhal sönsün
+  badge();
+  A('seen/' + seenKey() + '/attempts').set(TS).catch(() => {});
+}
 const staffAll = () => (state.staff || []).filter(s => s && s.name);
 const staffById = (id) => staffAll().find(s => s.id === id);
 const phoneOf = (sid) => { const a = D.devices[sid]?.approved; return a && a.uid ? a : null; };   // köhnə üsulla (uid-siz) qeydlər sayılmır
@@ -42,7 +52,13 @@ function start() {
   on(A('sessions').orderByChild('inAt').startAt(dayStart()), s => {
     D.today = []; s.forEach(c => { D.today.push({ id: c.key, ...c.val() }); }); redraw('live');
   });
-  on(A('attempts').orderByChild('at').startAt(dayStart()), s => { D.attemptsToday = s.numChildren(); badge(); redraw('live'); });
+  on(A('attempts').orderByChild('at').startAt(dayStart()), s => {
+    D.attemptsToday = s.numChildren();
+    D.attTimes = []; s.forEach(c => { D.attTimes.push(+c.val()?.at || 0); });
+    if (isOpen() && cur === 'attempts') markAttemptsSeen();   // siyahı açıqdırsa yeni cəhd də oxunmuş sayılır
+    badge(); redraw('live');
+  });
+  on(A('seen/' + seenKey() + '/attempts'), s => { D.seenAt = Math.max(D.seenAt || 0, +s.val() || 0); badge(); });
   cleanupPhotos();
   cleanupInvites();
 }
@@ -94,7 +110,7 @@ function ensureCss() {
 }
 /* Sol menyudakı nişan: bu gün rədd edilmiş (şübhəli) cəhd sayı */
 function badge() {
-  const n = D.attemptsToday || 0;
+  const n = unreadAttempts();
   document.querySelectorAll('[data-att-badge]').forEach(el => { el.hidden = !n; el.textContent = String(n); });
 }
 let wrapped = false;
@@ -119,7 +135,7 @@ const TABS = [
   { id: 'report', l: 'Hesabat' },
   { id: 'tabel', l: 'Tabel' },
   { id: 'devices', l: 'Telefonlar' },
-  { id: 'attempts', l: 'Şübhəli cəhdlər', badge: () => D.attemptsToday },
+  { id: 'attempts', l: 'Şübhəli cəhdlər', badge: () => (cur === 'attempts' ? 0 : unreadAttempts()) },
   { id: 'audit', l: 'Jurnal' },
   { id: 'settings', l: 'Ayarlar' }
 ];
@@ -147,6 +163,7 @@ function render() {
   h.querySelector('[data-act="qr"]')?.addEventListener('click', showWorkerQr);
   const body = $('yzAttBody');
   ({ live: drawLive, report: drawReport, tabel: drawTabel, devices: drawDevices, attempts: drawAttempts, audit: drawAudit, settings: drawSettings })[cur](body);
+  if (cur === 'attempts') markAttemptsSeen();
 }
 let rt = null;
 function redraw(what) {
@@ -183,7 +200,7 @@ function drawLive(el) {
       <div class="yzi-kpi${onBreak.length ? ' yzi-kpi--warn' : ''}"><small>Müvəqqəti çıxışda</small><b>${onBreak.length}</b><span>restorandan kənarda</span></div>
       <div class="yzi-kpi"><small>Bu gün gələnlər</small><b>${cameToday}</b><span>${fmtDate(now())}</span></div>
       <button type="button" class="yzi-kpi yzi-kpi--btn${noPhone ? ' yzi-kpi--warn' : ''}" data-go="devices"><small>Telefonu qoşulmayan</small><b>${noPhone}</b><span>Telefonlar bölməsinə keç</span></button>
-      <button type="button" class="yzi-kpi yzi-kpi--btn${D.attemptsToday ? ' yzi-kpi--bad' : ''}" data-go="attempts"><small>Bu gün rədd edilən cəhd</small><b>${D.attemptsToday}</b><span>Şübhəli cəhdlərə bax</span></button>
+      <button type="button" class="yzi-kpi yzi-kpi--btn${unreadAttempts() ? ' yzi-kpi--bad' : ''}" data-go="attempts"><small>Bu gün rədd edilən cəhd</small><b>${D.attemptsToday}</b><span>${unreadAttempts() ? `${unreadAttempts()} yeni — bax` : 'Şübhəli cəhdlərə bax'}</span></button>
       ${stale.length ? `<div class="yzi-kpi yzi-kpi--bad"><small>Çıxışı qeyd edilməyib</small><b>${stale.length}</b><span>${S.maxHours} saatdan çox açıq qalıb</span></div>` : ''}
     </div>
     <div class="yza-grid">${sorted.map(s => {
