@@ -1846,7 +1846,8 @@ export function staffForm(s = {}) {
       <details class="fs-sec" id="fs_permSec">
         <summary><span><svg class="icon"><use href="#i-key"></use></svg> İcazələr <small id="fs_permCnt" style="font-weight:600;color:var(--text3)"></small></span></summary>
         <div class="fs-sec__b">
-          <div style="display:flex;justify-content:flex-end;margin:2px 0 8px;">
+          <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin:2px 0 8px;">
+            <button type="button" title="Məlumatların silinməsi icazələri istisnadır — onları ayrıca işarələyin" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>{if(!String(c.value).startsWith('danger.'))c.checked=true;});window.fsPermCount?.()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--green);color:var(--green);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-check"></use></svg> Hamısını Seç</button>
             <button type="button" onclick="document.querySelectorAll('[name=staff_perm]').forEach(c=>c.checked=false);window.fsPermCount?.()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--red);color:var(--red);background:var(--bg);font-size:11px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg> Hamısını Sil</button>
           </div>
           ${renderPermissionCheckboxes(existingPerms)}
