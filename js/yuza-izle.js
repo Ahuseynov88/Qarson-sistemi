@@ -474,7 +474,7 @@ function pinPad({ title, sub = '', onDone, extra = null }) {
   wrap.className = 'iz-pad-bg';
   wrap.innerHTML = `<div class="iz-pad" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <h2>${esc(title)}</h2>${sub ? `<p class="iz-hint">${esc(sub)}</p>` : ''}
-    <div class="iz-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="iz-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <p class="iz-err" role="alert"></p>
     <div class="iz-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '⌫'].map(k => `<button type="button" data-k="${k}">${k}</button>`).join('')}</div>
     ${extra ? `<button type="button" class="iz-btn iz-btn--ghost" data-extra>${esc(extra.label)}</button>` : ''}
@@ -488,9 +488,9 @@ function pinPad({ title, sub = '', onDone, extra = null }) {
     if (Date.now() < lockUntil) { err(`Çox səhv cəhd. ${fmtTime(lockUntil)}-dən sonra yoxlayın.`); return; }
     if (k === 'C') { buf = ''; dots(); return; }
     if (k === '⌫') { buf = buf.slice(0, -1); dots(); return; }
-    if (buf.length >= 4) return;
+    if (buf.length >= 6) return;
     buf += k; dots();
-    if (buf.length === 4) {
+    if (buf.length === 6) {
       const v = buf; const r = await onDone(v, close);
       if (r !== true) {
         fails++;

@@ -31,23 +31,23 @@ export function askFirstAdminPin() {
       </style>
       <form novalidate>
         <h1>🔐 Rəhbər PIN-i yaradın</h1>
-        <p>Sistem yenidir. Rəhbər panelinə giriş üçün 4 rəqəmli PIN təyin edin. Bu PIN-i yalnız siz bilməlisiniz.</p>
+        <p>Sistem yenidir. Rəhbər panelinə giriş üçün 6 rəqəmli PIN təyin edin. Bu PIN-i yalnız siz bilməlisiniz.</p>
         <label for="yzFr1">Yeni PIN</label>
-        <input id="yzFr1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+        <input id="yzFr1" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password">
         <label for="yzFr2">PIN-i təkrar yazın</label>
-        <input id="yzFr2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+        <input id="yzFr2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password">
         <button type="submit">Yadda saxla</button>
         <div class="e" role="alert"></div>
       </form>`;
     document.body.appendChild(box);
     const $ = (s) => box.querySelector(s);
     const err = (t) => { $('.e').textContent = t; };
-    $('#yzFr1').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); });
-    $('#yzFr2').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); });
+    $('#yzFr1').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+    $('#yzFr2').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
     $('form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const a = $('#yzFr1').value, b = $('#yzFr2').value;
-      if (!/^\d{4}$/.test(a)) return err('PIN 4 rəqəm olmalıdır.');
+      if (!/^\d{6}$/.test(a)) return err('PIN 6 rəqəm olmalıdır.');
       if (WEAK.has(a)) return err('Bu PIN çox asandır. Başqa PIN seçin.');
       if (a !== b) return err('İki PIN eyni deyil.');
       const btn = $('button'); btn.disabled = true; err('');
