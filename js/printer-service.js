@@ -45,10 +45,11 @@ async function getReceiptCustomerName(table, order) {
 /* ══════════════════════════════════════════
    HESAB ÇEKİ — "Hesab" düyməsi basılanda
 ══════════════════════════════════════════ */
-export async function printReceipt(tableId) {
+export async function printReceipt(tableId, ext = null) {
   if (!tableId) return;
-  const t     = state.tables.find(x => x.id === tableId);
-  const order = state.tableOrders[tableId];
+  /* ext: paket sifarişi üçün (yuza-delivery.js) — { table:{name}, order, forceCustomer, noMark } */
+  const t     = ext?.table || state.tables.find(x => x.id === tableId);
+  const order = ext?.order || state.tableOrders[tableId];
   const waiterName = state.user?.name || '—';
   const now   = new Date();
 
@@ -92,7 +93,7 @@ export async function printReceipt(tableId) {
         datetime:       tplSettings.datetime       !== false,
         table:          tplSettings.table          !== false,
         waiter:         tplSettings.waiter         !== false,
-        customerName:   !!tplSettings.customerName,
+        customerName:   !!ext?.forceCustomer || !!tplSettings.customerName,
         itemName:       tplSettings.itemName       !== false,
         itemQty:        tplSettings.itemQty        !== false,
         itemPrice:      !!tplSettings.itemPrice,
@@ -142,7 +143,7 @@ export async function printReceipt(tableId) {
   const total = order?.total || 0;
   const lbl   = receiptPrinter ? ` [${receiptPrinter.name}]` : ' [Hesab printeri tapılmadı]';
   addLog('bill_print', `${waiterName} "${t?.name||'?'}" masası üçün hesab göndərildi${lbl} (${total.toFixed(2)} ₼)`, { tableId, waiterId: state.user?.id });
-  if (order) db.ref('tableOrders').child(tableId).update({ billPrintedAt: Date.now() });
+  if (order && !ext?.noMark) db.ref('tableOrders').child(tableId).update({ billPrintedAt: Date.now() });
 
   if (!receiptPrinter) {
     showToast('<svg class="icon"><use href="#i-warning"></use></svg> Aktiv hesab printeri tapılmadı. Admin → Printerlər bölməsini yoxlayın.');
@@ -157,14 +158,14 @@ export async function printReceipt(tableId) {
    items: [{name, qty, note}]
    categoryName: bu qrupun kateqoriyası
 ══════════════════════════════════════════ */
-export async function printKitchenJobs(tableId, kitchenGroups) {
+export async function printKitchenJobs(tableId, kitchenGroups, ext = null) {
   /*
     kitchenGroups: { [categoryName]: [{name, qty, note}] }
     Printer tap: hər printerın categories[] siyahısına bax,
     həmin kateqoriya varsa — o printerə çap işi yaz.
   */
   if (!tableId || !kitchenGroups) return;
-  const t          = state.tables.find(x => x.id === tableId);
+  const t          = ext?.table || state.tables.find(x => x.id === tableId);
   const waiterName = state.user?.name || '—';
   const now        = new Date();
   const activePrinters = getActivePrinters().filter(p => p.type !== 'receipt');

@@ -23,7 +23,7 @@ const PANES = [
   { id: 'print',    l: 'Çek və çap',             i: 'printer',  d: 'Hesab çeki və mətbəx çekinin görünüşü.', wide: 1 },
   { id: 'kitchen',  l: 'Mətbəx',                 i: 'chef',     d: 'Hazır sifariş siqnalının təkrarlanması.' },
   { id: 'sounds',   l: 'Bildiriş səsləri',       i: 'bell',     d: 'Hansı hadisədə hansı səs çalınsın.', wide: 1 },
-  { id: 'modules',  l: 'Bölmələrin ayarları',    i: 'settings', d: 'Rezerv, kassa, anbar, personal izləmə — hər birinin öz ayarları.' }
+  { id: 'modules',  l: 'Bölmələrin ayarları',    i: 'settings', d: 'Rezerv, paket, kassa, anbar, personal izləmə — hər birinin öz ayarları.' }
 ];
 export let currentPane = 'general';
 window.__yzSettingsPane = () => (state.adminSection === 'settings' ? currentPane : null);
@@ -113,6 +113,7 @@ function modulesHtml() {
   return `<div class="yzs-list yzs-card yzs-card--flat">
       <p class="yzs-note" style="grid-column:1/-1">Eyni ayarı bölmənin içindəki ${I('settings')} düyməsi də açır.</p>
       ${row('rsv', 'clock', 'Rezervasiya ayarları', 'Masalar arası hazırlıq, xəbərdarlıq vaxtları, mesaj mətnləri')}
+      ${row('dlv', 'box', 'Paket və çatdırılma ayarları', 'Çatdırılma haqqı və zonalar, qablaşdırma, kuryerlər, çek')}
       ${row('cash', 'cash', 'Kassa ayarları', 'Kassa hesabları, ödəniş növü → hesab, kateqoriyalar')}
       ${row('inv', 'box', 'Anbar ayarları', 'Anbar rejimi, standart anbar, minimum qalıq və s.')}
       ${row('att', 'users', 'Personal izləmə və davamiyyət ekranı', 'Davamiyyət ekranını açmaq, QR, GPS, Face ID, iş qaydaları, telefonlar')}
@@ -283,6 +284,7 @@ async function onAction(e) {
     catch (er) { showToast(`${I('error')} Link göndərilmədi`); }
     return;
   }
+  if (act === 'dlv') { if (window.yzDeliverySettings) window.yzDeliverySettings(); else showToast(`${I('warning')} Paket modulu yüklənməyib`); return; }
   if (act === 'rsv') { if (window.yzRsvSettings) window.yzRsvSettings(); else showToast(`${I('warning')} Rezervasiya modulu yüklənməyib`); return; }
   if (act === 'cash') { if (window.yzCashSettings) window.yzCashSettings(); else showToast(`${I('warning')} Kassa modulu yüklənməyib`); return; }
   if (act === 'inv') { window.adminTab?.('inv-settings'); return; }

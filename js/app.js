@@ -113,7 +113,7 @@ function doLogin() {
       // İşçi yalnız masalar ekranına (table.view) və ya anbar/kassa ekranına girir — Rəhbər panelinə YOX.
       const _p = s.permissions || [];
       const _panel = !!window.__yzAccess?.hasPanel({ ...s, role: 'staff', permissions: _p });
-      if (s.systemAccess === false || !(_p.includes('table.view') || _panel)) {
+      if (s.systemAccess === false || !(_p.includes('table.view') || _panel || _p.includes('delivery.courier'))) {
         showErr('Sizin sistemə giriş icazəniz yoxdur'); return;
       }
       // Davamiyyət: ayarlarda açıqdırsa, QR ilə "İşə gəldim" etməyən işçi sistemə girə bilməz
@@ -132,6 +132,9 @@ function doLogin() {
         const roleBadge = document.getElementById('wRoleBadge');
         if (roleBadge) roleBadge.textContent = esc(s.position || '');
         lockScreen();
+      } else if (!_panel && _p.includes('delivery.courier')) {
+        // Yalnız kuryer: masalar və panel yoxdur → kuryer ekranı (yuza-delivery.js)
+        window.__yzDelivery?.openCourierHome?.();
       } else {
         // Masa icazəsi yoxdur → Rəhbər paneli görünüşündə yalnız icazəli bölmələr
         showScreen('adminScreen');

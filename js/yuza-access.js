@@ -53,6 +53,7 @@ const APPROVE = ['purchase.approve', 'supplier.payment.approve', 'stock.writeoff
 const ACCESS = {
   zal: any('table.view'),
   reservations: any('reserve.view'),
+  delivery: any('delivery.take', 'delivery.manage', 'delivery.settle'),
   dashboard: any('panel.reports', 'report.daily', 'report.weekly'),
   closedOrders: any('panel.closedOrders'),
   'inv-analysis': any('stock.report'),
