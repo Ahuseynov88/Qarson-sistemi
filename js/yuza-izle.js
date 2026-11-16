@@ -17,6 +17,7 @@ import {
   faceIdAvailable, faceIdRegister, faceIdVerify, faceIdError, attUid, bindPhone, newCode, createInvite, INVITE_MIN, adb
 } from './yuza-att-core.js';
 import { scanQr } from './yuza-qr-scan.js';
+import { api, apiOn } from './yuza-api.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -608,7 +609,9 @@ function kioskActivate() {
     onDone: async (v, close) => {
     let actor = null;
     if (await isAdminPin(v)) actor = { id: 'admin', name: 'Rəhbər' };
-    else {
+    else if (apiOn()) {
+      try { actor = await api('verify', { pin: v, perm: 'att.bind' }); } catch (e) { return e.message || 'PIN səhvdir və ya bu şəxsin icazəsi yoxdur'; }
+    } else {
       const s = kStaff.find(x => String(x.pin) === v && x.status !== 'offline');
       if (s && (s.permissions || []).includes('att.bind')) actor = { id: s.id, name: s.name };
     }
@@ -626,7 +629,9 @@ function kioskProxy() {
     onDone: async (v, close) => {
     let actor = null;
     if (await isAdminPin(v)) actor = { id: 'admin', name: 'Rəhbər' };
-    else {
+    else if (apiOn()) {
+      try { actor = await api('verify', { pin: v, perm: 'att.manual' }); } catch (e) { return e.message || 'PIN səhvdir və ya bu şəxsin icazəsi yoxdur'; }
+    } else {
       const s = kStaff.find(x => String(x.pin) === v && x.status !== 'offline');
       if (s && (s.permissions || []).includes('att.manual')) actor = { id: s.id, name: s.name };
     }

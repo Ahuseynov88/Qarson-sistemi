@@ -19,6 +19,7 @@ import { checkCustomerMode, initCustomerRequestListener, initWaiterChatListener,
 import { ensureDefaultEventTypes } from './banquet.js';
 import { renderPrinters, renderReceiptTemplateSettings } from './printer-settings.js';
 import { raciaStart, raciaStop } from './racia.js';
+import { api, apiOn } from './yuza-api.js';
 let ADMIN_PIN = null;
 let staffApp = null;
 
@@ -34,6 +35,7 @@ window.__yzPanelOn = panelOn;
 function enterAdmin(owner) {
   state.user = { role: 'admin', name: 'Rəhbər', id: 'admin', ownerUid: owner?.uid || null, email: owner?.email || '' };
   addLog('login', 'Rəhbər sistemə daxil oldu', { type: 'admin', email: owner?.email || '' });
+  if (apiOn()) api('ping', {}, { owner: true }).catch(() => {});   // köhnə açıq PIN-lər serverdə bir dəfə köçürülsün
   initListeners();
   showScreen('adminScreen');
 }
@@ -58,6 +60,12 @@ function doLogin() {
   }
 
         if (state.role === 'kitchen') {
+    // Server qatı: PIN serverdə yoxlanır (yuza-api.js)
+    if (apiOn()) {
+      api('login', { pin, kind: 'kitchen' }).then(({ kitchen }) => enterKitchen(kitchen))
+        .catch(e => showErr(e.message || 'Bağlantı xətası, yenidən cəhd edin'));
+      return;
+    }
     // Hər iki mənbəyi eyni anda Firebase-dən birbaşa oxu (cache-ə arxalanma)
     Promise.all([
       db.ref('settings/kitchenPin').once('value'),
@@ -78,14 +86,8 @@ function doLogin() {
       // Çoxlu mətbəx stansiyaları
       const matchStation = liveStations.find(s => s.active !== false && String(s.pin) === String(pin));
       if (matchStation) {
-                state.kitchenStations = liveStations;
-        state.user = { role: 'kitchen', name: matchStation.name };
-        state._activeKitchen = matchStation;
-        addLog('login', `"${matchStation.name}" mətbəxi daxil oldu`, { kitchenId: matchStation.id });
-        initListeners();
-        const ttl = document.getElementById('kitchenPanelTitle');
-        if (ttl) ttl.textContent = matchStation.name;
-        showScreen('kitchenScreen');
+        state.kitchenStations = liveStations;
+        enterKitchen(matchStation);
         return;
       }
 
@@ -98,11 +100,39 @@ function doLogin() {
   }
 
   if (state.role === 'staff') {
+    // Server qatı: PIN serverdə yoxlanır, PIN-lər cihaza yüklənmir (yuza-api.js)
+    if (apiOn()) {
+      api('login', { pin, kind: 'staff' }).then(({ staff }) => enterStaff(staff))
+        .catch(e => showErr(e.message || 'Bağlantı xətası, yenidən cəhd edin'));
+      return;
+    }
     R.staff.once('value', async snap => {
       const data = snap.val() || {};
       const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
       const s = list.find(x => x.pin === pin);
       if (!s) { showErr('PIN kod tapılmadı!'); return; }
+      enterStaff(s);
+    });
+    return;
+  }
+
+  showErr('PIN kod səhvdir!');
+}
+
+/* Mətbəx girişi (PIN yoxlandıqdan sonra) */
+function enterKitchen(st) {
+  if (!Array.isArray(state.kitchenStations) || !state.kitchenStations.some(k => k.id === st.id)) state.kitchenStations = [...(state.kitchenStations || []), st];
+  state.user = { role: 'kitchen', name: st.name };
+  state._activeKitchen = st;
+  addLog('login', `"${st.name}" mətbəxi daxil oldu`, { kitchenId: st.id });
+  initListeners();
+  const ttl = document.getElementById('kitchenPanelTitle');
+  if (ttl) ttl.textContent = st.name;
+  showScreen('kitchenScreen');
+}
+
+/* İşçi girişi (PIN yoxlandıqdan sonra) */
+async function enterStaff(s) {
       // İşçinin öz telefonu: yalnız telefonun sahibi girə bilər
       const _ph = window.__yzPhone;
       if (_ph && s.id !== _ph.staffId) { showErr(`Bu telefonla yalnız ${_ph.name || 'telefonun sahibi'} daxil ola bilər`); return; }
@@ -116,7 +146,7 @@ function doLogin() {
       }
       // Davamiyyət: ayarlarda açıqdırsa, QR ilə "İşə gəldim" etməyən işçi sistemə girə bilməz
       const { attGate } = await import('./yuza-att-gate.js');
-      if (!(await attGate(s))) return;
+      if (!(await attGate(s))) { if (apiOn()) api('logout').catch(() => {}); return; }
 
       state.user = { ...s, role: 'staff', permissions: s.permissions || [] };
       R.staff.child(s.id).update({ status: 'online', lastLogin: Date.now() });
@@ -148,11 +178,6 @@ function doLogin() {
         timestamp: Date.now(), time: new Date().toLocaleTimeString('az-AZ'),
         date: new Date().toLocaleDateString('az-AZ')
       });
-    });
-    return;
-  }
-
-  showErr('PIN kod səhvdir!');
 }
 
 // Ofisiantın ÖZ hesabından çıxması üçün - PIN TƏLƏB OLUNMUR (kiosk-dan çıxış ilə
@@ -169,6 +194,8 @@ function confirmLogoutSelf() {
 }
 
 function logout(opts = {}) {
+  // Serverdəki cihaz sessiyası bağlanır (bu cihazda daha heç kim işləmir)
+  if (apiOn() && (state.user?.role === 'staff' || state.user?.role === 'kitchen')) api('logout').catch(() => {});
   if (state.user?.role === 'staff') {
     R.staff.child(state.user.id).update({ status: 'ready', lastActive: Date.now() });
     addLog('logout', `"${state.user.name}" sistemdən çıxdı`, { staffId: state.user.id });

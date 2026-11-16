@@ -7,7 +7,8 @@
 ═══════════════════════════════════════════ */
 import { db } from './firebase-service.js';
 
-const WEAK = new Set(['0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '1234', '4321', '0123', '1212']);
+// 6 rəqəmli PIN: təxmin edilməsi asan olanlar qəbul edilmir (111111, 123456, 654321, 121212, 123123)
+const isWeak = (p) => /^(\d)\1{5}$/.test(p) || '0123456789012'.includes(p) || '9876543210987'.includes(p) || /^(\d\d)\1\1$/.test(p) || /^(\d{3})\1$/.test(p);
 
 export function askFirstAdminPin() {
   return new Promise(resolve => {
@@ -48,7 +49,7 @@ export function askFirstAdminPin() {
       e.preventDefault();
       const a = $('#yzFr1').value, b = $('#yzFr2').value;
       if (!/^\d{6}$/.test(a)) return err('PIN 6 rəqəm olmalıdır.');
-      if (WEAK.has(a)) return err('Bu PIN çox asandır. Başqa PIN seçin.');
+      if (isWeak(a)) return err('Bu PIN çox asandır. Başqa PIN seçin.');
       if (a !== b) return err('İki PIN eyni deyil.');
       const btn = $('button'); btn.disabled = true; err('');
       try {

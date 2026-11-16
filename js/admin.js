@@ -13,6 +13,7 @@ import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permission
 import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
 import { renderNotifSounds } from './notifSounds.js';
 import { renderPrinters, openPrinterModal, closePrinterModal, savePrinter, deletePrinter, testPrinter, renderReceiptTemplateSettings, saveReceiptTemplate, saveKitchenTemplate, uploadReceiptLogo, removeReceiptLogo, _toggleReceiptFields } from './printer-settings.js';
+import { api, apiOn } from './yuza-api.js';
 export function renderPermissionCheckboxes(existingPerms = []) {
   return ALL_PERMISSIONS.map(group => `
     <div style="margin-bottom:16px;">
@@ -1547,6 +1548,13 @@ function weakPin(pin) {
   return false;
 }
 
+/* Server qatı: işçi / mətbəx PIN-i serverdə saxlanır (yuza-api.js). pin=null → PIN silinir.
+   Rəhbər öz hesabının adından, səlahiyyətli işçi öz sessiyası ilə təyin edir. */
+function syncPin(type, id, pin, onFail) {
+  return api('setPin', { type, id, pin }, { owner: !!state.user?.ownerUid })
+    .catch(e => { showToast('<svg class="icon"><use href="#i-error"></use></svg> PIN yadda saxlanmadı: ' + (e.message || 'xəta')); if (onFail) onFail(e); });
+}
+
 export function openKitchenPinModal() {
   document.getElementById('newKitchenPin').value = '';
   document.getElementById('kitchenPinModal').classList.add('open');
@@ -1705,6 +1713,7 @@ export function deleteStaff(id) {
   confirmAction(`"${esc(s?.name)}" adlı işçi silinsin?`, () => {
     db.ref('staff').child(id).remove();
     db.ref('staffHR').child(id).remove();   // şəxsi məlumatlar da silinir
+    if (apiOn()) syncPin('s', id, null);
     addLog('staff_mgmt', `İşçi silindi: ${s?.name}`, { staffId: id });
     state.staff = state.staff.filter(x => x.id !== id);
     if (state._selectedStaffId === id) state._selectedStaffId = null;
@@ -1751,12 +1760,20 @@ export function saveStaff() {
 
   if (!firstname || !lastname) { err('Ad və Soyad mütləqdir'); return; }
   if (!position) { err('Vəzifə seçilməlidir'); return; }
+  const useApi = apiOn();
+  const editing = state.editTarget?.id ? state.staff?.find(s => s.id === state.editTarget.id) : null;
   if (systemAccess) {
-    if (!/^\d{6}$/.test(pin)) { err('Sistemə girişi olan işçi üçün 6 rəqəmli PIN lazımdır'); return; }
-    if (weakPin(pin)) { err('Bu PIN çox asandır (məs. 111111, 123456). Başqa PIN seçin'); return; }
-    const conflict = state.staff?.find(s => String(s.pin || '') === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
-    if (conflict) { err('Bu PIN artıq istifadə olunur'); return; }
-    if ((state.kitchenStations || []).some(k => String(k.pin) === pin) || String(ADMIN_PIN) === pin) { err('Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+    // Server qatında PIN bazada saxlanmır: redaktədə sahə boş qalıbsa köhnə PIN dəyişmir
+    const needPin = !useApi || !editing || !editing.hasPin || !!pin;
+    if (needPin) {
+      if (!/^\d{6}$/.test(pin)) { err('Sistemə girişi olan işçi üçün 6 rəqəmli PIN lazımdır'); return; }
+      if (weakPin(pin)) { err('Bu PIN çox asandır (məs. 111111, 123456). Başqa PIN seçin'); return; }
+    }
+    if (!useApi) {
+      const conflict = state.staff?.find(s => String(s.pin || '') === pin && (!state.editTarget?.id || s.id !== state.editTarget.id));
+      if (conflict) { err('Bu PIN artıq istifadə olunur'); return; }
+      if ((state.kitchenStations || []).some(k => String(k.pin) === pin) || String(ADMIN_PIN) === pin) { err('Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+    }
     if (!permissions.length) { err('Sistemə girişi olan işçiyə ən azı bir icazə verin'); return; }
   }
   const hr = {}; HR_FIELDS.forEach(k => { hr[k] = hv(k) || null; });
@@ -1772,18 +1789,20 @@ export function saveStaff() {
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
   const avatar = avatarVal || fallback;
   // fin artıq staffHR-dədir; köhnə qeyddə qalıbsa silinir
-  const staffData = { name, firstname, lastname, position, pin, phone, avatar, permissions, systemAccess, attNoPhone,
+  const staffData = { name, firstname, lastname, position, pin: useApi ? null : pin, phone, avatar, permissions, systemAccess, attNoPhone,
     contractType: hr.contractType || null, hireDate: hr.hireDate || null, fin: null };
 
   if (state.editTarget?.id) {
     const id = state.editTarget.id;
-    db.ref().update({ ...Object.fromEntries(Object.entries(staffData).map(([k, v]) => ['staff/' + id + '/' + k, v])), ['staffHR/' + id]: hr });
+    const w = db.ref().update({ ...Object.fromEntries(Object.entries(staffData).map(([k, v]) => ['staff/' + id + '/' + k, v])), ['staffHR/' + id]: hr });
     const loc = state.staff?.find(s => s.id === id); if (loc) Object.assign(loc, staffData); // siyahı gecikməsində dublikat PIN-in qarşısı
+    if (useApi && (pin || (!systemAccess && editing?.hasPin))) w.then(() => syncPin('s', id, systemAccess ? pin : null, () => setTimeout(() => editStaff(id), 400)));
     addLog('staff_mgmt', `İşçi yeniləndi: ${name}`, { staffId: id });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi yeniləndi');
   } else {
     const ref = db.ref('staff').push();
-    db.ref().update({ ['staff/' + ref.key]: { ...staffData, status: 'active', createdAt: Date.now() }, ['staffHR/' + ref.key]: hr });
+    const w = db.ref().update({ ['staff/' + ref.key]: { ...staffData, status: 'active', createdAt: Date.now() }, ['staffHR/' + ref.key]: hr });
+    if (useApi && systemAccess && pin) w.then(() => syncPin('s', ref.key, pin, () => setTimeout(() => editStaff(ref.key), 400)));
     if (Array.isArray(state.staff) && !state.staff.some(s => s.id === ref.key)) state.staff.push({ id: ref.key, ...staffData, status: 'active' }); // dublikat PIN qoruması
     addLog('staff_mgmt', `Yeni işçi əlavə edildi: ${name}`, { staffId: ref.key });
     showToast('<svg class="icon"><use href="#i-check"></use></svg> İşçi əlavə edildi');
@@ -1795,7 +1814,7 @@ export function staffForm(s = {}) {
   const existingPerms = s.permissions || [];
   const currentPos = s.position || '';
   // Köhnə işçilər üçün: sahə yoxdursa, PIN-i varsa sistemə girişli sayılır
-  const access = s.systemAccess != null ? !!s.systemAccess : (s.id ? !!s.pin : true);
+  const access = s.systemAccess != null ? !!s.systemAccess : (s.id ? !!(s.pin || s.hasPin) : true);
   const POS = ['Qarson', 'Baş Qarson', 'Kassir', 'Barmen', 'Müdir', 'Mühasib', 'Anbardar', 'Mətbəx', 'Aşpaz köməkçisi', 'Qabyuyan', 'Xadimə', 'Mühafizəçi', 'Kuryer', 'Digər'];
   const inp = (id, label, type = 'text', ph = '', extra = '') => `<div class="form-group"><label>${label}</label><input type="${type}" id="fs_${id}" placeholder="${ph}" ${extra}></div>`;
   const sel = (id, label, opts) => `<div class="form-group"><label>${label}</label><select id="fs_${id}" class="fs-sel">${opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>`;
@@ -1855,7 +1874,7 @@ export function staffForm(s = {}) {
 
     <div id="fs_accessBox">
       <div class="form-row">
-        <div class="form-group"><label>PIN kod * (6 rəqəm)</label><input type="text" id="fs_pin" value="${esc(s.pin||'')}" maxlength="6" inputmode="numeric" placeholder="1234" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
+        <div class="form-group"><label>PIN kod * (6 rəqəm)</label><input type="text" id="fs_pin" value="${apiOn() ? '' : esc(s.pin||'')}" maxlength="6" inputmode="numeric" placeholder="${apiOn() && s.hasPin ? 'Dəyişmək üçün yeni PIN' : '6 rəqəm'}" style="font-size:22px;letter-spacing:6px;text-align:center;"></div>
       </div>
       <details class="fs-sec" id="fs_permSec">
         <summary><span><svg class="icon"><use href="#i-key"></use></svg> İcazələr <small id="fs_permCnt" style="font-weight:600;color:var(--text3)"></small></span></summary>
@@ -3692,7 +3711,7 @@ function renderKitchenStations() {
     <div class="tile-card ${k.active===false?'tile-card--disabled':''}">
       <div class="tile-card__title">${esc(k.name)}</div>
       <div style="font-size:12px;color:var(--text2);margin:4px 0;">
-        PIN: <strong style="color:var(--orange);">${esc(k.pin)}</strong> &nbsp;·&nbsp;
+        PIN: <strong style="color:var(--orange);">${k.pin ? esc(k.pin) : (k.hasPin ? 'təyin edilib' : 'yoxdur')}</strong> &nbsp;·&nbsp;
         Məhsul: <strong>${(k.menuItemIds||[]).length}</strong> &nbsp;·&nbsp;
         <span style="color:${k.active===false?'var(--red)':'var(--green)'};">${k.active===false?'Passiv':'Aktiv'}</span>
       </div>
@@ -3718,7 +3737,7 @@ function openKitchenStationModal(id) {
       <input type="text" id="ksResponsible" value="${esc(s?.responsible||'')}" placeholder="Ad Soyad">
     </div>
         <div class="form-group"><label>Bu mətbəxin giriş PIN-i (6 rəqəm)</label>
-      <input type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" id="ksPin" value="${esc(s?.pin||'')}" placeholder="••••" style="letter-spacing:6px;">
+      <input type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" id="ksPin" value="${apiOn() ? '' : esc(s?.pin||'')}" placeholder="${apiOn() && s?.hasPin ? 'Dəyişmək üçün yeni PIN' : '••••••'}" style="letter-spacing:6px;">
       <small style="color:var(--text3);">Hər mətbəxin öz PIN-i olur. Mətbəx ekranına bu PIN ilə girilir.</small>
     </div>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;">
@@ -3743,19 +3762,27 @@ function saveKitchenStation() {
   const active = document.getElementById('ksActive').checked;
   if (!name) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ad daxil edin'); return; }
    const showAll = !!document.getElementById('ksShowAll')?.checked;
-  if (!/^\d{6}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> PIN 6 rəqəm olmalıdır'); return; }
-  if (weakPin(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN çox asandır'); return; }
-  const dup = (state.kitchenStations||[]).find(s => String(s.pin)===pin && s.id!==id);
-  if (dup) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN "${dup.name}"-ə aiddir`); return; }
-  if ((state.staff||[]).some(s => String(s.pin)===pin) || String(ADMIN_PIN)===pin) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
-  const data = { name, pin, responsible, active, showAll, updatedAt: Date.now() };
+  const useApi = apiOn();
+  const cur = id ? (state.kitchenStations||[]).find(s => s.id === id) : null;
+  if (!useApi || !cur?.hasPin || pin) {   // server qatında: redaktədə boş sahə = köhnə PIN qalır
+    if (!/^\d{6}$/.test(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> PIN 6 rəqəm olmalıdır'); return; }
+    if (weakPin(pin)) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN çox asandır'); return; }
+  }
+  if (!useApi) {
+    const dup = (state.kitchenStations||[]).find(s => String(s.pin)===pin && s.id!==id);
+    if (dup) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN "${dup.name}"-ə aiddir`); return; }
+    if ((state.staff||[]).some(s => String(s.pin)===pin) || String(ADMIN_PIN)===pin) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu PIN artıq başqa istifadəçiyə aiddir'); return; }
+  }
+  const data = { name, pin: useApi ? null : pin, responsible, active, showAll, updatedAt: Date.now() };
   if (id) {
-    R.kitchenStations.child(id).update(data);
-    const loc = (state.kitchenStations||[]).find(s => s.id === id); if (loc) loc.pin = pin; // dublikat PIN qoruması
+    const w = R.kitchenStations.child(id).update(data);
+    const loc = (state.kitchenStations||[]).find(s => s.id === id); if (loc && !useApi) loc.pin = pin; // dublikat PIN qoruması
+    if (useApi && pin) w.then(() => syncPin('k', id, pin, () => setTimeout(() => openKitchenStationModal(id), 400)));
   } else {
     data.createdAt = Date.now(); data.menuItemIds = [];
     const nref = R.kitchenStations.push(data);
     if (Array.isArray(state.kitchenStations) && nref?.key && !state.kitchenStations.some(s => s.id === nref.key)) state.kitchenStations.push({ id: nref.key, ...data });
+    if (useApi) nref.then(() => syncPin('k', nref.key, pin, () => setTimeout(() => openKitchenStationModal(nref.key), 400)));
   }
   addLog('kitchen_station', `"${name}" mətbəxi ${id?'yeniləndi':'yaradıldı'}`, { id });
   showToast('<svg class="icon"><use href="#i-check"></use></svg> Yadda saxlanıldı');
@@ -3767,6 +3794,7 @@ function deleteKitchenStation(id) {
   if (!s) return;
   confirmAction(`"${esc(s.name)}" mətbəxini silmək istəyirsiniz?`, () => {
     R.kitchenStations.child(id).remove();
+    if (apiOn()) syncPin('k', id, null);
     showToast('<svg class="icon"><use href="#i-check"></use></svg> Silindi');
   });
 }
@@ -4001,10 +4029,18 @@ function closeDangerZonePinModal() {
   }
 }
 
-function confirmDangerZonePin() {
+async function confirmDangerZonePin() {
   const entered = document.getElementById('dzPinInput').value.trim();
-  const current = state.user?.role === 'staff' ? String(state.user.pin || '') : String(ADMIN_PIN || '');
-  if (String(entered) !== current) {
+  let okPin;
+  if (state.user?.role === 'staff' && apiOn()) {
+    // İşçinin öz PIN-i serverdə yoxlanır
+    try { await api('verify', { pin: entered, self: state.user.id }); okPin = true; }
+    catch (e) { okPin = false; if (e.code === 'locked' || e.code === 'net') { document.getElementById('dzPinError').textContent = '❌ ' + e.message; return; } }
+  } else {
+    const current = state.user?.role === 'staff' ? String(state.user.pin || '') : String(ADMIN_PIN || '');
+    okPin = String(entered) === current;
+  }
+  if (!okPin) {
     document.getElementById('dzPinError').textContent = '❌ PIN yanlışdır. Yenidən cəhd edin.';
     document.getElementById('dzPinInput').value = '';
     document.getElementById('dzPinInput').focus();

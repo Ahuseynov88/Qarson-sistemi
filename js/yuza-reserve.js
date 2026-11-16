@@ -17,6 +17,7 @@ import { db, R } from './firebase-service.js';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_PRESETS } from './permissions.js';
 import { esc, showToast, addLog } from './utils.js';
 import { modal } from './yuza-inv-ui.js';
+import { api, apiOn } from './yuza-api.js';
 import * as ADM from './admin.js';
 
 /* ═══ Sabitlər və köməkçilər ═══ */
@@ -265,6 +266,9 @@ async function verifyPin(pin) {
   let adminPin = ownerMode ? null : ST.ADMIN_PIN;
   if (adminPin == null && !ownerMode) { try { adminPin = (await db.ref('settings/adminPin').once('value')).val(); } catch (e) { /* */ } }
   if (adminPin != null && String(adminPin) === pin) return { id: 'admin', name: 'Rəhbər' };
+  if (apiOn()) {   // PIN serverdə yoxlanır
+    try { const r = await api('verify', { pin, perm: 'table.min_approve' }); return { id: r.id, name: r.name }; } catch (e) { return null; }
+  }
   const s = (state.staff || []).find(x => String(x.pin) === pin && x.status !== 'offline' && (x.permissions || []).includes('table.min_approve'));
   return s ? { id: s.id, name: s.name } : null;
 }
