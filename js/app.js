@@ -32,10 +32,19 @@ const panelOn = () => state.user?.role === 'admin'
 window.__yzPanelOn = panelOn;
 
 /* Rəhbər öz hesabı ilə daxil oldu (yuza-owner.js çağırır) */
-function enterAdmin(owner) {
+async function enterAdmin(owner) {
   state.user = { role: 'admin', name: 'Rəhbər', id: 'admin', ownerUid: owner?.uid || null, email: owner?.email || '' };
   addLog('login', 'Rəhbər sistemə daxil oldu', { type: 'admin', email: owner?.email || '' });
-  if (apiOn()) api('ping', {}, { owner: true }).catch(() => {});   // köhnə açıq PIN-lər serverdə bir dəfə köçürülsün
+  // Baza qaydaları Rəhbər panelinin məlumatlarını yalnız "Rəhbər sessiyası" olan cihaza açır —
+  // sessiya dinləyicilərdən ƏVVƏL yazılmalıdır, yoxsa hesabat və kassa boş görünər
+  if (apiOn()) {
+    try {
+      const deviceToken = await firebase.app().auth().currentUser?.getIdToken();
+      await api('ownerSession', { deviceToken }, { owner: true });
+    } catch (e) {
+      showToast('<svg class="icon"><use href="#i-warning"></use></svg> Server sessiyası açılmadı: ' + (e.message || 'xəta') + ' — bəzi bölmələr boş görünə bilər. Səhifəni yeniləyin.');
+    }
+  }
   initListeners();
   showScreen('adminScreen');
 }
@@ -195,7 +204,7 @@ function confirmLogoutSelf() {
 
 function logout(opts = {}) {
   // Serverdəki cihaz sessiyası bağlanır (bu cihazda daha heç kim işləmir)
-  if (apiOn() && (state.user?.role === 'staff' || state.user?.role === 'kitchen')) api('logout').catch(() => {});
+  if (apiOn() && (state.user?.role === 'staff' || state.user?.role === 'kitchen' || state.user?.role === 'admin')) api('logout').catch(() => {});
   if (state.user?.role === 'staff') {
     R.staff.child(state.user.id).update({ status: 'ready', lastActive: Date.now() });
     addLog('logout', `"${state.user.name}" sistemdən çıxdı`, { staffId: state.user.id });
