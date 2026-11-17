@@ -21,6 +21,7 @@ const PAPER_WIDTHS = [
    PRİNTER SİYAHISI
 ══════════════════════════════════════════ */
 export function renderPrinters() {
+  import('./yuza-print-agents.js').then(m => m.renderPrintAgents()).catch(() => {});   // Print Agent kompüterləri (Mərhələ 1d)
   const el = document.getElementById('printersGrid');
   if (!el) return;
   const printers = state.printers || [];
