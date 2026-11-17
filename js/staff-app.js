@@ -97,9 +97,11 @@ export class StaffApp {
     $('confirmTableModal').querySelector('[data-confirm-activate]')?.addEventListener('click', () => {
       const tableId = state.pendingTableId;
       if (!tableId) return;
-      this.tableBoard.confirmActivate(tableId);
-      showToast('<svg class="icon"><use href="#i-check"></use></svg> Masa aktiv edildi');
       this._closeActivateModal();
+      this.tableBoard.confirmActivate(tableId).then(ok => {
+        showToast(ok ? '<svg class="icon"><use href="#i-check"></use></svg> Masa aktiv edildi'
+          : '<svg class="icon"><use href="#i-warning"></use></svg> Bu masanı artıq başqa ofisiant açıb');
+      });
     });
     $('confirmTableModal').querySelector('[data-cancel]')?.addEventListener('click', () => this._closeActivateModal());
 
@@ -266,12 +268,17 @@ export class StaffApp {
     $('confirmCloseTableModal').classList.add('open');
   }
 
-  _handleConfirmClose() {
+  async _handleConfirmClose() {
     const tableId = state.pendingCloseTableId;
-    if (!tableId) return;
-    const ok = this.tableBoard.confirmDeactivate(tableId);
-    if (!ok) {
-      showToast('<svg class="icon"><use href="#i-error"></use></svg> Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.');
+    if (!tableId || this._closing) return;
+    this._closing = true;
+    const btn = $('confirmCloseTableModal').querySelector('[data-confirm-close]');
+    if (btn) btn.disabled = true;
+    const res = await this.tableBoard.confirmDeactivate(tableId);
+    this._closing = false;
+    if (btn) btn.disabled = false;
+    if (!res.ok) {
+      showToast(`<svg class="icon"><use href="#i-error"></use></svg> ${res.msg}`);
       this._closeCloseModal();
       return;
     }

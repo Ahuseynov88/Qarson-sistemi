@@ -5,6 +5,17 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 
+/* ── Server vaxtı (Mərhələ 2a) ──
+   Pul və satış qeydlərinin vaxtı cihazın saatından yox, Firebase serverinin saatından götürülür:
+   kassa kompüterinin saatı səhv olsa da hesabatlar düzgün günə düşür. */
+let _srvOffset = 0;
+try { db.ref('.info/serverTimeOffset').on('value', s => { _srvOffset = Number(s.val()) || 0; }); } catch (e) { /* */ }
+export const serverNow = () => Date.now() + _srvOffset;
+export const azTime = (ts) => new Date(ts).toLocaleTimeString('az-AZ');
+export const azDate = (ts) => new Date(ts).toLocaleDateString('az-AZ');
+/* Pul məbləğləri qəpiyə qədər yuvarlaqlaşdırılır (0.1+0.2 kimi xətalar toplanmasın) */
+export const money2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
 export function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -155,11 +166,12 @@ export function addLog(type, message, details = {}) {
     const t = state.tables.find(x => x.id === details.tableId);
     if (t?.sessionId) details = { ...details, sessionId: t.sessionId };
   }
+  const ts = serverNow();
   R.logs.push({
     type, message, details,
-    timestamp: Date.now(),
-    time: new Date().toLocaleTimeString('az-AZ'),
-    date: new Date().toLocaleDateString('az-AZ')
+    timestamp: ts,
+    time: azTime(ts),
+    date: azDate(ts)
   });
 }
 

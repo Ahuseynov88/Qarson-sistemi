@@ -4,9 +4,9 @@
    endirim (seçilmişlərə və ya bütün hesaba), ikram, mal/masa köçürmə,
    və ödəniş (nağd/POS/bölünmüş/nisyə).
 ═══════════════════════════════════════════ */
-import { R } from './firebase-service.js';
+import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals } from './utils.js';
+import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals, serverNow, azTime, azDate, money2 } from './utils.js';
 import { hasPermission } from './permissions.js';
 
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
@@ -498,62 +498,56 @@ export class ConfirmedOrder {
     const selection = this._chargeSelection || {};
     const selKeys = Object.keys(selection).filter(k => order.items?.[k]);
 
-    if (selKeys.length) {
-      let chargedAmount = 0;
-      let chargedItems = [];
-      R.tableOrders.child(tableId).transaction(current => {
-        if (!current || !current.items) return current;
-        const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
-        chargedAmount = targetKeys.reduce((s,k)=>{ const it=items[k]; return it ? s+(it.price*it.qty*(1-((it.discountPercent||0)/100)))+(it.extraFee||0) : s; },0);
-        chargedItems = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
-        targetKeys.forEach(k => delete items[k]);
-        if (!Object.keys(items).length) return null;
-        const _tot = computeOrderTotals(items);
-
-        const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
-        const paidAmount = current.paidAmount || 0;
-        return { ...current, items, total, remainingAmount: Math.max(0, total - paidAmount) };
-      }, (error, committed) => {
-        if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
-        if (!committed) return;
-        R.customers.child(customerId).child('balance').transaction(bal => (bal||0) + chargedAmount);
-        R.customerCharges.push({
-          customerId, customerName: customer.name, tableId, tableName: t?.name||'?',
-          items: chargedItems, amount: chargedAmount,
-          staffId: state.user.id, staffName: state.user.name,
-          createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
-        });
-        addLog('credit', `${state.user.name} "${t?.name}" masasından ${formatItemsList(chargedItems)} (${chargedAmount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
-        showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${chargedAmount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
-        this.clearBatchSelection();
-        this.renderSummary(tableId);
-      });
-      this.closeCustomerChargeModal();
-      return;
-    }
-
-    const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
-    if (remaining <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); this.closeCustomerChargeModal(); return; }
-    const wholeTableItems = Object.values(order.items||{}).map(it => ({ name: it.name, qty: it.qty, price: it.price }));
-
+    /* Mərhələ 2a: nisyə yazılışı masanın sifarişinin içinə (tableOrders/{masa}/charges) transaction ilə düşür,
+       sonra müştərinin balansı və nisyə jurnalı BİR yazı ilə yenilənir (postCharge). Bu yazı yarımçıq qalsa,
+       masa bağlananda tamamlanır — məbləğ itmir və ikiqat yazılmır. */
+    if (this._chargeBusy) return;
+    const ts = serverNow();
+    const chargeId = R.customerCharges.push().key;
+    const base = {
+      customerId, customerName: customer.name, tableId, tableName: t?.name || '?',
+      staffId: state.user.id, staffName: state.user.name,
+      createdAt: ts, time: azTime(ts), date: azDate(ts)
+    };
+    const remainingNow = money2(Math.max(0, (order.total || 0) - (order.paidAmount || 0)));
+    if (!selKeys.length && remainingNow <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); this.closeCustomerChargeModal(); return; }
+    let rec = null, reject = '';
+    this._chargeBusy = true;
     R.tableOrders.child(tableId).transaction(current => {
-      if (!current) return current;
-      const paidAmount = (current.paidAmount||0) + remaining;
-      return { ...current, paidAmount, remainingAmount: 0 };
+      rec = null; reject = '';
+      if (!current || !current.items) { reject = 'Bu masada aktiv sifariş yoxdur'; return; }
+      const charges = { ...(current.charges || {}) };
+      if (selKeys.length) {
+        const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
+        const amount = money2(targetKeys.reduce((sum, k) => { const it = items[k]; return it ? sum + (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0) : sum; }, 0));
+        const chargedItems = targetKeys.filter(k => items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
+        if (!chargedItems.length) { reject = 'Seçilmiş mallar artıq sifarişdə yoxdur'; return; }
+        targetKeys.forEach(k => delete items[k]);
+        rec = { ...base, items: chargedItems, amount };
+        charges[chargeId] = rec;
+        const _tot = computeOrderTotals(items);
+        const total = Object.keys(items).length ? _tot.total : 0;
+        const paidAmount = current.paidAmount || 0;
+        return { ...current, items, charges, total, serviceChargeAmount: Object.keys(items).length ? _tot.serviceChargeAmount : 0, remainingAmount: money2(Math.max(0, total - paidAmount)) };
+      }
+      const total = current.total || 0;
+      const freshRemaining = money2(Math.max(0, total - (current.paidAmount || 0)));
+      if (freshRemaining <= 0.01) { reject = 'Bu hesabda qalıq yoxdur'; return; }
+      rec = { ...base, items: Object.values(current.items || {}).map(it => ({ name: it.name, qty: it.qty, price: it.price })), amount: freshRemaining };
+      charges[chargeId] = rec;
+      return { ...current, charges, paidAmount: money2((current.paidAmount || 0) + freshRemaining), remainingAmount: 0 };
     }, (error, committed) => {
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
-      if (!committed) return;
-      R.customers.child(customerId).child('balance').transaction(bal => (bal||0) + remaining);
-      R.customerCharges.push({
-        customerId, customerName: customer.name, tableId, tableName: t?.name||'?',
-        items: wholeTableItems, amount: remaining,
-        staffId: state.user.id, staffName: state.user.name,
-        createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
-      });
-      addLog('credit', `${state.user.name} "${t?.name}" masasının hesabı: ${formatItemsList(wholeTableItems)} (${remaining.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
-      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${remaining.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
+      this._chargeBusy = false;
+      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Nisyə yazılmadı (bağlantı xətası). Heç nə dəyişməyib, yenidən cəhd edin.'); return; }
+      if (!committed || !rec) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> ${reject || 'Nisyə yazılmadı'}`); return; }
+      postCharge(tableId, chargeId, rec).catch(() => { /* masa bağlananda tamamlanacaq */ });
+      addLog('credit', selKeys.length
+        ? `${state.user.name} "${t?.name}" masasından ${formatItemsList(rec.items)} (${rec.amount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`
+        : `${state.user.name} "${t?.name}" masasının hesabı: ${formatItemsList(rec.items)} (${rec.amount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${rec.amount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
+      if (selKeys.length) this.clearBatchSelection();
       this.renderSummary(tableId);
-    });
+    }, false);
     this.closeCustomerChargeModal();
   }
 
@@ -804,22 +798,46 @@ export class ConfirmedOrder {
   }
 
   // ── Bütöv masa köçürmə ──
-  confirmTableTransfer(fromId, toId) {
-    if (!fromId || !toId) return;
+  /* Mərhələ 2a: köçürmə BİR yazı ilə olur. Əvvəl hədəf masa transaction ilə tutulur (boş deyilsə
+     köçürmə dayanır və heç nə silinmir); sonra sifariş, ödənişlər və masaların vəziyyəti birlikdə yazılır.
+     Əvvəlki versiyada hədəf masa doluydusa, mənbə masanın sifarişi itə bilərdi. */
+  async confirmTableTransfer(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return;
     const fromT = state.tables.find(x => x.id === fromId);
     const toT = state.tables.find(x => x.id === toId);
-    const order = state.tableOrders[fromId];
     const originalOccupant = fromT?.occupant || state.user.id;
-    const sessionId = fromT?.sessionId || `${fromId}_${Date.now()}`;
-    if (order) {
-      R.tableOrders.child(toId).transaction(current => {
-        if (current && current.items && Object.keys(current.items).length) return; // hədəf artıq boş deyil - abort
-        return { ...order, updatedAt: Date.now() };
-      });
-      R.tableOrders.child(fromId).remove();
-    }
-    R.tables.child(toId).update({ occupant: originalOccupant, notes: fromT?.notes||'', activatedAt: fromT?.activatedAt || Date.now(), sessionId, openedById: fromT?.openedById||null, openedByName: fromT?.openedByName||null });
-    R.tables.child(fromId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null });
+    const sessionId = fromT?.sessionId || `${fromId}_${serverNow()}`;
+    const fail = (m) => showToast(`<svg class="icon"><use href="#i-error"></use></svg> ${m}`);
+    let busy = '';
+    let claim;
+    try {
+      claim = await R.tables.child(toId).transaction(cur => {
+        busy = '';
+        if (!cur) return cur;
+        if (cur.occupant && cur.occupant !== '__moving') { busy = `"${cur.name || 'Hədəf'}" masası artıq açıqdır.`; return; }
+        return { ...cur, occupant: '__moving', closingAt: serverNow() };
+      }, undefined, false);
+    } catch (e) { fail('Bağlantı xətası — köçürülmədi.'); return; }
+    if (!claim.committed) { fail(busy || 'Köçürülmədi.'); return; }
+    if (!claim.snapshot.val()) { fail('Hədəf masa tapılmadı.'); return; }
+    const release = () => R.tables.child(toId).update({ occupant: null, closingAt: null }).catch(() => {});
+    let order, toOrder;
+    try {
+      [order, toOrder] = await Promise.all([R.tableOrders.child(fromId).once('value').then(s => s.val()), R.tableOrders.child(toId).once('value').then(s => s.val())]);
+    } catch (e) { release(); fail('Bağlantı xətası — köçürülmədi.'); return; }
+    if (toOrder && toOrder.items && Object.keys(toOrder.items).length) { release(); fail(`"${toT?.name}" masasında sifariş var — köçürülmədi.`); return; }
+    const upd = {
+      [`tables/${toId}/occupant`]: originalOccupant, [`tables/${toId}/notes`]: fromT?.notes || '',
+      [`tables/${toId}/activatedAt`]: fromT?.activatedAt || serverNow(), [`tables/${toId}/sessionId`]: sessionId,
+      [`tables/${toId}/openedById`]: fromT?.openedById || null, [`tables/${toId}/openedByName`]: fromT?.openedByName || null,
+      [`tables/${toId}/closingAt`]: null,
+      [`tables/${fromId}/occupant`]: null, [`tables/${fromId}/notes`]: '', [`tables/${fromId}/activatedAt`]: null,
+      [`tables/${fromId}/sessionId`]: null, [`tables/${fromId}/openedById`]: null, [`tables/${fromId}/openedByName`]: null,
+      [`tableOrders/${fromId}`]: null,
+      [`tableOrders/${toId}`]: order ? { ...order, updatedAt: serverNow() } : null
+    };
+    try { await db.ref().update(upd); }
+    catch (e) { release(); fail('Köçürülmədi (bağlantı və ya icazə xətası). Heç nə dəyişməyib.'); return; }
     addLog('table_transfer', `${state.user.name} "${fromT?.name}" masasını "${toT?.name}"-ə köçürdü: ${formatItemsList(order?.items||{})}`, { tableId: toId, sessionId, fromTableId: fromId, toTableId: toId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${fromT?.name}" → "${toT?.name}" köçürüldü`);
   }
@@ -1043,7 +1061,15 @@ export class ConfirmedOrder {
   }
 }
 
-/* ───────────────────────── PAYMENT PROCESSOR ───────────────────────── */
+/* Nisyəni müştərinin hesabına keçirir: jurnal + balans + "keçirildi" işarəsi BİR yazı ilə (Mərhələ 2a) */
+export function postCharge(tableId, chargeId, rec) {
+  return db.ref().update({
+    ['customerCharges/' + chargeId]: { ...rec, posted: null },
+    [`customers/${rec.customerId}/balance`]: firebase.database.ServerValue.increment(rec.amount),
+    [`tableOrders/${tableId}/charges/${chargeId}/posted`]: true
+  });
+}
+
 /* ───────────────────────── PAYMENT PROCESSOR ───────────────────────── */
 
 export class PaymentProcessor {
@@ -1220,7 +1246,7 @@ export class PaymentProcessor {
       originalAmount: p.originalTotal, finalAmount: p.finalTotal, thisPay,
       paidBefore: p.paidAmount,
       discountType: p.discountType || null, discountValue: p.discountValue || 0,
-      createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
+      createdAt: serverNow(), time: azTime(serverNow()), date: azDate(serverNow())
     };
     if (p.type === 'cash') { const given = parseFloat(this.els.cashGiven.value)||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }
     if (p.type === 'split' && splitBreakdown) {
@@ -1235,29 +1261,57 @@ export class PaymentProcessor {
       payData.splitLabel = Object.entries(splitBreakdown).map(([id,v]) => `${payData.splitMethodNames[id]}: ${v.toFixed(2)} ₼`).join(', ');
     }
 
-    R.payments.push(payData);
-
+    /* Mərhələ 2a: ödəniş və masanın balansı BİR əməliyyatla yazılır.
+       Ödəniş əvvəlcə masanın sifarişinin içinə (tableOrders/{masa}/pays) transaction ilə düşür —
+       ya ödəniş də, balans da yazılır, ya heç biri. İki cihaz eyni anda ödəniş alsa, ikincisi
+       təzə qalığı görür və artıq ödəniş yazılmır. Sonra eyni ID ilə "payments" jurnalına
+       köçürülür; köçürmə yarımçıq qalsa, masa bağlananda təkrar yazılır (eyni ID — ikiqat olmur). */
+    if (this._busy) return;
+    this._busy = true;
+    const payId = R.payments.push().key;
     const finalTotalForCalc = p.finalTotal;
+    const useDiscountTotal = !!p.discountValue;
+    let applied = 0, reject = '';
     R.tableOrders.child(tableId).transaction(current => {
-      if (!current) return current;
-      const newPaid = (current.paidAmount || 0) + thisPay;
-      return { ...current, paidAmount: newPaid, remainingAmount: Math.max(0, finalTotalForCalc - newPaid) };
+      reject = '';
+      if (!current) { reject = 'Bu masada aktiv sifariş yoxdur'; return; }
+      const total = useDiscountTotal ? finalTotalForCalc : (current.total || 0);
+      const paid = money2(current.paidAmount || 0);
+      const freshRemaining = money2(Math.max(0, total - paid));
+      if (freshRemaining <= 0.01) { reject = 'Bu hesab artıq tam ödənilib'; return; }
+      let amt = money2(thisPay);
+      if (amt - freshRemaining > 0.01) {
+        if (p.type !== 'cash') { reject = `Qalıq dəyişib: indi ${freshRemaining.toFixed(2)} ₼ qalıb. Ödənişi yenidən açın.`; return; }
+        amt = freshRemaining;   // nağd: artığı qaytarılır
+      }
+      applied = amt;
+      const newPaid = money2(paid + amt);
+      const pays = { ...(current.pays || {}) };
+      pays[payId] = { ...payData, thisPay: amt, paidBefore: paid };
+      return { ...current, pays, paidAmount: newPaid, remainingAmount: money2(Math.max(0, total - newPaid)) };
     }, (error, committed, snapshot) => {
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ödəniş qeydə alındı, amma balans yenilənərkən xəta oldu'); return; }
+      this._busy = false;
+      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ödəniş yazılmadı (bağlantı xətası). Heç nə dəyişməyib, yenidən cəhd edin.'); return; }
+      if (!committed) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> ${reject || 'Ödəniş yazılmadı'}`); this.close(); return; }
       const finalData = snapshot ? snapshot.val() : null;
-      p.paidAmount = finalData ? (finalData.paidAmount||0) : (p.paidAmount + thisPay);
-      p.remainingAmount = finalData ? (finalData.remainingAmount||0) : Math.max(0, finalTotalForCalc - p.paidAmount);
+      const rec = finalData?.pays?.[payId];
+      if (rec) {
+        if (p.type === 'cash') rec.change = Math.max(0, money2((rec.cashGiven || 0) - rec.thisPay));
+        R.payments.child(payId).set(rec).catch(() => { /* masa bağlananda təkrar yazılacaq */ });
+      }
+      p.paidAmount = finalData ? (finalData.paidAmount || 0) : (p.paidAmount + applied);
+      p.remainingAmount = finalData ? (finalData.remainingAmount || 0) : Math.max(0, finalTotalForCalc - p.paidAmount);
 
       const logTypeLabel = payData.splitLabel ? `${typeLabel}: ${payData.splitLabel}` : typeLabel;
-      addLog('payment', `${state.user.name} ${thisPay.toFixed(2)} ₼ ödəniş aldı (${logTypeLabel})`, { tableId });
+      addLog('payment', `${state.user.name} ${applied.toFixed(2)} ₼ ödəniş aldı (${logTypeLabel})`, { tableId, paymentId: payId });
       this.close();
 
       const fullyPaid = p.remainingAmount <= 0.01;
       if (fullyPaid) p.remainingAmount = 0;
       showToast(fullyPaid
         ? `<svg class="icon"><use href="#i-check"></use></svg> Tam ödənildi: ${p.finalTotal.toFixed(2)} ₼`
-        : `<svg class="icon"><use href="#i-check"></use></svg> ${thisPay.toFixed(2)} ₼ ödənildi. Qalan: ${p.remainingAmount.toFixed(2)} ₼`);
+        : `<svg class="icon"><use href="#i-check"></use></svg> ${applied.toFixed(2)} ₼ ödənildi. Qalan: ${p.remainingAmount.toFixed(2)} ₼`);
       if (onSettled) onSettled(fullyPaid);
-    });
+    }, false);
   }
 } 

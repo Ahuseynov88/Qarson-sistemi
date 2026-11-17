@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state, ADMIN_PIN } from './state.js';
-import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf, computeVat } from './utils.js';
+import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirmAction, confirmDelete2x, tableCategoryOf, computeVat, serverNow, money2 } from './utils.js';
 // Müştəri tərəfindən yaradıla bilən qeydlərin ID-si onclick atributuna yalnız təhlükəsiz simvollarla düşür
 const jsId = (id) => String(id ?? '').replace(/[^-\w]/g, '');
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
@@ -3574,25 +3574,44 @@ export function restoreClosedOrder(id) {
   const newRestoreCount = (o.restoreCount || 0) + 1;
   const newName = `${baseName} ${'*'.repeat(newRestoreCount)}`;
 
-  confirmAction(`"${esc(o.tableName)}" masası "${esc(newName)}" adı ilə müvəqqəti masa kimi bərpa edilsin? Sabit "${esc(baseName)}" masasına toxunulmayacaq.`, () => {
-    const newRef = R.tables.push({
-      name: newName, capacity: 4, occupant: null, notes: '', createdAt: Date.now(),
-      restoreCount: newRestoreCount, isRestoredTemp: true, category: 'Bərpa edilmiş masalar'
-    });
-    const newTableId = newRef.key;
-    const sessionId = `${newTableId}_${Date.now()}`;
-
-    R.tableOrders.child(newTableId).set({
-      items: o.items, total: o.total || 0,
-      waiterId: o.staffId, paidAmount: 0, remainingAmount: o.total || 0,
-      updatedAt: Date.now(), billPrintedAt: null
-    });
-    R.tables.child(newTableId).update({
-      occupant: o.staffId, notes: o.notes || '', activatedAt: Date.now(),
-      sessionId, openedById: o.openedById || o.staffId, openedByName: o.openedByName || o.staffName
-    });
-    R.closedOrders.child(id).remove();
-    addLog('table_open', `Admin "${o.tableName}" masasını "${newName}" adı ilə bərpa etdi: ${formatItemsList(o.items||{})} (${(o.total||0).toFixed(2)} ₼)`, { tableId: newTableId, sessionId });
+  confirmAction(`"${esc(o.tableName)}" masası "${esc(newName)}" adı ilə müvəqqəti masa kimi bərpa edilsin? Sabit "${esc(baseName)}" masasına toxunulmayacaq.`, async () => {
+    /* Mərhələ 2a: bərpa BİR yazı ilə olur. Bu sessiyada alınmış ödənişlər yeni masaya keçir —
+       bərpa edilən masada artıq ödənilmiş məbləğ yenidən tələb olunmur və ikiqat hesablanmır. */
+    const now = serverNow();
+    const newTableId = R.tables.push().key;
+    const sessionId = `${newTableId}_${now}`;
+    let pays = {};
+    try {
+      if (o.sessionId) {
+        const snap = await R.payments.orderByChild('sessionId').equalTo(o.sessionId).once('value');
+        pays = snap.val() || {};
+      }
+    } catch (e) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ödənişlər oxunmadı — bərpa edilmədi'); return; }
+    const paySum = money2(Object.values(pays).reduce((sum, x) => sum + (Number(x.thisPay) || 0), 0));
+    const wholeCharges = money2(Object.values(o.charges || {}).reduce((sum, c) => sum + (Number(c.amount) || 0), 0));
+    // Arxivdə ödənilmiş məbləğ varsa (2a-dan sonra bağlanan masalar) o götürülür, yoxdursa ödəniş jurnalından hesablanır
+    const paidAmount = money2(o.paidAmount != null ? o.paidAmount : paySum);
+    const total = o.total || 0;
+    const upd = {
+      ['tables/' + newTableId]: {
+        name: newName, capacity: 4, notes: o.notes || '', createdAt: now,
+        restoreCount: newRestoreCount, isRestoredTemp: true, category: 'Bərpa edilmiş masalar',
+        occupant: o.staffId, activatedAt: now, sessionId,
+        openedById: o.openedById || o.staffId, openedByName: o.openedByName || o.staffName
+      },
+      ['tableOrders/' + newTableId]: {
+        items: o.items || {}, total, waiterId: o.staffId,
+        paidAmount, remainingAmount: money2(Math.max(0, total - paidAmount)),
+        pays: Object.keys(pays).length ? Object.fromEntries(Object.entries(pays).map(([k, x]) => [k, { ...x, sessionId, tableId: newTableId }])) : null,
+        charges: o.charges ? Object.fromEntries(Object.entries(o.charges).map(([k, c]) => [k, { ...c, posted: true }])) : null,
+        updatedAt: now, billPrintedAt: null
+      },
+      ['closedOrders/' + id]: null
+    };
+    for (const pid of Object.keys(pays)) { upd[`payments/${pid}/sessionId`] = sessionId; upd[`payments/${pid}/tableId`] = newTableId; }
+    try { await db.ref().update(upd); }
+    catch (e) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bərpa alınmadı (bağlantı və ya icazə xətası). Heç nə dəyişməyib.'); return; }
+    addLog('table_open', `Admin "${o.tableName}" masasını "${newName}" adı ilə bərpa etdi: ${formatItemsList(o.items||{})} (${total.toFixed(2)} ₼${paidAmount > 0 ? `, ${paidAmount.toFixed(2)} ₼ əvvəl ödənilib` : ''}${wholeCharges > 0 ? `, ${wholeCharges.toFixed(2)} ₼ nisyə` : ''})`, { tableId: newTableId, sessionId });
     showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${newName}" olaraq bərpa edildi`);
   }, { title: 'Masanı bərpa et', okLabel: '<svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et', okClass: 'btn-blue' });
 }

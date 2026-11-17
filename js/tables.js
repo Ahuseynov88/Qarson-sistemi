@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, tableCategoryOf } from './utils.js';
+import { esc, showToast, addLog, tableCategoryOf, serverNow, azTime, azDate, money2 } from './utils.js';
 import { hasPermission, staffHasPermission } from './permissions.js';
 import { checkReferralBonusOnClose } from './loyalty.js';
 
@@ -202,11 +202,22 @@ export class TableBoard {
     document.dispatchEvent(new CustomEvent('table:activate-requested', { detail: { tableId } }));
   }
 
+  /* Mərhələ 2a: masa transaction ilə açılır — iki ofisiant eyni anda eyni masanı aça bilməz.
+     @returns {Promise<boolean>} false = masa artıq başqası tərəfindən açılıb */
   confirmActivate(tableId) {
-    const sessionId = `${tableId}_${Date.now()}`;
-    R.tables.child(tableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId, openedById: state.user.id, openedByName: state.user.name });
-    const t = state.tables.find(x => x.id === tableId);
-    addLog('table_open', `${state.user.name} "${t?.name}" masasını açdı`, { tableId, sessionId, waiterId: state.user.id });
+    const now = serverNow();
+    const sessionId = `${tableId}_${now}`;
+    const me = { id: state.user.id, name: state.user.name };
+    return R.tables.child(tableId).transaction(cur => {
+      if (!cur) return cur;                 // keş boşdursa server dəyəri ilə təkrarlanır
+      if (cur.occupant) return;             // artıq açılıb → imtina
+      return { ...cur, occupant: me.id, activatedAt: now, sessionId, openedById: me.id, openedByName: me.name, closingAt: null, closingBy: null };
+    }, undefined, false).then(res => {
+      if (!res.committed || res.snapshot.val()?.sessionId !== sessionId) return false;
+      const t = state.tables.find(x => x.id === tableId);
+      addLog('table_open', `${me.name} "${t?.name}" masasını açdı`, { tableId, sessionId, waiterId: me.id });
+      return true;
+    }).catch(() => false);
   }
 
   openDeactivateConfirm(tableId) {
@@ -214,65 +225,110 @@ export class TableBoard {
     document.dispatchEvent(new CustomEvent('table:close-requested', { detail: { tableId, order } }));
   }
 
-  /** @returns {boolean} true = bağlandı, false = balans qapatmadı (çağıran tərəf toast göstərməlidir) */
-  confirmDeactivate(tableId) {
-    const order = state.tableOrders[tableId];
-    if (order?.total > 0) {
-      const remaining = (order.remainingAmount !== undefined && order.remainingAmount !== null)
-        ? order.remainingAmount
-        : order.total;
-      if (remaining > 0.01) return false;
+  /* Mərhələ 2a: masanın bağlanması BİR yazı ilə olur — satış arxivi, masanın boşaldılması,
+     ödənişlərin və nisyələrin jurnala köçürülməsi ya hamısı birlikdə yazılır, ya heç biri.
+     Əvvəl masa "bağlanır" kimi işarələnir (transaction): iki cihaz eyni masanı eyni anda bağlasa,
+     satış iki dəfə arxivə düşmür.
+     @returns {Promise<{ok:boolean, msg?:string}>} */
+  async confirmDeactivate(tableId) {
+    const local = state.tableOrders[tableId];
+    if (local?.total > 0) {
+      const rem = (local.remainingAmount !== undefined && local.remainingAmount !== null) ? local.remainingAmount : local.total;
+      if (rem > 0.01) return { ok: false, msg: 'Hesab tam ödənilməyib! Əvvəlcə ödəniş alın.' };
     }
-    const t = state.tables.find(x => x.id === tableId);
-    const sessionId = t?.sessionId || null;
-    const closeMsg = `${state.user?.name} "${t?.name}" masasını bağladı (${(order?.total||0).toFixed(2)} ₼)`;
+    const t0 = state.tables.find(x => x.id === tableId);
+    const sessionId = t0?.sessionId || null;
+    const me = { id: state.user?.id || null, name: state.user?.name || '?' };
 
-    // Bu sessiyaya aid bütün tarixçəni topla (aktivləşmədən bağlanmaya qədər) və arxivə bük -
-    // masa bağlandıqdan sonra da bu qeydlər itmir, bağlanmış masa qeydi ilə birlikdə qalır.
+    /* 1) Masanı "bağlanır" kimi işarələ */
+    let why = '';
+    const claimAt = serverNow();
+    const claimId = me.id + ':' + Math.random().toString(36).slice(2, 10);   // hər cəhd üçün ayrıca
+    let claim;
+    try {
+      claim = await R.tables.child(tableId).transaction(cur => {
+        why = '';
+        if (!cur) return cur;
+        if (!cur.occupant || (sessionId && cur.sessionId !== sessionId)) { why = 'Bu masa artıq bağlanıb.'; return; }
+        if (cur.closingAt && claimAt - cur.closingAt < 60000) { why = 'Bu masa hazırda bağlanır — bir az gözləyin.'; return; }
+        return { ...cur, closingAt: claimAt, closingBy: claimId };
+      }, undefined, false);
+    } catch (e) { return { ok: false, msg: 'Bağlantı xətası — masa bağlanmadı. Yenidən cəhd edin.' }; }
+    if (!claim.committed) return { ok: false, msg: why || 'Masa bağlanmadı.' };
+    if (!claim.snapshot.val()) return { ok: false, msg: 'Masa tapılmadı.' };
+    const t = { id: tableId, ...claim.snapshot.val() };
+    const release = () => R.tables.child(tableId).update({ closingAt: null, closingBy: null }).catch(() => {});
+
+    /* 2) Sifarişin ən son vəziyyəti (başqa cihazın son ödənişi də daxil) */
+    let order;
+    try { order = (await R.tableOrders.child(tableId).once('value')).val(); }
+    catch (e) { release(); return { ok: false, msg: 'Bağlantı xətası — masa bağlanmadı. Yenidən cəhd edin.' }; }
+    if (order?.total > 0) {
+      const rem = money2(Math.max(0, (order.total || 0) - (order.paidAmount || 0)));
+      if (rem > 0.01) { release(); return { ok: false, msg: `Hesab tam ödənilməyib (${rem.toFixed(2)} ₼ qalıb). Əvvəlcə ödəniş alın.` }; }
+    }
+
+    const closedAtNow = serverNow();
+    const closeMsg = `${me.name} "${t.name}" masasını bağladı (${(order?.total || 0).toFixed(2)} ₼)`;
+    // Bu sessiyaya aid bütün tarixçəni topla (aktivləşmədən bağlanmaya qədər) və arxivə bük
     const sessionLog = sessionId
       ? state.logs.filter(l => l.details?.sessionId === sessionId).slice().reverse()
           .map(l => ({ message: l.message, time: l.time, date: l.date, timestamp: l.timestamp }))
       : [];
-    sessionLog.push({ message: closeMsg, time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ'), timestamp: Date.now() });
+    sessionLog.push({ message: closeMsg, time: azTime(closedAtNow), date: azDate(closedAtNow), timestamp: closedAtNow });
 
-    const closedAtNow = Date.now();
     // Sifarişi göndərən (satışı edən) işçi - masanı bağlayan işçidən FƏRQLİ ola bilər.
-    // İşçi performans hesabatı bu sahəyə görə aparılır ("kim satıb" sualının cavabı).
-    const orderedById = (order && order.waiterId) || t?.openedById || state.user?.id || null;
+    const orderedById = (order && order.waiterId) || t.openedById || me.id;
     const orderedByStaff = state.staff.find(s => s.id === orderedById);
-    const orderedByName = orderedByStaff?.name || t?.openedByName || state.user?.name || '?';
+    const orderedByName = orderedByStaff?.name || t.openedByName || me.name;
     // Masa başqa ofisianta ötürülübsə, satış ötürmə anına görə bölünür (yuza-table-reassign.js)
     const waiterSplit = window.__yzSplitByWaiter ? window.__yzSplitByWaiter(order, orderedById, orderedByName) : null;
+    const pays = order?.pays || {}, charges = order?.charges || {};
 
     const archiveData = {
-      tableId, tableName: t?.name || '?',
-      staffId: state.user?.id || null, staffName: state.user?.name || '?',
-      openedById: t?.openedById || null, openedByName: t?.openedByName || '?',
+      tableId, tableName: t.name || '?',
+      staffId: me.id, staffName: me.name,
+      openedById: t.openedById || null, openedByName: t.openedByName || '?',
       orderedById, orderedByName, waiterSplit,
-      items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t?.notes || '',
+      items: (order && order.items) || {}, total: (order && order.total) || 0, notes: t.notes || '',
+      paidAmount: money2(order?.paidAmount || 0),
+      paymentIds: Object.keys(pays).length ? Object.fromEntries(Object.keys(pays).map(k => [k, true])) : null,
+      charges: Object.keys(charges).length ? Object.fromEntries(Object.entries(charges).map(([k, c]) => [k, { customerId: c.customerId, customerName: c.customerName, amount: c.amount, items: c.items || null }])) : null,
       sessionId,
       sessionLog,
-      restoreCount: t?.restoreCount || 0,
-      // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX) - saat 6-da
-      // açılıb 12-də bağlanan masa "6" saatına aid sayılsın deyə. Sifariş heç olmayıbsa,
-      // masanın açılma vaxtına düşür.
-      firstOrderAt: (order && order.firstOrderAt) || t?.activatedAt || closedAtNow,
+      restoreCount: t.restoreCount || 0,
+      // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX)
+      firstOrderAt: (order && order.firstOrderAt) || t.activatedAt || closedAtNow,
       closedAt: closedAtNow,
-      closedTime: new Date(closedAtNow).toLocaleTimeString('az-AZ'),
-      closedDate: new Date(closedAtNow).toLocaleDateString('az-AZ')
+      closedTime: azTime(closedAtNow),
+      closedDate: azDate(closedAtNow)
     };
-    db.ref('closedOrders').push(archiveData);
-    checkReferralBonusOnClose(t?.loyaltyCustomerId, archiveData.total);
 
-    if (order) R.tableOrders.child(tableId).remove();
-    if (t?.isRestoredTemp) {
-      // Müvəqqəti bərpa masası: bağlananda tamamilə silinir - "Masalar" panelində
-      // boş xəyal masa kimi qalmasın. Tarixçəsi artıq yuxarıda arxivə köçürülüb.
-      R.tables.child(tableId).remove();
+    const closedKey = R.closedOrders.push().key;
+    const upd = { ['closedOrders/' + closedKey]: archiveData, ['tableOrders/' + tableId]: null };
+    if (t.isRestoredTemp) {
+      // Müvəqqəti bərpa masası bağlananda tamamilə silinir (tarixçəsi artıq arxivdədir)
+      upd['tables/' + tableId] = null;
     } else {
-      R.tables.child(tableId).update({ occupant: null, notes: '', activatedAt: null, sessionId: null, openedById: null, openedByName: null, loyaltyCustomerId: null, loyaltyGuestId: null });
+      for (const k of ['occupant', 'notes', 'activatedAt', 'sessionId', 'openedById', 'openedByName', 'loyaltyCustomerId', 'loyaltyGuestId', 'closingAt', 'closingBy'])
+        upd[`tables/${tableId}/${k}`] = k === 'notes' ? '' : null;
     }
-    addLog('table_close', closeMsg, { tableId, sessionId, staffId: state.user?.id });
-    return true;
+    // Jurnala köçürülməmiş qalmış ödəniş və nisyələr (eyni ID — ikiqat yazılmır)
+    // (jurnal qeydləri yalnız yaradıla bilir — artıq yazılmış ödəniş yenidən yazılmır)
+    try {
+      const have = await Promise.all(Object.keys(pays).map(pid => R.payments.child(pid).once('value').then(x => x.exists())));
+      Object.entries(pays).forEach(([pid, rec], i) => { if (!have[i]) upd['payments/' + pid] = rec; });
+    } catch (e) { release(); return { ok: false, msg: 'Bağlantı xətası — masa bağlanmadı. Yenidən cəhd edin.' }; }
+    for (const [cid, c] of Object.entries(charges)) {
+      if (c.posted) continue;
+      upd['customerCharges/' + cid] = { ...c, posted: null };
+      upd[`customers/${c.customerId}/balance`] = firebase.database.ServerValue.increment(c.amount);
+    }
+    try { await db.ref().update(upd); }
+    catch (e) { release(); return { ok: false, msg: 'Masa bağlanmadı (bağlantı və ya icazə xətası). Heç nə dəyişməyib, yenidən cəhd edin.' }; }
+
+    checkReferralBonusOnClose(t.loyaltyCustomerId, archiveData.total);
+    addLog('table_close', closeMsg, { tableId, sessionId, staffId: me.id });
+    return { ok: true };
   }
 }
