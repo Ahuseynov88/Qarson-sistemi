@@ -14,6 +14,8 @@ import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, rend
 import { renderNotifSounds } from './notifSounds.js';
 import { renderPrinters, openPrinterModal, closePrinterModal, savePrinter, deletePrinter, testPrinter, renderReceiptTemplateSettings, saveReceiptTemplate, saveKitchenTemplate, uploadReceiptLogo, removeReceiptLogo, _toggleReceiptFields } from './printer-settings.js';
 import { api, apiOn } from './yuza-api.js';
+import { needShift, shiftNow, renderShiftsReport } from './yuza-shift.js';
+import { modal as yzModal } from './yuza-inv-ui.js';
 export function renderPermissionCheckboxes(existingPerms = []) {
   return ALL_PERMISSIONS.map(group => `
     <div style="margin-bottom:16px;">
@@ -224,12 +226,93 @@ export function setReportView(view) {
   renderReports();
 }
 
+/* ═══ Mərhələ 2d: hesabat məlumatı seçilmiş aralığa görə BAZADAN oxunur (200/500 limiti yoxdur) ═══
+   • closedOrders — bağlanma vaxtına görə (aralıq ± 3 gün, sonra sifariş vaxtına görə süzülür)
+   • payments — eyni aralıqda, sessiyaya görə indekslənir
+   • logs — aralıq üzrə (ləğvetmələr)
+   Canlı dinləyicinin son qeydləri üstünə əlavə olunur ki, yeni bağlanan masa dərhal görünsün. */
+const REP_MARGIN = 3 * 86400000;
+const REP = { lo: null, hi: null, closed: new Map(), logs: new Map(), loading: null, loadKey: '', err: null };
+const PAYIDX = new Map();   // sessiya açarı → Map(ödəniş id → ödəniş)
+let _lastPayArr = null;
+const payKey = (x) => x?.sessionId || (x?.deliveryId ? 'dlv:' + x.deliveryId : null);
+function indexPays(arr) {
+  (arr || []).forEach(p => {
+    const k = payKey(p); if (!k || !p.id) return;
+    let m = PAYIDX.get(k); if (!m) { m = new Map(); PAYIDX.set(k, m); }
+    m.set(p.id, p);
+  });
+}
+function syncLivePays() { if (state.payments !== _lastPayArr) { _lastPayArr = state.payments; indexPays(state.payments); } }
+function rangeMs(df, tf, dt, tt) {
+  let lo = 0, hi = serverNow() + 86400000;
+  if (df) { const b = new Date(df); if (tf) { const [h, m] = tf.split(':'); b.setHours(+h, +m, 0, 0); } else b.setHours(0, 0, 0, 0); lo = b.getTime(); }
+  if (dt) { const b = new Date(dt); if (tt) { const [h, m] = tt.split(':'); b.setHours(+h, +m, 59, 999); } else b.setHours(23, 59, 59, 999); hi = b.getTime(); }
+  return { lo, hi };
+}
+function reportBounds() {
+  return rangeMs(document.getElementById('repDateFrom')?.value || '', document.getElementById('repTimeFrom')?.value || '',
+    document.getElementById('repDateTo')?.value || '', document.getElementById('repTimeTo')?.value || '');
+}
+const repCovers = (lo, hi) => REP.lo !== null && lo >= REP.lo && hi <= REP.hi;
+async function ensureReport(lo, hi) {
+  if (repCovers(lo, hi)) return;
+  const key = lo + ':' + hi;
+  if (REP.loading && REP.loadKey === key) return REP.loading;
+  REP.loadKey = key;
+  REP.loading = (async () => {
+    const qlo = lo - REP_MARGIN, qhi = hi + REP_MARGIN;
+    const [c, p, l] = await Promise.all([
+      R.closedOrders.orderByChild('closedAt').startAt(qlo).endAt(qhi).once('value'),
+      R.payments.orderByChild('createdAt').startAt(qlo).endAt(qhi).once('value'),
+      R.logs.orderByChild('timestamp').startAt(lo).endAt(hi).once('value')
+    ]);
+    REP.closed = new Map(Object.entries(c.val() || {}).map(([id, v]) => [id, { id, ...v }]));
+    REP.logs = new Map(Object.entries(l.val() || {}).map(([id, v]) => [id, { id, ...v }]));
+    indexPays(Object.entries(p.val() || {}).map(([id, v]) => ({ id, ...v })));
+    REP.lo = lo; REP.hi = hi; REP.err = null;
+  })();
+  try { await REP.loading; } catch (e) { REP.err = e; throw e; } finally { if (REP.loadKey === key) REP.loading = null; }
+}
+// Aralıqdakı bütün bağlanmış masalar (canlı yenilikləri ilə birlikdə)
+function reportPool() {
+  if (REP.lo === null) return (state.closedOrders || []);
+  (state.closedOrders || []).forEach(o => { const t = o.closedAt || 0; if (t >= REP.lo - REP_MARGIN && t <= REP.hi + REP_MARGIN) REP.closed.set(o.id, o); });
+  return [...REP.closed.values()];
+}
+function reportLogs() {
+  if (REP.lo === null) return (state.logs || []);
+  (state.logs || []).forEach(l => { if ((l.timestamp || 0) >= REP.lo && (l.timestamp || 0) <= REP.hi) REP.logs.set(l.id, l); });
+  return [...REP.logs.values()].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+}
+// "Bağlanan masalar" bölməsi üçün ayrıca keş (tarix aralığı seçiləndə)
+const CO = { lo: null, hi: null, map: new Map(), loading: null, key: '' };
+async function ensureClosedList(lo, hi) {
+  const key = lo + ':' + hi;
+  if (CO.loading && CO.key === key) return CO.loading;
+  CO.key = key;
+  CO.loading = (async () => {
+    const [c, p] = await Promise.all([
+      R.closedOrders.orderByChild('closedAt').startAt(lo).endAt(hi).once('value'),
+      R.payments.orderByChild('createdAt').startAt(lo - REP_MARGIN).endAt(hi + REP_MARGIN).once('value')
+    ]);
+    CO.map = new Map(Object.entries(c.val() || {}).map(([id, v]) => [id, { id, ...v }]));
+    indexPays(Object.entries(p.val() || {}).map(([id, v]) => ({ id, ...v })));
+    CO.lo = lo; CO.hi = hi;
+  })();
+  try { await CO.loading; } finally { if (CO.key === key) CO.loading = null; }
+}
+function closedById(id) {
+  return (state.closedOrders || []).find(x => x.id === id) || CO.map.get(id) || REP.closed.get(id) || null;
+}
+
 function getReportFilteredOrders() {
   const dateFrom = document.getElementById('repDateFrom')?.value || '';
   const dateTo = document.getElementById('repDateTo')?.value || '';
   const timeFrom = document.getElementById('repTimeFrom')?.value || '';
   const timeTo = document.getElementById('repTimeTo')?.value || '';
-  return (state.closedOrders || []).filter(o => {
+  return reportPool().filter(o => {
+    if (o.void) return false;   // geri qaytarılmış (ləğv edilmiş) çek hesabata düşmür
     // Hesabatlar SİFARİŞİN VERİLDİYİ vaxta görə aparılır, masanın BAĞLANDIĞI vaxta görə
     // YOX - saat 6-da açılıb 12-də bağlanan masa "12" yox "6" saatına aid sayılmalıdır.
     // Köhnə (bu sahə olmayan) qeydlər üçün closedAt-a geri dönür.
@@ -282,6 +365,18 @@ export function renderReports() {
   if (view === 'credit') { renderReportCreditView(el); return; }
   if (view === 'stock') { renderReportStockView(el); return; }
   if (view === 'suppliers') { renderReportSuppliersView(el); return; }
+  const { lo, hi } = reportBounds();
+  if (view === 'shifts') { const se = document.getElementById('reportRangeSummary'); if (se) se.textContent = ''; renderShiftsReport(el, lo, hi); return; }
+
+  // Mərhələ 2d: aralığın məlumatı hələ yüklənməyibsə — bazadan oxunur, sonra hesabat çəkilir
+  const loadLo = view === 'compare' ? lo - Math.max(0, hi - lo) : lo;
+  if (!repCovers(loadLo, hi)) {
+    el.innerHTML = '<p class="report-empty">Seçilmiş aralığın məlumatı yüklənir…</p>';
+    ensureReport(loadLo, hi).then(() => renderReports())
+      .catch(e => { el.innerHTML = `<p class="report-empty">Məlumat oxunmadı: ${esc(e?.message || 'bağlantı xətası')}. Yenidən cəhd edin.</p>`; });
+    return;
+  }
+  syncLivePays();
 
   const orders = getReportFilteredOrders();
   const summaryEl = document.getElementById('reportRangeSummary');
@@ -553,7 +648,7 @@ function renderReportItemsView(orders, el) {
 
   // Ləğv olunmuş mallar - "logs"dan (order_cancel tipli), mala görə cəmlənir
   const cancelledByItem = {};
-  (state.logs||[]).filter(l => l.type === 'order_cancel').forEach(l => {
+  reportLogs().filter(l => l.type === 'order_cancel').forEach(l => {
     const name = l.details?.itemName || 'Naməlum';
     if (!cancelledByItem[name]) cancelledByItem[name] = { qty: 0, amount: 0 };
     cancelledByItem[name].qty += l.details?.qty || 0;
@@ -776,7 +871,8 @@ function renderReportCompareView(orders, el) {
   const prevTo = new Date(from.getTime() - 1);
   const prevFrom = new Date(from.getTime() - durationMs);
 
-  const prevOrders = (state.closedOrders||[]).filter(o => {
+  const prevOrders = reportPool().filter(o => {
+    if (o.void) return false;
     const refTime = o.firstOrderAt || o.closedAt;
     return refTime >= prevFrom.getTime() && refTime <= prevTo.getTime();
   });
@@ -809,7 +905,7 @@ function renderReportCancellationsView(el) {
   const dateTo = document.getElementById('repDateTo')?.value || '';
   const timeFrom = document.getElementById('repTimeFrom')?.value || '';
   const timeTo = document.getElementById('repTimeTo')?.value || '';
-  let cancellations = (state.logs || []).filter(l => l.type === 'order_cancel');
+  let cancellations = reportLogs().filter(l => l.type === 'order_cancel');
   if (dateFrom) {
     const b = new Date(dateFrom); if (timeFrom) { const [h,m]=timeFrom.split(':'); b.setHours(+h,+m,0,0);} else b.setHours(0,0,0,0);
     cancellations = cancellations.filter(l => l.timestamp >= b.getTime());
@@ -908,7 +1004,7 @@ function renderReportCreditView(el) {
   const totalDebt = debtors.reduce((s,c) => s+(c.balance||0), 0);
 
   const rows = debtors.map(c => {
-    const charges = (state.customerCharges||[]).filter(ch => ch.customerId === c.id && ch.type !== 'payment').sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    const charges = (state.customerCharges||[]).filter(ch => ch.customerId === c.id && ch.type !== 'payment' && ch.type !== 'reversal').sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
     const oldestUnpaid = charges.find(ch => ((ch.amount||0)-(ch.paidAmount||0)) > 0.01);
     const daysSince = oldestUnpaid ? Math.floor((Date.now()-(oldestUnpaid.createdAt||Date.now()))/86400000) : 0;
     return { name: c.name, phone: c.phone||'—', balance: c.balance||0, daysSince };
@@ -2102,6 +2198,8 @@ export const LOG_TYPE_INFO = {
   table_close:           { label: 'MASA BAĞLANIŞI',       color: '#2c5f8a', group: 'table_ops' },
   table:                 { label: 'MASA',                 color: '#3498db', group: 'table_ops' },
   table_transfer:        { label: 'MASA/MAL KÖÇÜRMƏ',     color: '#16a085', group: 'table_ops' },
+  table_restore:         { label: 'MASA GERİ QAYTARILDI', color: '#e67e22', group: 'table_ops' },
+  shift:                 { label: 'KASSA NÖVBƏSİ',        color: '#27ae60', group: 'finance' },
   order_send:            { label: 'SİFARİŞ GÖNDƏRMƏ',     color: '#f39c12', group: 'order_ops' },
   order_cancel:          { label: 'SİFARİŞ LƏĞVİ',        color: '#e74c3c', group: 'order_ops' },
   discount:              { label: 'ENDİRİM/İKRAM',        color: '#9b59b6', group: 'finance' },
@@ -2256,7 +2354,7 @@ export function generateDailyReport() {
     new Promise(res => db.ref('closedOrders').orderByChild('closedDate').equalTo(today).once('value', snap => res(snap.val()||{})))
   ]).then(([paymentsData, closedData]) => {
     const payments = Object.values(paymentsData);
-    const closed = Object.values(closedData);
+    const closed = Object.values(closedData).filter(c => !c.void);   // geri qaytarılmış çeklər sayılmır
 
     const typeNames = {cash:'<svg class="icon"><use href="#i-cash"></use></svg> Nağd', pos:'<svg class="icon"><use href="#i-card"></use></svg> POS', credit:'<svg class="icon"><use href="#i-clipboard"></use></svg> Nisyə', split:'<svg class="icon"><use href="#i-scissors"></use></svg> Bölünmüş'};
     const byType = {};
@@ -2417,6 +2515,16 @@ export function openCustomerHistoryModal(customerId) {
     el.innerHTML = '<p style="color:var(--text3);padding:16px 0;text-align:center;">Hələ heç bir əməliyyat qeydə alınmayıb.</p>';
   } else {
     el.innerHTML = entries.map(ch => {
+      if (ch.type === 'reversal') {
+        return `<div class="audit-timeline-item">
+          <div class="audit-timeline-text">
+            <strong style="color:var(--orange);">Nisyə silindi (masa geri qaytarıldı) — ${(ch.amount||0).toFixed(2)} ₼</strong><br>
+            <span style="color:var(--text2);font-size:12px;">${esc(ch.tableName||'')}${ch.reason ? ' · ' + esc(ch.reason) : ''}</span><br>
+            <span style="color:var(--text3);font-size:11px;">${esc(ch.staffName||'')}</span>
+          </div>
+          <div class="audit-timeline-time">${esc(ch.time||'')} — ${esc(ch.date||'')}</div>
+        </div>`;
+      }
       if (ch.type === 'payment') {
         const typeLabel = ch.paymentType === 'cash' ? 'Nağd' : ch.paymentType === 'pos' ? 'POS'
           : (state.paymentMethods||[]).find(pm => pm.id === ch.paymentType)?.name || ch.paymentType || 'Nağd';
@@ -2476,7 +2584,7 @@ export function openCustomerPaymentModal(customerId) {
   // Bu müştəriyə aid, hələ TAM ödənilməmiş nisyə qeydlərini (malları) göstərir - admin
   // konkret birini (məs. yalnız "Tikə Kabab") seçib ONU ödəyə bilər, digərləri qalar.
   const unpaidCharges = (state.customerCharges||[])
-    .filter(ch => ch.customerId === customerId && ch.type !== 'payment' && (((ch.amount||0) - (ch.paidAmount||0)) > 0.01))
+    .filter(ch => ch.customerId === customerId && ch.type !== 'payment' && ch.type !== 'reversal' && (((ch.amount||0) - (ch.paidAmount||0)) > 0.01))
     .sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
 
   const listEl = document.getElementById('customerPaymentChargesList');
@@ -2532,6 +2640,8 @@ export function submitCustomerPayment() {
 
   if (amount <= 0) { errEl.textContent = 'Məbləğ 0-dan böyük olmalıdır.'; return; }
   if (amount > balance) { errEl.textContent = `Ödəniş cari borcdan (${balance.toFixed(2)} ₼) çox ola bilməz.`; return; }
+  const shift = needShift();   // Mərhələ 2c: nisyə ödənişi də kassaya düşür — açıq növbə lazımdır
+  if (!shift) { errEl.textContent = 'Kassa növbəsi açıq deyil.'; return; }
 
   // Ödənişi konkret nisyə qeydlərinə bölüşdürür: ƏVVƏLCƏ seçilmiş qeydlərə (tam
   // qalıqları qədər), sonra QALAN məbləği (əgər varsa, istifadəçi seçilən cəmdən çox
@@ -2539,7 +2649,7 @@ export function submitCustomerPayment() {
   // beləliklə "yalnız kababın pulunu ödə, qalanı qalsın" TAM işləyir, eyni zamanda
   // sərbəst/ümumi məbləğ daxil etmək imkanı da itmir.
   const allUnpaidSorted = (state.customerCharges||[])
-    .filter(ch => ch.customerId === customerId && ch.type !== 'payment' && (((ch.amount||0)-(ch.paidAmount||0)) > 0.01))
+    .filter(ch => ch.customerId === customerId && ch.type !== 'payment' && ch.type !== 'reversal' && (((ch.amount||0)-(ch.paidAmount||0)) > 0.01))
     .sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
 
   const orderedIds = [..._selectedChargeIds, ...allUnpaidSorted.map(ch=>ch.id).filter(id => !_selectedChargeIds.includes(id))];
@@ -2554,12 +2664,10 @@ export function submitCustomerPayment() {
     chargeUpdates[chargeId] = Math.round(((ch.paidAmount||0) + applyAmount)*100)/100;
     remainingToAllocate = Math.round((remainingToAllocate - applyAmount)*100)/100;
   });
-  Object.entries(chargeUpdates).forEach(([chargeId, newPaidAmount]) => {
-    db.ref('customerCharges/'+chargeId+'/paidAmount').set(newPaidAmount);
-  });
-
-  // Borcu ödəniş məbləği qədər azaldır (mənfi olmasın deyə əlavə təhlükəsizlik yoxlaması)
-  R.customers.child(customerId).child('balance').transaction(cur => Math.max(0, Math.round(((cur||0) - amount)*100)/100));
+  // Mərhələ 2b: bölüşdürmə + borcun azalması + ödəniş qeydi BİR yazı ilə (yarımçıq qalmır)
+  const upd = {};
+  Object.entries(chargeUpdates).forEach(([chargeId, newPaidAmount]) => { upd['customerCharges/' + chargeId + '/paidAmount'] = newPaidAmount; });
+  upd[`customers/${customerId}/balance`] = firebase.database.ServerValue.increment(-amount);
 
   const paidItemsDesc = _selectedChargeIds.length
     ? _selectedChargeIds.map(id => { const ch = state.customerCharges.find(x=>x.id===id); return ch ? (ch.items||[]).map(it=>it.name).join(', ') : ''; }).filter(Boolean).join(' + ')
@@ -2567,11 +2675,23 @@ export function submitCustomerPayment() {
 
   // Ödənişi HƏM ayrıca "customerCharges" jurnalına (ledger) əlavə edirik ki, tarixçədə
   // görünsün, HƏM DƏ ümumi tarixçəyə (Loglar) qeyd edirik.
-  db.ref('customerCharges').push({
+  const _ts = serverNow();
+  upd['customerCharges/' + R.customerCharges.push().key] = {
     customerId, type: 'payment', amount, paymentType, note: paidItemsDesc || null,
-    staffId: state.user?.id || null, staffName: state.user?.name || '?',
-    createdAt: Date.now(), time: new Date().toLocaleTimeString('az-AZ'), date: new Date().toLocaleDateString('az-AZ')
+    staffId: state.user?.id || null, staffName: state.user?.name || '?', shiftId: shift.id,
+    createdAt: _ts, time: new Date(_ts).toLocaleTimeString('az-AZ'), date: new Date(_ts).toLocaleDateString('az-AZ')
+  };
+  const btnEl = document.querySelector('#customerPaymentModal .btn-green');
+  if (btnEl) btnEl.disabled = true;
+  db.ref().update(upd).then(() => {
+    if (btnEl) btnEl.disabled = false;
+    _afterCustomerPayment(c, amount, paymentType, paidItemsDesc, customerId);
+  }).catch(() => {
+    if (btnEl) btnEl.disabled = false;
+    errEl.textContent = 'Ödəniş yazılmadı (bağlantı və ya icazə xətası). Heç nə dəyişməyib.';
   });
+}
+function _afterCustomerPayment(c, amount, paymentType, paidItemsDesc, customerId) {
   // Ödəniş növünün oxunaqlı adını tapır - sabit (Nağd/POS) və ya admin-in əlavə
   // etdiyi xüsusi növ ola bilər
   const paymentTypeLabel = paymentType === 'cash' ? 'Nağd' : paymentType === 'pos' ? 'POS'
@@ -2654,8 +2774,9 @@ export function deletePaymentMethod(id) {
 ═══════════════════════════════════════════ */
 // Bağlanmış masaya aid ödəniş qeydlərini tapır (sessionId ilə dəqiq uyğunlaşdırma)
 function getOrderPayments(o) {
-  if (!o.sessionId) return [];
-  return (state.payments || []).filter(p => p.sessionId === o.sessionId);
+  syncLivePays();
+  const k = payKey(o);
+  return k ? [...(PAYIDX.get(k)?.values() || [])] : [];
 }
 
 export function renderClosedOrders() {
@@ -2663,7 +2784,22 @@ export function renderClosedOrders() {
   const detailEl = document.getElementById('ctDetailPanel');
   const reportEl = document.getElementById('ctReportSummary');
   if (!listEl || !detailEl) return;
-  const all = state.closedOrders || [];
+  // Mərhələ 2d: tarix seçilibsə — həmin aralığın BÜTÜN bağlanmış masaları bazadan oxunur; seçilməyibsə son 200
+  const _cdf = document.getElementById('ctDateFrom')?.value || '', _cdt = document.getElementById('ctDateTo')?.value || '';
+  let all;
+  if (_cdf || _cdt) {
+    const { lo, hi } = rangeMs(_cdf, document.getElementById('ctTimeFrom')?.value || '', _cdt, document.getElementById('ctTimeTo')?.value || '');
+    if (!(CO.lo !== null && lo >= CO.lo && hi <= CO.hi)) {
+      listEl.innerHTML = '<p class="ct-list-empty">Seçilmiş aralıq yüklənir…</p>';
+      ensureClosedList(lo, hi).then(() => renderClosedOrders())
+        .catch(e => { listEl.innerHTML = `<p class="ct-list-empty">Oxunmadı: ${esc(e?.message || 'bağlantı xətası')}</p>`; });
+      return;
+    }
+    (state.closedOrders || []).forEach(o => { if ((o.closedAt || 0) >= CO.lo && (o.closedAt || 0) <= CO.hi) CO.map.set(o.id, o); });
+    all = [...CO.map.values()];
+  } else {
+    all = state.closedOrders || [];
+  }
 
   // Filtr seçimlərini bir dəfə doldur (seçim itməsin deyə)
   const staffSel = document.getElementById('ctStaffFilter');
@@ -2745,7 +2881,7 @@ export function renderClosedOrders() {
     // Canlı siyahıdan tapmağa çalışır, tapılmasa (növ silinibsə) "Silinmiş növ" yazır -
     // heç vaxt xam Firebase ID-si göstərilmir.
     const resolveMethodName = (id) => id==='cash'?'Nağd':id==='pos'?'POS':((state.paymentMethods||[]).find(m=>m.id===id)?.name || 'Silinmiş növ');
-    filtered.forEach(o => {
+    filtered.filter(o => !o.void).forEach(o => {
       getOrderPayments(o).forEach(p => {
         // Bölünmüş ödəniş öz komponentlərinə (Nağd/POS/...) ayrılaraq hesabata yazılır,
         // "Bölünmüş" adı altında tək məbləğ kimi yox. Ödənişin öz üzərində "dondurulmuş"
@@ -2763,16 +2899,17 @@ export function renderClosedOrders() {
     });
     // Ödəniş növü filtrlənibsə, yekun məbləğ MASALARIN TAM cəmi yox, YALNIZ o növün payı olur
     // (məs. "Nağd" filtrində, kart+nağd bölünmüş ödənişi olan masanın yalnız nağd hissəsi sayılır)
+    const liveOnes = filtered.filter(o => !o.void);
     const totalRevenue = payTypeFilter
       ? (typeBreakdown[resolveMethodName(payTypeFilter)] || 0)
-      : filtered.reduce((s,o)=>s+(o.total||0),0);
+      : liveOnes.reduce((s,o)=>s+(o.total||0),0);
     const breakdownEntries = Object.entries(typeBreakdown)
       .filter(([label]) => !payTypeFilter || label === resolveMethodName(payTypeFilter));
     reportEl.innerHTML = `<div class="ct-report">
       <div class="ct-report__stats">
-        <div><div class="ct-report__stat-label">Bağlanan masa</div><div class="ct-report__stat-value">${filtered.length}</div></div>
+        <div><div class="ct-report__stat-label">Bağlanan masa</div><div class="ct-report__stat-value">${liveOnes.length}${filtered.length > liveOnes.length ? ` <small style="font-size:12px;color:var(--text3);">(+${filtered.length - liveOnes.length} geri qaytarılıb)</small>` : ''}</div></div>
         <div><div class="ct-report__stat-label">${payTypeFilter ? esc(resolveMethodName(payTypeFilter)) + ' ilə ödənilmiş məbləğ' : 'Ümumi məbləğ'}</div><div class="ct-report__stat-value" style="color:var(--green);">${totalRevenue.toFixed(2)} ₼</div></div>
-        <div><div class="ct-report__stat-label">Orta çek</div><div class="ct-report__stat-value">${(filtered.length?totalRevenue/filtered.length:0).toFixed(2)} ₼</div></div>
+        <div><div class="ct-report__stat-label">Orta çek</div><div class="ct-report__stat-value">${(liveOnes.length?totalRevenue/liveOnes.length:0).toFixed(2)} ₼</div></div>
       </div>
       ${breakdownEntries.length ? `<div class="ct-report__breakdown">
         ${breakdownEntries.map(([label,amount]) => `<div class="ct-report__type-chip"><b>${esc(label)}</b> ${amount.toFixed(2)} ₼</div>`).join('')}
@@ -2798,7 +2935,8 @@ export function renderClosedOrders() {
     return;
   }
 
-  listEl.innerHTML = filtered.slice(0,150).map(o => `
+  const _note = (!_cdf && !_cdt) ? `<p class="ct-list-empty" style="grid-column:1/-1;padding:4px 0;">Son ${all.length} bağlanmış masa göstərilir. Daha köhnələri üçün tarix aralığı seçin.</p>` : '';
+  listEl.innerHTML = _note + filtered.map(o => `
     <div class="tile-card" onclick="selectClosedOrder('${o.id}')" style="position:relative;">
       <label style="position:absolute;top:8px;left:8px;z-index:1;" onclick="event.stopPropagation()">
         <input type="checkbox" onchange="toggleClosedOrderSelect('${o.id}')" ${state._selectedClosedOrderIds.includes(o.id)?'checked':''} style="width:17px;height:17px;cursor:pointer;">
@@ -2807,7 +2945,7 @@ export function renderClosedOrders() {
       <div class="tile-card__name">${esc(o.tableName)}</div>
       <div class="tile-card__meta">${(o.total||0).toFixed(2)} ₼</div>
       <div class="tile-card__meta">${esc(o.closedDate||'')}</div>
-      ${o.restoreCount ? `<span class="status-badge badge-orange tile-card__badge" title="${o.restoreCount} dəfə bərpa edilib">${o.restoreCount}× bərpa</span>` : ''}
+      ${o.void ? `<span class="status-badge badge-red tile-card__badge" title="Geri qaytarılıb">Geri qaytarılıb</span>` : (o.restoreCount ? `<span class="status-badge badge-orange tile-card__badge" title="${o.restoreCount} dəfə bərpa edilib">${o.restoreCount}× bərpa</span>` : '')}
     </div>
   `).join('');
 
@@ -2851,7 +2989,7 @@ export function selectClosedOrder(id) {
   state._selectedClosedOrderId = id;
   const overlay = document.getElementById('ctDetailPanel');
   if (!id) { overlay?.classList.remove('open'); _toggleSectionBackBtn(false); return; }
-  const o = (state.closedOrders||[]).find(x => x.id === id);
+  const o = closedById(id);
   if (!o) { overlay?.classList.remove('open'); _toggleSectionBackBtn(false); return; }
   renderClosedOrderDetail(o);
   _toggleSectionBackBtn(true);
@@ -2861,7 +2999,7 @@ export function selectClosedOrder(id) {
 function renderClosedOrderDetail(o) {
   const detailEl = document.getElementById('ctDetailBody');
   if (!detailEl || !o) return;
-  const isAdmin = state.user?.role === 'admin';
+  const canRestore = hasPermission('table.restore') && !o.void && !o.deliveryId;
   const sessionLog = o.sessionLog || [];
   const firstEntry = sessionLog[0];
   const payments = getOrderPayments(o);
@@ -2873,10 +3011,10 @@ function renderClosedOrderDetail(o) {
     </div>
   `).join('') || '<p style="color:var(--text3);font-size:13px;">Mal qeydi yoxdur.</p>';
 
-  const paymentsHtml = payments.length ? payments.map(p => `
+  const paymentsHtml = payments.length ? payments.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(p => `
     <div class="ct-detail-item-row">
-      <span><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-card"></use></svg> ${esc(p.typeLabel||p.type)} — ${esc(p.staffName||'')}${p.splitLabel ? `<br><small style="color:var(--text3);">${esc(p.splitLabel)}</small>` : ''}</span>
-      <span style="font-weight:600;color:var(--green);">${(p.thisPay||0).toFixed(2)} ₼</span>
+      <span><svg class="icon" style="width:.85em;height:.85em;"><use href="#i-card"></use></svg> ${esc(p.typeLabel||p.type)} — ${esc(p.staffName||'')} <small style="color:var(--text3);">${esc(p.date||'')} ${esc(p.time||'')}</small>${p.splitLabel ? `<br><small style="color:var(--text3);">${esc(p.splitLabel)}</small>` : ''}</span>
+      <span style="font-weight:600;color:${(p.thisPay||0) < 0 ? 'var(--red)' : 'var(--green)'};">${(p.thisPay||0).toFixed(2)} ₼</span>
     </div>
   `).join('') : '<p style="color:var(--text3);font-size:13px;">Ödəniş qeydi tapılmadı (köhnə sessiya ola bilər).</p>';
 
@@ -2892,6 +3030,10 @@ function renderClosedOrderDetail(o) {
       <span><svg class="icon"><use href="#i-clipboard"></use></svg> ${esc(o.tableName)} ${o.restoreCount ? `<span style="font-size:12px;color:var(--orange);font-weight:700;" title="${o.restoreCount} dəfə bərpa edilib">(${o.restoreCount}× bərpa)</span>` : ''}</span>
       <span style="font-size:22px;font-weight:800;color:var(--green);">${(o.total||0).toFixed(2)} ₼</span>
     </div>
+    ${o.void ? `<div style="background:rgba(220,53,69,.08);border:1px solid var(--red);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;">
+      <b style="color:var(--red);">Geri qaytarılıb</b> — ${esc(o.void.byName || '')}, ${esc(new Date(o.void.at || 0).toLocaleString('az-AZ'))}<br>
+      Səbəb: ${esc(o.void.reason || '—')}${o.void.newTableName ? `<br>Yeni masa: ${esc(o.void.newTableName)}` : ''}<br>
+      <small style="color:var(--text3);">Bu çek hesabatlara daxil edilmir. Ödənişləri geri qaytarılıb.</small></div>` : ''}
     <div class="ct-detail-info-grid">
       <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Açılış</div><div class="ct-detail-info-block__value">${esc(firstEntry?`${firstEntry.date} ${firstEntry.time}`:'—')}</div></div>
       <div class="ct-detail-info-block"><div class="ct-detail-info-block__label">Bağlanış</div><div class="ct-detail-info-block__value">${esc(o.closedDate||'')} ${esc(o.closedTime||'')}</div></div>
@@ -2905,8 +3047,8 @@ function renderClosedOrderDetail(o) {
     <div class="ct-detail-section-title"><svg class="icon" style="width:.9em;height:.9em;"><use href="#i-clipboard"></use></svg> Sessiya Tarixçəsi</div>
     <div class="audit-timeline">${historyHtml}</div>
     <div class="ct-detail-actions" style="flex-direction:column;align-items:stretch;">
-      ${isAdmin ? `<button class="btn btn-blue" style="padding:11px;" onclick="restoreClosedOrder('${o.id}')"><svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et</button>` : ''}
-      ${isAdmin ? `<small style="color:var(--text3);text-align:center;margin-top:6px;">"${esc((o.tableName||'').replace(/\s*\*+$/,''))} ${'*'.repeat((o.restoreCount||0)+1)}" adı ilə müvəqqəti masa yaradılacaq, sabit masaya toxunulmayacaq</small>` : ''}
+      ${canRestore ? `<button class="btn btn-blue" style="padding:11px;" onclick="restoreClosedOrder('${jsId(o.id)}')"><svg class="icon"><use href="#i-refresh"></use></svg> Masanı geri qaytar</button>` : ''}
+      ${canRestore ? `<small style="color:var(--text3);text-align:center;margin-top:6px;">"${esc((o.tableName||'').replace(/\s*\*+$/,''))} ${'*'.repeat((o.restoreCount||0)+1)}" adı ilə masa yenidən açılacaq, ödənişlər kassadan geri çıxacaq. Sabit masaya toxunulmur.</small>` : ''}
     </div>
   `;
 }
@@ -3562,58 +3704,118 @@ export function savePurchase() {
 
 
 
+/* ═══ Mərhələ 2b: "Masanı geri qaytar" (storno əvəzi) ═══
+   • Köhnə çek SİLİNMİR — üzərinə "void" (kim, nə vaxt, səbəb) yazılır və hesabatlardan çıxır.
+   • Çekin bütün ödənişləri CARİ növbədə mənfi yazı ilə kassadan geri çıxır.
+   • Nisyəsi müştərinin borcundan silinir (müştəri o nisyədən nəsə ödəyibsə — geri qaytarmaq olmur).
+   • Mallar "*" işarəli yeni masaya keçir, ödənilməmiş kimi. Masa dəyişdirilib yenidən ödənilir və bağlanır.
+   • Anbar: mallar artıq anbardan silinib; masada mal ləğv edilsə, anbar adi qaydada geri qayıdır.
+   Hamısı BİR yazı ilə olur — ya tam, ya heç nə. */
 export function restoreClosedOrder(id) {
-  if (state.user?.role !== 'admin') { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Yalnız admin bərpa edə bilər'); return; }
-  const o = state.closedOrders.find(x=>x.id===id);
+  if (!hasPermission('table.restore')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Masanı geri qaytarmaq icazəniz yoxdur'); return; }
+  const o = closedById(id);
   if (!o) return;
+  if (o.void) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu çek artıq geri qaytarılıb'); return; }
+  if (o.deliveryId) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Paket sifarişi bu yolla geri qaytarılmır'); return; }
+  const shift = needShift();
+  if (!shift) return;
 
-  // Masa adında əvvəldən "*" varsa təmizləyib əsl adı tapırıq, sonra YENİ bərpa sayına görə
-  // düzgün sayda "*" əlavə edirik (məs. 2-ci dəfə bərpa = **). Sabit (qeydiyyatlı) masaya
-  // TOXUNULMUR - o boş olsa belə - əvəzinə həmişə müvəqqəti YENİ masa yaradılır.
   const baseName = (o.tableName || '').replace(/\s*\*+$/, '');
   const newRestoreCount = (o.restoreCount || 0) + 1;
   const newName = `${baseName} ${'*'.repeat(newRestoreCount)}`;
+  const chargeSum = money2(Object.values(o.charges || {}).reduce((sum, c) => sum + (Number(c.amount) || 0), 0));
 
-  confirmAction(`"${esc(o.tableName)}" masası "${esc(newName)}" adı ilə müvəqqəti masa kimi bərpa edilsin? Sabit "${esc(baseName)}" masasına toxunulmayacaq.`, async () => {
-    /* Mərhələ 2a: bərpa BİR yazı ilə olur. Bu sessiyada alınmış ödənişlər yeni masaya keçir —
-       bərpa edilən masada artıq ödənilmiş məbləğ yenidən tələb olunmur və ikiqat hesablanmır. */
-    const now = serverNow();
-    const newTableId = R.tables.push().key;
-    const sessionId = `${newTableId}_${now}`;
-    let pays = {};
-    try {
-      if (o.sessionId) {
-        const snap = await R.payments.orderByChild('sessionId').equalTo(o.sessionId).once('value');
-        pays = snap.val() || {};
-      }
-    } catch (e) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ödənişlər oxunmadı — bərpa edilmədi'); return; }
-    const paySum = money2(Object.values(pays).reduce((sum, x) => sum + (Number(x.thisPay) || 0), 0));
-    const wholeCharges = money2(Object.values(o.charges || {}).reduce((sum, c) => sum + (Number(c.amount) || 0), 0));
-    // Arxivdə ödənilmiş məbləğ varsa (2a-dan sonra bağlanan masalar) o götürülür, yoxdursa ödəniş jurnalından hesablanır
-    const paidAmount = money2(o.paidAmount != null ? o.paidAmount : paySum);
-    const total = o.total || 0;
-    const upd = {
-      ['tables/' + newTableId]: {
-        name: newName, capacity: 4, notes: o.notes || '', createdAt: now,
-        restoreCount: newRestoreCount, isRestoredTemp: true, category: 'Bərpa edilmiş masalar',
-        occupant: o.staffId, activatedAt: now, sessionId,
-        openedById: o.openedById || o.staffId, openedByName: o.openedByName || o.staffName
-      },
-      ['tableOrders/' + newTableId]: {
-        items: o.items || {}, total, waiterId: o.staffId,
-        paidAmount, remainingAmount: money2(Math.max(0, total - paidAmount)),
-        pays: Object.keys(pays).length ? Object.fromEntries(Object.entries(pays).map(([k, x]) => [k, { ...x, sessionId, tableId: newTableId }])) : null,
-        charges: o.charges ? Object.fromEntries(Object.entries(o.charges).map(([k, c]) => [k, { ...c, posted: true }])) : null,
-        updatedAt: now, billPrintedAt: null
-      },
-      ['closedOrders/' + id]: null
-    };
-    for (const pid of Object.keys(pays)) { upd[`payments/${pid}/sessionId`] = sessionId; upd[`payments/${pid}/tableId`] = newTableId; }
-    try { await db.ref().update(upd); }
-    catch (e) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Bərpa alınmadı (bağlantı və ya icazə xətası). Heç nə dəyişməyib.'); return; }
-    addLog('table_open', `Admin "${o.tableName}" masasını "${newName}" adı ilə bərpa etdi: ${formatItemsList(o.items||{})} (${total.toFixed(2)} ₼${paidAmount > 0 ? `, ${paidAmount.toFixed(2)} ₼ əvvəl ödənilib` : ''}${wholeCharges > 0 ? `, ${wholeCharges.toFixed(2)} ₼ nisyə` : ''})`, { tableId: newTableId, sessionId });
-    showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${newName}" olaraq bərpa edildi`);
-  }, { title: 'Masanı bərpa et', okLabel: '<svg class="icon"><use href="#i-refresh"></use></svg> Bərpa Et', okClass: 'btn-blue' });
+  yzModal({
+    title: '<svg class="icon"><use href="#i-refresh"></use></svg> Masanı geri qaytar',
+    body: `<p class="yzi-p"><b>${esc(o.tableName)}</b> · ${(o.total || 0).toFixed(2)} ₼ · bağlanıb: ${esc(o.closedDate || '')} ${esc(o.closedTime || '')}</p>
+      <ul style="margin:6px 0 10px 18px;font-size:13px;line-height:1.6;">
+        <li>Masa <b>"${esc(newName)}"</b> adı ilə yenidən açılacaq.</li>
+        <li>Bu çekin ödənişləri (${(o.paidAmount || 0).toFixed(2)} ₼) növbə №${esc(String(shift.no ?? ''))}-də <b>kassadan geri çıxacaq</b>.</li>
+        ${chargeSum > 0 ? `<li>${chargeSum.toFixed(2)} ₼ nisyə müştərinin borcundan silinəcək.</li>` : ''}
+        <li>Masa yenidən ödənilib bağlanmalıdır. Köhnə çek silinmir, "geri qaytarılıb" kimi qalır.</li>
+      </ul>
+      <label class="yzi-f"><span>Səbəb *</span><input type="text" id="yzRsReason" maxlength="200" placeholder="Məs: ödəniş növü səhv seçilib"></label>`,
+    actions: [
+      { label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' },
+      { label: 'Geri qaytar', cls: 'yzi-btn--gold', onClick: async (b) => {
+        const reason = b.querySelector('#yzRsReason').value.trim();
+        if (!reason) throw new Error('Səbəbi yazın');
+        const sh = needShift(); if (!sh) throw new Error('Kassa növbəsi açıq deyil');
+        const fresh = (await R.closedOrders.child(id).once('value')).val();
+        if (!fresh) throw new Error('Çek tapılmadı');
+        if (fresh.void) throw new Error('Bu çek artıq geri qaytarılıb');
+        const now = serverNow();
+        // Bu çekin ödənişləri (sessiyaya görə + arxivdəki siyahı)
+        const pays = {};
+        if (fresh.sessionId) Object.assign(pays, (await R.payments.orderByChild('sessionId').equalTo(fresh.sessionId).once('value')).val() || {});
+        for (const pid of Object.keys(fresh.paymentIds || {})) {
+          if (!pays[pid]) { const v = (await R.payments.child(pid).once('value')).val(); if (v) pays[pid] = v; }
+        }
+        const reversed = new Set(Object.values(pays).filter(x => x.reversalOf).map(x => x.reversalOf));
+        const originals = Object.entries(pays).filter(([pid, x]) => !x.reversalOf && (Number(x.thisPay) || 0) > 0 && !reversed.has(pid));
+        // Nisyələr: müştəri bir hissəsini ödəyibsə — geri qaytarmaq olmaz
+        const chs = [];
+        for (const [cid, c] of Object.entries(fresh.charges || {})) {
+          const cur = (await R.customerCharges.child(cid).once('value')).val();
+          if (!cur) continue;
+          if ((Number(cur.paidAmount) || 0) > 0.001) throw new Error(`"${cur.customerName || c.customerName || 'Müştəri'}" bu nisyənin bir hissəsini artıq ödəyib — masa geri qaytarıla bilməz`);
+          chs.push([cid, cur]);
+        }
+        const me = state.user || {};
+        const newTableId = R.tables.push().key;
+        const sessionId = `${newTableId}_${now}`;
+        const total = money2(fresh.total || 0);
+        const upd = {
+          ['tables/' + newTableId]: {
+            name: newName, capacity: 4, notes: fresh.notes || '', createdAt: now,
+            restoreCount: newRestoreCount, isRestoredTemp: true, category: 'Bərpa edilmiş masalar',
+            occupant: fresh.staffId || me.id || 'admin', activatedAt: now, sessionId,
+            openedById: fresh.openedById || fresh.staffId || null, openedByName: fresh.openedByName || fresh.staffName || null
+          },
+          ['tableOrders/' + newTableId]: {
+            items: fresh.items || {}, total, waiterId: fresh.staffId || me.id || 'admin',
+            paidAmount: 0, remainingAmount: total, firstOrderAt: fresh.firstOrderAt || now,
+            restoredFrom: id, updatedAt: now, billPrintedAt: null
+          },
+          ['closedOrders/' + id + '/void']: { at: now, byId: me.id || 'admin', byName: me.name || 'Rəhbər', reason, newTableId, newTableName: newName, shiftId: sh.id }
+        };
+        let refund = 0;
+        for (const [pid, x] of originals) {
+          const rk = R.payments.push().key;
+          const neg = (v) => money2(-(Number(v) || 0));
+          refund += Number(x.thisPay) || 0;
+          upd['payments/' + rk] = {
+            tableId: fresh.tableId || null, tableName: fresh.tableName || '?', sessionId: fresh.sessionId || null,
+            staffId: me.id || 'admin', staffName: me.name || 'Rəhbər',
+            type: x.type, typeLabel: 'Geri qaytarma · ' + (x.typeLabel || x.type),
+            originalAmount: x.originalAmount || 0, finalAmount: x.finalAmount || 0, thisPay: neg(x.thisPay), paidBefore: 0,
+            splitBreakdown: x.splitBreakdown ? Object.fromEntries(Object.entries(x.splitBreakdown).map(([k, v]) => [k, neg(v)])) : null,
+            splitMethodNames: x.splitMethodNames || null, splitLabel: x.splitLabel ? 'Geri: ' + x.splitLabel : null,
+            discountType: null, discountValue: 0,
+            reversalOf: pid, restoreOf: id, reason, shiftId: sh.id,
+            createdAt: now, time: new Date(now).toLocaleTimeString('az-AZ'), date: new Date(now).toLocaleDateString('az-AZ')
+          };
+        }
+        for (const [cid, c] of chs) {
+          const rk = R.customerCharges.push().key;
+          upd['customerCharges/' + rk] = {
+            type: 'reversal', customerId: c.customerId, customerName: c.customerName || '', amount: money2(c.amount),
+            reversalOf: cid, restoreOf: id, reason, tableName: fresh.tableName || '?', items: c.items || null,
+            staffId: me.id || 'admin', staffName: me.name || 'Rəhbər', shiftId: sh.id,
+            createdAt: now, time: new Date(now).toLocaleTimeString('az-AZ'), date: new Date(now).toLocaleDateString('az-AZ')
+          };
+          upd[`customerCharges/${cid}/paidAmount`] = money2(c.amount);
+          upd[`customers/${c.customerId}/balance`] = firebase.database.ServerValue.increment(-money2(c.amount));
+        }
+        try { await db.ref().update(upd); }
+        catch (e) { throw new Error('Geri qaytarma alınmadı (bağlantı və ya icazə xətası). Heç nə dəyişməyib.'); }
+        addLog('table_restore', `${me.name || 'Rəhbər'} "${fresh.tableName}" masasını "${newName}" adı ilə geri qaytardı: ${formatItemsList(fresh.items || {})} (${total.toFixed(2)} ₼). Kassadan geri: ${money2(refund).toFixed(2)} ₼${chs.length ? `, nisyə silindi: ${chs.reduce((s2, [, c]) => s2 + (Number(c.amount) || 0), 0).toFixed(2)} ₼` : ''}. Səbəb: ${reason}`,
+          { tableId: newTableId, sessionId, closedOrderId: id, shiftId: sh.id, reason });
+        if (state._selectedClosedOrderId === id) selectClosedOrder(id);
+        showToast(`<svg class="icon"><use href="#i-check"></use></svg> "${newName}" yenidən açıldı`);
+      } }
+    ]
+  });
 }
 
 window.adminTab = adminTab;
@@ -3880,7 +4082,7 @@ async function _zeroSupplierDebts() {
   if (Object.keys(up).length) await db.ref('suppliers').update(up);
 }
 const INV_DOC_NODES = ['purchases','invAttach','invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','stockMoves','stock','supplierLedger'];
-const CASH_DOC_NODES = ['invCash','cashCloses'];
+const CASH_DOC_NODES = ['invCash','cashCloses','shifts','shiftCur','shiftSeq'];
 
 const DANGER_OPS = [
   {
@@ -3924,7 +4126,7 @@ const DANGER_OPS = [
     id: 'clearCashDocs',
     icon: '💵',
     title: 'Kassa Sənədlərini Sil',
-    desc: 'Əl ilə yazılan bütün kassa mədaxil, məxaric, transfer sənədləri və gün sonu bağlanışları silinir.',
+    desc: 'Əl ilə yazılan bütün kassa mədaxil, məxaric, transfer sənədləri, gün sonu bağlanışları və kassa növbələri (X/Z) silinir.',
     nodes: CASH_DOC_NODES,
     keepLabel: 'Kassa hesabları və onların başlanğıc qalıqları saxlanılır',
     danger: 1

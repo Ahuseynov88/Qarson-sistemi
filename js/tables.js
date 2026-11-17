@@ -9,6 +9,7 @@ import { state } from './state.js';
 import { esc, showToast, addLog, tableCategoryOf, serverNow, azTime, azDate, money2 } from './utils.js';
 import { hasPermission, staffHasPermission } from './permissions.js';
 import { checkReferralBonusOnClose } from './loyalty.js';
+import { shiftNow } from './yuza-shift.js';
 
 export class TableBoard {
   /**
@@ -297,6 +298,8 @@ export class TableBoard {
       sessionId,
       sessionLog,
       restoreCount: t.restoreCount || 0,
+      restoredFrom: order?.restoredFrom || null,   // geri qaytarılmış çekdən yaranıbsa — köhnə çekin ID-si
+      shiftId: shiftNow()?.id || null,               // hansı kassa növbəsində bağlanıb
       // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX)
       firstOrderAt: (order && order.firstOrderAt) || t.activatedAt || closedAtNow,
       closedAt: closedAtNow,

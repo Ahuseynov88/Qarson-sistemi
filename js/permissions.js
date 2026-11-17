@@ -43,6 +43,8 @@ export const ALL_PERMISSIONS = [
       { key: 'bill.credit',         label: 'Nisyəyə yazmaq (tək mal)' },
       { key: 'bill.credit_batch',   label: 'Toplu nisyəyə yazmaq' },
       { key: 'bill.payment_credit', label: 'Nisyə ödənişi qəbul etmək' },
+      { key: 'shift.manage',        label: 'Kassa növbəsini açmaq / bağlamaq (X, Z)' },
+      { key: 'table.restore',       label: 'Bağlanmış masanı geri qaytarmaq' },
     ]
   },
   {
@@ -158,11 +160,11 @@ export const PERMISSION_PRESETS = {
   },
   cashier: {
     label: '<svg class="icon"><use href="#i-money"></use></svg> Kassir',
-        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','order.gift','order.batch_ops','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','cash.view','cash.create','cash.close.create']
+        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.discount','order.gift','order.batch_ops','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','shift.manage','report.daily','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','cash.view','cash.create','cash.close.create']
   },
   manager: {
     label: '<svg class="icon"><use href="#i-staff"></use></svg> Müdir',
-        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.gift','order.batch_ops','order.refund','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view']
+        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.gift','order.batch_ops','order.refund','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','shift.manage','table.restore','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view']
   }
 };
 

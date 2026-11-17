@@ -19,6 +19,7 @@ import { db, R } from './firebase-service.js';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_PRESETS } from './permissions.js';
 import { esc, showToast, addLog, makeLineKey, updateStock, computeVat } from './utils.js';
 import { modal, confirmBox } from './yuza-inv-ui.js';
+import { needShift, shiftNow } from './yuza-shift.js';
 import { printReceipt, printKitchenJobs } from './printer-service.js';
 import * as ADM from './admin.js';
 import { NOTIF_EVENTS, playNotifSound } from './notifSounds.js';
@@ -323,10 +324,17 @@ function printBill(o, copies = 1) {
 /* Sifarişi bağla (müştəriyə təhvil verildi) */
 async function completeOrder(o, pay) {
   const id = o.id;
+  // Mərhələ 2c: kassaya pul düşən bağlanış üçün açıq növbə lazımdır (kuryerdəki nağd — təhvil zamanı yazılır)
+  const willPay = !(o.type === 'delivery' && pay.type === 'cash' && pay.byCourier) && (Number(o.total) || 0) > 0;
+  const shift = willPay ? needShift() : shiftNow();
+  if (willPay && !shift) return false;
+  const prevStatus = o.status;
   const res = await DO.child(id).child('status').transaction(cur => (['ready', 'onway', 'cooking'].includes(cur) ? 'delivered' : undefined));
   if (!res.committed) { showToast(`${I('warning')} Sifariş artıq bağlanıb və ya ləğv edilib`); return false; }
   const now = Date.now(), u = me();
   const fresh = (await DO.child(id).once('value')).val() || o;
+  /* Mərhələ 2b: ödəniş + arxiv + sifarişin bağlanması BİR yazı ilə (yarımçıq qalmır) */
+  const UPD = {};
   const total = r2(fresh.total);
   const courierCash = fresh.type === 'delivery' && pay.type === 'cash' && pay.byCourier;
   const typeLabel = payLabel(pay.type);
@@ -339,21 +347,21 @@ async function completeOrder(o, pay) {
   if (pay.proof) upd.proof = pay.proof;
   if (courierCash) { upd.unsettledBy = fresh.courierId || u.id; upd.unsettledName = fresh.courierName || u.name; }
   else if (total > 0) {
-    R.payments.push({
-      tableId: 'dlv_' + id, tableName: label, sessionId: null, deliveryId: id,
+    UPD['payments/' + R.payments.push().key] = {
+      tableId: 'dlv_' + id, tableName: label, sessionId: null, deliveryId: id, shiftId: shift?.id || null,
       staffId: u.id, staffName: u.name, type: pay.type === 'prepaid' ? (fresh.prepaidMethod || 'pos') : pay.type,
       typeLabel: pay.type === 'prepaid' ? `Öncədən ödənilib (${payLabel(fresh.prepaidMethod || 'pos')})` : typeLabel,
       originalAmount: total, finalAmount: total, thisPay: total, paidBefore: 0,
       discountType: null, discountValue: 0,
       createdAt: now, time: new Date(now).toLocaleTimeString('az-AZ'), date: new Date(now).toLocaleDateString('az-AZ')
-    });
+    };
   }
   const items = { ...(fresh.items || {}) };
   if (fresh.fee > 0) items._delivery_fee = { menuItemId: '_delivery_fee', name: 'Çatdırılma haqqı', price: fresh.fee, qty: 1, note: fresh.address?.zoneName || '', extraFee: 0, vatRate: 0 };
   const hist = Object.values(fresh.history || {}).sort((a, b) => a.at - b.at)
     .map(h => ({ message: `${h.byName || ''}: ${h.text}`, time: new Date(h.at).toLocaleTimeString('az-AZ'), date: new Date(h.at).toLocaleDateString('az-AZ'), timestamp: h.at }));
-  db.ref('closedOrders').push({
-    tableId: 'dlv_' + id, tableName: label, deliveryId: id, orderType: fresh.type,
+  UPD['closedOrders/' + R.closedOrders.push().key] = {
+    tableId: 'dlv_' + id, tableName: label, deliveryId: id, orderType: fresh.type, shiftId: shift?.id || null,
     staffId: u.id, staffName: u.name,
     openedById: fresh.createdById || null, openedByName: fresh.createdByName || '?',
     orderedById: fresh.createdById || null, orderedByName: fresh.createdByName || '?', waiterSplit: null,
@@ -363,7 +371,14 @@ async function completeOrder(o, pay) {
     paymentLabel: typeLabel, sessionId: null, sessionLog: hist, restoreCount: 0,
     firstOrderAt: fresh.sentAt || fresh.createdAt || now, closedAt: now,
     closedTime: new Date(now).toLocaleTimeString('az-AZ'), closedDate: new Date(now).toLocaleDateString('az-AZ')
-  });
+  };
+  Object.entries(upd).forEach(([k, v]) => { UPD[`deliveryOrders/${id}/${k}`] = v; });
+  try { await db.ref().update(UPD); }
+  catch (e) {
+    await DO.child(id).child('status').transaction(cur => (cur === 'delivered' ? prevStatus : undefined)).catch(() => {});
+    showToast(`${I('error')} Sifariş bağlanmadı (bağlantı və ya icazə xətası). Heç nə dəyişməyib, yenidən cəhd edin.`);
+    return false;
+  }
   Object.keys(fresh.kitchenIds || {}).forEach(k => R.kitchenOrders.child(k).update({ waiterAccepted: true }));
   const pk = fresh.customer?.phoneKey;
   if (pk) {
@@ -373,7 +388,6 @@ async function completeOrder(o, pay) {
       return { ...c, name: fresh.customer?.name || c.name || '', phone: fresh.customer?.phone || c.phone || '', orders: (c.orders || 0) + 1, spent: r2((c.spent || 0) + total), lastAt: now, lastItems };
     });
   }
-  await DO.child(id).update(upd);
   histPush(id, fresh.type === 'delivery' ? `Çatdırıldı · ${typeLabel}${courierCash ? ' (pul kuryerdədir)' : ''}` : `Müştəriyə təhvil verildi · ${typeLabel}`);
   addLog('delivery', `${u.name} "${label}" ${fresh.type === 'delivery' ? 'çatdırıldı' : 'təhvil verildi'} (${money(total)}, ${typeLabel})`, { deliveryId: id });
   return true;
@@ -1459,13 +1473,15 @@ async function openSettlement(cid) {
         const note = b.querySelector('#yzpSetN').value.trim();
         const diff = r2(act - exp);
         if (Math.abs(diff) >= 0.01 && !note) throw new Error('Fərq var — qeyd yazın');
+        const shift = needShift();   // Mərhələ 2c: nağd kassaya düşür — açıq növbə lazımdır
+        if (!shift) throw new Error('Kassa növbəsi açıq deyil');
         const u = me(), now = Date.now();
         const sref = DS.push();
         for (const o of c.list) {
           const res = await DO.child(o.id).child('unsettledBy').transaction(cur => (cur === c.id ? null : undefined));
           if (!res.committed) continue;
           R.payments.push({
-            tableId: 'dlv_' + o.id, tableName: `Paket ${o.code} · ${c.name}`, sessionId: null, deliveryId: o.id, settlementId: sref.key,
+            tableId: 'dlv_' + o.id, tableName: `Paket ${o.code} · ${c.name}`, sessionId: null, deliveryId: o.id, settlementId: sref.key, shiftId: shift.id,
             staffId: c.id, staffName: c.name, type: 'cash', typeLabel: 'Nağd (kuryer)',
             originalAmount: o.total, finalAmount: o.total, thisPay: o.total, paidBefore: 0, discountType: null, discountValue: 0,
             createdAt: now, time: new Date(now).toLocaleTimeString('az-AZ'), date: new Date(now).toLocaleDateString('az-AZ')

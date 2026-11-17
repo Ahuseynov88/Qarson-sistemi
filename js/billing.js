@@ -8,6 +8,7 @@ import { R, db } from './firebase-service.js';
 import { state } from './state.js';
 import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals, serverNow, azTime, azDate, money2 } from './utils.js';
 import { hasPermission } from './permissions.js';
+import { needShift, shiftNow } from './yuza-shift.js';
 
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
 
@@ -506,7 +507,7 @@ export class ConfirmedOrder {
     const chargeId = R.customerCharges.push().key;
     const base = {
       customerId, customerName: customer.name, tableId, tableName: t?.name || '?',
-      staffId: state.user.id, staffName: state.user.name,
+      staffId: state.user.id, staffName: state.user.name, shiftId: shiftNow()?.id || null,
       createdAt: ts, time: azTime(ts), date: azDate(ts)
     };
     const remainingNow = money2(Math.max(0, (order.total || 0) - (order.paidAmount || 0)));
@@ -517,7 +518,9 @@ export class ConfirmedOrder {
       rec = null; reject = '';
       if (!current || !current.items) { reject = 'Bu masada aktiv sifariş yoxdur'; return; }
       const charges = { ...(current.charges || {}) };
-      if (selKeys.length) {
+      // Mərhələ 2b: bütün mallar seçilibsə — "bütöv hesab" kimi yazılır (masada 0 ₼-lik boş sifariş qalmır, masa adi qaydada bağlanır)
+      const coversAll = selKeys.length && Object.entries(current.items).every(([k, it]) => (selection[k] || 0) >= (it.qty || 0));
+      if (selKeys.length && !coversAll) {
         const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
         const amount = money2(targetKeys.reduce((sum, k) => { const it = items[k]; return it ? sum + (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0) : sum; }, 0));
         const chargedItems = targetKeys.filter(k => items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
@@ -727,44 +730,49 @@ export class ConfirmedOrder {
     this._showTransferStage(1);
   }
 
+  /* Mərhələ 2b: əvvəl mənbə masadan çıxarılır, YALNIZ bu uğurlu olarsa hədəfə əlavə olunur (mal ikiləşmir).
+     Mənbədə ödəniş/nisyə varsa, son malı köçürmək olmaz — ödənişlər itməsin (bütöv masanı köçürün). */
   _transferSingleItem(fromTableId, toTableId, itemKey, moveQty, moved) {
-    // Qeyd: Firebase JS SDK transaction-ları tək node üzərində işləyir; iki masa arasında
-    // tam atomik köçürmə üçün server-tərəfli Cloud Function lazımdır. Hər tərəf ayrı-ayrı
-    // transaction ilə qorunur ki, paralel yazılar bir-birini əzməsin.
-    R.tableOrders.child(fromTableId).transaction(current => {
-      if (!current || !current.items || !current.items[itemKey]) return current;
-      const items = { ...current.items };
-      const newQty = items[itemKey].qty - moveQty;
-      if (newQty <= 0) delete items[itemKey]; else items[itemKey] = { ...items[itemKey], qty: newQty };
-      if (!Object.keys(items).length) return null;
-      const _tot = computeOrderTotals(items);
-
-      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
-      const paidAmount = current.paidAmount || 0;
-      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
-    }, (error, committed) => {
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta: mənbə masa yenilənmədi'); return; }
-      if (committed) this.renderSummary(fromTableId);
-    });
-
-    // Hədəf masa hazırda boşdursa, mal köçürüldükdə həmin masa da aktivləşir (yeni sessiya başlayır)
-    const toTable = state.tables.find(x => x.id === toTableId);
-    if (toTable && !toTable.occupant) {
-      R.tables.child(toTableId).update({ occupant: state.user.id, activatedAt: Date.now(), sessionId: `${toTableId}_${Date.now()}` });
-    }
-
-    R.tableOrders.child(toTableId).transaction(current => {
-      const items = (current && current.items) ? { ...current.items } : {};
-      const key = makeLineKey(moved.menuItemId, moved.note, moved.extraFee);
-      if (items[key]) items[key] = { ...items[key], qty: items[key].qty + moveQty };
-      else items[key] = { ...moved, qty: moveQty };
-      const _tot = computeOrderTotals(items);
-
-      const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
-      const paidAmount = (current && current.paidAmount) || 0;
-      return { items, total, serviceChargeAmount, serviceChargePercent, waiterId: (current && current.waiterId) || toTable?.occupant || state.user.id, paidAmount, remainingAmount: total - paidAmount, updatedAt: Date.now() };
-    }, (error) => {
-      if (error) showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta: hədəf masa yenilənmədi');
+    return new Promise((resolve) => {
+      let reject = '';
+      R.tableOrders.child(fromTableId).transaction(current => {
+        reject = '';
+        if (!current || !current.items || !current.items[itemKey]) { reject = 'Mal artıq masada yoxdur'; return; }
+        const items = { ...current.items };
+        const newQty = items[itemKey].qty - moveQty;
+        if (newQty < 0) { reject = 'Miqdar dəyişib'; return; }
+        if (newQty === 0) delete items[itemKey]; else items[itemKey] = { ...items[itemKey], qty: newQty };
+        if (!Object.keys(items).length) {
+          if ((current.paidAmount || 0) > 0.001 || current.pays || current.charges) { reject = 'Bu masada ödəniş/nisyə var — son malı köçürmək olmaz. Bütöv masanı köçürün.'; return; }
+          return null;
+        }
+        const _tot = computeOrderTotals(items);
+        const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
+        const paidAmount = current.paidAmount || 0;
+        return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: money2(Math.max(0, total - paidAmount)) };
+      }, (error, committed) => {
+        if (error || !committed) { showToast(`<svg class="icon"><use href="#i-error"></use></svg> ${esc(moved.name)}: ${error ? 'mənbə masa yenilənmədi' : (reject || 'köçürülmədi')}`); resolve(false); return; }
+        this.renderSummary(fromTableId);
+        // Hədəf masa boşdursa, mal köçürüləndə həmin masa da aktivləşir (yeni sessiya başlayır)
+        const toTable = state.tables.find(x => x.id === toTableId);
+        const now = serverNow();
+        if (toTable && !toTable.occupant) {
+          R.tables.child(toTableId).transaction(t => (t && !t.occupant ? { ...t, occupant: state.user.id, activatedAt: now, sessionId: `${toTableId}_${now}` } : t), null, false);
+        }
+        R.tableOrders.child(toTableId).transaction(current => {
+          const items = (current && current.items) ? { ...current.items } : {};
+          const key = makeLineKey(moved.menuItemId, moved.note, moved.extraFee);
+          if (items[key]) items[key] = { ...items[key], qty: items[key].qty + moveQty };
+          else items[key] = { ...moved, qty: moveQty };
+          const _tot = computeOrderTotals(items);
+          const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
+          const paidAmount = (current && current.paidAmount) || 0;
+          return { ...(current || {}), items, total, serviceChargeAmount, serviceChargePercent, waiterId: (current && current.waiterId) || toTable?.occupant || state.user.id, paidAmount, remainingAmount: money2(Math.max(0, total - paidAmount)), updatedAt: now };
+        }, (err2) => {
+          if (err2) showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta: hədəf masa yenilənmədi');
+          resolve(!err2);
+        }, false);
+      }, false);
     });
   }
 
@@ -781,6 +789,12 @@ export class ConfirmedOrder {
     const selKeys = Object.keys(selection).filter(k => fromOrderCheck?.items?.[k]);
     if (!selKeys.length) { this.closeItemTransferModal(); return; }
 
+    // Mərhələ 2b: masada ödəniş/nisyə varsa, bütün malları mal-mal köçürmək olmaz (ödənişlər itərdi)
+    const movesAll = Object.entries(fromOrderCheck.items || {}).every(([k, it]) => (selection[k] || 0) >= (it.qty || 0));
+    if (movesAll && ((fromOrderCheck.paidAmount || 0) > 0.001 || fromOrderCheck.pays || fromOrderCheck.charges)) {
+      showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu masada ödəniş/nisyə var — bütün malları köçürmək olmaz. Bütöv masanı köçürün.');
+      return;
+    }
     const movedList = [];
     selKeys.forEach(itemKey => {
       const it = fromOrderCheck.items[itemKey];
@@ -1092,6 +1106,7 @@ export class PaymentProcessor {
     if (!order || !order.total) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu masada aktiv sifariş yoxdur'); return; }
     const remainingCheck = (order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : order.total;
     if (remainingCheck <= 0.01) { showToast('<svg class="icon"><use href="#i-check"></use></svg> Bu hesab artıq tam ödənilib'); return; }
+    if (!needShift()) return;   // Mərhələ 2c: açıq kassa növbəsi olmadan ödəniş qəbul edilmir
 
     const p = this.payment;
     p.tableId = tableId;
@@ -1210,6 +1225,8 @@ export class PaymentProcessor {
   confirm(onSettled) {
     const p = this.payment;
     if (!p.type) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Ödəniş növü seçin'); return; }
+    const shift = needShift();
+    if (!shift) return;
     const tableId = p.tableId;
     const t = state.tables.find(x => x.id === tableId);
     const remaining = p.remainingAmount > 0 ? p.remainingAmount : p.finalTotal;
@@ -1245,7 +1262,7 @@ export class PaymentProcessor {
       type: p.type, typeLabel,
       originalAmount: p.originalTotal, finalAmount: p.finalTotal, thisPay,
       paidBefore: p.paidAmount,
-      discountType: p.discountType || null, discountValue: p.discountValue || 0,
+      discountType: p.discountType || null, discountValue: p.discountValue || 0, shiftId: shift.id,
       createdAt: serverNow(), time: azTime(serverNow()), date: azDate(serverNow())
     };
     if (p.type === 'cash') { const given = parseFloat(this.els.cashGiven.value)||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }

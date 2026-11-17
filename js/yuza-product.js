@@ -92,6 +92,7 @@ function loadSales(cb) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const orders = snap.val() || {};
     Object.values(orders).forEach(o => {
+      if (o.void) return;   // geri qaytarılmış çek
       const at = o.firstOrderAt || o.closedAt || 0;
       Object.values(o.items || {}).forEach(it => {
         if (!it.menuItemId) return;

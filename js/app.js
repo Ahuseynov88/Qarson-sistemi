@@ -20,6 +20,7 @@ import { ensureDefaultEventTypes } from './banquet.js';
 import { renderPrinters, renderReceiptTemplateSettings } from './printer-settings.js';
 import { raciaStart, raciaStop } from './racia.js';
 import { api, apiOn } from './yuza-api.js';
+import { watchShift, unwatchShift } from './yuza-shift.js';
 let ADMIN_PIN = null;
 let staffApp = null;
 
@@ -355,12 +356,14 @@ function initListeners() {
     if (panelOn()) renderLogs();
   });
 
+  watchShift();   // Mərhələ 2c: açıq kassa növbəsi
   initCustomerRequestListener();
   if (state.user?.role === 'staff') initWaiterChatListener();
   raciaStart();
 }
 
 function removeListeners() {
+  unwatchShift();
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
   R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off(); R.printers.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();

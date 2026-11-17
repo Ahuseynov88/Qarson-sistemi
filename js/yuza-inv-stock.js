@@ -506,7 +506,10 @@ async function renderAnalysis(host) {
   const totalSurplus = r2(rows.reduce((s, r) => s + Math.max(0, r.lossCost), 0));
   const saleCost = r2(rows.reduce((s, r) => s + r.saleCost, 0));
   const woCost = r2(rows.reduce((s, r) => s + r.woCost, 0));
-  const revenue = r2((state.closedOrders || []).filter(o => { const t = o.firstOrderAt || o.closedAt || 0; return t >= af.from && t <= af.to; }).reduce((s, o) => s + (o.total || 0), 0));
+  // Mərhələ 2d: satış gəliri seçilmiş aralıq üçün bazadan tam oxunur (son 200 masa ilə məhdud deyil), geri qaytarılan çeklər xaric
+  let _co = {};
+  try { _co = (await db.ref('closedOrders').orderByChild('closedAt').startAt(af.from - 3 * 86400000).endAt(af.to + 3 * 86400000).once('value')).val() || {}; } catch (e) { _co = {}; }
+  const revenue = r2(Object.values(_co).filter(o => { if (o.void) return false; const t = o.firstOrderAt || o.closedAt || 0; return t >= af.from && t <= af.to; }).reduce((s, o) => s + (o.total || 0), 0));
   el.innerHTML = `
     <div class="yzi-head"><div><div class="yzi-eyebrow">NƏZARƏT</div><h1 class="yzi-h1">Sərf analizi və gizli itki</h1></div></div>
     <div class="yzi-filters">
