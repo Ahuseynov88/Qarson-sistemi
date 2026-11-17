@@ -10,6 +10,10 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { showToast, esc } from './utils.js';
+import { api, apiOn } from './yuza-api.js';
+// Mərhələ 1c: server qatı olan saytda müştəri bazadan başqasının qeydini oxuya bilmir —
+// qeydiyyat, telefonla bərpa və "mənim hesabım" serverdən (yuza-api) keçir.
+const viaApi = () => apiOn();
 
 const TOKEN_KEY = 'qarson_loyalty_token'; // localStorage: { type: 'guest'|'customer', id }
 const PENDING_REF_KEY = 'qarson_pending_ref'; // sessionStorage: referral kodu (linklə gələnlər üçün)
@@ -67,6 +71,19 @@ export function initCustomerLoyalty(tableId) {
 }
 
 function recognizeExistingToken(token) {
+  if (token.type === 'customer' && viaApi()) {
+    api('loyMe', { id: token.id, touch: true }).then(r => {
+      if (!r.me) {
+        try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+        document.getElementById('custWelcomeModal')?.classList.add('open');
+        return;
+      }
+      _currentCustomer = { id: token.id, type: 'customer', data: r.me };
+      applyRecognition();
+      linkVisitToTable();
+    }).catch(e => { console.warn('[loyalty]', e.message); });
+    return;
+  }
   const node = token.type === 'customer' ? R.loyaltyCustomers : R.guestTokens;
   node.child(token.id).once('value', snap => {
     const data = snap.val();
@@ -109,6 +126,7 @@ function applyRecognition() {
 // Müştərinin özünün dəvət etdiyi dostların siyahısı (ad + status)
 function _renderCustReferredFriends() {
   if (!_currentCustomer || _currentCustomer.type !== 'customer') return;
+  if (Array.isArray(_currentCustomer.data?.friends)) { _drawFriends(_currentCustomer.data.friends); return; }
   R.referrals.orderByChild('referrerCustomerId').equalTo(_currentCustomer.id).once('value', snap => {
     const referrals = [];
     snap.forEach(child => { referrals.push(child.val()); });
@@ -137,6 +155,20 @@ function _renderCustReferredFriends() {
   });
 }
 
+function _drawFriends(rows) {
+  const wrap = document.getElementById('custReferredFriends');
+  const list = document.getElementById('custReferredFriendsList');
+  if (!wrap || !list) return;
+  if (!rows.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  list.innerHTML = rows.map(row => `
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.85);padding:5px 0;">
+      <span>${esc(row.name)}</span>
+      <span style="color:${row.status==='completed'?'#5edb96':'#f7d35c'};font-weight:600;">${row.status==='completed'?'Tamamlandı':'Gözləmədə'}</span>
+    </div>
+  `).join('');
+}
+
 // Qeydiyyatsız (Guest) istifadəçiyə həmişə görünən, istənilən vaxt qeydiyyata keçmək
 // üçün kiçik bir dəvət göstərir (yalnız ilk pəncərədə deyil).
 function showGuestRegisterPrompt() {
@@ -149,10 +181,9 @@ function showGuestRegisterPrompt() {
 // yoxlamaq üçün "bu masada kim oturub" məlumatı lazımdır
 function linkVisitToTable() {
   if (!_currentTableId || !_currentCustomer) return;
-  R.tables.child(_currentTableId).update({
-    loyaltyCustomerId: _currentCustomer.type === 'customer' ? _currentCustomer.id : null,
-    loyaltyGuestId: _currentCustomer.type === 'guest' ? _currentCustomer.id : null
-  });
+  // Yalnız öz sahəsini yazır: masada artıq başqa qeydiyyatlı müştəri bağlıdırsa, o əvəz edilmir
+  const upd = _currentCustomer.type === 'customer' ? { loyaltyCustomerId: _currentCustomer.id } : { loyaltyGuestId: _currentCustomer.id };
+  R.tables.child(_currentTableId).update(upd).catch(() => {});
 }
 
 /* ── Qeydiyyatsız (Guest) davam etmək ── */
@@ -209,6 +240,16 @@ export function submitLoyaltyRegistration() {
 // Qeydiyyatın əsas (paylaşılan) məntiqi: telefon unikallığı, referral əlaqəsi, hesab
 // yaradılması. Həm masa-əsaslı, həm də müstəqil (referral linki) qeydiyyat bunu istifadə edir.
 function _registerLoyaltyCustomer(fields, existingGuestToken, errEl, onSuccess) {
+  if (viaApi()) {
+    let ref = null;
+    try { ref = sessionStorage.getItem(PENDING_REF_KEY); } catch (e) {}
+    api('loyRegister', { fields, guestId: existingGuestToken, ref }).then(r => {
+      try { sessionStorage.removeItem(PENDING_REF_KEY); } catch (e) {}
+      storeToken('customer', r.me.id);
+      onSuccess(r.me.id, r.me);
+    }).catch(e => { if (errEl) errEl.textContent = e.message; });
+    return;
+  }
   R.loyaltyCustomers.orderByChild('phone').equalTo(fields.phone).once('value', snap => {
     if (snap.exists()) {
       if (errEl) errEl.textContent = 'Bu telefon nömrəsi ilə artıq qeydiyyat mövcuddur.';
@@ -261,6 +302,18 @@ export function submitPhoneRecovery() {
   const errEl = document.getElementById('recoveryErrorMsg');
   errEl.textContent = '';
   if (!phone) { errEl.textContent = 'Telefon nömrəsini daxil edin.'; return; }
+  if (viaApi()) {
+    api('loyFind', { phone }).then(r => {
+      storeToken('customer', r.me.id);
+      _currentCustomer = { id: r.me.id, type: 'customer', data: r.me };
+      document.getElementById('custPhoneRecoveryModal')?.classList.remove('open');
+      document.getElementById('custWelcomeModal')?.classList.remove('open');
+      applyRecognition();
+      linkVisitToTable();
+      showToast('<svg class="icon"><use href="#i-check"></use></svg> Hesabınız tapıldı, xoş gəlmisiniz!');
+    }).catch(e => { errEl.textContent = e.message; });
+    return;
+  }
 
   R.loyaltyCustomers.orderByChild('phone').equalTo(phone).once('value', snap => {
     const found = firstOnly(snap.val());
@@ -337,7 +390,17 @@ export function initReferralRegisterScreen(refCode) {
   const token = getStoredToken();
   // Yalnız QEYDİYYATLI (customer) tokenlər yoxlanılır - Guest tokeni bu axında
   // əlaqəli deyil, çünki "qeydiyyatsız davam et" seçimi burada YOXDUR.
-  if (token && token.type === 'customer') {
+  if (token && token.type === 'customer' && viaApi()) {
+    api('loyMe', { id: token.id }).then(r => {
+      if (!r.me) { _showReferralRegisterForm(); return; }
+      const data = r.me;
+      document.getElementById('refRegisterFormBlock').style.display = 'none';
+      document.getElementById('refAlreadyMemberBlock').style.display = 'block';
+      const honorific = data.gender === 'Kişi' ? 'bəy' : data.gender === 'Qadın' ? 'xanım' : '';
+      document.getElementById('refMemberGreeting').textContent =
+        `${data.firstName}${honorific ? ' ' + honorific : ''}, siz artıq loyallıq proqramımızın üzvüsünüz. Cari bonusunuz: ${data.bonus || 0} bal.`;
+    }).catch(() => _showReferralRegisterForm());
+  } else if (token && token.type === 'customer') {
     R.loyaltyCustomers.child(token.id).once('value', snap => {
       const data = snap.val();
       if (!data) { _showReferralRegisterForm(); return; }

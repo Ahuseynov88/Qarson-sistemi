@@ -113,7 +113,8 @@ async function maybeInit() {
       whId = 'main';
       await db.ref('warehouses/main').transaction(c => c || { name: 'Əsas anbar', order: 1, createdAt: Date.now() });
     }
-    await db.ref('settings/inventory').transaction(c => {
+    // Artıq qurulubsa yazmırıq — baza qaydaları ayarı yalnız ilk quruluşda hər işçiyə açır
+    if ((await db.ref('settings/inventory/mode').once('value')).val() !== 'v2') await db.ref('settings/inventory').transaction(c => {
       const v = c || {};
       if (v.mode === 'v2') return v;
       return { ...v, mode: 'v2', defaultWarehouseId: v.defaultWarehouseId || whId, initAt: v.initAt || Date.now() };

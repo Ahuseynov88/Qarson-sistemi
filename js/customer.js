@@ -50,6 +50,7 @@ export function checkCustomerMode() {
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('customerScreen').classList.add('active');
+  showRestaurantBrand();
 
   // Loyallıq tanıma/qeydiyyatı masanın aktiv olub-olmamasından ASILI DEYİL - dərhal başlayır.
   // Sifariş/hesab funksiyaları isə hələ də yalnız masa aktiv olanda açılır (aşağıda).
@@ -164,6 +165,25 @@ export function showCustomerClosedScreen(msg) {
   if (wrap) {
     wrap.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:30px;"><div style="font-size:72px;margin-bottom:20px;"><svg class="icon"><use href="#i-thanks"></use></svg></div><p style="color:#eee;font-size:20px;font-weight:600;line-height:1.6;">${msg}</p></div>`;
   }
+}
+
+// Restoranın adı və loqosu müştəri ekranında (Printerlər → Çek şablonu bölməsindəki məlumat)
+function showRestaurantBrand() {
+  db.ref('settings/restaurantName').once('value').then(snap => {
+    const name = String(snap.val() || '').trim();
+    const el = document.getElementById('custRestName');
+    if (el && name) { el.textContent = name; el.style.display = ''; }
+  }).catch(() => {});
+  db.ref('settings/restaurantLogo').once('value').then(snap => {
+    const src = snap.val();
+    const box = document.getElementById('custBrandIcon');
+    if (!box || typeof src !== 'string' || !/^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/.test(src)) return;
+    const img = document.createElement('img');
+    img.src = src; img.alt = '';
+    img.style.cssText = 'width:64px;height:64px;object-fit:contain;border-radius:12px;';
+    box.replaceChildren(img);
+    box.style.cssText = 'width:auto;height:auto;margin-bottom:10px;filter:none;';
+  }).catch(() => {});
 }
 
 export function openMenu() {
