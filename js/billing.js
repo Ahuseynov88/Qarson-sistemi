@@ -255,7 +255,7 @@ export class ConfirmedOrder {
 
       const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
-      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: money2(Math.max(0, total - paidAmount)) };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -411,7 +411,7 @@ export class ConfirmedOrder {
       const paidAmount = current.paidAmount || 0;
       appliedQty = targetKeys.reduce((s,k)=>s+(items[k]?.qty||0),0);
       appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
-      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: money2(Math.max(0, total - paidAmount)) };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -595,7 +595,7 @@ export class ConfirmedOrder {
       const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
       appliedItemsList = targetKeys.filter(k=>items[k]).map(k => ({ name: items[k].name, qty: items[k].qty }));
-      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: money2(Math.max(0, total - paidAmount)) };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;
@@ -655,7 +655,7 @@ export class ConfirmedOrder {
       const _tot = computeOrderTotals(items);
       const total = _tot.total, serviceChargeAmount = _tot.serviceChargeAmount, serviceChargePercent = _tot.serviceChargePercent;
       const paidAmount = current.paidAmount || 0;
-      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: total - paidAmount };
+      return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: money2(Math.max(0, total - paidAmount)) };
     }, (error, committed) => {
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) return;

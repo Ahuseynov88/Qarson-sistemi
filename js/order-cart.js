@@ -5,7 +5,7 @@
 ═══════════════════════════════════════════ */
 import { R } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals } from './utils.js';
+import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals, money2 } from './utils.js';
 import { hasPermission } from './permissions.js';
 import { showScreen } from './theme.js';
 import { printKitchenJobs } from './printer-service.js';
@@ -278,10 +278,11 @@ export class OrderCart {
       const paidAmount = (current && current.paidAmount) || 0;
 
       return {
+        ...(current || {}),   // ödənişlər (pays), nisyələr (charges), banket və bərpa məlumatı itməsin
         items, total, serviceChargeAmount, serviceChargePercent,
         waiterId: (current && current.waiterId) || waiterId,
         paidAmount,
-        remainingAmount: total - paidAmount,
+        remainingAmount: money2(Math.max(0, total - paidAmount)),
         updatedAt: Date.now(),
         // İlk sifarişin dəqiq vaxtı - hesabatlarda (saatlara/işçi performansına görə) bu
         // istifadə olunur, masa bağlanma vaxtı YOX (saat 6-da açılıb 12-də bağlanan masa

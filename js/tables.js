@@ -298,7 +298,8 @@ export class TableBoard {
       sessionId,
       sessionLog,
       restoreCount: t.restoreCount || 0,
-      restoredFrom: order?.restoredFrom || null,   // geri qaytarılmış çekdən yaranıbsa — köhnə çekin ID-si
+      restoredFrom: order?.restoredFrom || null,
+      banquet: order?.banquet || null,             // banket masasıdırsa: banketin ID-si və alınmış beh   // geri qaytarılmış çekdən yaranıbsa — köhnə çekin ID-si
       shiftId: shiftNow()?.id || null,               // hansı kassa növbəsində bağlanıb
       // Hesabatlar bu vaxta görə aparılır (masa bağlanma vaxtına görə YOX)
       firstOrderAt: (order && order.firstOrderAt) || t.activatedAt || closedAtNow,
@@ -319,8 +320,10 @@ export class TableBoard {
     // Jurnala köçürülməmiş qalmış ödəniş və nisyələr (eyni ID — ikiqat yazılmır)
     // (jurnal qeydləri yalnız yaradıla bilir — artıq yazılmış ödəniş yenidən yazılmır)
     try {
-      const have = await Promise.all(Object.keys(pays).map(pid => R.payments.child(pid).once('value').then(x => x.exists())));
-      Object.entries(pays).forEach(([pid, rec], i) => { if (!have[i]) upd['payments/' + pid] = rec; });
+      // Banket behi (type 'deposit') kassaya beh alınanda yazılıb — burada təkrar yazılmır
+      const payList = Object.entries(pays).filter(([, rec]) => rec?.type !== 'deposit');
+      const have = await Promise.all(payList.map(([pid]) => R.payments.child(pid).once('value').then(x => x.exists())));
+      payList.forEach(([pid, rec], i) => { if (!have[i]) upd['payments/' + pid] = rec; });
     } catch (e) { release(); return { ok: false, msg: 'Bağlantı xətası — masa bağlanmadı. Yenidən cəhd edin.' }; }
     for (const [cid, c] of Object.entries(charges)) {
       if (c.posted) continue;

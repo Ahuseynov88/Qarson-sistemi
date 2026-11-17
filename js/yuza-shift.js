@@ -118,11 +118,17 @@ export async function computeShift(sh, until = serverNow()) {
     q(db.ref('invCash').orderByChild('createdAt').startAt(from - 86400000)),
     cashAccountId()
   ]);
-  const sales = {}, refunds = {}, credit = {};
+  const sales = {}, refunds = {}, credit = {}, deposits = {};
   let salesCount = 0, refundCount = 0;
   const add = (map, name, v) => { map[name] = money2((map[name] || 0) + v); };
-  let cashSales = 0, cashRefunds = 0, cashCredit = 0;
+  let cashSales = 0, cashRefunds = 0, cashCredit = 0, cashDeposit = 0, depositCount = 0;
   Object.values(pays).forEach(p => {
+    if (p.kind === 'deposit') {   // banket behi — satış deyil, ayrıca sətir; nağddırsa kassada olmalıdır
+      const v = Number(p.thisPay) || 0; depositCount++;
+      add(deposits, PM_NAME(p.type, { ...p, typeLabel: String(p.typeLabel || '').replace(/^Banket behi · /, '') }), v);
+      if (p.type === 'cash') cashDeposit += v;
+      return;
+    }
     const parts = (p.type === 'split' && p.splitBreakdown) ? Object.entries(p.splitBreakdown) : [[p.type, p.thisPay]];
     const rev = !!p.reversalOf || (Number(p.thisPay) || 0) < 0;
     if (rev) refundCount++; else salesCount++;
@@ -165,12 +171,12 @@ export async function computeShift(sh, until = serverNow()) {
   Object.values(logs).forEach(l => { if (l.type === 'order_cancel') { cancelCount++; cancelAmt += Number(l.details?.amount) || 0; } });
   const open = (state.tables || []).filter(t => t.occupant);
   const openRemaining = open.reduce((s, t) => { const o = (state.tableOrders || {})[t.id]; return s + Math.max(0, (o?.total || 0) - (o?.paidAmount || 0)); }, 0);
-  const expected = money2((sh.openingCash || 0) + cashSales + cashRefunds + cashCredit + docsIn - docsOut);
+  const expected = money2((sh.openingCash || 0) + cashSales + cashRefunds + cashCredit + cashDeposit + docsIn - docsOut);
   const sum = (m) => money2(Object.values(m).reduce((s, v) => s + v, 0));
   return {
     from, until, opening: money2(sh.openingCash || 0),
     sales, refunds, credit, salesTotal: sum(sales), refundsTotal: sum(refunds), creditTotal: sum(credit),
-    salesCount, refundCount,
+    salesCount, refundCount, deposits, depositTotal: sum(deposits), depositCount, cashDeposit: money2(cashDeposit),
     cashSales: money2(cashSales), cashRefunds: money2(cashRefunds), cashCredit: money2(cashCredit),
     docsIn: money2(docsIn), docsOut: money2(docsOut), cashAccount: !!accId,
     creditWritten: money2(creditWritten), creditReversed: money2(creditReversed),
@@ -198,11 +204,13 @@ export function reportHtml(sh, z, kind) {
       <tr class="yz-sh-sum"><td>Cəmi satış</td><td class="n">${money(z.salesTotal)}</td></tr>
       <tr class="yz-sh-sec"><td colspan="2">Geri qaytarılan (${z.refundCount})</td></tr>${rows(z.refunds, '−')}
       <tr class="yz-sh-sec"><td colspan="2">Nisyə ödənişləri (müştəridən alınan)</td></tr>${rows(z.credit)}
+      ${z.depositCount ? `<tr class="yz-sh-sec"><td colspan="2">Banket behi (${z.depositCount})</td></tr>${rows(z.deposits || {})}` : ''}
       <tr class="yz-sh-sec"><td colspan="2">Nağd kassa</td></tr>
       <tr><td>Başlanğıc nağd</td><td class="n">${money(z.opening)}</td></tr>
       <tr><td>+ Nağd satış</td><td class="n">${money(z.cashSales)}</td></tr>
       <tr><td>− Nağd geri qaytarma</td><td class="n">${money(Math.abs(z.cashRefunds))}</td></tr>
       <tr><td>+ Nağd nisyə ödənişi</td><td class="n">${money(z.cashCredit)}</td></tr>
+      ${z.cashDeposit ? `<tr><td>+ Nağd banket behi</td><td class="n">${money(z.cashDeposit)}</td></tr>` : ''}
       ${z.cashAccount ? `<tr><td>+ Kassa mədaxil sənədləri</td><td class="n">${money(z.docsIn)}</td></tr>
       <tr><td>− Kassa məxaric / təhvil sənədləri</td><td class="n">${money(z.docsOut)}</td></tr>` : ''}
       <tr class="yz-sh-sum"><td>Kassada olmalıdır</td><td class="n">${money(z.expected)}</td></tr>

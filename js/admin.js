@@ -10,7 +10,7 @@ import { esc, toArr, showToast, addLog, formatItemsList, stripTableName, confirm
 // Müştəri tərəfindən yaradıla bilən qeydlərin ID-si onclick atributuna yalnız təhlükəsiz simvollarla düşür
 const jsId = (id) => String(id ?? '').replace(/[^-\w]/g, '');
 import { hasPermission, PERMISSION_PRESETS, ALL_PERMISSIONS } from './permissions.js';
-import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal } from './banquet.js';
+import { renderBanquetDashboard, renderBanquetCalendar, renderBanquetHalls, renderBanquetEventTypes, openBanquetHallModal, openBanquetEventTypeModal, computeTotal as bqTotal, depositsOf as bqDeposits } from './banquet.js';
 import { renderNotifSounds } from './notifSounds.js';
 import { renderPrinters, openPrinterModal, closePrinterModal, savePrinter, deletePrinter, testPrinter, renderReceiptTemplateSettings, saveReceiptTemplate, saveKitchenTemplate, uploadReceiptLogo, removeReceiptLogo, _toggleReceiptFields } from './printer-settings.js';
 import { api, apiOn } from './yuza-api.js';
@@ -349,6 +349,12 @@ function buildPaymentTypeBreakdown(orders) {
         breakdown[key].amount += p.thisPay || 0; breakdown[key].count++;
       }
     });
+    // Banket masası: beh əvvəlcədən alınıb (kassaya alındığı gün düşüb) — burada yalnız məbləğin bölgüsü üçün göstərilir
+    if (o.banquet && Number(o.banquet.depositTotal) > 0) {
+      const key = 'Banket behi (əvvəlcədən)';
+      if (!breakdown[key]) breakdown[key] = { amount: 0, count: 0 };
+      breakdown[key].amount += Math.min(Number(o.banquet.depositTotal) || 0, Number(o.total) || 0); breakdown[key].count++;
+    }
   });
   return breakdown;
 }
@@ -495,11 +501,15 @@ function buildKassaLedger(orders) {
     income.push({ ts: ch.createdAt||0, category: 'Nisyə Ödənişi', method: ch.paymentType==='pos'?'POS':(ch.paymentType==='cash'?'Nağd':(state.paymentMethods||[]).find(pm=>pm.id===ch.paymentType)?.name||ch.paymentType), amount: ch.amount||0, source: state.customers.find(c=>c.id===ch.customerId)?.name || 'Müştəri', who: ch.staffName||'?' });
   });
 
-  // 3) Banket ödənişləri
+  // 3) Banket ödənişləri: köhnə avans qeydləri + yeni beh (alındığı anda kassaya düşür; masa bağlananda təkrar sayılmır)
   (state.banquetEvents||[]).forEach(ev => {
     (ev.paymentHistory||[]).forEach(p => {
       if (!inRange(p.date||0)) return;
       income.push({ ts: p.date||0, category: 'Banket Ödənişi', method: p.method==='cash'?'Nağd':p.method==='card'?'Kart':p.method==='transfer'?'Köçürmə':p.method, amount: p.amount||0, source: ev.clientName||'Tədbir', who: ev.staffName||'?' });
+    });
+    Object.values(ev.deposits||{}).forEach(d => {
+      if (!inRange(d.at||0)) return;
+      income.push({ ts: d.at||0, category: 'Banket Behi', method: d.method==='cash'?'Nağd':d.method==='pos'?'POS':(d.methodLabel||resolvePaymentMethodName(d.method)), amount: Number(d.amount)||0, source: ev.clientName||'Tədbir', who: d.byName||'?' });
     });
   });
 
@@ -539,10 +549,7 @@ function renderReportPaymentsView(orders, el) {
 
   // Gözlənilən daxilolmalar - tarix filtrindən ASILI DEYİL, HAZIRKI ümumi borc vəziyyəti
   const pendingCredit = (state.customers||[]).reduce((s,c) => s + (c.balance||0), 0);
-  const pendingBanquet = (state.banquetEvents||[]).filter(e=>e.status!=='cancelled').reduce((s,e) => {
-    const paid = (e.paymentHistory||[]).reduce((s2,p)=>s2+p.amount,0);
-    return s + Math.max(0, (e.totalAmount||0)-paid);
-  }, 0);
+  const pendingBanquet = (state.banquetEvents||[]).filter(e=>!['cancelled','done','seated'].includes(e.status)).reduce((s,e) => s + Math.max(0, bqTotal(e) - bqDeposits(e)), 0);
   const totalPending = Math.round((pendingCredit+pendingBanquet)*100)/100;
 
   const fmtTime = (ts) => ts ? new Date(ts).toLocaleString('az-AZ', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
@@ -3775,8 +3782,14 @@ export function restoreClosedOrder(id) {
           ['tableOrders/' + newTableId]: {
             items: fresh.items || {}, total, waiterId: fresh.staffId || me.id || 'admin',
             paidAmount: 0, remainingAmount: total, firstOrderAt: fresh.firstOrderAt || now,
-            restoredFrom: id, updatedAt: now, billPrintedAt: null
+            restoredFrom: id, updatedAt: now, billPrintedAt: null,
+            // Banket masasıdırsa: əvvəlcədən alınmış beh (kassaya alındığı gün yazılıb) yeni masada da çıxılır
+            ...(fresh.banquet?.id && Number(fresh.banquet.depositTotal) > 0 ? {
+              banquet: fresh.banquet, paidAmount: money2(fresh.banquet.depositTotal), remainingAmount: money2(Math.max(0, total - Number(fresh.banquet.depositTotal))),
+              pays: { _banquetDeposit: { type: 'deposit', typeLabel: 'Banket behi (əvvəlcədən alınıb)', thisPay: money2(fresh.banquet.depositTotal), banquetId: fresh.banquet.id, createdAt: now } }
+            } : (fresh.banquet?.id ? { banquet: fresh.banquet } : {}))
           },
+          ...(fresh.banquet?.id ? { [`banquetEvents/${fresh.banquet.id}/status`]: 'seated', [`banquetEvents/${fresh.banquet.id}/seated/tableId`]: newTableId, [`banquetEvents/${fresh.banquet.id}/seated/tableName`]: newName, [`banquetEvents/${fresh.banquet.id}/seated/sessionId`]: sessionId } : {}),
           ['closedOrders/' + id + '/void']: { at: now, byId: me.id || 'admin', byName: me.name || 'Rəhbər', reason, newTableId, newTableName: newName, shiftId: sh.id }
         };
         let refund = 0;

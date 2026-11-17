@@ -59,8 +59,8 @@ const MENU = [
     { s: 'suppliers', l: 'Təchizatçılar', i: 'users', legacy: 1 },
     { s: 'loyaltyCustomers', l: 'Loyallıq üzvləri', i: 'star' },
     { s: 'paymentMethods', l: 'Ödəniş növləri', i: 'card' },
-    { s: 'banquetHalls', l: 'Banket zalları', i: 'chair' },
-    { s: 'banquetEventTypes', l: 'Tədbir növləri', i: 'tag' },
+    { s: 'banquetHalls', l: 'Banket zalları', i: 'chair', hide: 1 },   // zal banket qeydiyyatının içində seçilir/əlavə olunur
+    { s: 'banquetEventTypes', l: 'Tədbir növləri', i: 'tag', hide: 1 },
     { s: 'printers', l: 'Printerlər', i: 'printer' }
   ] },
   { g: 'sys', label: 'Sistem', icon: 'settings', items: [
@@ -84,7 +84,6 @@ const NEW_MENU = [
   { k: 'customers', l: 'Nisyə müştəri', i: 'card' },
   { k: 'paymentMethods', l: 'Ödəniş növü', i: 'card' },
   { k: 'kitchenStations', l: 'Mətbəx', i: 'chef' },
-  { k: 'banquetHalls', l: 'Banket zalı', i: 'chair' },
   { k: 'printers', l: 'Printer', i: 'printer' },
   { sep: 1 }, { sec: 'Mühasibat' },
   { k: 'inv:purchase', l: 'Alış qaiməsi', i: 'clipboard', v2: 1 },
