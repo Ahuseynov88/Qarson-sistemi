@@ -272,8 +272,16 @@ export class TableBoard {
     const closedAtNow = serverNow();
     const closeMsg = `${me.name} "${t.name}" masasını bağladı (${(order?.total || 0).toFixed(2)} ₼)`;
     // Bu sessiyaya aid bütün tarixçəni topla (aktivləşmədən bağlanmaya qədər) və arxivə bük
+    // Mərhələ 3a: ofisiant cihazı logları yükləmir — bu masanın açıldığı andan bəri loglar bazadan oxunur
+    let logSrc = state.logs || [];
+    if (sessionId) {
+      try {
+        const from = Number(t.activatedAt || order?.firstOrderAt || 0) || (closedAtNow - 24 * 3600000);
+        logSrc = Object.values((await R.logs.orderByChild('timestamp').startAt(from - 60000).once('value')).val() || {});
+      } catch (e) { /* oxunmasa yaddaşdakı loglarla davam */ }
+    }
     const sessionLog = sessionId
-      ? state.logs.filter(l => l.details?.sessionId === sessionId).slice().reverse()
+      ? logSrc.filter(l => l.details?.sessionId === sessionId).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
           .map(l => ({ message: l.message, time: l.time, date: l.date, timestamp: l.timestamp }))
       : [];
     sessionLog.push({ message: closeMsg, time: azTime(closedAtNow), date: azDate(closedAtNow), timestamp: closedAtNow });

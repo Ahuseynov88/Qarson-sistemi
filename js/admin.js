@@ -4305,6 +4305,18 @@ function renderDangerZone() {
         </div>
       </div>
 
+      ${_isRehber() && apiOn() ? `
+        <div class="table-card" style="margin-bottom:16px;border:1.5px solid rgba(46,204,113,.5);">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="font-size:26px;line-height:1;flex-shrink:0;">🧹</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;margin-bottom:4px;">Köhnə müvəqqəti qeydlərin təmizlənməsi (hər gecə avtomatik)</div>
+              <div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:6px;">Server hər gecə silir: çap işləri (2 gün), mətbəx bildirişləri, müştəri çağırışları və masa çatları (7 gün), rasiya səsləri (3 gün), ofisiant çağırışları (30 gün). Nəticə Loglara yazılır.</div>
+              <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:10px;">✓ Satış arxivi, ödənişlər, nisyə, kassa, loglar, anbar, banket və bronlara toxunulmur</div>
+              <button class="btn btn-green" id="yzCleanupNow" style="padding:9px 18px;font-size:13px;">İndi təmizlə</button>
+            </div>
+          </div>
+        </div>` : ''}
       ${DANGER_OPS.filter(_canDanger).map(op => `
         <div class="table-card" style="margin-bottom:12px;${op.danger===3?'border:2px solid var(--red);background:rgba(220,53,69,.07);':op.danger===2?'border:1.5px solid rgba(220,53,69,.5);':''}">
           <div style="display:flex;align-items:flex-start;gap:12px;">
@@ -4325,6 +4337,17 @@ function renderDangerZone() {
     </div>
   `;
 }
+
+document.addEventListener('click', async (ev) => {
+  const b = ev.target.closest?.('#yzCleanupNow'); if (!b || b.disabled) return;
+  b.disabled = true; const t0 = b.textContent; b.textContent = 'Təmizlənir…';
+  try {
+    const r = await api('cleanupNow', {}, { owner: true });
+    const n = r.counts || {};
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> Təmizləndi: ${r.total || 0} qeyd${r.total ? ' (' + Object.entries(n).map(([k, v]) => k + ' ' + v).join(', ') + ')' : ''}`);
+  } catch (e) { showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + (e.message || 'Təmizlənmədi')); }
+  finally { b.disabled = false; b.textContent = t0; }
+});
 
 async function executeDangerOp(opId) {
   const op = DANGER_OPS.find(o => o.id === opId);

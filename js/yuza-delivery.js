@@ -220,6 +220,7 @@ const timerOf = (o) => {
 /* ═══ 5. Müştəri kartı ═══ */
 async function loadCustomer(pk) {
   if (!pk) return null;
+  try { await window.yzNeedData?.('loyalty'); } catch (e) { /* loyallıq tanınmasa da davam */ }
   try { const s = await DC.child(pk).once('value'); return s.val(); } catch (e) { return null; }
 }
 function customerExtras(pk) {

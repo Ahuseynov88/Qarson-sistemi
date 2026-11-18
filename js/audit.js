@@ -3,6 +3,7 @@
    Masa-spesifik xronoloji tarixçə (Timeline).
 ═══════════════════════════════════════════ */
 import { state } from './state.js';
+import { R } from './firebase-service.js';
 import { esc, stripTableName } from './utils.js';
 
 export class AuditTrail {
@@ -11,7 +12,7 @@ export class AuditTrail {
     this.els = els;
   }
 
-  open(tableId) {
+  async open(tableId) {
     if (!tableId) return;
     const t = state.tables.find(x => x.id === tableId);
     const tableName = t?.name || 'Masa';
@@ -21,8 +22,14 @@ export class AuditTrail {
     // (artıq bağlanmış) ziyarətlərin tarixçəsi qarışmır. Köhnə ziyarətlərin tarixçəsi
     // "Bağlanan Masalar" bölməsində, həmin ziyarətin öz arxiv qeydi ilə birlikdə saxlanılır.
     const sessionId = t?.sessionId || null;
+    // Mərhələ 3a: ofisiant cihazı logları yükləmir — bu masanın açıldığı andan bəri loglar bazadan oxunur
+    let src = state.logs || [];
+    if (sessionId) {
+      try { src = Object.entries((await R.logs.orderByChild('timestamp').startAt(Number(t.activatedAt || 0) - 60000).once('value')).val() || {}).map(([id, v]) => ({ id, ...v })); }
+      catch (e) { /* oxunmasa yaddaşdakı loglarla */ }
+    }
     const relevant = sessionId
-      ? state.logs.filter(l => l.details && l.details.sessionId === sessionId).slice().reverse()
+      ? src.filter(l => l.details && l.details.sessionId === sessionId).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
       : [];
 
     const order = state.tableOrders[tableId];

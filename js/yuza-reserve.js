@@ -392,6 +392,7 @@ async function guestInfo(phone) {
   if (k.length < 10) return null;
   let past = [];
   try { past = Object.values((await RV.orderByChild('phoneKey').equalTo(k).once('value')).val() || {}); } catch (e) { past = list().filter(r => r.phoneKey === k); }
+  try { await window.yzNeedData?.('loyalty'); } catch (e) { /* */ }
   const loyal = (state.loyaltyCustomers || []).find(c => phoneKey(c.phone) === k) || null;
   return {
     visits: past.filter(r => ['seated', 'done'].includes(r.status)).length,

@@ -307,23 +307,15 @@ function initListeners() {
 
   R.tables.on('value', snap => { state.tables = toArr(snap.val()); onDataChange(); });
   R.menuItems.on('value', snap => { state.menuItems = toArr(snap.val()); if (panelOn()) onDataChange(); });
-  R.customers.on('value', snap => { state.customers = toArr(snap.val()); if (panelOn()) onDataChange(); });
   R.paymentMethods.on('value', snap => { state.paymentMethods = toArr(snap.val()); onDataChange(); });
-  R.closedOrders.limitToLast(200).on('value', snap => { state.closedOrders = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
-  R.loyaltyCustomers.on('value', snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
-  R.suppliers.on('value', snap => { state.suppliers = toArr(snap.val()); if (panelOn()) onDataChange(); });
-  R.purchases.on('value', snap => { state.purchases = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
-  R.banquetHalls.on('value', snap => { state.banquetHalls = toArr(snap.val()); if (panelOn()) onDataChange(); });
-  R.banquetEventTypes.on('value', snap => { state.banquetEventTypes = toArr(snap.val()); if (panelOn()) onDataChange(); });
-  R.banquetEvents.on('value', snap => { state.banquetEvents = toArr(snap.val()); if (panelOn()) onDataChange(); });
-  R.payments.limitToLast(500).on('value', snap => { state.payments = toArr(snap.val()); if (panelOn()) onDataChange(); });
-  R.customerCharges.on('value', snap => { state.customerCharges = toArr(snap.val()).reverse(); if (panelOn()) onDataChange(); });
   R.tableOrders.on('value', snap => { state.tableOrders = snap.val() || {}; onDataChange(); });
-  R.orders.on('value', snap => {
-    state.orders = toArr(snap.val());
-    onDataChange();
-    if (state.user?.role === 'staff') checkIncomingOrders();
-  });
+  // Mərhələ 3a: hər rol yalnız özünə lazım olanı yükləyir (mətbəx — maliyyə, müştəri, banket və s. yükləmir)
+  const r = state.user?.role;
+  if (r === 'staff') {
+    needData('staff');
+    if (staffHasPermission(state.user, 'panel.banquet')) needData('banquet');   // banket xəbərdarlıqları
+  }
+  if (r === 'admin') needData('panel');
      R.kitchenStations.on('value', snap => {
     state.kitchenStations = toArr(snap.val());
     if (panelOn()) renderAdmin();
@@ -343,17 +335,10 @@ function initListeners() {
   db.ref('settings/kitchenAlertIntervalSec').on('value', snap => {
     if (snap.val()) state.kitchenAlertIntervalSec = snap.val();
   });
-     R.kitchenNotifs.on('value', snap => {
-    state.kitchenNotifs = toArr(snap.val());
-    if (state.user?.role === 'staff') checkKitchenNotifs();
-  });
+
   R.printers.on('value', snap => {
     state.printers = toArr(snap.val());
     if (panelOn() && state.adminSection === 'printers') renderPrinters();
-  });
-  R.logs.limitToLast(300).on('value', snap => {
-    state.logs = toArr(snap.val()).reverse();
-    if (panelOn()) renderLogs();
   });
 
   watchShift();   // Mərhələ 2c: açıq kassa növbəsi
@@ -362,7 +347,50 @@ function initListeners() {
   raciaStart();
 }
 
+/* ── Mərhələ 3a: məlumat qrupları — yalnız lazım olanda yüklənir ──
+   staff   — ofisiant ekranı: ofisiant çağırışları, mətbəx bildirişləri, nisyə müştəriləri
+   banquet — banket zalları, növləri, banketlər
+   loyalty — loyallıq müştəriləri (paket / bron pəncərəsində telefonla tanıma)
+   panel   — Rəhbər paneli: hesabat, kassa, anbar, loglar (+ banquet, loyalty, staff-ın müştəriləri) */
+const _groups = new Set();
+const _groupWait = {};
+function onPanel(fn) { return snap => { fn(snap); if (panelOn()) onDataChange(); }; }
+function needData(g) {
+  if (!state.user) return Promise.resolve();
+  if (_groups.has(g)) return _groupWait[g] || Promise.resolve();
+  _groups.add(g);
+  const first = [];
+  const on = (ref, fn) => first.push(new Promise(res => { let done = false; ref.on('value', snap => { fn(snap); if (!done) { done = true; res(); } }, () => res()); }));
+  if (g === 'staff') {
+    on(R.customers, onPanel(snap => { state.customers = toArr(snap.val()); }));
+    on(R.orders, snap => { state.orders = toArr(snap.val()); onDataChange(); if (state.user?.role === 'staff') checkIncomingOrders(); });
+    on(R.kitchenNotifs, snap => { state.kitchenNotifs = toArr(snap.val()); if (state.user?.role === 'staff') checkKitchenNotifs(); });
+  } else if (g === 'banquet') {
+    on(R.banquetHalls, onPanel(snap => { state.banquetHalls = toArr(snap.val()); }));
+    on(R.banquetEventTypes, onPanel(snap => { state.banquetEventTypes = toArr(snap.val()); }));
+    on(R.banquetEvents, onPanel(snap => { state.banquetEvents = toArr(snap.val()); }));
+  } else if (g === 'loyalty') {
+    on(R.loyaltyCustomers, onPanel(snap => { state.loyaltyCustomers = toArr(snap.val()).reverse(); }));
+  } else if (g === 'panel') {
+    if (!_groups.has('staff')) { _groups.add('cust'); on(R.customers, onPanel(snap => { state.customers = toArr(snap.val()); })); }
+    needData('banquet'); needData('loyalty');
+    on(R.closedOrders.limitToLast(200), onPanel(snap => { state.closedOrders = toArr(snap.val()).reverse(); }));
+    on(R.suppliers, onPanel(snap => { state.suppliers = toArr(snap.val()); }));
+    on(R.purchases, onPanel(snap => { state.purchases = toArr(snap.val()).reverse(); }));
+    on(R.payments.limitToLast(500), onPanel(snap => { state.payments = toArr(snap.val()); }));
+    on(R.customerCharges, onPanel(snap => { state.customerCharges = toArr(snap.val()).reverse(); }));
+    on(R.logs.limitToLast(300), snap => { state.logs = toArr(snap.val()).reverse(); if (panelOn()) renderLogs(); });
+  }
+  _groupWait[g] = Promise.all(first);
+  return _groupWait[g];
+}
+window.yzNeedData = needData;
+// Səlahiyyətli işçi Rəhbər panelinə keçəndə panel məlumatları həmin an yüklənir
+document.addEventListener('yz:screen', (ev) => { if (ev.detail === 'adminScreen' && state.user) needData('panel').then(() => { if (panelOn()) renderAdmin(); }); });
+
 function removeListeners() {
+  _groups.clear(); for (const k of Object.keys(_groupWait)) delete _groupWait[k];
+  for (const k of ['customers', 'closedOrders', 'loyaltyCustomers', 'suppliers', 'purchases', 'payments', 'customerCharges', 'banquetHalls', 'banquetEventTypes', 'banquetEvents', 'kitchenNotifs']) state[k] = [];
   unwatchShift();
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
   R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off(); R.printers.off();
