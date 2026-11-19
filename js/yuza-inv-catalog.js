@@ -20,6 +20,7 @@ function priceHistHtml(pid, unit) {
       return `<tr><td>${fmtDT(x.at)}<br><small class="mut yzi-mono">${esc(x.no || '')}</small></td><td>${esc(x.supplierName || '—')}</td><td class="n">${fmtQty(x.qty)} ${esc(x.packName || x.unit || '')}</td><td class="n"><b>${fmtMoney(x.unitCost)}</b></td><td class="n">${ch}</td></tr>`;
     }).join('')}</tbody></table></div></details>`;
 }
+import { uploadImage } from './yuza-media.js';
 import {
   registerTab, modal, confirmBox, esc, $, ok, fail, numInput, typeChip, attachPicker, whOptions, go, fresh, blurIn
 } from './yuza-inv-ui.js';
@@ -363,7 +364,12 @@ export function openEditor(id) {
     });
     root.querySelector('#yziEdPhoto')?.addEventListener('change', async (e) => {
       const file = e.target.files[0]; if (!file) return;
-      try { collect(); d.photo = await compressImage(file); draw(); } catch (er) { fail(er.message); }
+      try {
+        collect();
+        const small = await compressImage(file);
+        d.photo = small; draw();                       // dərhal göstər
+        d.photo = await uploadImage(small); draw();    // 3b: serverə (R2) yüklə, bazaya yalnız ünvan düşür
+      } catch (er) { fail(er.message); }
     });
   }
   async function save() {

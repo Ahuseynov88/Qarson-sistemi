@@ -364,10 +364,11 @@ document.addEventListener('change', (e) => {
   }
   else if (t.id === 'yzPhotoFile') {
     const file = t.files[0]; if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { showToast('Şəkil 2MB-dan böyük olmamalıdır'); t.value = ''; return; }
-    const rd = new FileReader();
-    rd.onload = (ev) => { update(id, { photo: ev.target.result }); showToast('Şəkil yeniləndi'); };
-    rd.readAsDataURL(file);
+    if (file.size > 8 * 1024 * 1024) { showToast('Şəkil 8MB-dan böyük olmamalıdır'); t.value = ''; return; }
+    // 3b: kiçildilir və serverə (R2) yüklənir; alınmasa bazada saxlanılır
+    import('./yuza-media.js').then(M => M.fileToPhoto(file))
+      .then(photo => { update(id, { photo }); showToast('Şəkil yeniləndi'); })
+      .catch(er => showToast(er.message || 'Şəkil yüklənmədi'));
   }
 });
 document.addEventListener('input', (e) => {

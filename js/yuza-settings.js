@@ -93,7 +93,7 @@ function build() {
   pane('security').insertAdjacentHTML('beforeend', `<div id="yzsOwner"></div>
     <div class="yzs-list yzs-card yzs-card--flat"><button type="button" class="yzs-row" data-go="devices">
       <span class="yzs-row__i">${I('lock')}</span><span class="yzs-row__t"><b>Cihazlar və girişlər</b><small>Təsdiqlənmiş kompüter və telefonlar, söndürmək; səlahiyyətli şəxslərin istifadəçi adı və parolu</small></span>${I('chevron')}</button></div>
-    <div id="yzsGate"></div><div id="yzsDevice"></div>`);
+    <div id="yzsGate"></div><div id="yzsBackup"></div><div id="yzsDevice"></div>`);
   pane('modules').insertAdjacentHTML('beforeend', modulesHtml());
   if (snd) snd.classList.add('yzs-card');
 
@@ -135,7 +135,7 @@ function show(id, silent, keep) {
   try { sessionStorage.setItem(K_PANE, id); } catch (e) { /* */ }
   sec.querySelectorAll('.yzs-nav__b').forEach(b => { const on = b.dataset.pane === id; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); });
   sec.querySelectorAll('.yzs-pane').forEach(p => { p.hidden = p.dataset.pane !== id; });
-  if (id === 'security') { renderOwner(); renderGate(); moveDeviceCard(); }
+  if (id === 'security') { renderOwner(); renderGate(); renderBackup(); moveDeviceCard(); }
   if (id === 'sounds') import('./notifSounds.js').then(m => m.renderNotifSounds?.()).catch(() => {});
   if (id === 'print' && !(keep && $('receiptTemplateSettings')?.querySelector(':scope > .yzs-tabs'))) import('./printer-settings.js').then(m => m.renderReceiptTemplateSettings?.()).then(tidyTemplate).catch(() => {});
   if (!silent) { sec.scrollTo?.(0, 0); window.scrollTo?.(0, 0); }
@@ -269,6 +269,74 @@ async function renderGate() {
   };
   $('yzsGateOn').onchange = save;
   box.querySelectorAll('[data-ex]').forEach(c => { c.onchange = save; });
+}
+
+/* ── 3b: Ehtiyat nüsxələr (R2) və şəkillərin serverə köçürülməsi — yalnız Rəhbər ── */
+const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const pad2 = (n) => String(n).padStart(2, '0');
+const fmtTs = (ts) => { if (!ts) return '—'; const d = new Date(ts); return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+async function renderBackup() {
+  const box = $('yzsBackup'); if (!box) return;
+  if (state.user?.role !== 'admin') { box.innerHTML = ''; return; }
+  const A = await import('./yuza-api.js');
+  if (!A.apiOn()) { box.innerHTML = ''; return; }
+  let last = null; try { last = (await db.ref('sys/backup').once('value')).val(); } catch (e) { /* */ }
+  const M = await import('./yuza-media.js');
+  const I2 = await import('./yuza-inv-core.js');
+  const left = Object.entries(I2.inv.products || {}).filter(([, p]) => M.isDataImg(p?.photo)).length
+    + (state.menuItems || []).filter(m => m && M.isDataImg(m.photo) && !(I2.inv.products || {})[m.id]).length;
+  box.innerHTML = `<div class="table-card yzs-card"><h3 style="margin-bottom:8px;">${I('save')} Ehtiyat nüsxələr</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:10px;">Hər gecə 04:00-da bütün baza serverdə (Cloudflare R2) saxlanılır, son 30 gün qalır. Lazım olanda nüsxəni yükləyib Firebase → Realtime Database → ⋮ → Import JSON ilə bərpa etmək olur (diqqət: bərpa bazadakı hər şeyi həmin anın vəziyyəti ilə əvəz edir).</p>
+    <div class="yzs-kv"><span>Son nüsxə</span><b>${last ? `${fmtTs(last.at)} · ${fmtSize(last.size || 0)} · ${esc(last.by || '')}` : 'hələ yoxdur'}</b></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button type="button" class="btn btn-green" data-bk="now">İndi nüsxə al</button>
+      <button type="button" class="btn btn-ghost" data-bk="list">Nüsxələrin siyahısı</button></div>
+    <div id="yzsBkList" style="margin-top:10px;"></div>
+    <h3 style="margin:18px 0 8px;">${I('camera')} Məhsul şəkilləri</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:10px;">Yeni şəkillər avtomatik serverə yüklənir. Bazada qalan köhnə şəkillər: <b id="yzsImgLeft">${left}</b>.${left ? ' Köçürüləndə menyu və telefonlar daha sürətli açılır.' : ''}</p>
+    ${left ? '<button type="button" class="btn btn-ghost" data-bk="img">Şəkilləri serverə köçür</button> <span id="yzsImgProg" style="font-size:13px;color:var(--text2)"></span>' : ''}</div>`;
+  box.onclick = async (e) => {
+    const b = e.target.closest('[data-bk],[data-bkget]'); if (!b || b.disabled) return;
+    b.disabled = true;
+    try {
+      if (b.dataset.bk === 'now') {
+        const r = await A.api('backupNow', {}, { owner: true });
+        showToast(`${I('check')} Nüsxə alındı (${fmtSize(r.size || 0)})`);
+        await renderBackup(); return;
+      }
+      if (b.dataset.bk === 'list') {
+        const r = await A.api('backupList', {}, { owner: true });
+        $('yzsBkList').innerHTML = r.items?.length ? `<table class="report-table" style="width:100%;font-size:13px;"><thead><tr><th>Tarix və saat</th><th>Ölçü</th><th>Kim</th><th></th></tr></thead><tbody>
+          ${r.items.map(x => `<tr><td>${fmtTs(x.at)}</td><td>${fmtSize(x.size)}</td><td>${esc(x.by || '')}</td><td><button type="button" class="btn btn-ghost" style="padding:4px 10px" data-bkget="${esc(x.key)}">Yüklə</button></td></tr>`).join('')}</tbody></table>`
+          : '<p style="font-size:13px;color:var(--text3)">Hələ nüsxə yoxdur.</p>';
+      }
+      if (b.dataset.bkget) {
+        const r = await A.apiRaw('backupGet', { key: b.dataset.bkget }, { owner: true });
+        const url = URL.createObjectURL(await r.blob());
+        const a = document.createElement('a'); a.href = url; a.download = 'yuzapos-' + b.dataset.bkget.slice(3); document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      }
+      if (b.dataset.bk === 'img') {
+        const prog = $('yzsImgProg');
+        const prods = Object.entries(I2.inv.products || {}).filter(([, p]) => M.isDataImg(p?.photo));
+        const menus = (state.menuItems || []).filter(m => m && M.isDataImg(m.photo) && !(I2.inv.products || {})[m.id]);
+        const total = prods.length + menus.length; let done = 0, bad = 0;
+        for (const [pid, p] of prods) {
+          try { const url = await M.uploadImage(await M.compressImage(p.photo), { strict: true }); await I2.saveProduct(pid, { photo: url }, { log: false }); done++; }
+          catch (er) { bad++; console.warn('[media]', pid, er.message); }
+          prog.textContent = `${done + bad} / ${total}`;
+        }
+        for (const m of menus) {
+          try { const url = await M.uploadImage(await M.compressImage(m.photo), { strict: true }); await db.ref('menuItems/' + m.id + '/photo').set(url); done++; }
+          catch (er) { bad++; console.warn('[media]', m.id, er.message); }
+          prog.textContent = `${done + bad} / ${total}`;
+        }
+        showToast(bad ? `${I('warning')} ${done} şəkil köçürüldü, ${bad} alınmadı` : `${I('check')} ${done} şəkil serverə köçürüldü`);
+        await renderBackup(); return;
+      }
+    } catch (er) { showToast(`${I('error')} ${esc(er.message || er)}`); }
+    b.disabled = false;
+  };
 }
 
 /* "Bu cihaz" kartı (yuza-guard.js yaradır) → Giriş və təhlükəsizlik */
