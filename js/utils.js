@@ -177,22 +177,13 @@ export function addLog(type, message, details = {}) {
 
 // stok Firebase transaction ilə dəyişdirilir ki, iki paralel sifariş eyni malı
 // azaldanda bir-birini əzməsin (race condition qorunması)
-// Yeni anbar sistemi (yuza-inventory) satışda stok silinməsini öz üzərinə götürür.
-// Hook true qaytarsa köhnə məntiq işləmir; köhnə rejimdə false qaytarır və hər şey əvvəlki kimidir.
+// Satışda anbardan silinmə yalnız anbar sistemində (yuza-inv-core.js → saleHook) aparılır.
+// Mərhələ 5: köhnə anbar (menuItems.stock, ingredients) məntiqi silinib. Modul hələ yüklənməyibsə satış gözləyir.
 let _stockHook = null;
-export function setStockHook(fn) { _stockHook = fn; }
+const _early = [];
+export function setStockHook(fn) { _stockHook = fn; _early.splice(0).forEach(([id, d]) => { try { fn(id, d); } catch (e) { console.warn('[stock]', e); } }); }
 
-export function updateStock(menuItemId, delta, menuItems) {
+export function updateStock(menuItemId, delta) {
   if (!menuItemId) return;
-  if (_stockHook && _stockHook(menuItemId, delta) === true) return;
-    const item = menuItems.find(x => x.id === menuItemId);
-  // Resept: hər porsiya üçün xammadə qalığından avtomatik çıxılır (ləğvdə qaytarılır)
-  if (item && item.recipe) {
-    Object.entries(item.recipe).forEach(([ingId, q]) => {
-      const amt = (Number(q) || 0) * delta;
-      if (amt) db.ref('ingredients/' + ingId + '/stock').transaction(cur => Math.max(0, Math.round(((cur || 0) + amt) * 1000) / 1000));
-    });
-  }
-  if (!item || item.stock === undefined || item.stock === null) return;
-  R.menuItems.child(menuItemId).child('stock').transaction(current => Math.max(0, (current || 0) + delta));
+  if (_stockHook) _stockHook(menuItemId, delta); else _early.push([menuItemId, delta]);
 }

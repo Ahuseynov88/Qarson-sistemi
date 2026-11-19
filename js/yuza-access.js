@@ -127,8 +127,8 @@ function filterMenu() {
   });
   // "+ Yeni" menyusu
   const NEW_SEC = {
-    staff: 'staff', tables: 'tables', menu: 'menu', suppliers: 'suppliers', customers: 'customers', paymentMethods: 'paymentMethods',
-    kitchenStations: 'kitchenStations', banquetHalls: 'banquetHalls', printers: 'printers', purchases: 'purchases',
+    staff: 'staff', tables: 'tables', customers: 'customers', paymentMethods: 'paymentMethods',
+    kitchenStations: 'kitchenStations', banquetHalls: 'banquetHalls', printers: 'printers',
     'inv:product': 'inv-catalog', 'inv:supplier': 'inv-suppliers', 'inv:warehouse': 'inv-warehouses', 'inv:purchase': 'inv-purchases',
     'inv:payment': 'inv-payments', 'inv:cash-in': 'inv-cash', 'inv:cash-out': 'inv-cash', 'inv:cash-transfer': 'inv-cash',
     'inv:writeoff': 'inv-stockdocs', 'inv:transfer': 'inv-stockdocs', 'inv:count': 'inv-count', 'inv:production': 'inv-production'

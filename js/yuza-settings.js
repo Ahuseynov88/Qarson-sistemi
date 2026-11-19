@@ -75,6 +75,7 @@ function build() {
   put('sales', byTitle(/Xidmət Haqqı/));
   put('sales', byTitle(/ƏDV/));
   put('sales', byTitle(/Loyallıq/));
+  pane('sales').insertAdjacentHTML('beforeend', '<div id="yzsBday"></div>');   // Mərhələ 5: ad günü hədiyyəsi (yuza-birthday.js)
   // Mətbəx
   put('kitchen', byTitle(/Mətbəx Siqnal/));
   // Çek və çap: restoran məlumatları + şablonlar (printer cihazları Qeydiyyatdadır)
@@ -136,6 +137,7 @@ function show(id, silent, keep) {
   sec.querySelectorAll('.yzs-nav__b').forEach(b => { const on = b.dataset.pane === id; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); });
   sec.querySelectorAll('.yzs-pane').forEach(p => { p.hidden = p.dataset.pane !== id; });
   if (id === 'security') { renderOwner(); renderGate(); renderBackup(); renderErrors(); moveDeviceCard(); }
+  if (id === 'sales') window.__yzBday?.renderSettings($('yzsBday'));
   if (id === 'sounds') import('./notifSounds.js').then(m => m.renderNotifSounds?.()).catch(() => {});
   if (id === 'print' && !(keep && $('receiptTemplateSettings')?.querySelector(':scope > .yzs-tabs'))) import('./printer-settings.js').then(m => m.renderReceiptTemplateSettings?.()).then(tidyTemplate).catch(() => {});
   if (!silent) { sec.scrollTo?.(0, 0); window.scrollTo?.(0, 0); }

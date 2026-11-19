@@ -458,14 +458,13 @@ function takeSelfie() {
 const KIOSK_KEY = 'yzAttKiosk';
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { /* */ } }
-async function adminPin() { return String((await db.ref('settings/adminPin').once('value')).val() || ''); }
-/* Rəhbər hesabı (e-poçt + parol) aktivdirsə Rəhbər PIN-i burada da işləmir — Rəhbər parolu soruşulur */
-const ownerOn = () => { try { return typeof firebase.auth === 'function' && !!firebase.app().options.apiKey; } catch (e) { return false; } };
+/* Rəhbər PIN-i yoxdur (Mərhələ 5): Rəhbər həmişə öz parolu ilə təsdiqləyir */
+const ownerOn = () => true;
 async function rehberVerify(text) {
   try { const O = await import('./yuza-owner.js'); return await O.ownerVerify({ title: 'Rəhbər təsdiqi', text }); }
   catch (e) { return false; }
 }
-const isAdminPin = async (v) => !ownerOn() && v === await adminPin();
+const isAdminPin = async () => false;
 async function staffList() {
   const snap = await db.ref('staff').once('value');
   const o = snap.val() || {};
@@ -520,12 +519,7 @@ async function startKiosk() {
       <button id="izKAuth" class="iz-btn iz-btn--gold" type="button">${ownerOn() ? 'Rəhbər parolunu daxil et' : 'Rəhbər PIN-i daxil et'}</button></section>`);
     if (ownerOn()) {
       $('izKAuth').onclick = async () => { if (await rehberVerify('Bu cihazı davamiyyət ekranı etmək üçün Rəhbər parolunu yazın.')) { lsSet(KIOSK_KEY, '1'); startKiosk(); } };
-      return;
     }
-    $('izKAuth').onclick = () => pinPad({ title: 'Rəhbər PIN', onDone: async (v, close) => {
-      if (v !== await adminPin()) return 'PIN səhvdir';
-      lsSet(KIOSK_KEY, '1'); close(); startKiosk(); return true;
-    } });
     return;
   }
   renderKiosk();
@@ -553,11 +547,7 @@ async function renderKiosk() {
         <h2 class="iz-k-sub">Müvəqqəti çıxışda <span id="izKBCount">0</span></h2><ul id="izKBrk" class="iz-list"></ul></section>
     </div></div>`);
   const leaveKiosk = () => { lsSet(KIOSK_KEY, null); clearInterval(qrTimer); clearInterval(kTick); location.href = BASE + 'index.html'; };
-  if (ownerOn()) $('izKExit').onclick = async () => { if (await rehberVerify('Ekran rejimindən çıxmaq üçün Rəhbər parolunu yazın.')) leaveKiosk(); };
-  else $('izKExit').onclick = () => pinPad({ title: 'Rəhbər PIN', sub: 'Ekran rejimindən çıxmaq üçün', onDone: async (v, close) => {
-    if (v !== await adminPin()) return 'PIN səhvdir';
-    lsSet(KIOSK_KEY, null); close(); clearInterval(qrTimer); clearInterval(kTick); location.href = BASE + 'index.html'; return true;
-  } });
+  $('izKExit').onclick = async () => { if (await rehberVerify('Ekran rejimindən çıxmaq üçün Rəhbər parolunu yazın.')) leaveKiosk(); };
   $('izKBind').onclick = kioskActivate;
   $('izKProxy').onclick = kioskProxy;
   clearInterval(qrTimer); clearInterval(kTick);
