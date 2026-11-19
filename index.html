@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b0906">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+<title>YuzaPOS</title>
+<link rel="icon" type="image/svg+xml" href="img/yuza-icon.svg">
+<link rel="icon" type="image/png" sizes="512x512" href="img/yuza-icon-512.png">
+<link rel="apple-touch-icon" href="img/yuza-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Kalam:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/yuza-login.css">
+<link rel="stylesheet" href="css/yuza-theme.css">
+<link rel="stylesheet" href="css/yuza-reserve.css">
+<link rel="stylesheet" href="css/yuza-inventory.css">
+<link rel="stylesheet" href="css/racia.css">
+<link rel="stylesheet" href="css/yuza-delivery.css">
+</head>
+<body>
+
+    
+<!-- ═══ LOGIN (YuZa POS) ═══ -->
+<div class="screen active" id="loginScreen">
+
+  <!-- İkon və loqo simvolları (yalnız giriş ekranı üçün) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="yzMarkG" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fbe0a0"/>
+        <stop offset="0.5" stop-color="#e3a63f"/>
+        <stop offset="1" stop-color="#a86b1c"/>
+      </linearGradient>
+      <linearGradient id="yzGold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8d283"/>
+        <stop offset="1" stop-color="#d99a36"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Loqo: YuZa üçbucaq YZ monoqramı (şirkət loqosu, qızılı keçid) -->
+    <symbol id="yz-mark" viewBox="0 0 1000 866.0">
+      <path fill="url(#yzMarkG)" d="M0.0 0.0L210.2 364.0L330.2 364.0L376.2 364.0L402.7 410.0L402.7 410.0L555.7 675.0L509.7 675.0L356.7 410.0L236.7 410.0L500.0 866.0L643.0 618.3L286.0 0.0L166.0 0.0L331.1 286.0L285.1 286.0L120.0 0.0ZM1000.0 0.0L332.0 0.0L384.0 90.0L828.0 90.0L801.5 136.0L410.5 136.0L666.0 578.5L840.7 276.0L720.7 276.0L666.0 370.7L611.3 276.0L611.3 276.0L584.8 230.0L747.2 230.0L867.2 230.0Z"/>
+    </symbol>
+
+    <!-- Rol ikonları -->
+    <symbol id="yz-i-admin" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="15" r="7.5"/>
+        <path d="M9 41c0-8.6 6.7-14 15-14s15 5.4 15 14"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-waiter" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="14.5" r="7.5"/>
+        <path d="M17 12.5c3 0 6-1.3 7.6-4 1.4 2.7 3.8 4 6.4 4"/>
+        <path d="M9 41v-3c0-6 4.7-10 11-10h8c6.3 0 11 4 11 10v3"/>
+        <path d="M19.5 29.5l4.5 2.4 4.5-2.4v6l-4.5-2.4-4.5 2.4z"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-chef" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.5 28.5a8 8 0 0 1-1.6-15.2A8.4 8.4 0 0 1 24 8.2a8.4 8.4 0 0 1 12.1 5.1 8 8 0 0 1-1.6 15.2V39a2.5 2.5 0 0 1-2.5 2.5H16A2.5 2.5 0 0 1 13.5 39z"/>
+        <path d="M13.5 34h21"/>
+        <path d="M19 26v4M24 25v5M29 26v4"/>
+      </g>
+    </symbol>
+
+    <!-- Üstünlük ikonları -->
+    <symbol id="yz-i-utensils" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 4v7a4 4 0 0 0 8 0V4M12 4v24"/>
+        <path d="M23 28V4c-3 1.6-4.4 5-4.4 9v5.5H23"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-users" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="11" r="4"/>
+        <circle cx="7" cy="13" r="3"/>
+        <circle cx="25" cy="13" r="3"/>
+        <path d="M8.5 26c0-4.2 3.4-7 7.5-7s7.5 2.8 7.5 7"/>
+        <path d="M2.5 23.5c0-3 2-5 4.5-5.2M29.5 23.5c0-3-2-5-4.5-5.2"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-chart" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 27h22"/>
+        <path d="M7 27v-7M13 27v-11M19 27v-8M25 27V14"/>
+        <path d="M5.5 14.5l6-5 5 3.5 8-7M20 6h5v5"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-calendar" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="7" width="22" height="20" rx="3"/>
+        <path d="M5 13h22M11 4v5M21 4v5"/>
+        <path d="M16 16.2l1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-shield" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 3.5l9.5 3.8v7.4c0 6-4 10.6-9.5 13.3-5.5-2.7-9.5-7.3-9.5-13.3V7.3z"/>
+        <path d="M11.5 15.8l3.2 3.2 6-6.4"/>
+      </g>
+    </symbol>
+
+    <!-- Idarəetmə ikonları -->
+    <symbol id="yz-i-sun" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.2" fill="currentColor" fill-opacity=".25"/>
+        <path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-moon" viewBox="0 0 24 24">
+      <path d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8a8.4 8.4 0 1 0 10.8 10.8z" fill="currentColor" fill-opacity=".85"/>
+    </symbol>
+    <symbol id="yz-i-lock" viewBox="0 0 24 24">
+      <g fill="currentColor">
+        <path d="M7 10V7.5a5 5 0 0 1 10 0V10h-2V7.5a3 3 0 0 0-6 0V10z"/>
+        <rect x="4.5" y="10" width="15" height="11" rx="2.5"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-reset" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5.5 16a10.5 10.5 0 0 1 18-7.3L26 11.5"/>
+        <path d="M26.5 5.5v6h-6"/>
+        <path d="M26.5 16a10.5 10.5 0 0 1-18 7.3L6 20.5"/>
+        <path d="M5.5 26.5v-6h6"/>
+      </g>
+    </symbol>
+    <symbol id="yz-i-backspace" viewBox="0 0 32 32">
+      <g fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11.5 6.5H26a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H11.5L3.5 16z"/>
+        <path d="M15.5 12l7 8M22.5 12l-7 8"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <div class="yz-login" id="yzLogin" data-yz-theme="dark">
+
+    <!-- Atmosfer fonu (restoran işıqları) -->
+    <div class="yz-bg" aria-hidden="true">
+      <i class="yz-bokeh" style="left:41%;top:16%;--s:15em;--c:255,170,64;--o:.62"></i>
+      <i class="yz-bokeh" style="left:41%;top:17.5%;--s:4.6em;--c:255,214,140;--o:.85"></i>
+      <i class="yz-bokeh" style="left:45%;top:24%;--s:6.5em;--c:255,170,64;--o:.55"></i>
+      <i class="yz-bokeh" style="left:46%;top:5%;--s:16em;--c:190,120,40;--o:.32"></i>
+      <i class="yz-bokeh" style="left:61%;top:8%;--s:9em;--c:200,130,50;--o:.22"></i>
+      <i class="yz-bokeh" style="left:92%;top:31%;--s:7.5em;--c:255,170,64;--o:.55"></i>
+      <i class="yz-bokeh" style="left:98%;top:20%;--s:10em;--c:255,180,80;--o:.4"></i>
+      <i class="yz-bokeh" style="left:97%;top:25%;--s:3.4em;--c:90,150,255;--o:.55"></i>
+      <i class="yz-bokeh" style="left:95%;top:76%;--s:10em;--c:255,170,64;--o:.7"></i>
+      <i class="yz-bokeh" style="left:95%;top:75%;--s:3.4em;--c:255,225,160;--o:.95"></i>
+      <i class="yz-bokeh" style="left:36%;top:49%;--s:3.6em;--c:255,160,60;--o:.5"></i>
+      <i class="yz-bokeh" style="left:45%;top:53%;--s:3.2em;--c:255,160,60;--o:.5"></i>
+      <i class="yz-bokeh" style="left:40%;top:60%;--s:5em;--c:255,150,50;--o:.3"></i>
+      <i class="yz-bokeh" style="left:65%;top:95%;--s:26em;--c:210,125,40;--o:.2"></i>
+      <i class="yz-bokeh" style="left:3%;top:30%;--s:19em;--c:55,110,50;--o:.42"></i>
+      <i class="yz-bokeh" style="left:6%;top:64%;--s:17em;--c:50,100,46;--o:.34"></i>
+      <i class="yz-bokeh" style="left:2%;top:8%;--s:12em;--c:60,120,55;--o:.34"></i>
+      <i class="yz-bokeh" style="left:30%;top:44%;--s:13em;--c:50,100,46;--o:.18"></i>
+      <i class="yz-bokeh" style="left:24%;top:48%;--s:4em;--c:255,200,110;--o:.5"></i>
+      <i class="yz-bokeh" style="left:26%;top:54%;--s:3em;--c:255,170,70;--o:.55"></i>
+      <i class="yz-bokeh" style="left:20%;top:58%;--s:9em;--c:255,150,50;--o:.16"></i>
+      <i class="yz-bokeh" style="left:32%;top:62%;--s:3.4em;--c:255,190,100;--o:.4"></i>
+    </div>
+
+    <!-- Görünüş rejimi + dil -->
+    <div class="yz-topbar">
+      <div class="yz-theme" role="group" aria-label="Görünüş rejimi">
+        <button type="button" class="yz-theme__btn" data-yz-theme-set="light" aria-pressed="false" aria-label="İşıqlı rejim" title="İşıqlı rejim"><svg><use href="#yz-i-sun"/></svg></button>
+        <button type="button" class="yz-theme__btn" data-yz-theme-set="dark" aria-pressed="true" aria-label="Qaranlıq rejim" title="Qaranlıq rejim"><svg><use href="#yz-i-moon"/></svg></button>
+      </div>
+      <span class="yz-lang" title="Azərbaycan dili">AZ</span>
+    </div>
+
+    <div class="yz-stage">
+
+      <!-- SOL HİSSƏ: brend + üstünlüklər -->
+      <section class="yz-brand">
+        <div class="yz-lockup">
+          <svg class="yz-mark" aria-hidden="true"><use href="#yz-mark"/></svg>
+          <div class="yz-wordmark"><span class="yz-wm-a">YuZa</span><span class="yz-wm-b">POS</span></div>
+          <p class="yz-lockup__sub">RESTORAN İDARƏETMƏ SİSTEMİ</p>
+        </div>
+
+        <h2 class="yz-headline">Restoranınızın<br><span>bütün ehtiyacları<br>tək bir sistemdə!</span></h2>
+
+        <ul class="yz-features">
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-utensils"/></svg></span><span><b>Masa və Sifariş İdarəsi</b><small>Sürətli və rahat</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-users"/></svg></span><span><b>İşçi İdarəetməsi</b><small>Komanda üçün tam nəzarət</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-chart"/></svg></span><span><b>Maliyyə və Hesabatlar</b><small>Dəqiq statistikalar</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-calendar"/></svg></span><span><b>Banket və Tədbirlər</b><small>Xüsusi anlar üçün ideal</small></span></li>
+          <li><span class="yz-feat__ico"><svg><use href="#yz-i-shield"/></svg></span><span><b>Müştəri Loyallığı</b><small>Daha çox qonaq, daha çox dəyər</small></span></li>
+        </ul>
+
+        <div class="yz-tagline">
+          <p>Uğurlu restoranlar<br><span>doğru sistemlə başlayır!</span></p>
+          <svg viewBox="0 0 270 60" preserveAspectRatio="none" aria-hidden="true"><path d="M3 55C84 47 180 33 266 6" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round"/></svg>
+        </div>
+      </section>
+
+      <!-- SAĞ HİSSƏ: giriş kartı (PIN) -->
+      <main class="yz-card">
+        <svg class="yz-mark" aria-hidden="true"><use href="#yz-mark"/></svg>
+        <div class="yz-wordmark"><span class="yz-wm-a">YuZa</span><span class="yz-wm-b">POS</span></div>
+        <p class="yz-lockup__sub">RESTORAN İDARƏETMƏ SİSTEMİ</p>
+
+        <h1 class="yz-card__title">Sistemə Daxil Olun</h1>
+        <p class="yz-card__hint">Zəhmət olmasa, rolunuzu seçin və PIN kodunuzu daxil edin.</p>
+
+        <div class="yz-roles" role="group" aria-label="Rol seçimi">
+          <button type="button" class="role-tab yz-role yz-role--admin active" onclick="setRole('admin',this)"><svg><use href="#yz-i-admin"/></svg><span>Rəhbər</span></button>
+          <button type="button" class="role-tab yz-role yz-role--staff" onclick="setRole('staff',this)"><svg><use href="#yz-i-waiter"/></svg><span>Ofisiant</span></button>
+          <button type="button" class="role-tab yz-role yz-role--kitchen" onclick="setRole('kitchen',this)"><svg><use href="#yz-i-chef"/></svg><span>Mətbəx</span></button>
+        </div>
+
+        <div class="yz-pad">
+          <div class="yz-pinwrap">
+            <div class="yz-pin" id="pinDots" aria-label="PIN kod">
+              <div class="yz-dot" id="d0"></div>
+              <div class="yz-dot" id="d1"></div>
+              <div class="yz-dot" id="d2"></div>
+              <div class="yz-dot" id="d3"></div>
+              <div class="yz-dot" id="d4"></div>
+              <div class="yz-dot" id="d5"></div>
+            </div>
+            <div class="yz-err" id="loginErr" role="alert" aria-live="assertive"></div>
+          </div>
+
+          <div class="yz-keys">
+            <button type="button" class="yz-key" onclick="numPress('1')">1</button>
+            <button type="button" class="yz-key" onclick="numPress('2')">2</button>
+            <button type="button" class="yz-key" onclick="numPress('3')">3</button>
+            <button type="button" class="yz-key" onclick="numPress('4')">4</button>
+            <button type="button" class="yz-key" onclick="numPress('5')">5</button>
+            <button type="button" class="yz-key" onclick="numPress('6')">6</button>
+            <button type="button" class="yz-key" onclick="numPress('7')">7</button>
+            <button type="button" class="yz-key" onclick="numPress('8')">8</button>
+            <button type="button" class="yz-key" onclick="numPress('9')">9</button>
+            <button type="button" class="yz-key yz-key--ico" onclick="numPress('clear')" aria-label="Təmizlə" title="Təmizlə"><svg><use href="#yz-i-reset"/></svg></button>
+            <button type="button" class="yz-key" onclick="numPress('0')">0</button>
+            <button type="button" class="yz-key yz-key--ico" onclick="numPress('back')" aria-label="Sil" title="Sil"><svg><use href="#yz-i-backspace"/></svg></button>
+          </div>
+        </div>
+
+        <p class="yz-secure"><svg><use href="#yz-i-lock"/></svg><span>Təhlükəsiz və etibarlı sistem</span></p>
+      </main>
+    </div>
+
+    <div class="yz-version"><svg><use href="#yz-i-shield"/></svg><span>YuZa POS v1.0.0</span></div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN ═══ -->
+<div class="screen" id="adminScreen">
+
+  <!-- Topbar -->
+  <div class="topbar" id="adminTopbar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="ap-hamburger" onclick="apToggleSidebar()" title="Menyu"><svg class="icon" style="width:20px;height:20px;"><use href="#i-menu"></use></svg></button>
+      <h2 style="font-size:16px;"><svg class="icon"><use href="#i-admin"></use></svg> <span id="apPageTitle">Admin Paneli</span></h2>
+    </div>
+    <div class="topbar-right">
+      <!-- + Yeni dropdown -->
+      <div style="position:relative;">
+        <button class="btn btn-green ap-new-btn" id="apNewBtn" onclick="apToggleNewMenu(event)" style="padding:7px 12px;font-size:13px;display:flex;align-items:center;gap:5px;">
+          <svg class="icon" style="width:14px;height:14px;"><use href="#i-plus"></use></svg>
+          <span class="ap-new-label">Yeni</span>
+        </button>
+        <div class="ap-new-dropdown" id="apNewMenu">
+          <div class="ap-new-dropdown__section">Qeydiyyat</div>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('staff')"><svg class="icon"><use href="#i-staff"></use></svg> Yeni İşçi</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Yeni Masa</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('menu')"><svg class="icon"><use href="#i-food"></use></svg> Yeni Məhsul</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('customers')"><svg class="icon"><use href="#i-users"></use></svg> Nisyə Müştəri</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('paymentMethods')"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növü</button>
+          <div class="ap-new-dropdown__sep"></div>
+          <div class="ap-new-dropdown__section">Anbar</div>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('purchases')"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışı</button>
+          <div class="ap-new-dropdown__sep"></div>
+          <div class="ap-new-dropdown__section">Sistem</div>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('kitchenStations')"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx Stansiyası</button>
+          <button class="ap-new-dropdown__item" onclick="apNewItem('printers')"><svg class="icon"><use href="#i-printer"></use></svg> Printer</button>
+        </div>
+      </div>
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
+      <button class="btn btn-red yz-icon-only" onclick="logout()" aria-label="Çıxış" title="Çıxış"><svg class="icon"><use href="#i-logout"></use></svg></button>
+    </div>
+  </div>
+
+  <!-- Ana layout -->
+  <div class="admin-body" id="adminBody">
+    <button id="adminBackBtn" class="admin-back-btn" onclick="adminGoBack()" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></button>
+
+    <!-- Sidebar / Tab container -->
+    <div class="admin-tabs" id="adminTabsContainer">
+
+      <!-- ANA SƏHİFƏ & HESABATLAR -->
+      <div class="ap-group" data-group="reports">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-chart"></use></svg>
+          <span>Hesabatlar</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="dashboard" onclick="adminTab('dashboard',this)">
+            <svg class="icon"><use href="#i-chart"></use></svg> Satış Hesabatı
+          </button>
+          <button class="admin-tab" data-section="closedOrders" onclick="adminTab('closedOrders',this)">
+            <svg class="icon"><use href="#i-lock"></use></svg> Bağlanan Masalar
+          </button>
+          <button class="admin-tab" data-section="logs" onclick="adminTab('logs',this)">
+            <svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə
+          </button>
+        </div>
+      </div>
+
+      <!-- QEYDİYYAT -->
+      <div class="ap-group" data-group="registry">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-folder"></use></svg>
+          <span>Qeydiyyat</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="staff" onclick="adminTab('staff',this)">
+            <svg class="icon"><use href="#i-staff"></use></svg> İşçilər
+          </button>
+          <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)">
+            <svg class="icon"><use href="#i-chair"></use></svg> Masalar
+          </button>
+          <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)">
+            <svg class="icon"><use href="#i-food"></use></svg> Menyu
+          </button>
+          <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)">
+            <svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri
+          </button>
+        </div>
+      </div>
+
+      <!-- ANBAR & ALIŞ -->
+      <div class="ap-group" data-group="warehouse">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-box"></use></svg>
+          <span>Anbar & Alış</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+                   <button class="admin-tab" data-section="inv" onclick="adminTab('inv',this)">
+            <svg class="icon"><use href="#i-box"></use></svg> Anbar və Məhsullar
+          </button>
+          <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)">
+            <svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları
+          </button>
+          <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)">
+            <svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar
+          </button>
+        </div>
+      </div>
+
+      <!-- MÜŞTƏRİ & CRM -->
+      <div class="ap-group" data-group="crm">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-users"></use></svg>
+          <span>Müştəri & CRM</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="loyaltyCustomers" onclick="adminTab('loyaltyCustomers',this)">
+            <svg class="icon"><use href="#i-star"></use></svg> Loyallıq Üzvləri
+          </button>
+          <button class="admin-tab" data-section="customers" onclick="adminTab('customers',this)">
+            <svg class="icon"><use href="#i-card"></use></svg> Nisyə Hesabları
+          </button>
+          <button class="admin-tab" data-section="feedback" onclick="adminTab('feedback',this)">
+            <svg class="icon"><use href="#i-chat"></use></svg> Rəylər & Şikayətlər
+          </button>
+        </div>
+      </div>
+
+      <!-- BANKET -->
+      <div class="ap-group" data-group="banquet">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <span class="ap-group__emoji">🎪</span>
+          <span>Banket</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)">
+            <svg class="icon"><use href="#i-chart"></use></svg> Dashboard
+          </button>
+          <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)">
+            <svg class="icon"><use href="#i-clock"></use></svg> Təqvim
+          </button>
+          <button class="admin-tab" data-section="banquetHalls" style="display:none" onclick="adminTab('banquetHalls',this)">
+            <svg class="icon"><use href="#i-chair"></use></svg> Zallar
+          </button>
+          <button class="admin-tab" data-section="banquetEventTypes" style="display:none" onclick="adminTab('banquetEventTypes',this)">
+            <svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növləri
+          </button>
+        </div>
+      </div>
+
+      <!-- SİSTEM -->
+      <div class="ap-group" data-group="system">
+        <button class="ap-group__header" onclick="apToggleGroup(this)">
+          <svg class="icon ap-group__icon"><use href="#i-settings"></use></svg>
+          <span>Sistem</span>
+          <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
+        </button>
+        <div class="ap-group__items">
+          <button class="admin-tab" data-section="settings" onclick="adminTab('settings',this)">
+            <svg class="icon"><use href="#i-settings"></use></svg> Ayarlar
+          </button>
+          <button class="admin-tab" data-section="kitchenStations" onclick="adminTab('kitchenStations',this)">
+            <svg class="icon"><use href="#i-chef"></use></svg> Mətbəxlər
+          </button>
+          <button class="admin-tab" data-section="printers" onclick="adminTab('printers',this)">
+            <svg class="icon"><use href="#i-printer"></use></svg> Printerlər
+          </button>
+          <button class="admin-tab" data-section="notifSounds" onclick="adminTab('notifSounds',this)">
+            <svg class="icon"><use href="#i-bell"></use></svg> Bildiriş Səsləri
+          </button>
+          <button class="admin-tab" data-section="racia" onclick="adminTab('racia',this)">
+            <svg class="icon"><use href="#i-megaphone"></use></svg> Racia
+          </button>
+          <button class="admin-tab" data-section="dangerZone" onclick="adminTab('dangerZone',this)" style="color:var(--red);">
+            <svg class="icon"><use href="#i-trash"></use></svg> Məlumatların silinməsi
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /admin-tabs -->
+
+    <!-- Content bölmələri -->
+    <div class="admin-section active" id="sec-dashboard">
+      <div class="stats-row" id="statsRow"></div>
+      <div class="report-quick-filters">
+        <button class="report-quick-btn" onclick="setReportQuickRange('today')">Bu gün</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('yesterday')">Dünən</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('week')">Bu həftə</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('month')">Bu ay</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('lastMonth')">Keçən ay</button>
+        <button class="report-quick-btn" onclick="setReportQuickRange('year')">Bu il</button>
+        <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('dayEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Gün Sonu</button>
+        <button class="report-quick-btn report-quick-btn--accent" onclick="setReportQuickRange('monthEnd')"><svg class="icon"><use href="#i-clock"></use></svg> Ay Sonu</button>
+      </div>
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="repDateFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="repDateTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="repTimeFrom" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="repTimeTo" onchange="renderReports()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">İş günü başlama saatı <small style="font-weight:400;">(Gün/Ay Sonu üçün)</small></span><input type="time" id="repBizDayHour" value="05:00" onchange="saveBizDayHour()"></div>
+          <div style="display:flex;align-items:flex-end;"><span id="reportRangeSummary" style="font-size:12.5px;color:var(--text2);padding-bottom:9px;"></span></div>
+        </div>
+      </div>
+      <div class="report-subtabs" id="reportSubtabs">
+        <button class="report-subtab active" data-view="summary" onclick="setReportView('summary')"><svg class="icon"><use href="#i-chart"></use></svg> Xülasə</button>
+        <button class="report-subtab" data-view="payments" onclick="setReportView('payments')"><svg class="icon"><use href="#i-money"></use></svg> Kassa Əməliyyatları</button>
+        <button class="report-subtab" data-view="staff" onclick="setReportView('staff')"><svg class="icon"><use href="#i-staff"></use></svg> İşçi Performansı</button>
+        <button class="report-subtab" data-view="items" onclick="setReportView('items')"><svg class="icon"><use href="#i-food"></use></svg> Məhsul Satışı</button>
+        <button class="report-subtab" data-view="tables" onclick="setReportView('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Masalara Görə</button>
+        <button class="report-subtab" data-view="days" onclick="setReportView('days')"><svg class="icon"><use href="#i-clipboard"></use></svg> Günlərə Görə</button>
+        <button class="report-subtab" data-view="hours" onclick="setReportView('hours')"><svg class="icon"><use href="#i-clock"></use></svg> Saatlara Görə</button>
+        <button class="report-subtab" data-view="discounts" onclick="setReportView('discounts')"><svg class="icon"><use href="#i-tag"></use></svg> Endirim / İkram</button>
+        <button class="report-subtab" data-view="turnover" onclick="setReportView('turnover')"><svg class="icon"><use href="#i-refresh"></use></svg> Masa Dövriyyəsi</button>
+        <button class="report-subtab" data-view="loyalty" onclick="setReportView('loyalty')"><svg class="icon"><use href="#i-users"></use></svg> Loyallıq Proqramı</button>
+        <button class="report-subtab" data-view="compare" onclick="setReportView('compare')"><svg class="icon"><use href="#i-chart"></use></svg> Dövrlər Müqayisəsi</button>
+        <button class="report-subtab" data-view="shifts" onclick="setReportView('shifts')"><svg class="icon"><use href="#i-cash"></use></svg> Kassa Növbələri (X/Z)</button>
+        <button class="report-subtab" data-view="cancellations" onclick="setReportView('cancellations')"><svg class="icon"><use href="#i-trash"></use></svg> Ləğvetmələr</button>
+        <button class="report-subtab" data-view="openTables" onclick="setReportView('openTables')"><svg class="icon"><use href="#i-chair"></use></svg> Hazırda Açıq Masalar</button>
+        <button class="report-subtab" data-view="credit" onclick="setReportView('credit')"><svg class="icon"><use href="#i-cash"></use></svg> Nisyə Vəziyyəti</button>
+        <button class="report-subtab" data-view="stock" onclick="setReportView('stock')"><svg class="icon"><use href="#i-food"></use></svg> Anbar/Stok</button>
+        <button class="report-subtab" data-view="suppliers" onclick="setReportView('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı/Alış</button>
+      </div>
+      <div id="reportContent"></div>
+    </div>
+    <div class="admin-section" id="sec-staff">
+      <div class="tile-grid" id="staffGrid"></div>
+      <div class="tile-detail-overlay" id="staffDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectStaff(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="staffDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-tables">
+      <div id="tableCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div class="tile-grid" id="tablesGrid"></div>
+      <div class="tile-detail-overlay" id="tablesDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectTableMgmt(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="tablesDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-menu">
+      <div id="menuCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div class="tile-grid" id="menuGrid"></div>
+      <div class="tile-detail-overlay" id="menuDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectMenuItem(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="menuDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-logs">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldLogs()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
+      </div>
+      <div class="closed-tables-filters" style="margin-bottom:12px;">
+        <input type="text" id="logSearchInput" placeholder="Söz və ya ifadə ilə axtar..." oninput="renderLogs()">
+      </div>
+      <div class="closed-tables-filters__row" style="margin-bottom:10px;">
+        <div class="form-group"><label>Tarixdən</label><input type="date" id="logDateFrom" onchange="renderLogs()"></div>
+        <div class="form-group"><label>Tarixə</label><input type="date" id="logDateTo" onchange="renderLogs()"></div>
+      </div>
+      <div class="closed-tables-filters__row" style="margin-bottom:12px;">
+        <div class="form-group"><label>Saatdan</label><input type="time" id="logTimeFrom" onchange="renderLogs()"></div>
+        <div class="form-group"><label>Saata</label><input type="time" id="logTimeTo" onchange="renderLogs()"></div>
+      </div>
+      <div class="log-filter-bar" id="logFilterBar"></div>
+      <div class="log-list" id="logList"></div>
+    </div>
+    <div class="admin-section" id="sec-settings">
+      <div style="max-width:500px;">
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;">🍳 Mətbəx Siqnal Intervalı</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Yeni sifariş qəbul edilməyəndə neçə saniyədən bir səs çalsın?</p>
+          <div class="form-group">
+            <label>Saniyə</label>
+            <input type="number" id="kitchenAlertIntervalInput" min="5" max="120" step="5" value="15" onchange="saveKitchenAlertInterval(this.value)">
+          </div>
+          <p id="kitchenAlertStatus" style="font-size:12px;color:var(--green);margin-top:6px;min-height:14px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-utensils"></use></svg> Menyu URL</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Müştəri panelindəki "Menyu" düyməsinin açacağı link:</p>
+          <div class="form-group" style="margin-bottom:10px;">
+            <input type="url" id="menuUrlInput" placeholder="https://sizin-menyu-linkiniz.com" style="font-size:14px;">
+          </div>
+          <button class="btn btn-green" onclick="saveMenuUrl()" style="width:100%;padding:13px;"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+          <p id="menuUrlStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-money"></use></svg> Xidmət Haqqı</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Aktiv edilərsə, hər masanın sifarişinə avtomatik olaraq müəyyən faiz qədər xidmət haqqı əlavə olunur.</p>
+          <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-weight:700;">Xidmət haqqını aktiv et</span>
+            <input type="checkbox" id="serviceChargeEnabled" onchange="saveServiceCharge()" style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
+          </label>
+          <div class="form-group">
+            <label>Faiz dərəcəsi (%)</label>
+            <input type="number" id="serviceChargePercent" min="0" max="100" step="0.5" placeholder="10" onchange="saveServiceCharge()">
+          </div>
+                    <p id="serviceChargeStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-money"></use></svg> ƏDV Hesablama Üsulu</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Bütün mallar üçün ümumi qaydadır. Hər malın ƏDV faizi (0%, 18% və s.) Menyu → mal səhifəsində ayrıca seçilir.</p>
+          <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
+            <input type="radio" name="vatMode" value="included" onchange="saveVatMode()" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px;">
+            <span><span style="font-weight:700;display:block;">ƏDV qiymətə daxildir</span><span style="font-size:12px;color:var(--text2);">Menyudakı qiymət müştərinin ödədiyi qiymətdir. Çekdə ƏDV yalnız məlumat kimi göstərilir.</span></span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
+            <input type="radio" name="vatMode" value="added" onchange="saveVatMode()" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px;">
+            <span><span style="font-weight:700;display:block;">ƏDV qiymətin üstünə əlavə olunur</span><span style="font-size:12px;color:var(--text2);">Hesaba ƏDV ayrıca sətir kimi əlavə olunur, yekun məbləğ artır.</span></span>
+          </label>
+          <p id="vatModeStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card" style="margin-bottom:16px;">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-users"></use></svg> Müştəri Loyallıq Proqramı — Referral</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Qeydiyyatlı müştərilər dostlarını dəvət edə bilər. Dəvət olunan şəxs ilk sifarişini tamamlayanda, dəvət edən şəxsə bonus verilir.</p>
+          <div class="form-group">
+            <label>Dəvət bonusu (bal)</label>
+            <input type="number" id="referralBonusAmount" min="0" step="1" placeholder="10" onchange="saveLoyaltySettings()">
+          </div>
+          <div class="form-group">
+            <label>Minimum sifariş məbləği (₼) — bonus üçün</label>
+            <input type="number" id="referralMinOrderAmount" min="0" step="1" placeholder="20" onchange="saveLoyaltySettings()">
+          </div>
+          <p id="loyaltySettingsStatus" style="font-size:12px;color:var(--green);margin-top:8px;min-height:16px;"></p>
+        </div>
+        <div class="table-card">
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-clipboard"></use></svg> Sistem Məlumatları</h3>
+          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-customers">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Nisyə (kredit hesabı) ilə xidmət etdiyiniz müştərilər. Qarson masadan mal seçib bu müştərilərin adına köçürə bilər.</p>
+      <div class="grid-2" id="customersGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-paymentMethods">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Burada yaratdığınız ödəniş növləri qarsonun "Ödəniş Al" ekranında avtomatik görünəcək.</p>
+      <div class="grid-2" id="paymentMethodsGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-closedOrders">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="ctSearchInput" placeholder="Masa adı və ya mal adı ilə axtar..." oninput="renderClosedOrders()">
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc tarix</span><input type="date" id="ctDateFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş tarix</span><input type="date" id="ctDateTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Başlanğıc saat</span><input type="time" id="ctTimeFrom" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+          <div><span class="closed-tables-filters__label">Bitiş saat</span><input type="time" id="ctTimeTo" onchange="renderClosedOrders()" onclick="this.showPicker&&this.showPicker()"></div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Ödəniş növü</span><select id="ctPaymentTypeFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+          <div><span class="closed-tables-filters__label">Sırala</span>
+            <select id="ctSortSelect" onchange="renderClosedOrders()">
+              <option value="newest">Ən yeni</option>
+              <option value="oldest">Ən köhnə</option>
+              <option value="amount_desc">Məbləğ (çox→az)</option>
+              <option value="amount_asc">Məbləğ (az→çox)</option>
+            </select>
+          </div>
+        </div>
+        <div class="closed-tables-filters__row">
+          <div><span class="closed-tables-filters__label">Masanı açan işçi</span><select id="ctOpenedByFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+          <div><span class="closed-tables-filters__label">Masanı bağlayan işçi</span><select id="ctStaffFilter" onchange="renderClosedOrders()"><option value="">Hamısı</option></select></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ctRestoredOnlyFilter" onchange="renderClosedOrders()" style="width:16px;height:16px;cursor:pointer;">
+          Yalnız bərpa edilmiş masalar (<span style="color:var(--orange);">*</span> işarəli)
+        </label>
+      </div>
+      <div id="ctReportSummary" style="margin-bottom:14px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="ctSelectAllCheckbox" onchange="toggleSelectAllClosedOrders(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+          Hamısını seç
+        </label>
+        <button id="ctDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedClosedOrders()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+      </div>
+      <div class="tile-grid" id="closedOrdersList"></div>
+      <div class="tile-detail-overlay" id="ctDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectClosedOrder(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="ctDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-loyaltyCustomers">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="lcSearchInput" placeholder="Ad, soyad və ya telefon ilə axtar..." oninput="renderLoyaltyCustomers()">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="lcSelectAllCheckbox" onchange="toggleSelectAllLoyaltyCustomers(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+          Hamısını seç
+        </label>
+        <button id="lcDeleteSelectedBtn" class="btn btn-red" style="display:none;padding:5px 12px;font-size:11px;" onclick="deleteSelectedLoyaltyCustomers()"><svg class="icon"><use href="#i-trash"></use></svg> Seçilənləri Sil (0)</button>
+      </div>
+      <div class="tile-grid" id="loyaltyCustomersList"></div>
+      <div class="tile-detail-overlay" id="lcDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectLoyaltyCustomer(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="lcDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-suppliers">
+      <div class="tile-grid" id="suppliersGrid"></div>
+      <div class="tile-detail-overlay" id="suppliersDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectSupplierMgmt(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="suppliersDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-purchases">
+      <div class="closed-tables-filters" style="margin-bottom:14px;">
+        <input type="text" id="purSearchInput" placeholder="Təchizatçı, faktura nömrəsi ilə axtar..." oninput="renderPurchases()">
+      </div>
+      <div class="tile-grid" id="purchasesList"></div>
+      <div class="tile-detail-overlay" id="purDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectPurchase(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="purDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetDashboard">
+      <div id="banquetDashboardBody"></div>
+    </div>
+    <div class="admin-section" id="sec-banquetCalendar">
+      <div id="banquetCalendarHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;"></div>
+      <div id="banquetCalendarGrid" class="banquet-calendar-grid"></div>
+      <div id="banquetDayEventsSection" style="margin-top:20px;"></div>
+      <div class="tile-detail-overlay" id="banquetEventDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="closeBanquetEventDetail()" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="banquetEventDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetHalls">
+      <div class="tile-grid" id="banquetHallsGrid"></div>
+      <div class="tile-detail-overlay" id="banquetHallDetailPanel">
+        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectBanquetHall(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
+        <div class="tile-detail-body" id="banquetHallDetailBody"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="sec-banquetEventTypes">
+      <div class="tile-grid" id="banquetEventTypesGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-notifSounds">
+      <div style="max-width:600px;" id="notifSoundsSection"></div>
+    </div>
+    <div class="admin-section" id="sec-kitchenStations">
+      <div class="tile-grid" id="kitchenStationsGrid"></div>
+    </div>
+    <div class="admin-section" id="sec-feedback">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="color:var(--text2);font-size:14px;text-transform:uppercase;">Müştəri Tələbləri və Şikayətlər</h3>
+        <button class="btn btn-red" style="padding:8px 16px;font-size:12px;" onclick="clearOldFeedbacks()"><svg class="icon"><use href="#i-trash"></use></svg> 30 Gündən Köhnəni Sil</button>
+      </div>
+      <div id="feedbackList" class="log-list"></div>
+    </div>
+    <div class="admin-section" id="sec-printers">
+      <div style="max-width:680px;">
+        <div class="table-card" id="printAgentsCard" style="margin-bottom:20px;display:none;"></div>
+        <div class="table-card" style="margin-bottom:20px;">
+          <h3 style="margin-bottom:12px;"><svg class="icon"><use href="#i-printer"></use></svg> Printerlər</h3>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Aktiv "Hesab printeri" tapıldıqda "Hesab" düyməsi avtomatik onu istifadə edir.</p>
+          <div class="tile-grid" id="printersGrid"></div>
+        </div>
+        <div class="table-card">
+          <div id="receiptTemplateSettings"></div>
+        </div>
+      </div>
+    </div>
+        <div class="admin-section" id="sec-racia"><div id="raciaAdminBody"></div></div>
+        <div class="admin-section" id="sec-inv">
+      <div id="yzInvAdminHost"></div>
+    </div>
+    <div class="admin-section" id="sec-dangerZone">
+      <div id="dangerZoneBody"></div>
+    </div>
+
+  </div><!-- /admin-body -->
+  <button class="add-fab" onclick="openAddModal()" id="adminFab">+</button>
+</div>
+
+<!-- ═══ TƏHLÜKƏLİ ƏMƏLİYYATLAR — PIN MODAL ═══ -->
+<div class="modal-bg" id="dangerZonePinModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:50%;background:rgba(220,53,69,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+      <svg class="icon" style="width:28px;height:28px;color:var(--red);"><use href="#i-key"></use></svg>
+    </div>
+    <h2 id="dzPinTitle" style="margin-bottom:6px;">🔐 Məlumatların silinməsi</h2>
+    <p id="dzPinSubtitle" style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Bu bölməyə giriş üçün Rəhbər PIN kodunu daxil edin.</p>
+    <div class="form-group" style="margin-bottom:6px;">
+      <input type="password" id="dzPinInput" placeholder="PIN" inputmode="numeric"
+        style="text-align:center;font-size:22px;letter-spacing:8px;padding:12px;"
+        onkeydown="if(event.key==='Enter')confirmDangerZonePin()">
+    </div>
+    <p id="dzPinError" style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:12px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeDangerZonePinModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDangerZonePin()">
+        <svg class="icon"><use href="#i-key"></use></svg> Təsdiqlə
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PRİNTER MODAL ═══ -->
+<div class="modal-bg" id="printerModal">
+  <div class="modal" style="max-width:480px;">
+    <h2 id="printerModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-printer"></use></svg> Yeni Printer</h2>
+
+    <div class="form-group">
+      <label>Printer adı</label>
+      <input type="text" id="printerName" placeholder="Məs: Bar Printer, Mətbəx Printer 1">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Printer növü</label>
+        <select id="printerType" onchange="_toggleReceiptFields()"></select>
+      </div>
+      <div class="form-group">
+        <label>Kağız eni</label>
+        <select id="printerPaper"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>IP ünvan <small style="color:var(--text3);">(USB üçün boş burax)</small></label>
+        <input type="text" id="printerIp" placeholder="192.168.1.101">
+      </div>
+      <div class="form-group">
+        <label>Port</label>
+        <input type="number" id="printerPort" value="9100" placeholder="9100">
+      </div>
+    </div>
+
+    <!-- Kateqoriya seçimi — yalnız mətbəx/bar printerində -->
+    <div id="printerCatWrap" style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px;">
+        Bu printerdən hansı kateqoriyalar çap olunsun?
+      </div>
+      <div id="printerCatList" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
+      <span style="font-weight:600;">Aktiv</span>
+      <input type="checkbox" id="printerActive" checked style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePrinterModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="savePrinter()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ANBAR (işçilər üçün: mühasib, anbardar) ═══ -->
+<div class="screen" id="invScreen">
+  <div class="topbar">
+    <h2><svg class="icon"><use href="#i-box"></use></svg> Anbar</h2>
+    <div class="topbar-right"><button class="btn btn-ghost yz-icon-only" id="yzInvStaffBack" type="button" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></button></div>
+  </div>
+  <div id="yzInvStaffHost"></div>
+</div>
+
+<!-- ═══ KITCHEN ═══ -->
+<div class="screen" id="kitchenScreen">
+  <div class="topbar">
+    <h2><svg class="icon"><use href="#i-chef"></use></svg> <span id="kitchenPanelTitle">Mətbəx Paneli</span></h2>
+    <div class="topbar-right">
+      <button class="theme-toggle-btn" id="themeToggleBtnKitchen" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
+      <button class="btn btn-red yz-icon-only" onclick="logout()" aria-label="Çıxış" title="Çıxış"><svg class="icon"><use href="#i-logout"></use></svg></button>
+    </div>
+  </div>
+  <div class="kitchen-body">
+ <div class="kitchen-orders-grid" id="kitchenGrid"></div>
+  </div>
+</div>
+
+<!-- ═══ WAITER ═══ -->
+<div class="screen" id="waiterScreen">
+  <div class="waiter-header">
+    <div class="waiter-info">
+      <img id="wAvatar" src="" alt="">
+      <div>
+        <div style="font-weight:700;" id="wName">Qarson</div>
+        <div style="font-size:12px;color:var(--green);">● Aktiv &nbsp;<span id="wRoleBadge" style="color:var(--text2);"></span></div>
+      </div>
+    </div>
+    <button class="theme-toggle-btn" id="themeToggleBtnWaiter" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
+    <button class="btn btn-ghost yz-icon-only" onclick="staffExit()" aria-label="Çıxış — PIN ekranına" title="Çıxış — PIN ekranına"><svg class="icon"><use href="#i-logout"></use></svg></button>
+  </div>
+  <div class="waiter-body" style="display:flex;flex-direction:column;overflow:hidden;">
+    <div id="waiterCatTabs" style="display:flex;gap:4px;flex-shrink:0;overflow-x:auto;margin-bottom:16px;border-bottom:1px solid var(--border);"></div>
+    <div id="waiterStaffFilterRow" class="log-filter-bar" style="display:none;flex-shrink:0;"></div>
+    <div class="table-board-grid" id="waiterTables" style="flex:1;overflow-y:auto;align-content:start;"></div>
+  </div>
+</div>
+
+<div id="waiterChatPanel">
+  <div class="chat-header">
+    <span id="waiterChatTitle"><svg class="icon"><use href="#i-chat"></use></svg> Müştəri Mesajı</span>
+    <button onclick="closeWaiterChat()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;"><svg class="icon"><use href="#i-close"></use></svg></button>
+  </div>
+  <div class="chat-msg-list" id="waiterChatMsgList"></div>
+  <div class="chat-input-row">
+    <textarea id="waiterChatInput" placeholder="Cavab yazın..." rows="1"></textarea>
+    <button onclick="sendWaiterReply()">Göndər</button>
+  </div>
+</div>
+  
+  <!-- ═══ KİTCHEN PROBLEM MODALI ═══ -->
+<div class="modal-bg" id="kitchenProblemModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <h3>⚠ Problem Bildir</h3>
+      <button onclick="document.getElementById('kitchenProblemModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="kpModalKoId">
+      <input type="hidden" id="kpModalItemIdx">
+      <p style="font-weight:600;margin-bottom:12px;" id="kpModalItemName"></p>
+      <div class="form-group">
+        <label>Problem növü</label>
+        <select id="kpModalProblemType" onchange="kitchenProblemTypeChanged(this.value)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
+          <option value="out_of_stock">Məhsul bitib</option>
+          <option value="not_enough">Miqdar kifayət etmir</option>
+          <option value="cannot_prepare">Hazırlamaq mümkün deyil</option>
+          <option value="other">Digər səbəb</option>
+        </select>
+      </div>
+      <div class="form-group" id="kpModalAvailQtyRow" style="display:none;">
+        <label>Mövcud miqdar</label>
+        <input type="number" id="kpModalAvailQty" min="0" placeholder="məs: 2">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('kitchenProblemModal').classList.remove('open')">Ləğv et</button>
+      <button class="btn btn-red" onclick="confirmKitchenProblem()">⚠ Göndər</button>
+    </div>
+  </div>
+</div>
+<!-- ═══ KİTCHEN STANSİYA MODALI ═══ -->
+<div class="modal-bg" id="kitchenStationModal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx</h3>
+      <button onclick="closeKitchenStationModal()"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <input type="hidden" id="kitchenStationModalId">
+    <div class="modal-body" id="kitchenStationModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeKitchenStationModal()">Ləğv et</button>
+      <button class="btn btn-green" onclick="saveKitchenStation()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ KİTCHEN MENYU TƏYİN MODALI ═══ -->
+<div class="modal-bg" id="kitchenMenuAssignModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3><svg class="icon"><use href="#i-food"></use></svg> Məhsul Təyinatı</h3>
+      <button onclick="closeKitchenMenuAssign()"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="modal-body" id="kitchenMenuAssignBody" style="overflow-y:auto;max-height:55vh;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeKitchenMenuAssign()">Ləğv et</button>
+      <button class="btn btn-green" onclick="saveKitchenMenuAssign()"><svg class="icon"><use href="#i-save"></use></svg> Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+  <!-- ═══ BATCH ACTION MODALI ═══ -->
+<div class="modal-bg" id="batchActionModal">
+  <div class="modal" style="max-width:400px;">
+        <div class="modal-header">
+      <h3>Toplu əməliyyat</h3>
+      <button id="bamCancelBtn"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Miqdarı seçin:</p>
+      <div id="batchActionList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:35vh;overflow-y:auto;"></div>
+      <div style="height:1px;background:var(--border);margin-bottom:12px;"></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600;">Əməliyyat növü:</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button id="bamTransferBtn" class="btn" style="background:rgba(52,152,219,.1);border:1px solid var(--blue);color:var(--blue);justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-shuffle"></use></svg> Köçür
+        </button>
+        <button id="bamCreditBtn" class="btn" style="background:rgba(139,92,246,.1);border:1px solid #8b5cf6;color:#8b5cf6;justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-user"></use></svg> Müştəriyə yaz
+        </button>
+        <button id="bamGiftBtn" class="btn" style="background:rgba(46,204,113,.1);border:1px solid var(--green);color:var(--green);justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-gift"></use></svg> İkram et
+        </button>
+        <button id="bamDiscountBtn" class="btn" style="background:rgba(243,156,18,.1);border:1px solid var(--orange);color:var(--orange);justify-content:flex-start;gap:8px;">
+          <svg class="icon"><use href="#i-tag"></use></svg> Endirim et
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+  <!-- ═══ İSP MİQDAR MODALI ═══ -->
+<div class="modal-bg" id="ispQtyModal">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-header">
+      <h3 id="ispQtyModalTitle">Miqdar seçin</h3>
+      <button onclick="document.getElementById('ispQtyModal').classList.remove('open')"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <p id="ispQtyModalDesc" style="color:var(--text2);font-size:13px;margin-bottom:14px;"></p>
+      <div class="form-group">
+        <label id="ispQtyModalLabel">Miqdar</label>
+        <input type="number" id="ispQtyModalInput" min="1" value="1" style="font-size:18px;font-weight:700;text-align:center;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('ispQtyModal').classList.remove('open')">Ləğv et</button>
+      <button class="btn btn-green" id="ispQtyModalConfirm">Təsdiq et</button>
+    </div>
+  </div>
+</div>
+  <!-- ═══ İTEM SAĞ PANELİ ═══ -->
+<div id="itemSidePanel" class="item-side-panel">
+  <div class="isp-header">
+    <div>
+      <div class="isp-name" id="ispItemName"></div>
+      <div class="isp-meta">
+        <span id="ispItemQty"></span>
+        <span id="ispItemPrice" style="color:var(--green);font-weight:700;"></span>
+      </div>
+      <div id="ispBadges" style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;"></div>
+    </div>
+    <button id="ispCloseBtn" class="isp-close-btn">✕</button>
+  </div>
+  <div class="isp-actions">
+    <button id="ispDiscountBtn" class="isp-action-btn isp-action-btn--discount">
+      <svg class="icon"><use href="#i-tag"></use></svg>
+      <span>Endirim</span>
+    </button>
+    <button id="ispGiftBtn" class="isp-action-btn isp-action-btn--gift">
+      <svg class="icon"><use href="#i-gift"></use></svg>
+      <span>İkram et</span>
+    </button>
+    <button id="ispTransferBtn" class="isp-action-btn isp-action-btn--transfer">
+      <svg class="icon"><use href="#i-shuffle"></use></svg>
+      <span>Köçür</span>
+    </button>
+    <button id="ispCancelBtn" class="isp-action-btn isp-action-btn--cancel">
+      <svg class="icon"><use href="#i-close"></use></svg>
+      <span>Ləğv et</span>
+    </button>
+        <button id="ispCreditBtn" class="isp-action-btn isp-action-btn--credit">
+      <svg class="icon"><use href="#i-user"></use></svg>
+      <span>Müştəriyə yaz</span>
+    </button>
+  </div>
+</div>
+<div id="itemSidePanelBg" class="item-side-panel-bg" onclick="document.getElementById('itemSidePanel').classList.remove('open')"></div>
+<!-- ═══ OVERLAYS ═══ -->
+<div id="alarmOverlay">
+  <div class="alarm-icon" id="alarmIcon"><svg class="icon"><use href="#i-bell"></use></svg></div>
+  <div class="alarm-title" id="alarmTitle">Bildiriş!</div>
+  <div class="alarm-sub" id="alarmSub">—</div>
+  <button class="alarm-btn" id="alarmAcceptBtn" onclick="acceptAlarm()"><svg class="icon"><use href="#i-check"></use></svg> Qəbul Etdim</button>
+</div>
+
+<div id="deactivatedOverlay">
+  <div style="font-size:70px;margin-bottom:16px;"><svg class="icon"><use href="#i-ban"></use></svg></div>
+  <h1 style="color:var(--red);margin-bottom:10px;">Deaktiv Edildiniz</h1>
+  <p style="color:var(--text2);">Admin sizi sistemdən çıxardı.</p>
+</div>
+
+<div id="customerInactiveOverlay">
+  <div style="font-size:64px;margin-bottom:16px;"><svg class="icon"><use href="#i-chair"></use></svg></div>
+  <h2>Bu masa hələ aktiv deyil</h2>
+  <p>Zəhmət olmasa ofisiantı gözləyin.<br>Masa rezerv edildikdən sonra xidmət aktiv olacaq.</p>
+</div>
+
+<div class="modal-bg" id="confirmTableModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;"><svg class="icon"><use href="#i-chair"></use></svg></div>
+    <h2 style="margin-bottom:8px;" id="confirmTableName">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı rezerv edirsiniz?</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" data-confirm-activate><svg class="icon"><use href="#i-check"></use></svg> Masanı Aç</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="confirmCloseTableModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;"><svg class="icon"><use href="#i-lock"></use></svg></div>
+    <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Bütün tarixçə arxivə köçürüləcək.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-close><svg class="icon"><use href="#i-lock"></use></svg> Masanı Bağla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="exitModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-lock"></use></svg> Çıxış Təsdiqi</h2>
+    <p style="color:var(--text2);margin-bottom:20px;font-size:14px;">Rəhbər PIN kodunu daxil edin</p>
+    <div class="form-group"><input type="password" id="exitPin" placeholder="••••••" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeExitModal()">Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmExit()">Çıxış</button>
+    </div>
+  </div>
+</div>
+
+<!-- Qarson masa detalı — TƏK daimi ekran (kateqoriya + mallar + bilet, ayrı modal yoxdur) -->
+<div class="screen" id="orderScreen">
+  <div class="topbar">
+    <h2 id="orderModalTitle"><svg class="icon"><use href="#i-food"></use></svg> Masa</h2>
+    <button class="btn btn-ghost yz-icon-only" data-close-order aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></button>
+  </div>
+  <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div style="position:relative;">
+      <svg class="icon" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);width:15px;height:15px;"><use href="#i-search"></use></svg>
+      <input type="text" id="orderSearchInput" placeholder="Mal axtar..."
+             style="width:100%;padding:9px 12px 9px 32px;border-radius:9px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:13px;">
+    </div>
+  </div>
+  <div class="order-layout" style="display:flex;flex:1;overflow:hidden;">
+    <div id="orderCatTabs" class="order-cat-rail category-rail" style="flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);"></div>
+    <div class="order-content-wrap" id="orderContentWrap">
+      <div id="orderItemsList" class="order-items-grid" style="padding:10px;gap:8px;align-content:start;"></div>
+      <div class="ticket-panel" id="ticketPanelCol">
+      <div class="ticket-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="ticket-header__title" id="ticketTableName">Bilet</span>
+      </div>
+      <div class="ticket-body">
+        <div id="noteOrderSummary"></div>
+        <div id="orderDraftList"></div>
+      </div>
+      <div class="ticket-footer">
+        <div id="ticketServiceChargeRow" style="display:none;justify-content:space-between;font-size:12px;color:var(--text2);padding:2px 0 6px;">
+          <span id="ticketServiceChargeLabel">Xidmət haqqı</span>
+          <span id="ticketServiceChargeValue">0.00 ₼</span>
+        </div>
+        <div class="ticket-total-row">
+          <span class="ticket-total-row__label">Cəmi</span>
+          <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
+        </div>
+        <textarea id="orderGlobalNote" rows="2" placeholder="Ümumi qeyd (məs: saat 17:00-da hazır olsun, paket sifarişdir...)" style="width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:8px 10px;font-size:12px;margin-bottom:8px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
+        <button class="btn btn-green" style="width:100%;padding:13px;font-size:14px;margin-bottom:8px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə Göndər</button>
+
+        <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-bottom:10px;" data-open-payment-hub>
+          <span class="pay-trigger__label"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Al</span>
+          <span style="text-align:right;">
+            <span id="notesPaymentAmount" class="pay-trigger__amount">0.00 ₼</span>
+            <span id="notesPaymentSub" class="pay-trigger__sub" style="display:none;"></span>
+          </span>
+        </button>
+
+        <div class="ticket-action-grid">
+          <button id="notesDiscountBtn" class="btn" style="display:none;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
+          <button id="notesCustomerChargeBtn" class="btn" style="display:none;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Yaz</button>
+          <button class="btn" style="border:1px solid var(--border);color:var(--text2);" data-open-audit><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
+          <button class="btn btn-ghost" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
+          <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
+          <button id="notesCloseTableBtn" class="btn btn-ghost" style="display:none;color:var(--red);" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Bağla</button>
+        </div>
+        <textarea id="noteText" class="notes-area" rows="1" placeholder="Masa qeydi (məs: doğum günü)..." style="min-height:34px;font-size:12px;margin-top:8px;"></textarea>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="addModal">
+  <div class="modal" id="addModalInner">
+    <h2 id="addModalTitle">Yeni</h2>
+    <div id="addModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveItem()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="adminNoteModal">
+  <div class="modal">
+    <h2 id="adminNoteTitle"><svg class="icon"><use href="#i-note"></use></svg> Qeyd</h2>
+    <div class="form-group">
+      <label>Qeyd</label>
+      <textarea id="adminNoteText" class="notes-area" rows="4" placeholder="Qeyd yazın..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeAdminNoteModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveAdminNote()"><svg class="icon"><use href="#i-save"></use></svg> Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="kitchenPinModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-key"></use></svg> Mətbəx PIN</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 6 rəqəmli PIN daxil edin</p>
+    <div class="form-group">
+      <input type="text" id="newKitchenPin" maxlength="6" placeholder="••••••" style="text-align:center;font-size:24px;letter-spacing:10px;">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeKitchenPinModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveKitchenPin()"><svg class="icon"><use href="#i-check"></use></svg> Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="qrModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <h2 id="qrModalTitle">QR Kod</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Müştəri bu kodu oxudub masaya xidmət istəyə bilər</p>
+    <div id="qrCanvas" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
+    <p id="qrLink" style="font-size:11px;color:var(--text3);word-break:break-all;margin-bottom:16px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost yz-icon-only" style="flex:1;padding:13px;" onclick="closeQRModal()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="printQR()"><svg class="icon"><use href="#i-printer"></use></svg> Çap Et</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MÜŞTƏRİ PANELİ ═══ -->
+<div class="screen" id="referralRegisterScreen">
+  <div class="cust-wrap">
+    <div class="cust-header">
+      <div class="icon"><svg class="icon"><use href="#i-gift"></use></svg></div>
+      <h1>Sizi Dəvət Etdilər!</h1>
+      <p id="refScreenSubtitle">Restoranımızın loyallıq proqramına qoşulun</p>
+    </div>
+
+    <div class="cust-glass-card" id="refAlreadyMemberBlock" style="display:none;text-align:center;">
+      <svg class="icon" style="width:40px;height:40px;color:var(--gold);margin-bottom:10px;"><use href="#i-check"></use></svg>
+      <h2 style="color:#fff;font-size:19px;margin-bottom:8px;">Siz artıq üzvsünüz!</h2>
+      <p id="refMemberGreeting" style="color:rgba(255,255,255,.75);font-size:14px;"></p>
+    </div>
+
+    <div class="cust-glass-card" id="refRegisterFormBlock" style="text-align:left;">
+      <div class="cust-loyalty-field"><label>Ad</label><input type="text" id="refRegFirstName" placeholder="Adınız"></div>
+      <div class="cust-loyalty-field"><label>Soyad</label><input type="text" id="refRegLastName" placeholder="Soyadınız"></div>
+      <div class="cust-loyalty-field"><label>Ata adı</label><input type="text" id="refRegFatherName" placeholder="Ata adınız"></div>
+      <div class="cust-loyalty-field"><label>Telefon nömrəsi</label><input type="tel" id="refRegPhone" placeholder="+994 XX XXX XX XX"></div>
+      <div class="cust-loyalty-field"><label>Cins</label><select id="refRegGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select></div>
+      <div class="cust-loyalty-field"><label>Doğum tarixi</label><input type="date" id="refRegBirthDate"></div>
+      <p id="refRegErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitReferralRegistration()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatdan Keç</button>
+    </div>
+
+    <div class="cust-glass-card" id="refThanksBlock" style="display:none;text-align:center;">
+      <svg class="icon" style="width:40px;height:40px;color:var(--gold);margin-bottom:10px;"><use href="#i-check"></use></svg>
+      <h2 style="color:#fff;font-size:19px;margin-bottom:8px;">Qeydiyyatdan keçdiyiniz üçün təşəkkür edirik!</h2>
+      <p style="color:rgba(255,255,255,.75);font-size:14px;line-height:1.6;">Restoranımıza gələrək xidmətlərimizdən istifadə edə bilərsiniz.<br>Sizə xoş və uğurlu gün arzulayırıq!</p>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="customerScreen">
+  <!-- ═══ MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ═══ -->
+  <div class="modal-bg" id="custWelcomeModal" style="z-index:9999;">
+    <div class="cust-loyalty-modal">
+      <svg class="icon" style="width:44px;height:44px;color:var(--gold);margin-bottom:12px;"><use href="#i-utensils"></use></svg>
+      <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">Xoş gəlmisiniz!</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;margin-bottom:16px;">Qeydiyyatdan keçərək aşağıdakı üstünlüklərdən yararlana bilərsiniz:</p>
+      <ul style="text-align:left;color:rgba(255,255,255,.85);font-size:13.5px;line-height:2;list-style:none;padding:0;margin-bottom:22px;">
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-star"></use></svg> Bonus xalları toplamaq</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-tag"></use></svg> Şəxsi endirimlər əldə etmək</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-gift"></use></svg> Ad günü hədiyyələri</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-bell"></use></svg> Kampaniyalardan ilk xəbərdar olmaq</li>
+        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-clipboard"></use></svg> Son sifariş tarixçəsini saxlamaq</li>
+      </ul>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="openLoyaltyRegisterForm()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatdan keç</button>
+      <button class="cust-loyalty-btn cust-loyalty-btn--ghost" onclick="chooseGuestMode()">Qeydiyyatsız davam et</button>
+      <p style="margin-top:14px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;text-decoration:underline;" onclick="openPhoneRecoveryFromWelcome()">Artıq bonus hesabınız var?</p>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="custRegisterModal" style="z-index:9999;">
+    <div class="cust-loyalty-modal" style="text-align:left;">
+      <h2 style="color:#fff;font-size:19px;margin-bottom:16px;text-align:center;"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyat</h2>
+      <div class="cust-loyalty-field"><label>Ad</label><input type="text" id="regFirstName" placeholder="Adınız"></div>
+      <div class="cust-loyalty-field"><label>Soyad</label><input type="text" id="regLastName" placeholder="Soyadınız"></div>
+      <div class="cust-loyalty-field"><label>Ata adı</label><input type="text" id="regFatherName" placeholder="Ata adınız"></div>
+      <div class="cust-loyalty-field"><label>Telefon nömrəsi</label><input type="tel" id="regPhone" placeholder="+994 XX XXX XX XX"></div>
+      <div class="cust-loyalty-field">
+        <label>Cins</label>
+        <select id="regGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select>
+      </div>
+      <div class="cust-loyalty-field"><label>Doğum tarixi</label><input type="date" id="regBirthDate"></div>
+      <p id="regErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitLoyaltyRegistration()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatı Tamamla</button>
+      <button class="cust-loyalty-btn cust-loyalty-btn--ghost yz-icon-only" onclick="closeLoyaltyRegisterForm()" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="custPhoneRecoveryModal" style="z-index:9999;">
+    <div class="cust-loyalty-modal">
+      <h2 style="color:#fff;font-size:18px;margin-bottom:10px;"><svg class="icon"><use href="#i-user"></use></svg> Bonus hesabınızı tapaq</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:13.5px;margin-bottom:16px;">Bonus hesabınız varsa telefon nömrənizi daxil edin.</p>
+      <div class="cust-loyalty-field"><input type="tel" id="recoveryPhone" placeholder="+994 XX XXX XX XX"></div>
+      <p id="recoveryErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
+      <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitPhoneRecovery()"><svg class="icon"><use href="#i-search"></use></svg> Axtar</button>
+      <button class="cust-loyalty-btn cust-loyalty-btn--ghost yz-icon-only" onclick="closePhoneRecovery()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
+    </div>
+  </div>
+
+  <div id="custWaiterCard">
+    <img id="custWaiterAvatar" src="" alt="">
+    <div class="cw-info">
+      <span class="cw-label">Sizə xidmət edir</span>
+      <span class="cw-name" id="custWaiterName">—</span>
+    </div>
+  </div>
+  <div class="cust-wrap">
+    <div class="cust-header">
+      <div class="icon" id="custBrandIcon"><svg class="icon"><use href="#i-utensils"></use></svg></div>
+      <div id="custRestName" style="display:none;color:var(--gold);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;"></div>
+      <h1 id="customerTableName">Masa</h1>
+      <p id="custGreetingText">Xidmət üçün seçim edin</p>
+    </div>
+    <div class="cust-glass-card" id="custLoyaltyCard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.03em;font-weight:700;">Bonus balansınız</div>
+          <div id="custBonusValue" style="font-size:22px;font-weight:800;color:var(--gold);margin-top:2px;">0</div>
+        </div>
+        <button onclick="shareReferralLink()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 14px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <svg class="icon"><use href="#i-users"></use></svg> Dostunu Dəvət Et
+        </button>
+      </div>
+      <div id="custReferredFriends" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);">
+        <div style="font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px;">Dəvət etdiyiniz dostlar</div>
+        <div id="custReferredFriendsList"></div>
+      </div>
+    </div>
+    <div class="cust-glass-card" id="custGuestRegisterPrompt" style="display:none;padding:14px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:rgba(255,255,255,.75);">Bonus xallarından yararlanmaq istəyirsiniz?</span>
+        <div style="display:flex;gap:8px;">
+          <button onclick="openLoyaltyRegisterForm()" style="background:var(--gold);border:none;border-radius:9px;padding:9px 14px;color:#1f0a12;font-size:12.5px;font-weight:700;cursor:pointer;">Qeydiyyatdan keç</button>
+          <button onclick="openPhoneRecoveryFromWelcome()" style="background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:9px 14px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Hesabım var</button>
+        </div>
+      </div>
+    </div>
+    <button class="menu-btn" onclick="openMenu()">
+      <span class="menu-icon"><svg class="icon"><use href="#i-clipboard"></use></svg></span> Menyuya Bax
+    </button>
+    <div class="cust-order-section" id="custOrderSection" style="display:none;">
+      <div class="cust-order-section__head">
+        <h3><svg class="icon"><use href="#i-food"></use></svg> Sifarişiniz</h3>
+        <span class="cust-order-live"><span class="cust-order-live__dot"></span> Canlı</span>
+      </div>
+      <div id="custOrderList"></div>
+    </div>
+    <div class="cust-actions">
+      <button class="cust-btn call-btn" onclick="customerAction('call')">
+        <span class="cust-icon"><svg class="icon"><use href="#i-bell"></use></svg></span> Ofisiantı Çağır
+      </button>
+      <button class="cust-btn cash-btn" onclick="customerAction('bill_cash')">
+        <span class="cust-icon"><svg class="icon"><use href="#i-cash"></use></svg></span> Hesab (Nağd)
+      </button>
+      <button class="cust-btn pos-btn" onclick="customerAction('bill_pos')">
+        <span class="cust-icon"><svg class="icon"><use href="#i-card"></use></svg></span> Hesab (POS Terminal)
+      </button>
+    </div>
+    <div class="cust-chat-section">
+      <h3><svg class="icon"><use href="#i-chat"></use></svg> Ofisiantla Əlaqə</h3>
+      <div class="cust-msg-list" id="custMsgList"></div>
+      <div class="cust-input-row">
+        <textarea id="custMsgInput" placeholder="Mesajınızı yazın..." rows="1"></textarea>
+        <button onclick="sendCustomerMsg()">Göndər</button>
+      </div>
+    </div>
+    <div class="cust-feedback">
+      <h3><svg class="icon"><use href="#i-note"></use></svg> Şikayət / Təklif</h3>
+      <textarea id="feedbackInput" placeholder="Şikayət və ya təklifinizi yazın..."></textarea>
+      <button onclick="sendFeedback()">Göndər</button>
+    </div>
+  </div>
+  <div id="customerToast"></div>
+</div>
+
+<div id="toast"></div>
+<div id="connectionStatusBanner" class="connection-status-banner">
+  <svg class="icon"><use href="#i-warning"></use></svg>
+  <span>Oflayn — dəyişikliklər internet qayıdanda avtomatik göndəriləcək</span>
+</div>
+
+<!-- ═══ ÖDƏNİŞ MODALI ═══ -->
+<div class="modal-bg" id="paymentModal">
+  <div class="modal" style="max-width:440px;">
+    <h2><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Qəbulu</h2>
+    <div style="background:var(--card2);border-radius:10px;padding:12px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:var(--text2);font-size:14px;">Masa:</span>
+        <span id="paymentTableName" style="font-weight:700;"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;">
+        <span style="color:var(--text2);font-size:14px;">Ümumi məbləğ:</span>
+        <span id="paymentTotalAmount" style="font-size:22px;font-weight:800;color:var(--green);"></span>
+      </div>
+      <div id="paymentServiceChargeRow" style="display:none;justify-content:space-between;margin-top:6px;">
+        <span style="color:var(--text3);font-size:12px;" id="paymentServiceChargeLabel">Xidmət haqqı daxildir</span>
+        <span id="paymentServiceChargeValue" style="color:var(--text3);font-size:12px;"></span>
+      </div>
+    </div>
+    <div id="paymentDiscountRow" style="display:none;background:rgba(196,176,46,.1);border:1px solid var(--orange);border-radius:10px;padding:10px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--orange);"><svg class="icon"><use href="#i-tag"></use></svg> Endirim:</span>
+        <span id="paymentDiscountInfo" style="font-weight:700;color:var(--orange);"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <span style="font-size:13px;color:var(--text2);">Endirimli məbləğ:</span>
+        <span id="paymentFinalAmount" style="font-size:18px;font-weight:800;color:var(--green);"></span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Ödəniş Növü *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="paymentTypeGrid">
+        <button class="payment-type-btn" data-payment-type="cash" id="pt_cash"><svg class="icon"><use href="#i-cash"></use></svg> Nağd</button>
+        <button class="payment-type-btn" data-payment-type="pos" id="pt_pos"><svg class="icon"><use href="#i-card"></use></svg> POS Terminal</button>
+        <button class="payment-type-btn" data-payment-type="split" id="pt_split"><svg class="icon"><use href="#i-scissors"></use></svg> Bölünmüş</button>
+        <div id="paymentCustomMethods" style="display:contents;"></div>
+      </div>
+    </div>
+    <div id="paymentCashSection" style="display:none;">
+      <div class="form-group">
+        <label>Müştəri verdi (₼)</label>
+        <input type="number" id="paymentCashGiven" min="0" step="0.01" placeholder="0.00"
+                style="font-size:20px;text-align:center;">
+      </div>
+      <div id="paymentChangeRow" style="display:none;background:var(--card2);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:13px;color:var(--text2);" id="changeLabel">Qaytarılacaq:</div>
+        <div id="paymentChange" style="font-size:28px;font-weight:800;color:var(--blue);"></div>
+      </div>
+    </div>
+    <div id="paymentSplitSection" style="display:none;">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Məbləği ödəniş növləri arasında bölün:</p>
+      <div id="splitInputsWrap"></div>
+      <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:6px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;padding:14px;" data-cancel>Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:14px;font-size:15px;" data-confirm-payment><svg class="icon"><use href="#i-check"></use></svg> Təsdiqlə</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ENDİRİM MODALI ═══ -->
+<div class="modal-bg" id="discountModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-tag"></use></svg> Endirim Ver</h2>
+    <p id="discountTableInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
+    <div class="form-group">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button id="disc_pct_btn"  style="flex:1;padding:12px;border:2px solid var(--orange);color:var(--orange);background:rgba(196,176,46,.15);font-weight:700;border-radius:9px;cursor:pointer;">% Faiz</button>
+        <button id="disc_fix_btn"  style="flex:1;padding:12px;border:1px solid var(--border);color:var(--text2);background:transparent;font-weight:600;border-radius:9px;cursor:pointer;">₼ Sabit</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label id="discountValueLabel">Faiz (0-100)</label>
+      <input type="number" id="discountValue" min="0" step="1" placeholder="10"
+             style="font-size:24px;text-align:center;" >
+    </div>
+    <div id="discountPreview" style="background:var(--card2);border-radius:10px;padding:12px;min-height:44px;margin-bottom:4px;"></div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" data-apply-discount><svg class="icon"><use href="#i-check"></use></svg> Tətbiq Et</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MASA KÖÇÜRMƏ MODALI ═══ -->
+<div class="modal-bg" id="transferModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-refresh"></use></svg> Masa Köçürmə</h2>
+    <p id="transferFromInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
+    <div class="form-group" style="text-align:left;">
+      <label>Hara köçürülsün?</label>
+      <select id="transferToTable" style="font-size:15px;"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-table-transfer><svg class="icon"><use href="#i-refresh"></use></svg> Köçür</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAL KÖÇÜRMƏ MODALI ═══ -->
+<div class="modal-bg" id="itemTransferModal">
+  <div class="modal" style="max-width:400px;">
+    <div id="itemTransferStage1">
+      <h2><svg class="icon"><use href="#i-shuffle"></use></svg> Mal Köçürmə</h2>
+      <p id="itemTransferInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
+      <p id="itemTransferBatchInfo" style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:18px;line-height:1.5;"></p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-pick-transfer-table><svg class="icon"><use href="#i-chair"></use></svg> Masa Seç</button>
+      </div>
+    </div>
+    <div id="itemTransferStage2" style="display:none;">
+      <h2><svg class="icon"><use href="#i-chair"></use></svg> Hansı Masaya?</h2>
+      <div id="itemTransferTableGrid" class="table-board-grid" style="max-height:50vh;overflow-y:auto;margin:14px 0;"></div>
+      <button class="btn btn-ghost yz-icon-only" style="width:100%;padding:12px;" data-back-transfer-stage1 aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></button>
+    </div>
+    <div id="itemTransferStage3" style="display:none;text-align:center;">
+      <h2><svg class="icon"><use href="#i-check"></use></svg> Təsdiq</h2>
+      <p id="itemTransferConfirmText" style="font-size:14px;color:var(--text);line-height:1.6;margin:18px 0;"></p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-back-transfer-stage2>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- ═══ NİSYƏ (MÜŞTƏRİYƏ KÖÇÜRMƏ) MODALI ═══ -->
+<div class="modal-bg" id="customerChargeModal">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div id="customerChargeStage1">
+      <h2><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Köçür</h2>
+      <p id="customerChargeInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
+      <p id="customerChargeAmount" style="font-size:22px;font-weight:800;color:var(--blue);margin-bottom:14px;"></p>
+      <div class="form-group" style="text-align:left;">
+        <label>Müştəri</label>
+        <select id="customerChargeSelect" style="font-size:14px;"></select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-pick-charge-customer><svg class="icon"><use href="#i-check"></use></svg> Davam Et</button>
+      </div>
+    </div>
+    <div id="customerChargeStage2" style="display:none;">
+      <h2><svg class="icon"><use href="#i-check"></use></svg> Təsdiq</h2>
+      <p id="customerChargeConfirmText" style="font-size:14px;color:var(--text);line-height:1.6;margin:18px 0;"></p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;padding:13px;" data-back-charge-stage1>Ləğv</button>
+        <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Köçür</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ İKRAM MODALI ═══ -->
+<div class="modal-bg" id="complimentModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-gift"></use></svg> İkram Et</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Seçilən mal(lar) pulsuz olacaq</p>
+    <p id="complimentBatchInfo" style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:14px;"></p>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" data-confirm-compliment><svg class="icon"><use href="#i-gift"></use></svg> İkram Et</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="cancelReasonModal">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <h2><svg class="icon"><use href="#i-trash"></use></svg> Sifarişdən Sil</h2>
+    <p id="cancelReasonItemName" style="color:var(--text2);font-size:14px;margin-bottom:14px;font-weight:600;"></p>
+    <div class="form-group" id="cancelReasonQtyGroup" style="text-align:left;display:none;">
+      <label>Neçə ədəd silinsin?</label>
+      <input type="number" id="cancelReasonQty" min="1" step="1" style="font-size:15px;">
+    </div>
+    <div class="form-group" style="text-align:left;">
+      <label>Səbəb</label>
+      <select id="cancelReasonSelect" style="font-size:14px;">
+        <option value="Səhv sifariş">Səhv sifariş</option>
+        <option value="Zayolma">Zayolma</option>
+        <option value="Müştəri fikrini dəyişdi">Müştəri fikrini dəyişdi</option>
+        <option value="Digər">Digər</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
+      <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-cancel-reason><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="tableAuditModal">
+  <div class="modal" style="max-width:420px;">
+    <h2 id="tableAuditTitle"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</h2>
+    <div id="tableAuditList" class="audit-timeline" style="max-height:50vh;overflow-y:auto;margin-top:12px;"></div>
+    <button class="btn btn-ghost yz-icon-only" style="width:100%;padding:12px;margin-top:16px;" data-close-audit aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
+  </div>
+</div>
+<div class="modal-bg" id="customerHistoryModal">
+  <div class="modal" style="max-width:440px;">
+    <h2 id="customerHistoryTitle"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</h2>
+    <p id="customerHistoryBalance" style="color:var(--text2);font-size:13px;font-weight:600;margin-bottom:8px;"></p>
+    <div id="customerHistoryList" class="audit-timeline" style="max-height:50vh;overflow-y:auto;margin-top:12px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost yz-icon-only" style="flex:1;padding:12px;" onclick="closeCustomerHistoryModal()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
+      <button class="btn btn-green" id="customerHistoryPayBtn" style="flex:1;padding:12px;" onclick="openCustomerPaymentModal()"><svg class="icon"><use href="#i-cash"></use></svg> Ödəniş Al</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="customerPaymentModal">
+  <div class="modal" style="max-width:420px;text-align:center;">
+    <h2 style="margin-bottom:6px;"><svg class="icon"><use href="#i-cash"></use></svg> Ödəniş Qəbulu</h2>
+    <p id="customerPaymentCustomerName" style="color:var(--text2);font-size:14px;margin-bottom:4px;font-weight:600;"></p>
+    <p id="customerPaymentCurrentBalance" style="color:var(--red);font-size:20px;font-weight:800;margin-bottom:14px;"></p>
+    <div style="text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px;">Konkret malları seçin (istəyə görə)</div>
+    <div id="customerPaymentChargesList" style="text-align:left;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:14px;"></div>
+    <div class="form-group" style="text-align:left;">
+      <label>Ödəniləcək məbləğ (₼)</label>
+      <input type="number" id="customerPaymentAmount" min="0.01" step="0.01" placeholder="Məs: 50">
+    </div>
+    <div class="form-group" style="text-align:left;">
+      <label>Ödəniş növü</label>
+      <select id="customerPaymentType"><option value="cash">Nağd</option><option value="pos">POS</option></select>
+    </div>
+    <p id="customerPaymentError" style="color:#e74c3c;font-size:12.5px;min-height:16px;margin:4px 0;"></p>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeCustomerPaymentModal()">Ləğv</button>
+      <button class="btn btn-green" style="flex:1;padding:13px;" onclick="submitCustomerPayment()"><svg class="icon"><use href="#i-check"></use></svg> Təsdiqlə</button>
+    </div>
+  </div>
+</div>
+<!-- ═══ HESABAT MODALI ═══ -->
+<!-- ═══ ÜMUMİ TƏSDİQ PƏNCƏRƏSİ (brauzer confirm() əvəzinə) ═══ -->
+<div class="modal-bg" id="supplierModal">
+  <div class="modal">
+    <h2 id="supplierModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</h2>
+    <div class="form-group"><label>Ad</label><input type="text" id="supName" placeholder="Şirkət və ya şəxs adı"></div>
+    <div class="form-group"><label>Telefon</label><input type="tel" id="supPhone"></div>
+    <div class="form-group"><label>Ünvan</label><input type="text" id="supAddress"></div>
+    <div class="form-group"><label>Mal kateqoriyası</label><input type="text" id="supCategory" placeholder="Məs: Ət, Tərəvəz, İçki"></div>
+    <div class="form-group"><label>Qeyd</label><textarea id="supNotes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeSupplierModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveSupplier()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="menuItemsDatalist"></datalist>
+
+<div class="modal-bg" id="purchaseModal">
+  <div class="modal" style="max-width:640px;">
+    <h2 id="purchaseModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-cash"></use></svg> Yeni Alış</h2>
+    <div class="closed-tables-filters__row">
+      <div class="form-group"><label>Təchizatçı</label><select id="purSupplier"></select></div>
+      <div class="form-group"><label>Faktura nömrəsi</label><input type="text" id="purInvoiceNumber" placeholder="№..."></div>
+    </div>
+    <div class="form-group"><label>Tarix</label><input type="date" id="purDate"></div>
+
+    <div style="margin:18px 0 8px;font-weight:700;color:var(--text2);font-size:13px;text-transform:uppercase;">Mallar</div>
+    <div id="purchaseLinesContainer"></div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:10px;" onclick="addPurchaseLine()"><svg class="icon"><use href="#i-check"></use></svg> Sətir əlavə et</button>
+
+    <div style="text-align:right;font-size:20px;font-weight:800;margin:18px 0;color:var(--green);">
+      Ümumi: <span id="purchaseGrandTotal">0.00 ₼</span>
+    </div>
+
+    <div class="closed-tables-filters__row">
+      <div class="form-group"><label>Ödəniş növü</label>
+        <select id="purPaymentType"><option value="cash">Nağd</option><option value="transfer">Köçürmə</option><option value="card">Kart</option></select>
+      </div>
+      <div class="form-group"><label>Ödəniş statusu</label>
+        <select id="purPaymentStatus" onchange="togglePurPaidAmountField()"><option value="paid">Tam ödənilib</option><option value="partial">Qismən ödənilib</option><option value="unpaid">Ödənilməyib (nisyə)</option></select>
+      </div>
+    </div>
+    <div class="form-group" id="purPaidAmountGroup" style="display:none;"><label>Ödənilən məbləğ</label><input type="number" id="purPaidAmount" min="0" step="0.01"></div>
+    <div class="form-group"><label>Qeyd</label><textarea id="purNotes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePurchaseModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="savePurchase()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="banquetHallModal">
+  <div class="modal">
+    <h2 id="banquetHallModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-chair"></use></svg> Zal</h2>
+    <div class="form-group"><label>Zalın adı</label><input type="text" id="bh_name" placeholder="Məs: Böyük Zal"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Tutum (qonaq sayı)</label><input type="number" id="bh_capacity" min="1" placeholder="150"></div>
+      <div class="form-group"><label>Qiymət (₼)</label><input type="number" id="bh_price" min="0" step="1" placeholder="2000"></div>
+    </div>
+    <div class="form-group"><label>Qeyd</label><textarea id="bh_notes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBanquetHallModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveBanquetHall()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="banquetEventTypeModal">
+  <div class="modal" style="max-width:360px;">
+    <h2 style="margin-bottom:16px;"><svg class="icon"><use href="#i-tag"></use></svg> Tədbir Növü</h2>
+    <div class="form-group"><label>Ad</label><input type="text" id="bet_name" placeholder="Məs: Toy"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBanquetEventTypeModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveBanquetEventType()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="banquetEventModal">
+  <div class="modal" style="max-width:640px;">
+    <h2 id="banquetEventModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-clock"></use></svg> Yeni Tədbir</h2>
+
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Müştəri</div>
+    <div class="form-row">
+      <div class="form-group"><label>Müştərinin adı</label><input type="text" id="be_clientName" placeholder="Ad Soyad"></div>
+      <div class="form-group"><label>Telefon</label><input type="tel" id="be_phone" placeholder="+994 XX XXX XX XX"></div>
+    </div>
+    <div class="form-group"><label>WhatsApp (istəyə görə)</label><input type="tel" id="be_whatsapp" placeholder="+994 XX XXX XX XX"></div>
+
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin:16px 0 8px;">Tədbir Məlumatı</div>
+    <div class="form-row">
+      <div class="form-group"><label>Tədbir növü</label><select id="be_eventType"></select></div>
+      <div class="form-group"><label>Zal</label><select id="be_hallId" onchange="checkBanquetConflict()"></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tarix</label><input type="date" id="be_date" onchange="checkBanquetConflict()"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="be_status">
+          <option value="pending">Sarı — İlkin rezerv</option>
+          <option value="confirmed">Mavi — Təsdiqlənmiş</option>
+          <option value="full">Qırmızı — Tam dolu</option>
+          <option value="cancelled">Boz — Ləğv edilmiş</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Başlama saatı</label><input type="time" id="be_startTime" onchange="checkBanquetConflict()"></div>
+      <div class="form-group"><label>Bitmə saatı</label><input type="time" id="be_endTime" onchange="checkBanquetConflict()"></div>
+    </div>
+    <p id="banquetConflictWarning" style="color:#e74c3c;font-size:12.5px;font-weight:600;min-height:16px;margin:2px 0 8px;"></p>
+
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="form-group"><label>Böyük qonaq</label><input type="number" id="be_adultsCount" min="0" placeholder="100"></div>
+      <div class="form-group"><label>Uşaq</label><input type="number" id="be_childrenCount" min="0" placeholder="10"></div>
+      <div class="form-group"><label>VIP qonaq</label><input type="number" id="be_vipCount" min="0" placeholder="5"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Masa düzülüşü</label>
+        <select id="be_tableLayout"><option value="Dairəvi">Dairəvi</option><option value="U-formalı">U-formalı</option><option value="Sıra">Sıra</option><option value="Qarışıq">Qarışıq</option></select>
+      </div>
+      <div class="form-group"><label>Xidmət növü</label>
+        <select id="be_serviceType"><option value="Tam menyu">Tam menyu</option><option value="Yalnız banket">Yalnız banket</option><option value="Yalnız içki">Yalnız içki</option><option value="Fərdi">Fərdi</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Qeyd</label><textarea id="be_notes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
+
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin:16px 0 8px;">Maliyyə</div>
+    <div class="form-row">
+      <div class="form-group"><label>Ümumi məbləğ (₼)</label><input type="number" id="be_totalAmount" min="0" step="1" placeholder="3000"></div>
+      <div class="form-group"><label>Avans (₼)</label><input type="number" id="be_advanceAmount" min="0" step="1" placeholder="1000"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBanquetEventModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveBanquetEvent()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="quickStockModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <h2 id="quickStockTitle" style="margin-bottom:8px;"><svg class="icon"><use href="#i-tag"></use></svg> Stok Artır</h2>
+    <p id="quickStockCurrentInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
+    <div class="form-group"><label>Nə qədər əlavə olunsun?</label><input type="number" id="quickStockAmount" min="1" step="1" placeholder="10"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeQuickStockModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="confirmQuickStock()">Əlavə Et</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="lcEditModal">
+  <div class="modal">
+    <h2 style="margin-bottom:16px;"><svg class="icon"><use href="#i-users"></use></svg> Müştərini Redaktə Et</h2>
+    <div class="form-group"><label>Ad</label><input type="text" id="lcEditFirstName"></div>
+    <div class="form-group"><label>Soyad</label><input type="text" id="lcEditLastName"></div>
+    <div class="form-group"><label>Ata adı</label><input type="text" id="lcEditFatherName"></div>
+    <div class="form-group"><label>Telefon</label><input type="tel" id="lcEditPhone"></div>
+    <div class="form-group">
+      <label>Cins</label>
+      <select id="lcEditGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select>
+    </div>
+    <div class="form-group"><label>Doğum tarixi</label><input type="date" id="lcEditBirthDate"></div>
+    <div class="form-group"><label>Bonus balı</label><input type="number" id="lcEditBonus" min="0" step="1"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeLoyaltyEditModal()">Ləğv</button>
+      <button class="btn btn-green" onclick="saveLoyaltyCustomerEdit()">Yadda Saxla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="confirmActionModal">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div id="confirmActionIcon" style="width:52px;height:52px;border-radius:50%;background:rgba(163,42,36,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+      <svg class="icon" style="width:26px;height:26px;color:var(--red);"><use href="#i-warning"></use></svg>
+    </div>
+    <h2 id="confirmActionTitle" style="margin-bottom:8px;">Əminsiniz?</h2>
+    <p id="confirmActionMessage" style="color:var(--text2);font-size:14px;line-height:1.5;margin-bottom:20px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;padding:13px;" data-confirm-action-cancel>Ləğv</button>
+      <button class="btn btn-red" id="confirmActionOkBtn" style="flex:1;padding:13px;" data-confirm-action-ok>Təsdiqlə</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="reportModal">
+  <div class="modal" style="max-width:500px;">
+    <h2><svg class="icon"><use href="#i-chart"></use></svg> Gün Sonu Hesabat</h2>
+    <div id="reportContent"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost yz-icon-only" style="flex:1;padding:13px;" onclick="closeReportModal()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
+      <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="printReport()"><svg class="icon"><use href="#i-printer"></use></svg> Çap Et</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module" src="js/app.js"></script>
+<script type="module" src="js/yuza-reserve.js"></script>
+<script type="module" src="js/yuza-delivery.js"></script>
+<script type="module" src="js/yuza-login.js"></script>
+<script type="module" src="js/yuza-nav.js"></script>
+<script type="module" src="js/yuza-quickadd.js"></script>
+<script type="module" src="js/yuza-product.js"></script>
+<script type="module" src="js/yuza-inventory.js"></script>
+<script type="module" src="js/yuza-attendance.js"></script>
+<script type="module" src="js/yuza-table-reassign.js"></script>
+<script type="module" src="js/yuza-owner.js"></script>
+<script type="module" src="js/yuza-access.js"></script>
+<script type="module" src="js/yuza-settings.js"></script>
+<script type="module" src="js/yuza-devices.js"></script>
+<script type="module" src="js/yuza-login-att.js"></script>
+</body>
+</html>

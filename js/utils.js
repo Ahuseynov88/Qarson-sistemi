@@ -1,0 +1,198 @@
+/* ═══════════════════════════════════════════
+   UTILS
+   Bütün modullarda istifadə olunan köməkçi funksiyalar.
+═══════════════════════════════════════════ */
+import { R, db } from './firebase-service.js';
+import { state } from './state.js';
+
+/* ── Server vaxtı (Mərhələ 2a) ──
+   Pul və satış qeydlərinin vaxtı cihazın saatından yox, Firebase serverinin saatından götürülür:
+   kassa kompüterinin saatı səhv olsa da hesabatlar düzgün günə düşür. */
+let _srvOffset = 0;
+try { db.ref('.info/serverTimeOffset').on('value', s => { _srvOffset = Number(s.val()) || 0; }); } catch (e) { /* */ }
+export const serverNow = () => Date.now() + _srvOffset;
+export const azTime = (ts) => new Date(ts).toLocaleTimeString('az-AZ');
+export const azDate = (ts) => new Date(ts).toLocaleDateString('az-AZ');
+/* Pul məbləğləri qəpiyə qədər yuvarlaqlaşdırılır (0.1+0.2 kimi xətalar toplanmasın) */
+export const money2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+export function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Masa kateqoriyasını təhlükəsiz təyin edir - t.name mətn olmaya bilər (köhnə/uyğunsuz
+// məlumat üçün), ona görə hər addımda yoxlama edilir ki, TƏK BİR səhv masa BÜTÜN
+// siyahını (həm admin, həm qarson tərəfdə) qırmasın. HƏM admin.js, HƏM tables.js
+// bunu istifadə edir - iki ayrı yerdə eyni riskli kodun təkrarlanmasının qarşısını alır.
+export function tableCategoryOf(t) {
+  if (t.category) return t.category;
+  const name = typeof t.name === 'string' ? t.name : String(t.name ?? 'Masa');
+  return name.replace(/\s+\d+$/, '') || name;
+}
+
+// Log mesajları üçün mal siyahısını qısa formatda birləşdirir: "2x Kabab, 1x Salat"
+export function formatItemsList(items) {
+  const arr = Array.isArray(items) ? items : Object.values(items || {});
+  return arr.map(it => `${it.qty}x ${it.name}`).join(', ');
+}
+
+// Malların cəmini hesablayır və (aktivdirsə) xidmət haqqını əlavə edir.
+// BÜTÜN yerlərdə order.total hesablanarkən İSTİFADƏ OLUNMALIDIR ki, xidmət
+// haqqı hər zaman tutarlı tətbiq olunsun (mal əlavəsi, endirim, köçürmə və s.).
+// ƏDV: sətirdə vatRate (faiz) və vatIncluded (false = qiymətə əlavə olunur) saxlanılır.
+// vatIncluded !== false  → ƏDV qiymətin içindədir (yalnız məlumat üçün)
+// vatIncluded === false  → ƏDV qiymətin üstünə əlavə olunur
+export function computeVat(items) {
+  let added = 0, included = 0;
+  const byRate = {};
+  Object.values(items || {}).forEach(v => {
+    const r = Number(v.vatRate) || 0;
+    if (r <= 0) return;
+    const line = (v.price||0) * v.qty * (1 - ((v.discountPercent||0)/100)) + (v.extraFee||0);
+    const inc = v.vatIncluded !== false;
+    const amt = inc ? line * r / (100 + r) : line * r / 100;
+    if (inc) included += amt; else added += amt;
+    const k = r + (inc ? 'i' : 'a');
+    byRate[k] = byRate[k] || { rate: r, included: inc, amount: 0 };
+    byRate[k].amount += amt;
+  });
+  const rd = n => Math.round(n * 100) / 100;
+  return { added: rd(added), included: rd(included), rows: Object.values(byRate).map(x => ({ ...x, amount: rd(x.amount) })) };
+}
+
+export function computeOrderTotals(items) {
+  let itemsSubtotal = 0;
+  Object.values(items || {}).forEach(v => {
+    itemsSubtotal += (v.price||0) * v.qty * (1 - ((v.discountPercent||0)/100)) + (v.extraFee||0);
+  });
+  itemsSubtotal = Math.round(itemsSubtotal * 100) / 100;
+  const sc = state.serviceCharge || {};
+  const scPercent = sc.enabled ? (sc.percent || 0) : 0;
+  const serviceChargeAmount = Math.round(itemsSubtotal * scPercent / 100 * 100) / 100;
+  const vatAdded = computeVat(items).added;
+  const total = Math.round((itemsSubtotal + serviceChargeAmount + vatAdded) * 100) / 100;
+  return { itemsSubtotal, serviceChargeAmount, serviceChargePercent: scPercent, vatAdded, total };
+}
+
+// Masaya aid tarixçə görünüşündə eyni masanın adının təkrarlanmasının qarşısını alır
+// (məs. "Admin Əli "Kabinet 2" masası üçün hesab çap etdi" → "Admin Əli hesab çap etdi",
+// çünki artıq "Kabinet 2"-nin öz tarixçəsinə baxırıq, təkrar yazmağa ehtiyac yoxdur).
+export function stripTableName(message, tableName) {
+  if (!tableName) return message;
+  const q = `"${tableName}"`;
+  const patterns = [
+    `${q} masası üçün `, `${q} masasında `, `${q} masasından `, `${q} masasının `,
+    `${q} masasını açdı`, `${q} masasını bağladı`,
+  ];
+  for (const p of patterns) {
+    if (message.includes(p)) {
+      const verb = p.endsWith('açdı') ? 'açdı' : p.endsWith('bağladı') ? 'bağladı' : null;
+      return (verb ? message.replace(p, verb) : message.replace(p, '')).trim();
+    }
+  }
+  return message;
+}
+
+export function toArr(obj) {
+  if (!obj) return [];
+  return Object.keys(obj).map(k => ({ id: k, ...obj[k] }));
+}
+
+// DİQQƏT: mesaj SVG ikon markup-u ehtiva edə bilər (məs. '<svg class="icon">...'),
+// ona görə innerHTML istifadə olunur - textContent ikonu çılpaq mətn kimi göstərərdi.
+export function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.innerHTML = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Brauzerin çirkin confirm() pəncərəsi əvəzinə proqramın öz dizaynında təsdiq pəncərəsi.
+// İstifadə: confirmAction('Silinsin?', () => { ...əməliyyat... });
+export function confirmAction(message, onConfirm, options = {}) {
+  const modal = document.getElementById('confirmActionModal');
+  if (!modal) { if (onConfirm) onConfirm(); return; }
+  document.getElementById('confirmActionTitle').textContent = options.title || 'Əminsiniz?';
+  document.getElementById('confirmActionMessage').innerHTML = message;
+  const okBtn = document.getElementById('confirmActionOkBtn');
+  okBtn.innerHTML = options.okLabel || 'Təsdiqlə';
+  okBtn.className = 'btn ' + (options.okClass || 'btn-red');
+  // Köhnə listener-lər yığılmasın deyə düyməni klonlayıb təzədən qururuq
+  const freshBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(freshBtn, okBtn);
+  freshBtn.addEventListener('click', () => {
+    modal.classList.remove('open');
+    if (onConfirm) onConfirm();
+  }, { once: true });
+  modal.classList.add('open');
+}
+
+export function closeConfirmAction() {
+  document.getElementById('confirmActionModal')?.classList.remove('open');
+}
+
+// Təhlükəli (geri qaytarıla bilməyən) toplu silmə əməliyyatları üçün 2 dəfə ardıcıl xəbərdarlıq.
+// Səhvən silinmənin qarşısını almaq üçün ikinci addımda mesaj ciddiləşir.
+export function confirmDelete2x(count, itemLabel, onFinalConfirm) {
+  confirmAction(`${count} ${itemLabel} silmək istədiyinizə əminsiniz?`, () => {
+    confirmAction(`Son dəfə soruşuram: <strong>${count} ${itemLabel} həmişəlik silinəcək və geri qaytarıla bilməz.</strong> Tam əminsinizmi?`, () => {
+      onFinalConfirm();
+    }, { title: 'Son xəbərdarlıq!', okLabel: '<svg class="icon"><use href="#i-trash"></use></svg> Bəli, Həmişəlik Sil', okClass: 'btn-red' });
+  }, { title: 'Silmək istəyirsiniz?', okLabel: 'Bəli, davam et', okClass: 'btn-red' });
+}
+
+export function showCustomerToast(msg) {
+  const el = document.getElementById('customerToast');
+  if (!el) return;
+  el.innerHTML = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = 'none', 3000);
+}
+
+export function makeLineKey(menuItemId, note, extraFee) {
+  const safeNote = (note||'').replace(/[.#$\[\]/\s]+/g, '_');
+  let hash = 0;
+  for (let i = 0; i < (note||'').length; i++) hash = ((hash << 5) - hash + note.charCodeAt(i)) | 0;
+  return `${menuItemId}__${safeNote}_${Math.abs(hash)}__${String(extraFee||0).replace('.','_')}`;
+}
+
+export function addLog(type, message, details = {}) {
+  // Masaya aid qeydsə və sessionId göstərilməyibsə, masanın CARİ sessiyasını avtomatik tap.
+  // Bu, "Tarixçə" düyməsinin yalnız hazırkı aktivləşmədən sonrakı əməliyyatları göstərməsini təmin edir.
+  if (details.tableId && !details.sessionId) {
+    const t = state.tables.find(x => x.id === details.tableId);
+    if (t?.sessionId) details = { ...details, sessionId: t.sessionId };
+  }
+  const ts = serverNow();
+  R.logs.push({
+    type, message, details,
+    timestamp: ts,
+    time: azTime(ts),
+    date: azDate(ts)
+  });
+}
+
+// stok Firebase transaction ilə dəyişdirilir ki, iki paralel sifariş eyni malı
+// azaldanda bir-birini əzməsin (race condition qorunması)
+// Yeni anbar sistemi (yuza-inventory) satışda stok silinməsini öz üzərinə götürür.
+// Hook true qaytarsa köhnə məntiq işləmir; köhnə rejimdə false qaytarır və hər şey əvvəlki kimidir.
+let _stockHook = null;
+export function setStockHook(fn) { _stockHook = fn; }
+
+export function updateStock(menuItemId, delta, menuItems) {
+  if (!menuItemId) return;
+  if (_stockHook && _stockHook(menuItemId, delta) === true) return;
+    const item = menuItems.find(x => x.id === menuItemId);
+  // Resept: hər porsiya üçün xammadə qalığından avtomatik çıxılır (ləğvdə qaytarılır)
+  if (item && item.recipe) {
+    Object.entries(item.recipe).forEach(([ingId, q]) => {
+      const amt = (Number(q) || 0) * delta;
+      if (amt) db.ref('ingredients/' + ingId + '/stock').transaction(cur => Math.max(0, Math.round(((cur || 0) + amt) * 1000) / 1000));
+    });
+  }
+  if (!item || item.stock === undefined || item.stock === null) return;
+  R.menuItems.child(menuItemId).child('stock').transaction(current => Math.max(0, (current || 0) + delta));
+}
