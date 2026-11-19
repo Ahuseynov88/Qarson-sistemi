@@ -1,0 +1,36 @@
+# Əsas saytı geri qaytar — GitHub → Actions → "Əsas saytı geri qaytar" → Run workflow
+# Etiket adını yazın (məs. main-20261119-1530). Etiketlərin siyahısı: repo → Code → "Tags".
+# Əsas sayt həmin köçürmədən ƏVVƏLKİ vəziyyətinə qayıdır. Baza (Firebase) dəyişmir.
+name: Əsas saytı geri qaytar
+on:
+  workflow_dispatch:
+    inputs:
+      etiket:
+        description: 'Qayıdılacaq etiket (məs. main-20261119-1530)'
+        required: true
+permissions:
+  contents: write
+concurrency: promote-main
+jobs:
+  qaytar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Etiketi yoxla
+        run: |
+          case "${{ inputs.etiket }}" in main-[0-9]*) ;; *) echo "::error::Etiket main-... ilə başlamalıdır"; exit 1;; esac
+          git rev-parse --verify "refs/tags/${{ inputs.etiket }}" >/dev/null || { echo "::error::Belə etiket yoxdur"; exit 1; }
+      - name: Əsas saytı etiketə qaytar
+        run: |
+          TAG="main-$(TZ=Asia/Baku date +%Y%m%d-%H%M)-qaytarmadan-evvel"
+          git tag "$TAG" && git push origin "$TAG"
+          git rm -rq --ignore-unmatch -- . ':(exclude).github'
+          git checkout "${{ inputs.etiket }}" -- .
+          git checkout HEAD -- .github 2>/dev/null || true
+          git add -A
+          if git diff --cached --quiet; then echo "Əsas sayt artıq bu vəziyyətdədir."; exit 0; fi
+          git -c user.name="YuzaPOS" -c user.email="actions@github.com" commit -q -m "Əsas sayt geri qaytarıldı: ${{ inputs.etiket }} ($(TZ=Asia/Baku date '+%d.%m.%Y %H:%M'))"
+          git push origin HEAD:main
