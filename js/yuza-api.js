@@ -5,9 +5,8 @@
      owner: true → sorğu Rəhbər hesabının adından gedir (Rəhbər panelində işçi/mətbəx PIN-i təyini)
    Server ünvanı olmayan saytda (hələ yenilənməmiş əsas sayt) apiOn() = false və köhnə qayda işləyir.
 ═══════════════════════════════════════════ */
-const H = location.hostname;
-const IS_TEST = H.startsWith('test-yuzapos') || H.endsWith('.pages.dev') || H === 'localhost';
-export const API_URL = IS_TEST ? 'https://yuza-api-test.huseynov-amal.workers.dev' : '';
+import { API_BASE, ENV_READY } from './yuza-env.js';
+export const API_URL = ENV_READY ? API_BASE : '';
 
 export function apiOn() {
   try { return !!API_URL && typeof firebase !== 'undefined' && !!firebase.app().options.apiKey; } catch (e) { return false; }

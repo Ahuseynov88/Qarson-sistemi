@@ -5,20 +5,16 @@
    yüklənir), ona görə qlobal `firebase` obyektindən istifadə edirik və
    nəticəni digər modulların import edə biləcəyi kimi ixrac edirik.
 ═══════════════════════════════════════════ */
-// Test saytı (.pages.dev) TEST bazasına, əsl sayt əsl bazaya qoşulur
-
-const IS_TEST = location.hostname.startsWith('test-yuzapos') || location.hostname.endsWith('.pages.dev') || location.hostname === 'localhost';
-const firebaseConfig = IS_TEST ? {
-  apiKey: "AIzaSyDICGSJrT-ZEwRALnn7rp3Jv_NPouIF4sA",
-  authDomain: "test-yuzapos.firebaseapp.com",
-  databaseURL: "https://test-yuzapos-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "test-yuzapos",
-  storageBucket: "test-yuzapos.firebasestorage.app",
-  messagingSenderId: "896410036346",
-  appId: "1:896410036346:web:095cec7fbc799f13d5b3c3"
-} : {
-  databaseURL: "https://qarsonn-sistemi-default-rtdb.europe-west1.firebasedatabase.app/"
-};
+// Mühit (test / əsas) və onun baza ayarları yuza-env.js-dədir (Mərhələ 8)
+import { IS_TEST, FIREBASE_CONFIG, ENV_READY } from './yuza-env.js';
+const firebaseConfig = FIREBASE_CONFIG;
+if (!ENV_READY) {
+  // Əsas saytın ayarları yazılmayıb: qorumasız rejimdə açılmırıq
+  const msg = 'Sayt hələ ayarlanmayıb: js/yuza-env.js faylında əsas bazanın ayarlarını (apiKey, appId) yazın.';
+  const show = () => { document.body.innerHTML = `<div style="max-width:560px;margin:15vh auto;padding:24px;font:16px/1.5 sans-serif;border:2px solid #b3261e;border-radius:14px;color:#b3261e">${msg}</div>`; };
+  if (document.body) show(); else window.addEventListener('DOMContentLoaded', show);
+  throw new Error(msg);
+}
 if (IS_TEST) {
   document.title = 'TEST · ' + document.title;
   window.addEventListener('DOMContentLoaded', () => {
