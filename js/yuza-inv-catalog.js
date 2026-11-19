@@ -196,10 +196,13 @@ export function openEditor(id) {
         <section class="yzi-card">
           <h3>Əsas məlumat</h3>
           <div class="yzi-ed__top">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
             <label class="yzi-photo" title="Şəkli dəyiş">
               ${d.photo ? `<img src="${esc(d.photo)}" alt="">` : '<span>Şəkil</span>'}
               ${canEdit ? '<input type="file" accept="image/*" id="yziEdPhoto" hidden>' : ''}
             </label>
+            ${canEdit && d.photo ? '<button type="button" class="yzi-btn yzi-btn--sm yzi-btn--ghost" id="yziEdPhotoDel">Şəkli sil</button>' : ''}
+            </div>
             <div class="yzi-grid2 yzi-grow">
               <label class="yzi-f yzi-span2"><span>Ad *</span><input type="text" id="yziEdName" value="${esc(d.name || '')}" ${dis} autocomplete="off"></label>
               <label class="yzi-f"><span>Kateqoriya</span><input type="text" id="yziEdCat" list="yziCatList" value="${esc(d.category || '')}" ${dis} placeholder="məs: İçkilər"></label>
@@ -362,6 +365,7 @@ export function openEditor(id) {
       const s = findSimilar(nameI.value, id);
       root.querySelector('#yziEdSim').innerHTML = s.length ? `<div class="yzi-warnbox"><b>Oxşar məhsul artıq var:</b> ${s.map(p => esc(p.name)).join(', ')}. Təkrar kart yaratmayın.</div>` : '';
     });
+    root.querySelector('#yziEdPhotoDel')?.addEventListener('click', () => { collect(); d.photo = ''; draw(); });   // "Yadda saxla" basılanda bazadan da silinir
     root.querySelector('#yziEdPhoto')?.addEventListener('change', async (e) => {
       const file = e.target.files[0]; if (!file) return;
       try {

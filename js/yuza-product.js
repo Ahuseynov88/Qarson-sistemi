@@ -134,11 +134,14 @@ function pageHTML(m) {
   const stockKnown = m.stock !== undefined && m.stock !== null;
   return `<div class="yz-prod" id="yzProdPanel" data-id="${esc(m.id)}">
     <div class="yz-prod__head">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
       <label class="yz-photo" title="Şəkli dəyiş">
         <img id="yzPhotoImg" src="${esc(m.photo || fallback)}" alt="" onerror="this.src='${fallback}'">
         <span>Şəkli dəyiş</span>
         <input type="file" id="yzPhotoFile" accept="image/*" hidden>
       </label>
+      <button type="button" class="btn btn-ghost" data-yz-act="photodel" id="yzPhotoDel" style="padding:5px 10px;font-size:12px;${m.photo ? '' : 'display:none;'}">Şəkli sil</button>
+      </div>
       <div class="yz-prod__basic">
         <label class="yz-f"><span>Mal adı</span><input id="yzName" type="text" value="${esc(m.name || '')}" data-save="name"></label>
         <div class="yz-prod__grid">
@@ -343,8 +346,28 @@ document.addEventListener('click', (e) => {
   if (act.dataset.yzAct === 'stockset') { setStock(id, $('yzStockSet').value); $('yzStockSet').value = ''; }
   else if (act.dataset.yzAct === 'stockadd') { if (typeof window.openQuickStockModal === 'function') window.openQuickStockModal(id); }
   else if (act.dataset.yzAct === 'applycost') { const m = itemById(id); const c = r2(recipeCost(m)); update(id, { cost: c }); showToast('Maya dəyəri: ' + c.toFixed(2) + ' ₼'); }
+  else if (act.dataset.yzAct === 'photodel') { delPhoto(id); }
   else if (act.dataset.yzAct === 'delete') { if (typeof window.deleteMenuItem === 'function') window.deleteMenuItem(id); }
 });
+
+/* Şəkli silmək: menyu malından və (varsa) kataloq kartından — yoxsa kataloq yenidən yazanda geri qayıdar */
+function syncPhotoUi(photo) {
+  const m = currentItem(); const fb = `https://ui-avatars.com/api/?name=${encodeURIComponent(m?.name || '?')}&background=e8b04b&color=1a1205&size=200`;
+  const img = $('yzPhotoImg'); if (img) img.src = photo || fb;
+  const b = $('yzPhotoDel'); if (b) b.style.display = photo ? '' : 'none';
+}
+async function delPhoto(id) {
+  const m = itemById(id); if (!m || !m.photo) return;
+  if (!confirm(`"${m.name}" malının şəkli silinsin?`)) return;
+  try {
+    await update(id, { photo: null });
+    const pr = R.menuItems.parent.child('products/' + id);
+    if ((await pr.child('name').once('value')).exists()) await pr.child('photo').set('');
+    syncPhotoUi('');
+    addLog('menu_mgmt', `"${m.name}" — şəkil silindi`, { menuItemId: id });
+    showToast('Şəkil silindi');
+  } catch (e) { showToast('Şəkil silinmədi: ' + (e.message || e)); }
+}
 
 document.addEventListener('change', (e) => {
   const p = e.target.closest('#yzProdPanel'); if (!p) return;
@@ -367,7 +390,7 @@ document.addEventListener('change', (e) => {
     if (file.size > 8 * 1024 * 1024) { showToast('Şəkil 8MB-dan böyük olmamalıdır'); t.value = ''; return; }
     // 3b: kiçildilir və serverə (R2) yüklənir; alınmasa bazada saxlanılır
     import('./yuza-media.js').then(M => M.fileToPhoto(file))
-      .then(photo => { update(id, { photo }); showToast('Şəkil yeniləndi'); })
+      .then(photo => { update(id, { photo }); syncPhotoUi(photo); showToast('Şəkil yeniləndi'); })
       .catch(er => showToast(er.message || 'Şəkil yüklənmədi'));
   }
 });
