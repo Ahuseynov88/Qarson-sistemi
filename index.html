@@ -277,13 +277,10 @@
           <div class="ap-new-dropdown__section">Qeydiyyat</div>
           <button class="ap-new-dropdown__item" onclick="apNewItem('staff')"><svg class="icon"><use href="#i-staff"></use></svg> Yeni İşçi</button>
           <button class="ap-new-dropdown__item" onclick="apNewItem('tables')"><svg class="icon"><use href="#i-chair"></use></svg> Yeni Masa</button>
-          <button class="ap-new-dropdown__item" onclick="apNewItem('menu')"><svg class="icon"><use href="#i-food"></use></svg> Yeni Məhsul</button>
           <button class="ap-new-dropdown__item" onclick="apNewItem('customers')"><svg class="icon"><use href="#i-users"></use></svg> Nisyə Müştəri</button>
           <button class="ap-new-dropdown__item" onclick="apNewItem('paymentMethods')"><svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növü</button>
           <div class="ap-new-dropdown__sep"></div>
           <div class="ap-new-dropdown__section">Anbar</div>
-          <button class="ap-new-dropdown__item" onclick="apNewItem('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</button>
-          <button class="ap-new-dropdown__item" onclick="apNewItem('purchases')"><svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışı</button>
           <div class="ap-new-dropdown__sep"></div>
           <div class="ap-new-dropdown__section">Sistem</div>
           <button class="ap-new-dropdown__item" onclick="apNewItem('kitchenStations')"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx Stansiyası</button>
@@ -336,9 +333,6 @@
           <button class="admin-tab" data-section="tables" onclick="adminTab('tables',this)">
             <svg class="icon"><use href="#i-chair"></use></svg> Masalar
           </button>
-          <button class="admin-tab" data-section="menu" onclick="adminTab('menu',this)">
-            <svg class="icon"><use href="#i-food"></use></svg> Menyu
-          </button>
           <button class="admin-tab" data-section="paymentMethods" onclick="adminTab('paymentMethods',this)">
             <svg class="icon"><use href="#i-card"></use></svg> Ödəniş Növləri
           </button>
@@ -349,18 +343,12 @@
       <div class="ap-group" data-group="warehouse">
         <button class="ap-group__header" onclick="apToggleGroup(this)">
           <svg class="icon ap-group__icon"><use href="#i-box"></use></svg>
-          <span>Anbar & Alış</span>
+          <span>Anbar</span>
           <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
         </button>
         <div class="ap-group__items">
                    <button class="admin-tab" data-section="inv" onclick="adminTab('inv',this)">
             <svg class="icon"><use href="#i-box"></use></svg> Anbar və Məhsullar
-          </button>
-          <button class="admin-tab" data-section="purchases" onclick="adminTab('purchases',this)">
-            <svg class="icon"><use href="#i-cash"></use></svg> Məhsul Alışları
-          </button>
-          <button class="admin-tab" data-section="suppliers" onclick="adminTab('suppliers',this)">
-            <svg class="icon"><use href="#i-users"></use></svg> Təchizatçılar
           </button>
         </div>
       </div>
@@ -482,8 +470,6 @@
         <button class="report-subtab" data-view="cancellations" onclick="setReportView('cancellations')"><svg class="icon"><use href="#i-trash"></use></svg> Ləğvetmələr</button>
         <button class="report-subtab" data-view="openTables" onclick="setReportView('openTables')"><svg class="icon"><use href="#i-chair"></use></svg> Hazırda Açıq Masalar</button>
         <button class="report-subtab" data-view="credit" onclick="setReportView('credit')"><svg class="icon"><use href="#i-cash"></use></svg> Nisyə Vəziyyəti</button>
-        <button class="report-subtab" data-view="stock" onclick="setReportView('stock')"><svg class="icon"><use href="#i-food"></use></svg> Anbar/Stok</button>
-        <button class="report-subtab" data-view="suppliers" onclick="setReportView('suppliers')"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı/Alış</button>
       </div>
       <div id="reportContent"></div>
     </div>
@@ -500,14 +486,6 @@
       <div class="tile-detail-overlay" id="tablesDetailPanel">
         <div class="tile-detail-back" role="button" tabindex="0" onclick="selectTableMgmt(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
         <div class="tile-detail-body" id="tablesDetailBody"></div>
-      </div>
-    </div>
-    <div class="admin-section" id="sec-menu">
-      <div id="menuCatTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-      <div class="tile-grid" id="menuGrid"></div>
-      <div class="tile-detail-overlay" id="menuDetailPanel">
-        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectMenuItem(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
-        <div class="tile-detail-body" id="menuDetailBody"></div>
       </div>
     </div>
     <div class="admin-section" id="sec-logs">
@@ -662,23 +640,6 @@
       <div class="tile-detail-overlay" id="lcDetailPanel">
         <div class="tile-detail-back" role="button" tabindex="0" onclick="selectLoyaltyCustomer(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
         <div class="tile-detail-body" id="lcDetailBody"></div>
-      </div>
-    </div>
-    <div class="admin-section" id="sec-suppliers">
-      <div class="tile-grid" id="suppliersGrid"></div>
-      <div class="tile-detail-overlay" id="suppliersDetailPanel">
-        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectSupplierMgmt(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
-        <div class="tile-detail-body" id="suppliersDetailBody"></div>
-      </div>
-    </div>
-    <div class="admin-section" id="sec-purchases">
-      <div class="closed-tables-filters" style="margin-bottom:14px;">
-        <input type="text" id="purSearchInput" placeholder="Təchizatçı, faktura nömrəsi ilə axtar..." oninput="renderPurchases()">
-      </div>
-      <div class="tile-grid" id="purchasesList"></div>
-      <div class="tile-detail-overlay" id="purDetailPanel">
-        <div class="tile-detail-back" role="button" tabindex="0" onclick="selectPurchase(null)" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></div>
-        <div class="tile-detail-body" id="purDetailBody"></div>
       </div>
     </div>
     <div class="admin-section" id="sec-banquetDashboard">
@@ -1059,17 +1020,6 @@
   </div>
 </div>
 
-<div class="modal-bg" id="exitModal">
-  <div class="modal" style="max-width:320px;text-align:center;">
-    <h2><svg class="icon"><use href="#i-lock"></use></svg> Çıxış Təsdiqi</h2>
-    <p style="color:var(--text2);margin-bottom:20px;font-size:14px;">Rəhbər PIN kodunu daxil edin</p>
-    <div class="form-group"><input type="password" id="exitPin" placeholder="••••••" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:10px;"></div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeExitModal()">Ləğv</button>
-      <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmExit()">Çıxış</button>
-    </div>
-  </div>
-</div>
 
 <!-- Qarson masa detalı — TƏK daimi ekran (kateqoriya + mallar + bilet, ayrı modal yoxdur) -->
 <div class="screen" id="orderScreen">
@@ -1227,7 +1177,7 @@
       <ul style="text-align:left;color:rgba(255,255,255,.85);font-size:13.5px;line-height:2;list-style:none;padding:0;margin-bottom:22px;">
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-star"></use></svg> Bonus xalları toplamaq</li>
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-tag"></use></svg> Şəxsi endirimlər əldə etmək</li>
-        <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-gift"></use></svg> Ad günü hədiyyələri</li>
+        <li id="custBdayPerk" hidden><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-gift"></use></svg> Ad günü hədiyyələri</li>
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-bell"></use></svg> Kampaniyalardan ilk xəbərdar olmaq</li>
         <li><svg class="icon" style="width:.9em;height:.9em;color:var(--gold);"><use href="#i-clipboard"></use></svg> Son sifariş tarixçəsini saxlamaq</li>
       </ul>
@@ -1581,57 +1531,9 @@
 </div>
 <!-- ═══ HESABAT MODALI ═══ -->
 <!-- ═══ ÜMUMİ TƏSDİQ PƏNCƏRƏSİ (brauzer confirm() əvəzinə) ═══ -->
-<div class="modal-bg" id="supplierModal">
-  <div class="modal">
-    <h2 id="supplierModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-users"></use></svg> Təchizatçı</h2>
-    <div class="form-group"><label>Ad</label><input type="text" id="supName" placeholder="Şirkət və ya şəxs adı"></div>
-    <div class="form-group"><label>Telefon</label><input type="tel" id="supPhone"></div>
-    <div class="form-group"><label>Ünvan</label><input type="text" id="supAddress"></div>
-    <div class="form-group"><label>Mal kateqoriyası</label><input type="text" id="supCategory" placeholder="Məs: Ət, Tərəvəz, İçki"></div>
-    <div class="form-group"><label>Qeyd</label><textarea id="supNotes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeSupplierModal()">Ləğv</button>
-      <button class="btn btn-green" onclick="saveSupplier()">Yadda Saxla</button>
-    </div>
-  </div>
-</div>
 
 <datalist id="menuItemsDatalist"></datalist>
 
-<div class="modal-bg" id="purchaseModal">
-  <div class="modal" style="max-width:640px;">
-    <h2 id="purchaseModalTitle" style="margin-bottom:16px;"><svg class="icon"><use href="#i-cash"></use></svg> Yeni Alış</h2>
-    <div class="closed-tables-filters__row">
-      <div class="form-group"><label>Təchizatçı</label><select id="purSupplier"></select></div>
-      <div class="form-group"><label>Faktura nömrəsi</label><input type="text" id="purInvoiceNumber" placeholder="№..."></div>
-    </div>
-    <div class="form-group"><label>Tarix</label><input type="date" id="purDate"></div>
-
-    <div style="margin:18px 0 8px;font-weight:700;color:var(--text2);font-size:13px;text-transform:uppercase;">Mallar</div>
-    <div id="purchaseLinesContainer"></div>
-    <button class="btn btn-ghost" style="width:100%;margin-top:8px;padding:10px;" onclick="addPurchaseLine()"><svg class="icon"><use href="#i-check"></use></svg> Sətir əlavə et</button>
-
-    <div style="text-align:right;font-size:20px;font-weight:800;margin:18px 0;color:var(--green);">
-      Ümumi: <span id="purchaseGrandTotal">0.00 ₼</span>
-    </div>
-
-    <div class="closed-tables-filters__row">
-      <div class="form-group"><label>Ödəniş növü</label>
-        <select id="purPaymentType"><option value="cash">Nağd</option><option value="transfer">Köçürmə</option><option value="card">Kart</option></select>
-      </div>
-      <div class="form-group"><label>Ödəniş statusu</label>
-        <select id="purPaymentStatus" onchange="togglePurPaidAmountField()"><option value="paid">Tam ödənilib</option><option value="partial">Qismən ödənilib</option><option value="unpaid">Ödənilməyib (nisyə)</option></select>
-      </div>
-    </div>
-    <div class="form-group" id="purPaidAmountGroup" style="display:none;"><label>Ödənilən məbləğ</label><input type="number" id="purPaidAmount" min="0" step="0.01"></div>
-    <div class="form-group"><label>Qeyd</label><textarea id="purNotes" rows="2" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:vertical;"></textarea></div>
-
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closePurchaseModal()">Ləğv</button>
-      <button class="btn btn-green" onclick="savePurchase()">Yadda Saxla</button>
-    </div>
-  </div>
-</div>
 
 <div class="modal-bg" id="banquetHallModal">
   <div class="modal">
@@ -1721,17 +1623,6 @@
   </div>
 </div>
 
-<div class="modal-bg" id="quickStockModal">
-  <div class="modal" style="max-width:340px;text-align:center;">
-    <h2 id="quickStockTitle" style="margin-bottom:8px;"><svg class="icon"><use href="#i-tag"></use></svg> Stok Artır</h2>
-    <p id="quickStockCurrentInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
-    <div class="form-group"><label>Nə qədər əlavə olunsun?</label><input type="number" id="quickStockAmount" min="1" step="1" placeholder="10"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeQuickStockModal()">Ləğv</button>
-      <button class="btn btn-green" onclick="confirmQuickStock()">Əlavə Et</button>
-    </div>
-  </div>
-</div>
 
 <div class="modal-bg" id="lcEditModal">
   <div class="modal">
@@ -1786,14 +1677,13 @@
 <script type="module" src="js/yuza-delivery.js"></script>
 <script type="module" src="js/yuza-login.js"></script>
 <script type="module" src="js/yuza-nav.js"></script>
-<script type="module" src="js/yuza-quickadd.js"></script>
-<script type="module" src="js/yuza-product.js"></script>
 <script type="module" src="js/yuza-inventory.js"></script>
 <script type="module" src="js/yuza-attendance.js"></script>
 <script type="module" src="js/yuza-table-reassign.js"></script>
 <script type="module" src="js/yuza-owner.js"></script>
 <script type="module" src="js/yuza-access.js"></script>
 <script type="module" src="js/yuza-settings.js"></script>
+<script type="module" src="js/yuza-birthday.js"></script>
 <script type="module" src="js/yuza-devices.js"></script>
 <script type="module" src="js/yuza-login-att.js"></script>
 </body>

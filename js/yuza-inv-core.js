@@ -96,19 +96,10 @@ const allLoaded = () => inv.loaded.products && inv.loaded.warehouses && inv.load
    • Köhnə məlumat var, kataloq boşdur (yalnız köhnə bazanın ilk açılışı) → bir dəfəlik köçürmə təklif olunur.
    Yazılar transaction ilədir — bir neçə cihaz eyni anda açılsa belə təkrarlanmır. */
 let initBusy = false;
-export const needsMigration = () => !!inv.needsMigration;
 async function maybeInit() {
   if (initBusy || !allLoaded() || inv.settings.mode === 'v2') return;
   initBusy = true;
   try {
-    const [mi, ing] = await Promise.all([
-      db.ref('menuItems').limitToFirst(1).once('value'),
-      db.ref('ingredients').limitToFirst(1).once('value')
-    ]);
-    if ((mi.exists() || ing.exists()) && !Object.keys(inv.products).length) {
-      inv.needsMigration = true; emit('settings'); return;
-    }
-    inv.needsMigration = false;
     let whId = Object.keys(inv.warehouses)[0];
     if (!whId) {
       whId = 'main';
@@ -385,7 +376,6 @@ const pendingSales = [];
 function flushPending() {
   if (!allLoaded() || !pendingSales.length) return;
   const list = pendingSales.splice(0);
-  if (!isV2()) { list.forEach(x => x.fallback && x.fallback()); return; }
   list.forEach(x => applySale(x.menuItemId, x.delta));
 }
 /* ═══ 3c: satışın anbardan silinməsi SERVERDƏ ═══
@@ -407,7 +397,6 @@ function enqueueSale(menuItemId, delta) {
   kickT = setTimeout(() => { api('stockRun').catch(() => {}); }, 400);   // gözləmədən emal et (cron da hər dəqiqə işləyir)
 }
 export function saleHook(menuItemId, delta) {
-  if (!isV2()) return false;              // köhnə sistem işləsin
   if (!(Number(delta) && Math.abs(Number(delta)) < 10000)) return true;
   if (stockOnServer()) { enqueueSale(menuItemId, delta); return true; }
   if (!allLoaded()) { pendingSales.push({ menuItemId, delta }); return true; }
@@ -623,90 +612,5 @@ export async function ledgerPost(supplierId, entry) {
   await db.ref(`suppliers/${supplierId}/totalDebt`).transaction(c => r2((Number(c) || 0) + amount));
 }
 
-/* ═══ KÖÇÜRMƏ (köhnə sistemdən) ═══
-   dryRun=true → heç nə yazmır, yalnız nə ediləcəyini qaytarır. */
-export async function migrateToV2({ dryRun = true } = {}) {
-  if (!isAdmin()) throw new Error('Köçürməni yalnız admin edə bilər');
-  const [miSnap, ingSnap, whSnap, supSnap, setSnap] = await Promise.all([
-    db.ref('menuItems').once('value'), db.ref('ingredients').once('value'),
-    db.ref('warehouses').once('value'), db.ref('suppliers').once('value'), db.ref('settings/inventory').once('value')
-  ]);
-  const menuItems = miSnap.val() || {}, ingredients = ingSnap.val() || {}, sups = supSnap.val() || {};
-  const settings = setSnap.val() || {};
-  if (settings.mode === 'v2') throw new Error('Köçürmə artıq edilib');
-  const plan = { products: {}, stock: {}, warnings: [], counts: { goods: 0, dish: 0, raw: 0, withStock: 0, suppliers: 0 } };
-  let whId = Object.keys(whSnap.val() || {})[0] || null;
-  const newWh = !whId;
-  if (newWh) whId = db.ref('warehouses').push().key;
-
-  Object.entries(ingredients).forEach(([id, g]) => {
-    plan.products[id] = {
-      name: g.name || 'Adsız', type: 'raw', unit: g.unit || 'kq', category: 'Xammal',
-      avgCost: Number(g.cost) || 0, lastCost: Number(g.cost) || 0,
-      minQty: Number.isFinite(Number(g.minQty)) ? Number(g.minQty) : null,
-      vatRate: 0, showInMenu: false, active: true, migratedFrom: 'ingredients', createdAt: g.createdAt || Date.now()
-    };
-    plan.counts.raw++;
-    if (Number(g.stock)) { plan.stock[id] = r3(g.stock); plan.counts.withStock++; }
-  });
-  Object.entries(menuItems).forEach(([id, m]) => {
-    if (plan.products[id]) { plan.warnings.push(`ID toqquşması: ${m.name}`); return; }
-    const isGoods = !!m.isTrackable || (m.stock !== undefined && m.stock !== null && !m.recipe);
-    const recipe = {};
-    Object.entries(m.recipe || {}).forEach(([cid, q]) => {
-      if (!ingredients[cid]) { plan.warnings.push(`"${m.name}" reseptində silinmiş xammal var — atlandı`); return; }
-      recipe[cid] = { gross: r4(q), waste: 0 };
-    });
-    const hist = {};
-    Object.entries(m.priceHistory || {}).forEach(([k, h]) => { hist[k] = h; });
-    plan.products[id] = {
-      name: m.name || 'Adsız', type: isGoods ? 'goods' : 'dish', category: m.category || 'Digər',
-      unit: isGoods ? 'ədəd' : 'porsiya', price: Number(m.price) || 0,
-      vatRate: Number(m.vatRate) || 0, vatIncluded: m.vatIncluded !== false,
-      showInMenu: true, showInQr: m.showInQr !== false, active: m.available !== false, isFavorite: !!m.isFavorite,
-      photo: m.photo || '', description: m.description || '', kitchenId: m.kitchenId || null,
-      recipe: isGoods ? null : (Object.keys(recipe).length ? recipe : null),
-      avgCost: isGoods ? (Number(m.cost) || 0) : null, lastCost: isGoods ? (Number(m.cost) || 0) : null,
-      priceHistory: Object.keys(hist).length ? hist : null,
-      migratedFrom: 'menuItems', createdAt: m.createdAt || Date.now()
-    };
-    if (isGoods) { plan.counts.goods++; if (Number(m.stock)) { plan.stock[id] = r3(m.stock); plan.counts.withStock++; } }
-    else plan.counts.dish++;
-    if (isGoods && m.recipe) plan.warnings.push(`"${m.name}" həm sayıla bilən, həm reseptli idi — hazır mal kimi götürüldü`);
-  });
-  const supplierDebts = Object.entries(sups).filter(([, s]) => Math.abs(Number(s.totalDebt) || 0) > 0.009)
-    .map(([id, s]) => ({ id, name: s.name, debt: r2(s.totalDebt) }));
-  plan.counts.suppliers = supplierDebts.length;
-  plan.supplierDebts = supplierDebts;
-  plan.warehouseId = whId; plan.newWarehouse = newWh;
-  if (dryRun) return plan;
-
-  /* 1) Ehtiyat nüsxə */
-  const ts = Date.now();
-  await db.ref('invBackup/' + ts).set({ menuItems, ingredients, suppliers: sups, at: ts, by: uname() });
-  /* 2) Anbar */
-  if (newWh) await db.ref('warehouses/' + whId).set({ name: 'Əsas anbar', order: 1, createdAt: ts });
-  /* 3) Məhsullar və qalıqlar */
-  const upd = {};
-  Object.entries(plan.products).forEach(([id, p]) => {
-    Object.keys(p).forEach(k => { if (p[k] === null || p[k] === undefined) delete p[k]; });
-    upd['products/' + id] = p;
-  });
-  Object.entries(plan.stock).forEach(([id, q]) => { upd[`stock/${whId}/${id}`] = q; });
-  await db.ref().update(upd);
-  const lines = {};
-  Object.entries(plan.stock).forEach(([id, q], i) => {
-    lines[i] = { pid: id, name: plan.products[id].name, unit: plan.products[id].unit, qty: q, cost: r4(plan.products[id].avgCost || 0) };
-  });
-  if (Object.keys(lines).length) await db.ref('stockMoves').push({ at: ts, type: 'opening', whId, lines, note: 'Köhnə sistemdən köçürülən ilkin qalıq', by: uid(), byName: uname(), createdAt: ts });
-  /* 4) Təchizatçı borcları → ilkin qalıq (totalDebt artıq doğrudur, yalnız jurnal yazılır) */
-  for (const s of supplierDebts) {
-    await db.ref(`supplierLedger/${s.id}`).push({ type: 'opening', amount: s.debt, at: ts, note: 'Köhnə sistemdən ilkin borc', by: uname(), createdAt: ts });
-  }
-  /* 5) Rejimi aç */
-  await db.ref('settings/inventory').update({ mode: 'v2', migratedAt: ts, migratedBy: uname(), defaultWarehouseId: whId, backupKey: String(ts) });
-  addLog('inventory', `Anbar sistemi yeni rejimə köçürüldü: ${plan.counts.goods} hazır mal, ${plan.counts.dish} yemək, ${plan.counts.raw} xammal`, {});
-  return plan;
-}
 
 /* Köçürmə birtərəflidir: yeni sistemdən köhnəyə qayıdış yoxdur. */

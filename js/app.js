@@ -3,8 +3,9 @@
    Bütün modulları birləşdirən giriş nöqtəsi: giriş/çıxış, Firebase
    listener idarəsi, ekran keçidi, ilk yükləmə (demo data).
 ═══════════════════════════════════════════ */
+import './yuza-errors.js';   // 4.2: proqram xətaları serverə (ən əvvəl yüklənir)
 import { R, db } from './firebase-service.js';
-import { state, setAdminPin } from './state.js';
+import { state } from './state.js';
 import { esc, toArr, showToast, addLog, confirmAction } from './utils.js';
 import { staffHasPermission, PERMISSION_PRESETS } from './permissions.js';
 import { injectIconSprite } from './icons.js';
@@ -21,12 +22,8 @@ import { renderPrinters, renderReceiptTemplateSettings } from './printer-setting
 import { raciaStart, raciaStop } from './racia.js';
 import { api, apiOn } from './yuza-api.js';
 import { watchShift, unwatchShift } from './yuza-shift.js';
-let ADMIN_PIN = null;
 let staffApp = null;
 
-/* Rəhbər hesabı (e-poçt + parol) aktivdirsə Rəhbər PIN-i işlənmir — yuza-owner.js */
-const ownerMode = () => window.__yzOwner ? !!window.__yzOwner.available()
-  : (typeof firebase !== 'undefined' && typeof firebase.auth === 'function' && !!firebase.app().options.apiKey);
 /* Rəhbər paneli açıqdır: Rəhbər və ya paneldə işləyən səlahiyyətli işçi */
 const panelOn = () => state.user?.role === 'admin'
   || (state.user?.role === 'staff' && !!document.getElementById('adminScreen')?.classList.contains('active'));
@@ -48,6 +45,8 @@ async function enterAdmin(owner) {
   }
   initListeners();
   showScreen('adminScreen');
+  // Mərhələ 5: köhnə Rəhbər PIN-inin bazada qalmış izi silinir
+  db.ref('settings/adminPin').remove().catch(() => {});
 }
 
 /* ── Giriş / Çıxış ── */
@@ -57,17 +56,8 @@ function doLogin() {
   clearPin();
 
   if (window.__yzPhone) state.role = 'staff';   // işçinin öz telefonu: yalnız işçi girişi
-  if (state.role === 'admin' && ownerMode()) { showErr('Rəhbər e-poçt və parolu ilə daxil olur'); return; }
-  if (state.role === 'admin') {
-    if (ADMIN_PIN === null) { showErr('Sistem hazırlanır, bir saniyə gözləyin...'); return; }
-    if (String(pin) === String(ADMIN_PIN)) {
-      state.user = { role: 'admin', name: 'Admin' };
-      addLog('login', 'Admin sistemə daxil oldu', { type: 'admin' });
-      initListeners();
-      showScreen('adminScreen');
-      return;
-    }
-  }
+  // Rəhbər PIN-i yoxdur (Mərhələ 5): Rəhbər yalnız e-poçt + parolla girir (yuza-owner.js)
+  if (state.role === 'admin') { showErr('Rəhbər e-poçt və parolu ilə daxil olur'); return; }
 
         if (state.role === 'kitchen') {
     // Server qatı: PIN serverdə yoxlanır (yuza-api.js)
@@ -253,29 +243,14 @@ function staffExit() {
 }
 
 function showExitModal() {
-  if (ownerMode()) {
-    window.__yzOwner.verify({ title: 'Kioskdan çıxış', text: 'Kiosk rejimindən çıxmaq üçün Rəhbər parolunu yazın.', okLabel: 'Çıx' })
-      .then(ok => { if (ok) logout(); });
-    return;
-  }
-  document.getElementById('exitModal').classList.add('open');
-}
-function closeExitModal() { document.getElementById('exitModal').classList.remove('open'); document.getElementById('exitPin').value = ''; }
-function confirmExit() {
-  const pin = document.getElementById('exitPin').value;
-    if (String(pin) === String(ADMIN_PIN)) {
-    closeExitModal();
-    logout();
-  } else {
-    showToast('<svg class="icon"><use href="#i-error"></use></svg> PIN səhvdir!');
-  }
+  window.__yzOwner?.verify({ title: 'Kioskdan çıxış', text: 'Kiosk rejimindən çıxmaq üçün Rəhbər parolunu yazın.', okLabel: 'Çıx' })
+    .then(ok => { if (ok) logout(); });
 }
 
 /* ── Firebase Listener İdarəsi ── */
 
 function initListeners() {
   db.ref('settings/kitchenPin').on('value', snap => { if (snap.val()) state.kitchenPin = snap.val(); });
-  db.ref('settings/adminPin').on('value', snap => { if (snap.val()) { ADMIN_PIN = snap.val(); setAdminPin(snap.val()); } });
   db.ref('settings/bizDayStartHour').on('value', snap => {
     if (snap.val() !== null && snap.val() !== undefined) {
       state._bizDayStartHour = snap.val();
@@ -375,8 +350,6 @@ function needData(g) {
     if (!_groups.has('staff')) { _groups.add('cust'); on(R.customers, onPanel(snap => { state.customers = toArr(snap.val()); })); }
     needData('banquet'); needData('loyalty');
     on(R.closedOrders.limitToLast(200), onPanel(snap => { state.closedOrders = toArr(snap.val()).reverse(); }));
-    on(R.suppliers, onPanel(snap => { state.suppliers = toArr(snap.val()); }));
-    on(R.purchases, onPanel(snap => { state.purchases = toArr(snap.val()).reverse(); }));
     on(R.payments.limitToLast(500), onPanel(snap => { state.payments = toArr(snap.val()); }));
     on(R.customerCharges, onPanel(snap => { state.customerCharges = toArr(snap.val()).reverse(); }));
     on(R.logs.limitToLast(300), snap => { state.logs = toArr(snap.val()).reverse(); if (panelOn()) renderLogs(); });
@@ -390,13 +363,13 @@ document.addEventListener('yz:screen', (ev) => { if (ev.detail === 'adminScreen'
 
 function removeListeners() {
   _groups.clear(); for (const k of Object.keys(_groupWait)) delete _groupWait[k];
-  for (const k of ['customers', 'closedOrders', 'loyaltyCustomers', 'suppliers', 'purchases', 'payments', 'customerCharges', 'banquetHalls', 'banquetEventTypes', 'banquetEvents', 'kitchenNotifs']) state[k] = [];
+  for (const k of ['customers', 'closedOrders', 'loyaltyCustomers', 'payments', 'customerCharges', 'banquetHalls', 'banquetEventTypes', 'banquetEvents', 'kitchenNotifs']) state[k] = [];
   unwatchShift();
   R.staff.off(); R.tables.off(); R.menuItems.off(); R.tableOrders.off(); R.orders.off(); R.logs.off();
-  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off(); R.suppliers.off(); R.purchases.off(); R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off(); R.printers.off();
+  R.customers.off(); R.paymentMethods.off(); R.closedOrders.off(); R.customerCharges.off(); R.payments.off(); R.loyaltyCustomers.off();  R.banquetHalls.off(); R.banquetEventTypes.off(); R.banquetEvents.off();   R.kitchenOrders.off(); R.kitchenStations.off(); R.kitchenNotifs.off(); R.notifSounds.off(); R.printers.off();
   db.ref('customerRequests').off(); db.ref('feedbacks').off();
    db.ref('settings/notifSoundMap').off(); db.ref('settings/kitchenAlertIntervalSec').off();
-  db.ref('settings/kitchenPin').off(); db.ref('settings/adminPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('settings/vatMode').off(); db.ref('chats').off();
+  db.ref('settings/kitchenPin').off(); db.ref('settings/bizDayStartHour').off(); db.ref('settings/serviceCharge').off(); db.ref('settings/vatMode').off(); db.ref('chats').off();
 }
 
 function onDataChange() {
@@ -404,18 +377,6 @@ function onDataChange() {
   if (panelOn()) renderAdmin();
   if (r === 'kitchen') renderKitchen();
   if (r === 'staff' && staffApp) staffApp.render();
-}
-
-/* ── İlk Yükləmə / Demo Data ── */
-
-function seedDemoData() {
-  // Yeni şirkət BOŞ başlayır: demo masa, işçi yaradılmır — hamısını Rəhbər özü qeyd edir.
-  // Rəhbər PIN-i yoxdursa, standart "0000" yox, ekranda PIN yaratmaq pəncərəsi açılır.
-  db.ref('settings/adminPin').once('value', snap => {
-    if (snap.val()) { ADMIN_PIN = snap.val(); setAdminPin(snap.val()); return; }
-    if (ownerMode()) return;   // Rəhbər e-poçt + parolla girir — PIN lazım deyil
-    import('./yuza-firstrun.js').then(m => m.askFirstAdminPin()).then(pin => { ADMIN_PIN = pin; setAdminPin(pin); });
-  });
 }
 
 /* ── Bootstrap ── */
@@ -467,8 +428,6 @@ function bootstrap() {
 
   document.addEventListener('auth:pin-complete', doLogin);
 
-    const _guest = /[?&](table|ref)=/.test(location.search);
-    if (!_guest) seedDemoData();
   checkCustomerMode();
   loadSavedTheme();
   const fab = document.getElementById('adminFab');
@@ -484,8 +443,6 @@ function bootstrap() {
   window.numPress = numPress;
   window.showExitModal = showExitModal;
   window.staffExit = staffExit;
-  window.closeExitModal = closeExitModal;
-  window.confirmExit = confirmExit;
 }
 
 if (document.readyState === 'loading') {

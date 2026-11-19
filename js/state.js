@@ -5,8 +5,6 @@
    ona görə burada olan dəyişikliklər hər yerdə görünür (səhifə yenilənmədən).
 ═══════════════════════════════════════════ */
 
-export let ADMIN_PIN = null;
-export function setAdminPin(pin) { ADMIN_PIN = pin; }
 
 export const state = {
   role: 'admin',

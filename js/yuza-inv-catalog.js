@@ -6,7 +6,7 @@ import { state } from './state.js';
 import {
   inv, PTYPES, UNITS, product, productList, warehouseList, totalStock, stockIn, isLow, unitCost, recipeCost,
   netOf, marginInfo, saveProduct, findSimilar, can, isAdmin, isV2, fmtQty, fmtMoney, fmtDT, r2, r3, r4, num,
-  defaultWarehouseId, migrateToV2, needsMigration, uname, purchaseHistory, stockOnServer, stockSrvAt
+  defaultWarehouseId, uname, purchaseHistory, stockOnServer, stockSrvAt
 } from './yuza-inv-core.js';
 /* Mal kartında alış qiymətləri tarixçəsi (təsdiqlənmiş qaimələrdən) */
 function priceHistHtml(pid, unit) {
@@ -20,6 +20,7 @@ function priceHistHtml(pid, unit) {
       return `<tr><td>${fmtDT(x.at)}<br><small class="mut yzi-mono">${esc(x.no || '')}</small></td><td>${esc(x.supplierName || '—')}</td><td class="n">${fmtQty(x.qty)} ${esc(x.packName || x.unit || '')}</td><td class="n"><b>${fmtMoney(x.unitCost)}</b></td><td class="n">${ch}</td></tr>`;
     }).join('')}</tbody></table></div></details>`;
 }
+import { uploadImage } from './yuza-media.js';
 import {
   registerTab, modal, confirmBox, esc, $, ok, fail, numInput, typeChip, attachPicker, whOptions, go, fresh, blurIn
 } from './yuza-inv-ui.js';
@@ -195,10 +196,13 @@ export function openEditor(id) {
         <section class="yzi-card">
           <h3>Əsas məlumat</h3>
           <div class="yzi-ed__top">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
             <label class="yzi-photo" title="Şəkli dəyiş">
               ${d.photo ? `<img src="${esc(d.photo)}" alt="">` : '<span>Şəkil</span>'}
               ${canEdit ? '<input type="file" accept="image/*" id="yziEdPhoto" hidden>' : ''}
             </label>
+            ${canEdit && d.photo ? '<button type="button" class="yzi-btn yzi-btn--sm yzi-btn--ghost" id="yziEdPhotoDel">Şəkli sil</button>' : ''}
+            </div>
             <div class="yzi-grid2 yzi-grow">
               <label class="yzi-f yzi-span2"><span>Ad *</span><input type="text" id="yziEdName" value="${esc(d.name || '')}" ${dis} autocomplete="off"></label>
               <label class="yzi-f"><span>Kateqoriya</span><input type="text" id="yziEdCat" list="yziCatList" value="${esc(d.category || '')}" ${dis} placeholder="məs: İçkilər"></label>
@@ -361,9 +365,15 @@ export function openEditor(id) {
       const s = findSimilar(nameI.value, id);
       root.querySelector('#yziEdSim').innerHTML = s.length ? `<div class="yzi-warnbox"><b>Oxşar məhsul artıq var:</b> ${s.map(p => esc(p.name)).join(', ')}. Təkrar kart yaratmayın.</div>` : '';
     });
+    root.querySelector('#yziEdPhotoDel')?.addEventListener('click', () => { collect(); d.photo = ''; draw(); });   // "Yadda saxla" basılanda bazadan da silinir
     root.querySelector('#yziEdPhoto')?.addEventListener('change', async (e) => {
       const file = e.target.files[0]; if (!file) return;
-      try { collect(); d.photo = await compressImage(file); draw(); } catch (er) { fail(er.message); }
+      try {
+        collect();
+        const small = await compressImage(file);
+        d.photo = small; draw();                       // dərhal göstər
+        d.photo = await uploadImage(small); draw();    // 3b: serverə (R2) yüklə, bazaya yalnız ünvan düşür
+      } catch (er) { fail(er.message); }
     });
   }
   async function save() {
@@ -480,13 +490,7 @@ function renderSettings(el) {
     <div class="yzi-head"><div><div class="yzi-eyebrow">ANBAR</div><h1 class="yzi-h1">Parametrlər</h1></div></div>
     <section class="yzi-card">
       <h3>Sistem rejimi</h3>
-      <p class="yzi-p">Hazırkı rejim: <b class="${v2 ? 'yzi-ok' : 'yzi-warn'}">${v2 ? 'Yeni anbar sistemi (aktiv)' : needsMigration() ? 'Köhnə məlumat tapıldı — köçürmə gözləyir' : 'Hazırlanır…'}</b>${s.migratedAt ? ` · köçürmə: ${fmtDT(s.migratedAt)} (${esc(s.migratedBy || '')})` : ''}</p>
-      ${v2 ? `<p class="yzi-hint">Sistem yeni anbar rejimində işləyir.${s.migratedAt ? ' Köhnə məlumatların ehtiyat nüsxəsi saxlanılıb.' : ''}</p>`
-      : !needsMigration() ? '<p class="yzi-hint">Boş baza yeni rejimdə avtomatik qurulur.</p>'
-      : `<p class="yzi-p">Bu bazada köhnə proqramdan qalan məlumat var. Onu <b>bir dəfə</b> yeni sistemə köçürmək lazımdır. Köçürmə zamanı: menyu malları → kataloq (sayıla bilən → <b>Hazır mal</b>, qalanı → <b>Yemək</b>), xammadə → <b>Xammal</b>, reseptlər → texnoloji kart, qalıqlar → "Əsas anbar", təchizatçı borcları → ilkin qalıq. Əvvəlcə bütün köhnə məlumatın ehtiyat nüsxəsi götürülür.</p>
-        <p class="yzi-warnbox"><b>Vacib:</b> köçürməni əvvəlcə TEST Firebase-də yoxlayın.</p>
-        <button type="button" class="yzi-btn yzi-btn--ghost" data-dry>1) Nə köçürüləcəyini göstər</button>
-        <div id="yziDry"></div>`}
+      <p class="yzi-p">Hazırkı rejim: <b class="${v2 ? 'yzi-ok' : 'yzi-warn'}">${v2 ? 'Anbar sistemi aktivdir' : 'Hazırlanır…'}</b>${s.migratedAt ? ` · köhnə sistemdən köçürmə: ${fmtDT(s.migratedAt)} (${esc(s.migratedBy || '')})` : ''}</p>
     </section>
     <section class="yzi-card">
       <h3>Satışda anbardan silinmə</h3>
@@ -513,30 +517,6 @@ function renderSettings(el) {
     const v = num(i.value); if (!Number.isFinite(v) || v < 0) { fail('Düzgün rəqəm yazın'); return; }
     await db.ref('settings/inventory/' + i.dataset.num).set(v); ok('Yadda saxlanıldı');
   }));
-  el.querySelector('[data-dry]')?.addEventListener('click', async () => {
-    try {
-      const plan = await migrateToV2({ dryRun: true });
-      const box = el.querySelector('#yziDry');
-      box.innerHTML = `<div class="yzi-mini-kpis">
-          <div><small>Hazır mal</small><b>${plan.counts.goods}</b></div><div><small>Yemək</small><b>${plan.counts.dish}</b></div>
-          <div><small>Xammal</small><b>${plan.counts.raw}</b></div><div><small>Qalığı olan</small><b>${plan.counts.withStock}</b></div>
-          <div><small>Borclu təchizatçı</small><b>${plan.counts.suppliers}</b></div></div>
-        ${plan.newWarehouse ? '<p class="yzi-hint">"Əsas anbar" yaradılacaq, bütün qalıqlar ora yazılacaq.</p>' : ''}
-        ${plan.warnings.length ? `<div class="yzi-warnbox"><b>Diqqət:</b><ul>${plan.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
-        <table class="yzi-table yzi-table--mini"><thead><tr><th>Məhsul</th><th>Yeni növ</th><th class="n">Qalıq</th></tr></thead><tbody>
-        ${Object.entries(plan.products).slice(0, 300).map(([pid, p]) => `<tr><td>${esc(p.name)}</td><td>${typeChip(p.type)}</td><td class="n">${plan.stock[pid] !== undefined ? fmtQty(plan.stock[pid]) + ' ' + esc(p.unit) : '—'}</td></tr>`).join('')}
-        </tbody></table>
-        <p class="yzi-hint">Yemək kimi götürülən, amma əslində hazır mal olanları köçürmədən sonra kataloqda düzəldə bilərsiniz.</p>
-        <button type="button" class="yzi-btn yzi-btn--gold" data-run>2) Köçürməni başlat</button>`;
-      box.querySelector('[data-run]').addEventListener('click', async () => {
-        const v = await confirmBox('Köçürmə başlasın? Davam etmək üçün aşağıya <b>KÖÇÜR</b> yazın.', { input: 'Təsdiq sözü', okLabel: 'Köçür', okCls: 'yzi-btn--red' });
-        if (v === null) return;
-        if (String(v).toUpperCase() !== 'KÖÇÜR') { fail('Təsdiq sözü düz deyil'); return; }
-        try { await migrateToV2({ dryRun: false }); ok('Köçürmə tamamlandı. Yeni anbar sistemi aktivdir.'); go('catalog'); }
-        catch (e) { fail(e.message); }
-      });
-    } catch (e) { fail(e.message); }
-  });
 }
 
 /* ═══ QEYDİYYAT ═══ */

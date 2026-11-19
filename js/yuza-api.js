@@ -47,4 +47,18 @@ export async function api(action, body = {}, { owner = false } = {}) {
   return j;
 }
 
+/* Xam cavab (fayl yükləmək üçün, məs. ehtiyat nüsxə) — JSON açılmır */
+export async function apiRaw(action, body = {}, { owner = false } = {}) {
+  if (!apiOn()) throw err('off', 'Server qatı bu saytda qoşulmayıb.');
+  const u = currentUser(owner);
+  if (!u) throw err('auth', 'Sessiya bağlanıb. Yenidən daxil olun.');
+  const tok = await u.getIdToken();
+  let r;
+  try {
+    r = await fetch(API_URL + '/pin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ ...body, action }) });
+  } catch (e) { throw err('net', 'Serverə qoşulmaq alınmadı. İnterneti yoxlayın.'); }
+  if (!r.ok) { let j = {}; try { j = await r.json(); } catch (e) { /* */ } throw err(j.code || 'http' + r.status, j.msg || `Server xətası (${r.status}).`); }
+  return r;
+}
+
 window.__yzApi = { api, apiOn };

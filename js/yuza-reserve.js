@@ -12,7 +12,6 @@
    index.html-də yalnız bu fayl qoşulur, mövcud kodu dəyişmir.
 ═══════════════════════════════════════════ */
 import { state } from './state.js';
-import * as ST from './state.js';
 import { db, R } from './firebase-service.js';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_PRESETS } from './permissions.js';
 import { esc, showToast, addLog } from './utils.js';
@@ -262,10 +261,7 @@ function hookPayment() {
 async function verifyPin(pin) {
   pin = String(pin || '').trim();
   if (!pin) return null;
-  const ownerMode = !!window.__yzOwner?.available?.();   // Rəhbər PIN-i yoxdur — Rəhbər parolu ilə təsdiqləyir
-  let adminPin = ownerMode ? null : ST.ADMIN_PIN;
-  if (adminPin == null && !ownerMode) { try { adminPin = (await db.ref('settings/adminPin').once('value')).val(); } catch (e) { /* */ } }
-  if (adminPin != null && String(adminPin) === pin) return { id: 'admin', name: 'Rəhbər' };
+  // Rəhbər PIN-i yoxdur (Mərhələ 5) — Rəhbər öz parolu ilə təsdiqləyir
   if (apiOn()) {   // PIN serverdə yoxlanır
     try { const r = await api('verify', { pin, perm: 'table.min_approve' }); return { id: r.id, name: r.name }; } catch (e) { return null; }
   }
