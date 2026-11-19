@@ -4,14 +4,6 @@
    ona görə işıqlı və tünd rejim avtomatik uyğunlaşır.
 ═══════════════════════════════════════════════════════════════ */
 
-/* Yeni rejimdə köhnə menyu/alış/təchizatçı tabları gizlədilir (silinmir) */
-body.yz-inv-v2 .admin-tab[data-section="menu"],
-body.yz-inv-v2 .admin-tab[data-section="purchases"],
-body.yz-inv-v2 .admin-tab[data-section="suppliers"],
-body.yz-inv-v2 #yzIngOpen,
-body.yz-inv-v2 .ap-new-dropdown__item[onclick*="'menu'"],
-body.yz-inv-v2 .ap-new-dropdown__item[onclick*="'purchases'"],
-body.yz-inv-v2 .ap-new-dropdown__item[onclick*="'suppliers'"]{display:none!important}
 
 :root{--yzi-font:'Inter','Segoe UI',system-ui,-apple-system,sans-serif}
 #sec-inv{padding:0}
@@ -264,7 +256,6 @@ body.dark-mode .yzi-pick__new{color:var(--gold)}
 
 /* ═══ PATRON PANELİ: yeni menyu, iki səviyyəli işçi menyusu, telefon düzəlişləri ═══ */
 body:not(.yz-inv-v2) .yz-only-v2{display:none!important}
-body.yz-inv-v2 .yz-only-legacy{display:none!important}
 
 /* İşçi ekranı: qrup → bölmə */
 .yzi-nav{flex-direction:column;gap:8px;padding:10px 4px 8px}
