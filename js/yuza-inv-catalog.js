@@ -6,7 +6,7 @@ import { state } from './state.js';
 import {
   inv, PTYPES, UNITS, product, productList, warehouseList, totalStock, stockIn, isLow, unitCost, recipeCost,
   netOf, marginInfo, saveProduct, findSimilar, can, isAdmin, isV2, fmtQty, fmtMoney, fmtDT, r2, r3, r4, num,
-  defaultWarehouseId, migrateToV2, needsMigration, uname, purchaseHistory
+  defaultWarehouseId, migrateToV2, needsMigration, uname, purchaseHistory, stockOnServer, stockSrvAt
 } from './yuza-inv-core.js';
 /* Mal kartında alış qiymətləri tarixçəsi (təsdiqlənmiş qaimələrdən) */
 function priceHistHtml(pid, unit) {
@@ -487,6 +487,12 @@ function renderSettings(el) {
         <p class="yzi-warnbox"><b>Vacib:</b> köçürməni əvvəlcə TEST Firebase-də yoxlayın.</p>
         <button type="button" class="yzi-btn yzi-btn--ghost" data-dry>1) Nə köçürüləcəyini göstər</button>
         <div id="yziDry"></div>`}
+    </section>
+    <section class="yzi-card">
+      <h3>Satışda anbardan silinmə</h3>
+      ${stockOnServer()
+        ? `<p class="yzi-p"><b class="yzi-ok">Serverdə</b> — satış edilən cihaz anbara özü yazmır, server hər satışı bir dəfə və mütləq silir (internet kəsilsə də itmir). Serverin son işləməsi: <b>${fmtDT(stockSrvAt())}</b>.</p>`
+        : `<p class="yzi-p"><b class="yzi-warn">Cihazda</b> — ${stockSrvAt() ? `server ${fmtDT(stockSrvAt())}-dən bəri işləmir` : 'server hələ qoşulmayıb'}. Satış dayanmır: hər cihaz anbardan özü silir. Server bərpa olanda avtomatik ona keçir.</p>`}
     </section>
     <section class="yzi-card">
       <h3>Mühasibat parametrləri</h3>

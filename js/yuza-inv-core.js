@@ -18,6 +18,7 @@ import { db, R } from './firebase-service.js';
 import { state } from './state.js';
 import { addLog, setStockHook } from './utils.js';
 import { hasPermission } from './permissions.js';
+import { api, apiOn } from './yuza-api.js';
 
 /* ── Sabitlər ── */
 export const PTYPES = {
@@ -173,6 +174,8 @@ export function startInv() {
   listen('inv', db.ref('products'), 'value', s => { inv.products = s.val() || {}; inv.loaded.products = true; emit('products'); flushPending(); maybeInit(); });
   listen('inv', db.ref('warehouses'), 'value', s => { inv.warehouses = s.val() || {}; inv.loaded.warehouses = true; emit('warehouses'); flushPending(); maybeInit(); });
   listen('inv', db.ref('stock'), 'value', s => { inv.stock = s.val() || {}; inv.loaded.stock = true; emit('stock'); flushPending(); maybeInit(); });
+  // 3c: server anbar növbəsini emal edirmi (Worker hər dəqiqə nişan qoyur)
+  listen('inv', db.ref('sys/stockSrv'), 'value', s => { srvBeat = Number(s.val()?.at) || 0; });
   listen('inv', db.ref('settings/inventory'), 'value', s => {
     inv.settings = s.val() || {}; inv.loaded.settings = true;
     try { localStorage.setItem(MODE_KEY, inv.settings.mode || ''); } catch (e) {}
@@ -385,8 +388,28 @@ function flushPending() {
   if (!isV2()) { list.forEach(x => x.fallback && x.fallback()); return; }
   list.forEach(x => applySale(x.menuItemId, x.delta));
 }
+/* ═══ 3c: satışın anbardan silinməsi SERVERDƏ ═══
+   Cihaz anbara özü yazmır: stockQueue-yə qeyd qoyur, server (Cloudflare Worker) onu bir dəfə və mütləq emal edir —
+   internet kəsilsə, səhifə bağlansa da qeyd itmir və iki dəfə silinmir. Server son 10 dəqiqədə işləməyibsə
+   (və ya bu saytda server qatı yoxdursa) əvvəlki qayda ilə cihaz özü silir — satış heç vaxt dayanmır. */
+let srvBeat = 0, kickT = null;
+const SRV_FRESH = 10 * 60 * 1000;
+export const stockSrvAt = () => srvBeat;
+export const stockOnServer = () => apiOn() && srvBeat > 0 && Math.abs(Date.now() - srvBeat) < SRV_FRESH;
+function enqueueSale(menuItemId, delta) {
+  const rec = { m: String(menuItemId), d: r3(delta), at: firebase.database.ServerValue.TIMESTAMP, by: String(uid()), bn: String(uname() || '').slice(0, 80) };
+  const local = () => { if (allLoaded()) applySale(menuItemId, delta); else pendingSales.push({ menuItemId, delta }); };
+  try {
+    const p = db.ref('stockQueue').push(rec);
+    Promise.resolve(p).catch((e) => { console.warn('[inv] növbəyə yazılmadı, cihazda silinir', e); local(); });
+  } catch (e) { local(); return; }
+  clearTimeout(kickT);
+  kickT = setTimeout(() => { api('stockRun').catch(() => {}); }, 400);   // gözləmədən emal et (cron da hər dəqiqə işləyir)
+}
 export function saleHook(menuItemId, delta) {
   if (!isV2()) return false;              // köhnə sistem işləsin
+  if (!(Number(delta) && Math.abs(Number(delta)) < 10000)) return true;
+  if (stockOnServer()) { enqueueSale(menuItemId, delta); return true; }
   if (!allLoaded()) { pendingSales.push({ menuItemId, delta }); return true; }
   applySale(menuItemId, delta);
   return true;
