@@ -18,6 +18,7 @@ import {
 } from './yuza-att-core.js';
 import { scanQr } from './yuza-qr-scan.js';
 import { api, apiOn } from './yuza-api.js';
+import './yuza-version.js';   // avtomatik yenilənmə (Mərhələ 4.3)
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

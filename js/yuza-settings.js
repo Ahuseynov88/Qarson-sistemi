@@ -11,6 +11,7 @@
 import { db } from './firebase-service.js';
 import { state } from './state.js';
 import { showToast, esc } from './utils.js';
+import { fmtVersion } from './yuza-version.js';
 
 const $ = (id) => document.getElementById(id);
 const I = (id) => `<svg class="icon"><use href="#i-${id}"></use></svg>`;
@@ -69,6 +70,7 @@ function build() {
   }
   const about = byTitle(/Sistem Məlumatları/);
   if (about) { hub.querySelector('#yzsAbout').textContent = about.querySelector('p')?.textContent?.trim() || ''; about.remove(); }
+  hub.querySelector('#yzsAbout').insertAdjacentHTML('beforeend', `<span class="yzs-ver" style="display:block;margin-top:6px;">Proqramın versiyası: <b>${fmtVersion()}</b></span>`);
   // Satış və hesab
   put('sales', byTitle(/Xidmət Haqqı/));
   put('sales', byTitle(/ƏDV/));
