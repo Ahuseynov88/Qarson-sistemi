@@ -125,6 +125,10 @@ function modulesHtml() {
 /* ── Pəncərə göstərmək ── */
 function show(id, silent, keep) {
   const sec = $('sec-settings'); if (!sec) return;
+  // 3b: "Giriş və təhlükəsizlik" (Rəhbər hesabı, cihazlar, işçi girişi) yalnız Rəhbərdə görünür
+  const owner = state.user?.role === 'admin';
+  sec.querySelectorAll('.yzs-nav__b[data-pane="security"]').forEach(b => { b.hidden = !owner; });
+  if (id === 'security' && !owner) id = 'general';
   currentPane = id;
   try { sessionStorage.setItem(K_PANE, id); } catch (e) { /* */ }
   sec.querySelectorAll('.yzs-nav__b').forEach(b => { const on = b.dataset.pane === id; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); });

@@ -815,7 +815,7 @@ function render(host) {
       </div>
       <div class="yzrv-topbtns">
         ${can('reserve.create') ? `<button type="button" class="yzi-btn yzi-btn--gold" data-new>${I('plus')} Yeni rezerv</button>` : ''}
-        ${isRehber() ? `<button type="button" class="yzi-btn yzi-btn--ghost" data-settings aria-label="Ayarlar">${I('settings')}</button>` : ''}
+        ${isRehber() || can('panel.settings') ? `<button type="button" class="yzi-btn yzi-btn--ghost" data-settings aria-label="Ayarlar">${I('settings')}</button>` : ''}
       </div>
     </div>
     <div class="yzrv-kpis">

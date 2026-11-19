@@ -123,20 +123,64 @@ async function maybeInit() {
   finally { initBusy = false; }
 }
 
+/* ── Canlı dinləmələrin idarəsi (Mərhələ 3b) ──
+   Baza oxuma icazəsini itirəndə (məs. çıxışda server sessiyanı silir) Firebase dinləyicini
+   SƏSSİZ dayandırır və bir daha işə salmır. Əvvəl bu dinləyicilər səhifə yenilənənə qədər
+   ölü qalırdı: növbəti işçi girəndə yeni kassa, sənəd, qalıq ekrana düşmürdü.
+   İndi: (1) hər istifadəçi dəyişəndə dinləmələr sıfırlanır və təzədən qoşulur;
+         (2) dinləmə dayansa, istifadəçi hələ daxildirsə, bir neçə saniyədən sonra özü bərpa olunur. */
+const live = { inv: [], docs: [] };
+const retryT = { inv: 0, docs: 0 };
+function listen(group, ref, ev, cb) {
+  const errCb = () => onCancel(group);
+  ref.on(ev, cb, errCb);
+  live[group].push(() => { try { ref.off(ev, cb); } catch (e) { /* */ } });
+}
+function stopGroup(group) {
+  live[group].splice(0).forEach(off => off());
+  if (group === 'inv') started = false; else docsStarted = false;
+}
+function onCancel(group) {
+  stopGroup(group);
+  clearTimeout(retryT[group]);
+  retryT[group] = setTimeout(() => {
+    if (!state.user) return;
+    if (group === 'inv') startInv(); else if (wantDocs) watchDocs();
+  }, 2500);
+}
+/* Dinləmələr hansı istifadəçi üçün açılıb. İstifadəçi dəyişibsə (giriş/çıxış), köhnələri bağlanır, yaddaş təmizlənir. */
+let liveUser = null;
+export function syncInvUser() {
+  if (liveUser === (state.user || null)) return;
+  resetInvLive();
+  liveUser = state.user || null;
+}
+export function resetInvLive() {
+  clearTimeout(retryT.inv); clearTimeout(retryT.docs);
+  stopGroup('inv'); stopGroup('docs');
+  wantDocs = false;
+  Object.keys(docs).forEach(k => { docs[k] = {}; });
+  Object.keys(cashAccounts).forEach(k => delete cashAccounts[k]);
+  Object.keys(suppliers).forEach(k => delete suppliers[k]);
+  state.invPayments = [];
+  emit('docs'); emit('cash'); emit('suppliers');
+}
+
 let started = false;
 export function startInv() {
+  syncInvUser();
   if (started) return; started = true;
-  db.ref('products').on('value', s => { inv.products = s.val() || {}; inv.loaded.products = true; emit('products'); flushPending(); maybeInit(); });
-  db.ref('warehouses').on('value', s => { inv.warehouses = s.val() || {}; inv.loaded.warehouses = true; emit('warehouses'); flushPending(); maybeInit(); });
-  db.ref('stock').on('value', s => { inv.stock = s.val() || {}; inv.loaded.stock = true; emit('stock'); flushPending(); maybeInit(); });
-  db.ref('settings/inventory').on('value', s => {
+  listen('inv', db.ref('products'), 'value', s => { inv.products = s.val() || {}; inv.loaded.products = true; emit('products'); flushPending(); maybeInit(); });
+  listen('inv', db.ref('warehouses'), 'value', s => { inv.warehouses = s.val() || {}; inv.loaded.warehouses = true; emit('warehouses'); flushPending(); maybeInit(); });
+  listen('inv', db.ref('stock'), 'value', s => { inv.stock = s.val() || {}; inv.loaded.stock = true; emit('stock'); flushPending(); maybeInit(); });
+  listen('inv', db.ref('settings/inventory'), 'value', s => {
     inv.settings = s.val() || {}; inv.loaded.settings = true;
     try { localStorage.setItem(MODE_KEY, inv.settings.mode || ''); } catch (e) {}
     document.body.classList.toggle('yz-inv-v2', inv.settings.mode === 'v2');
     emit('settings'); flushPending(); maybeInit();
   });
   /* orderByKey: app.js çıxışda R.menuItems.off() edəndə bu dinləyici silinməsin */
-  db.ref('menuItems').orderByKey().on('child_changed', s => reverseSync(s.key, s.val()));
+  listen('inv', db.ref('menuItems').orderByKey(), 'child_changed', s => reverseSync(s.key, s.val()));
 }
 
 /* ── Sənədlər və təchizatçılar: yalnız anbar ekranı açılanda dinlənir ── */
@@ -146,14 +190,16 @@ export const cashAccounts = {};    // id → { name, kind: cash|bank|pos, order,
 export const accName = (id) => cashAccounts[id]?.name || '—';
 export const accountList = (all = false) => Object.entries(cashAccounts).map(([id, a]) => ({ id, ...a }))
   .filter(a => all || !a.archived).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
-let docsStarted = false;
+let docsStarted = false, wantDocs = false;
 export function watchDocs() {
+  syncInvUser();
+  wantDocs = true;
   if (docsStarted) return; docsStarted = true;
   const nodes = [...new Set(Object.values(DOCS).map(d => d.node))];
   nodes.forEach(node => {
-    docs[node] = {};
+    docs[node] = docs[node] || {};
     const lim = Object.values(DOCS).find(d => d.node === node)?.limit || 600;
-    db.ref(node).orderByChild('createdAt').limitToLast(lim).on('value', s => {
+    listen('docs', db.ref(node).orderByChild('createdAt').limitToLast(lim), 'value', s => {
       docs[node] = s.val() || {};
       if (node === 'invPayments') {
         state.invPayments = Object.entries(docs[node]).map(([id, p]) => ({ id, ...p })).filter(p => p.status === 'approved');
@@ -161,12 +207,12 @@ export function watchDocs() {
       emit('docs');
     });
   });
-  db.ref('cashAccounts').on('value', s => {
+  listen('docs', db.ref('cashAccounts'), 'value', s => {
     Object.keys(cashAccounts).forEach(k => delete cashAccounts[k]);
     Object.assign(cashAccounts, s.val() || {});
     emit('cash');
   });
-  db.ref('suppliers').on('value', s => {
+  listen('docs', db.ref('suppliers'), 'value', s => {
     Object.keys(suppliers).forEach(k => delete suppliers[k]);
     Object.assign(suppliers, s.val() || {});
     emit('suppliers');

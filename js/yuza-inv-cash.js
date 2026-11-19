@@ -162,7 +162,7 @@ function rangeOf() {
   }
 }
 const seeCash = () => can('cash.view') || can('cash.create') || can('cash.approve') || can('cash.close.create') || can('cash.close.approve');
-const manage = () => isAdmin() || can('cash.approve');
+const manage = () => isAdmin() || can('cash.approve') || can('panel.settings');
 
 async function renderCash(host) {
   watchCfg();
@@ -193,7 +193,7 @@ async function renderCash(host) {
         ${canNew ? `<button type="button" class="yzi-btn yzi-btn--gold" data-new="in">+ Mədaxil</button>
         <button type="button" class="yzi-btn yzi-btn--ghost" data-new="out">− Məxaric</button>
         <button type="button" class="yzi-btn yzi-btn--ghost" data-new="transfer">⇄ Transfer</button>` : ''}
-        ${manage() ? '<button type="button" class="yzi-btn yzi-btn--ghost" data-cfg>Parametrlər</button>' : ''}
+        ${manage() ? '<button type="button" class="yzi-btn yzi-btn--ghost" data-newacc>+ Yeni kassa</button><button type="button" class="yzi-btn yzi-btn--ghost" data-cfg>Parametrlər</button>' : ''}
       </div></div>
     <div class="yzi-kpis yzi-acc-cards">${bals.map(({ a, b }) => `<div class="yzi-kpi yzi-acc yzi-acc--${a.kind}">
       <small>${esc(ACC_KINDS[a.kind] || '')}</small><b class="${b.bal < 0 ? 'yzi-bad' : ''}">${fmtMoney(b.bal)}</b>
@@ -241,6 +241,7 @@ async function renderCash(host) {
     const n = e.target.closest('[data-new]'); if (n) { openCashEditor(null, { dir: n.dataset.new }); return; }
     const c = e.target.closest('[data-close]'); if (c) { openClose(c.dataset.close); return; }
     if (e.target.closest('[data-cfg]')) { openSettings(); return; }
+    if (e.target.closest('[data-newacc]')) { accountEditor(null); return; }
     if (e.target.closest('[data-reload]')) { cache.at = 0; again(); return; }
     if (e.target.closest('[data-csv]')) { exportCsv(list); return; }
     const o = e.target.closest('[data-open]'); if (o) { const [k, id] = o.dataset.open.split('|'); openAny(k, id); }
@@ -326,7 +327,8 @@ function openSettings() {
       ${accs.map(a => `<tr class="${a.archived ? 'is-void' : ''}"><td><b>${esc(a.name)}</b></td><td>${ACC_KINDS[a.kind] || a.kind}</td><td class="n">${fmtMoney(a.opening)}</td><td>${fmtDT(a.openingAt)}</td>
         <td><button type="button" class="yzi-btn yzi-btn--sm yzi-btn--ghost" data-edit="${a.id}">Düzəlt</button></td></tr>`).join('')}
     </tbody></table></div>
-    <button type="button" class="yzi-btn yzi-btn--ghost yzi-btn--sm" data-add>+ Yeni hesab</button>
+    <button type="button" class="yzi-btn yzi-btn--ghost yzi-btn--sm" data-add>+ Yeni kassa / hesab</button>
+    <p class="yzi-hint">Səhv yaradılmış, heç istifadə olunmamış hesabı "Düzəlt" → "Sil" ilə silmək olar. Əməliyyatı olan hesab silinmir — arxivə atılır (tarixçə və hesabatlar pozulmasın).</p>
     <h3 class="yzi-h3">Ödəniş növü hansı hesaba düşsün</h3>
     <div class="yzi-grid2">${methods.map(([k, n]) => `<label class="yzi-f"><span>${esc(n)}</span>${accSel(k)}</label>`).join('')}</div>
     <h3 class="yzi-h3">Maddələr (hər sətirdə bir)</h3>
@@ -345,6 +347,58 @@ function openSettings() {
     if (e.target.closest('[data-add]')) { m.close(); accountEditor(null); }
   });
 }
+/* ── Kassa hesabının silinməsi (3b) ──
+   Yalnız HEÇ BİR əməliyyatı olmayan hesab silinir (səhv yaradılıb). Əməliyyatı varsa — yalnız arxiv:
+   pul hərəkətinin tarixçəsi və köhnə hesabatlar pozulmamalıdır. */
+export async function accountUsage(id) {
+  const a = cashAccounts[id]; if (!a) return { n: 0, what: [] };
+  const what = [];
+  const docN = docList('cash').filter(d => d.accountId === id || d.toAccountId === id).length;
+  if (docN) what.push(`${docN} kassa sənədi`);
+  const clN = docList('cashclose').filter(c => c.accountId === id).length;
+  if (clN) what.push(`${clN} gün sonu bağlanışı`);
+  const payN = docList('payment').filter(d => d.accountId === id).length;
+  if (payN) what.push(`${payN} təchizatçı ödənişi`);
+  // Satış, nisyə və banket ödənişləri hesaba "ödəniş növü → hesab" qaydası ilə düşür
+  const ms = await allMoves(a.openingAt || 0, true);
+  const ext = ms.filter(m => m.acc === id && ['sale', 'credit', 'banquet'].includes(m.src)).length;
+  if (ext) what.push(`${ext} satış / nisyə / banket ödənişi`);
+  return { n: docN + clN + payN + ext, what };
+}
+async function deleteAccount(id) {
+  const a = cashAccounts[id]; if (!a) return false;
+  if (!manage()) { fail('Kassanı silmək üçün icazəniz yoxdur'); return false; }
+  let u;
+  try { u = await accountUsage(id); } catch (e) { fail('Yoxlama alınmadı: ' + (e.message || e)); return false; }
+  if (u.n) {
+    await confirmBox(`<b>${esc(a.name)}</b> silinə bilməz: bu hesabda ${esc(u.what.join(', '))} var.<br>Hesab tarixçəsi pozulmasın deyə onu yalnız arxivə atmaq olar ("Düzəlt" → "Arxivə at"). Arxivdəki hesab yeni əməliyyatlarda görünmür.`, { title: 'Silmək olmaz', okLabel: 'Başa düşdüm' });
+    return false;
+  }
+  const mapped = Object.entries(cashCfg.methodMap || {}).filter(([, acc]) => acc === id).map(([m]) => m);
+  const others = accountList().filter(x => x.id !== id);
+  let to = null;
+  if (mapped.length && others.length) {
+    const body = document.createElement('div');
+    body.innerHTML = `<p class="yzi-p">Bu ödəniş növləri <b>${esc(a.name)}</b> hesabına yazılırdı: <b>${esc(mapped.map(methodLabel).join(', '))}</b>. Bundan sonra hansı hesaba yazılsın?</p>
+      <label class="yzi-f"><span>Yeni hesab</span><select id="yziDelTo">${others.map(o => `<option value="${o.id}"${o.kind === a.kind ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>`;
+    to = await new Promise(res => {
+      let done = false;
+      modal({ title: 'Ödəniş növləri hara keçsin?', body, onClose: () => { if (!done) res(null); }, actions: [
+        { label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' },
+        { label: 'Davam et', cls: 'yzi-btn--gold', onClick: () => { done = true; res(body.querySelector('#yziDelTo').value); } }
+      ] });
+    });
+    if (!to) return false;
+  }
+  if (!await confirmBox(`<b>${esc(a.name)}</b> (${esc(ACC_KINDS[a.kind] || '')}, başlanğıc ${fmtMoney(a.opening)}) tam silinsin? Bu geri qaytarılmır.`, { okLabel: 'Sil', okCls: 'yzi-btn--red' })) return false;
+  const upd = { ['cashAccounts/' + id]: null };
+  mapped.forEach(m => { upd['settings/cash/methodMap/' + m] = to || null; });
+  try { await db.ref().update(upd); }
+  catch (e) { fail('Silinmədi (bağlantı və ya icazə xətası). Heç nə dəyişməyib.'); return false; }
+  addLog('inventory', `Kassa hesabı silindi: ${a.name}${to ? ' · ödəniş növləri → ' + accName(to) : ''}`, {});
+  ok('Kassa silindi');
+  return true;
+}
 function accountEditor(id) {
   const a = id ? cashAccounts[id] : { kind: 'cash', opening: 0, openingAt: Date.now() };
   modal({ title: id ? 'Hesab' : 'Yeni hesab', body: `
@@ -354,7 +408,8 @@ function accountEditor(id) {
       <label class="yzi-f"><span>Başlanğıc anı</span><input type="datetime-local" id="yziAcAt" value="${toLocalInput(a.openingAt || Date.now())}"></label></div>
     ${id ? `<p class="yzi-hint">Başlanğıc qalığı dəyişsəniz, son gün sonu bağlanışına qədər olan qalıq yenidən hesablanır.</p>
       <label class="yzi-check"><input type="checkbox" id="yziAcAr" ${a.archived ? 'checked' : ''}> Arxivə at (yeni əməliyyatlarda görünməsin)</label>` : ''}`,
-  actions: [{ label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' }, { label: 'Yadda saxla', cls: 'yzi-btn--gold', onClick: async (b) => {
+  actions: [...(id && manage() ? [{ label: 'Sil', cls: 'yzi-btn--ghost yzi-btn--left yzi-bad', onClick: async () => (await deleteAccount(id)) ? undefined : false }] : []),
+    { label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' }, { label: 'Yadda saxla', cls: 'yzi-btn--gold', onClick: async (b) => {
     const name = b.querySelector('#yziAcN').value.trim(); if (!name) { fail('Ad yazılmalıdır'); return false; }
     const o = num(b.querySelector('#yziAcO').value);
     const data = { name, kind: b.querySelector('#yziAcK').value, opening: Number.isFinite(o) ? r2(o) : 0, openingAt: fromLocalInput(b.querySelector('#yziAcAt').value), archived: !!b.querySelector('#yziAcAr')?.checked, updatedAt: Date.now() };

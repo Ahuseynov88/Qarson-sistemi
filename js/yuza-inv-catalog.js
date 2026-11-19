@@ -536,4 +536,4 @@ function renderSettings(el) {
 /* ═══ QEYDİYYAT ═══ */
 registerTab({ id: 'catalog', group: 'reg', label: 'Məhsullar', order: 40, perm: () => can('catalog.view') || can('catalog.edit'), render: renderCatalog, live: ['products', 'stock', 'warehouses'] });
 registerTab({ id: 'warehouses', group: 'reg', label: 'Anbarlar', order: 41, perm: () => can('warehouse.manage'), render: renderWarehouses, live: ['warehouses', 'stock', 'settings'] });
-registerTab({ id: 'settings', group: 'sys', label: 'Anbar parametrləri', order: 90, perm: () => isAdmin(), render: renderSettings, live: ['settings'], legacyOk: true });
+registerTab({ id: 'settings', group: 'sys', label: 'Anbar parametrləri', order: 90, perm: () => isAdmin() || can('panel.settings'), render: renderSettings, live: ['settings'], legacyOk: true });

@@ -8,7 +8,7 @@
    • Anbar, kassa, alış, rezerv bölmələri MÖVCUD icazələrlə açılır
      (məs. "Kassa qalıqlarını görmək" → Kassa bölməsi).
    • Qalan bölmələr üçün yeni "Rəhbər paneli — bölmələr" icazələri.
-   • Ayarlar bölməsi yalnız Rəhbərdədir.
+   • Ayarlar bölməsi "Ayarlar" icazəsi ilə açılır (3b). "Giriş və təhlükəsizlik" hissəsi yalnız Rəhbərdədir.
    Qeyd: icazələr hələ cihazda yoxlanır. Hər işçinin öz hesabı olanda
    (SaaS girişi) server tərəfində də yoxlanacaq.
 ═══════════════════════════════════════════ */
@@ -36,7 +36,8 @@ const PANEL_PERMS = [
   { key: 'panel.paymentMethods', label: 'Ödəniş növləri' },
   { key: 'panel.loyalty',        label: 'Loyallıq üzvləri' },
   { key: 'panel.att',            label: 'Personal izləmə' },
-  { key: 'panel.devices',        label: 'Cihazlar (siyahını görmək; söndürmək üçün öz səlahiyyətli hesabı lazımdır)' }
+  { key: 'panel.devices',        label: 'Cihazlar (siyahını görmək; söndürmək üçün öz səlahiyyətli hesabı lazımdır)' },
+  { key: 'panel.settings',       label: 'Ayarlar — sistem və bölmələrin ayarları ("Giriş və təhlükəsizlik" hissəsi yalnız Rəhbərdədir)' }
 ];
 if (!ALL_PERMISSIONS.some(g => g.items?.some(i => i.key === 'panel.reports'))) {
   ALL_PERMISSIONS.push({
@@ -87,8 +88,10 @@ const ACCESS = {
   printers: any('panel.printers'),
   att: any('panel.att'),
   dangerZone: any('danger.*'),
-  devices: any('panel.devices')
-  // settings, inv-settings, notifSounds — yalnız Rəhbər
+  devices: any('panel.devices'),
+  settings: any('panel.settings'),
+  'inv-settings': any('panel.settings'),
+  notifSounds: any('panel.settings')
 };
 const perms = (u) => u?.permissions || [];
 export function canSee(sec, u = state.user) {

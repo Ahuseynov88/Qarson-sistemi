@@ -1229,7 +1229,7 @@ function renderInner(host) {
       <input type="search" class="yzp-input yzp-search" id="yzpSearch" placeholder="Telefon, ad və ya № ilə axtar" value="${esc(view.q)}" aria-label="Axtar">
       <div class="yzp-top__btns">
         ${can('delivery.settle') ? `<button type="button" class="yzi-btn yzi-btn--ghost" data-settle>${I('cash')} Kassa təhvili${unsettledTotal ? ` <span class="yzp-chip yzp-chip--gold">${money(unsettledTotal)}</span>` : ''}</button>` : ''}
-        ${isRehber() ? `<button type="button" class="yzi-btn yzi-btn--ghost yz-icon-only" data-settings aria-label="Paket ayarları" title="Paket ayarları">${I('settings')}</button>` : ''}
+        ${isRehber() || can('panel.settings') ? `<button type="button" class="yzi-btn yzi-btn--ghost yz-icon-only" data-settings aria-label="Paket ayarları" title="Paket ayarları">${I('settings')}</button>` : ''}
         ${can('delivery.take') || can('delivery.manage') ? `<button type="button" class="yzi-btn yzi-btn--gold" data-new>${I('plus')} Yeni paket</button>` : ''}
       </div>
     </div>
@@ -1500,7 +1500,7 @@ async function openSettlement(cid) {
 
 /* ═══ 12. AYARLAR (yalnız Rəhbər) ═══ */
 function openSettings() {
-  if (!isRehber()) { showToast(`${I('ban')} Paket ayarlarını yalnız Rəhbər dəyişir`); return; }
+  if (!isRehber() && !can('panel.settings')) { showToast(`${I('ban')} Paket ayarları üçün "Ayarlar" icazəsi lazımdır`); return; }
   const z = JSON.parse(JSON.stringify(S.zones || {}));
   const cats = [...new Set((state.menuItems || []).map(m => m.category || 'Digər'))];
   const body = document.createElement('div');
@@ -1565,7 +1565,7 @@ function openSettings() {
         Object.entries(z).forEach(([id, x]) => { if (String(x.name || '').trim()) zones[id] = { name: String(x.name).trim(), fee: r2(num(x.fee)), min: r2(num(x.min)), eta: Math.round(num(x.eta)) }; });
         if (v.feeMode === 'zone' && !Object.keys(zones).length) throw new Error('Ən azı bir zona əlavə edin');
         await DSET.set({ ...v, zones, updatedAt: Date.now() });
-        addLog('delivery', 'Rəhbər paket və çatdırılma ayarlarını dəyişdi', {});
+        addLog('delivery', `${me().name} paket və çatdırılma ayarlarını dəyişdi`, {});
         showToast(`${I('check')} Ayarlar saxlanıldı`);
       } }
     ]

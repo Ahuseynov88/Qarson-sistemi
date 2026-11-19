@@ -13,7 +13,7 @@
 import { db } from './firebase-service.js';
 import { state } from './state.js';
 import { showScreen } from './theme.js';
-import { startInv, onInv, hasAnyInvPerm, watchDocs, pendingDocs, canApprove } from './yuza-inv-core.js';
+import { startInv, onInv, hasAnyInvPerm, watchDocs, pendingDocs, canApprove, syncInvUser } from './yuza-inv-core.js';
 import { mount, mountSingle, refresh, $ } from './yuza-inv-ui.js';
 
 export const PATRON = 'Rəhbər';
@@ -276,8 +276,13 @@ function ensureStaffButton() {
 let lastUser = null, lastAdminOn = false;
 function tick() {
   const u = state.user;
+  if (u !== lastUser) {
+    lastUser = u;
+    // 3b: hər istifadəçi dəyişəndə anbar/kassa dinləmələri sıfırlanır — növbəti girişdə təzə sessiya ilə qoşulur
+    syncInvUser();
+    if (!u) { zalSubs?.forEach(off => off()); zalSubs = null; document.body.classList.remove('yz-patron-zal'); }
+  }
   if (u) startInv();
-  if (u !== lastUser) { lastUser = u; if (!u) { zalSubs?.forEach(off => off()); zalSubs = null; document.body.classList.remove('yz-patron-zal'); } }
   const adminOn = $('adminScreen')?.classList.contains('active');
   if (u?.role === 'admin') {
     patronize();

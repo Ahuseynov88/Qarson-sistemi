@@ -164,7 +164,7 @@ export const PERMISSION_PRESETS = {
   },
   manager: {
     label: '<svg class="icon"><use href="#i-staff"></use></svg> Müdir',
-        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.gift','order.batch_ops','order.refund','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','shift.manage','table.restore','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view']
+        perms: ['table.view','table.open','table.close','table.transfer','order.create','order.view','order.add_item','order.cancel_item','order.cancel_all','order.discount','order.gift','order.batch_ops','order.refund','bill.print','bill.credit','bill.credit_batch','bill.payment_cash','bill.payment_pos','bill.payment_credit','shift.manage','table.restore','report.daily','report.weekly','customer.respond','kitchen.notify','chat.send','note.write','waiter.view','waiter.manage','menu.view','staff.view','panel.settings']
   }
 };
 
