@@ -18,6 +18,7 @@ import {
 } from './yuza-att-core.js';
 import { scanQr } from './yuza-qr-scan.js';
 import { api, apiOn } from './yuza-api.js';
+import './yuza-errors.js';    // proqram xətaları (Mərhələ 4.2)
 import './yuza-version.js';   // avtomatik yenilənmə (Mərhələ 4.3)
 
 const $ = (id) => document.getElementById(id);

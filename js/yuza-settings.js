@@ -93,7 +93,7 @@ function build() {
   pane('security').insertAdjacentHTML('beforeend', `<div id="yzsOwner"></div>
     <div class="yzs-list yzs-card yzs-card--flat"><button type="button" class="yzs-row" data-go="devices">
       <span class="yzs-row__i">${I('lock')}</span><span class="yzs-row__t"><b>Cihazlar və girişlər</b><small>Təsdiqlənmiş kompüter və telefonlar, söndürmək; səlahiyyətli şəxslərin istifadəçi adı və parolu</small></span>${I('chevron')}</button></div>
-    <div id="yzsGate"></div><div id="yzsBackup"></div><div id="yzsDevice"></div>`);
+    <div id="yzsGate"></div><div id="yzsBackup"></div><div id="yzsErrors"></div><div id="yzsDevice"></div>`);
   pane('modules').insertAdjacentHTML('beforeend', modulesHtml());
   if (snd) snd.classList.add('yzs-card');
 
@@ -135,7 +135,7 @@ function show(id, silent, keep) {
   try { sessionStorage.setItem(K_PANE, id); } catch (e) { /* */ }
   sec.querySelectorAll('.yzs-nav__b').forEach(b => { const on = b.dataset.pane === id; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); });
   sec.querySelectorAll('.yzs-pane').forEach(p => { p.hidden = p.dataset.pane !== id; });
-  if (id === 'security') { renderOwner(); renderGate(); renderBackup(); moveDeviceCard(); }
+  if (id === 'security') { renderOwner(); renderGate(); renderBackup(); renderErrors(); moveDeviceCard(); }
   if (id === 'sounds') import('./notifSounds.js').then(m => m.renderNotifSounds?.()).catch(() => {});
   if (id === 'print' && !(keep && $('receiptTemplateSettings')?.querySelector(':scope > .yzs-tabs'))) import('./printer-settings.js').then(m => m.renderReceiptTemplateSettings?.()).then(tidyTemplate).catch(() => {});
   if (!silent) { sec.scrollTo?.(0, 0); window.scrollTo?.(0, 0); }
@@ -269,6 +269,46 @@ async function renderGate() {
   };
   $('yzsGateOn').onchange = save;
   box.querySelectorAll('[data-ex]').forEach(c => { c.onchange = save; });
+}
+
+/* ── 4.2: Proqram xətaları — cihazlardan toplanır, yalnız Rəhbər görür ── */
+async function renderErrors() {
+  const box = $('yzsErrors'); if (!box) return;
+  if (state.user?.role !== 'admin') { box.innerHTML = ''; return; }
+  const A = await import('./yuza-api.js');
+  if (!A.apiOn()) { box.innerHTML = ''; return; }
+  let all = {}; try { all = (await db.ref('sys/errors').once('value')).val() || {}; } catch (e) { /* */ }
+  const list = Object.entries(all).map(([k, v]) => ({ k, ...v })).sort((a, b) => (b.last || 0) - (a.last || 0));
+  const day = Date.now() - 86400000;
+  const fresh = list.filter(x => (x.last || 0) > day).length;
+  const ROLE = { admin: 'Rəhbər', staff: 'İşçi', kitchen: 'Mətbəx', customer: 'Müştəri QR' };
+  box.innerHTML = `<div class="table-card yzs-card"><h3 style="margin-bottom:8px;">${I('warning')} Proqram xətaları</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:10px;">Kassada, ofisiant və mətbəx ekranında, müştəri QR menyusunda baş verən proqram xətaları avtomatik buraya yığılır. Eyni xəta bir sətirdə toplanır. 30 gün təkrarlanmayan xəta özü silinir. Xəta görsəniz, sətrin mətnini mənə göndərin.</p>
+    <div class="yzs-kv"><span>Son 24 saatda</span><b>${fresh ? fresh + ' növ xəta' : 'xəta yoxdur'}</b></div>
+    <div class="yzs-kv"><span>Cəmi qeyd</span><b>${list.length}</b></div>
+    ${list.length ? `<div style="max-height:420px;overflow:auto;margin-top:10px;border:1px solid var(--border);border-radius:10px;">
+      ${list.slice(0, 50).map(x => `<details style="padding:8px 10px;border-bottom:1px solid var(--border);">
+        <summary style="cursor:pointer;font-size:13px;"><b>${fmtTs(x.last)}</b> · <b>${Number(x.n) || 1}×</b> · ${esc(String(x.msg || '').slice(0, 140))}</summary>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;">
+          İlk dəfə: ${fmtTs(x.first)} · Son: ${fmtTs(x.last)}<br>
+          Ekran: ${esc(x.scr || '—')} · ${esc(ROLE[x.role] || x.role || '—')}${x.who ? ' (' + esc(x.who) + ')' : ''} · Versiya: ${esc(x.ver || '—')}<br>
+          Yer: ${esc(x.src || '—')}${x.line ? ':' + x.line + ':' + (x.col || 0) : ''}<br>
+          ${x.stack ? `<pre style="white-space:pre-wrap;word-break:break-all;font-size:11px;margin:6px 0 0;max-height:160px;overflow:auto;">${esc(x.stack)}</pre>` : ''}
+          <small>${esc(x.ua || '')}</small></div></details>`).join('')}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button type="button" class="btn btn-ghost" data-er="reload">Yenilə</button>
+      ${list.length ? '<button type="button" class="btn btn-ghost" data-er="clear">Siyahını təmizlə</button>' : ''}</div></div>`;
+  box.onclick = async (e) => {
+    const b = e.target.closest('[data-er]'); if (!b) return;
+    if (b.dataset.er === 'reload') { await renderErrors(); return; }
+    if (b.dataset.er === 'clear') {
+      if (!confirm('Xətaların siyahısı təmizlənsin? (Proqrama və məlumatlara təsir etmir.)')) return;
+      b.disabled = true;
+      try { await A.api('errClear', {}, { owner: true }); showToast(`${I('check')} Siyahı təmizləndi`); }
+      catch (er) { showToast(`${I('error')} ${esc(er.message || er)}`); }
+      await renderErrors();
+    }
+  };
 }
 
 /* ── 3b: Ehtiyat nüsxələr (R2) və şəkillərin serverə köçürülməsi — yalnız Rəhbər ── */

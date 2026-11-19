@@ -3,6 +3,7 @@
    Bütün modulları birləşdirən giriş nöqtəsi: giriş/çıxış, Firebase
    listener idarəsi, ekran keçidi, ilk yükləmə (demo data).
 ═══════════════════════════════════════════ */
+import './yuza-errors.js';   // 4.2: proqram xətaları serverə (ən əvvəl yüklənir)
 import { R, db } from './firebase-service.js';
 import { state, setAdminPin } from './state.js';
 import { esc, toArr, showToast, addLog, confirmAction } from './utils.js';
