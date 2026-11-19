@@ -1,0 +1,43 @@
+# Testi əsas sayta köçür — GitHub → Actions → "Testi əsas sayta köçür" → Run workflow → KOCUR yazın
+# test budağındakı bütün fayllar əsas (main) budağa köçürülür. .github qovluğuna toxunulmur.
+# Hər köçürmədən əvvəl əsas saytın vəziyyəti "main-İİİİAAGG-SSDD" etiketi ilə saxlanılır (geri qaytarmaq üçün).
+name: Testi əsas sayta köçür
+on:
+  workflow_dispatch:
+    inputs:
+      tesdiq:
+        description: 'Təsdiq üçün KOCUR yazın'
+        required: true
+permissions:
+  contents: write
+concurrency: promote-main
+jobs:
+  kocur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Təsdiq sözü
+        if: ${{ inputs.tesdiq != 'KOCUR' && inputs.tesdiq != 'KÖÇÜR' }}
+        run: |
+          echo "::error::Təsdiq sözü düz deyil. KOCUR yazın."
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Əsas saytın indiki vəziyyətini saxla
+        id: tag
+        run: |
+          TAG="main-$(TZ=Asia/Baku date +%Y%m%d-%H%M)"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: test → main
+        run: |
+          git fetch origin test
+          git rm -rq --ignore-unmatch -- . ':(exclude).github'
+          git checkout origin/test -- .
+          git add -A
+          if git diff --cached --quiet; then echo "Dəyişiklik yoxdur — əsas sayt artıq testlə eynidir."; exit 0; fi
+          git -c user.name="YuzaPOS" -c user.email="actions@github.com" commit -q -m "Test → əsas sayt ($(TZ=Asia/Baku date '+%d.%m.%Y %H:%M')) · əvvəlki: ${{ steps.tag.outputs.tag }}"
+          git push origin HEAD:main
+          echo "Hazırdır. Geri qaytarmaq lazım olsa: Actions → Əsas saytı geri qaytar → ${{ steps.tag.outputs.tag }}"
