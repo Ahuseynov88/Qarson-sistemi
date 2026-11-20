@@ -58,7 +58,6 @@ body.dark-mode .ticket-sec-title{color:var(--gold);}
 /* Biletin alt düymələri: oxunaqlı yazı, rahat toxunma */
 .ticket-action-grid .btn{min-height:var(--yz-touch); font-size:var(--yz-fs-xs); padding:6px 4px;}
 .ticket-action-grid .btn .icon{width:16px; height:16px;}
-.ticket-header__close{display:none;}
 
 /* Toxunma ekranları (telefon, planşet): bütün kiçik düymələr ≥ 44px */
 @media (pointer:coarse){
@@ -69,53 +68,15 @@ body.dark-mode .ticket-sec-title{color:var(--gold);}
   .bam-qty-input{height:var(--yz-touch);}
 }
 
-/* Telefon səbət zolağı — kompüterdə gizli */
-.order-mobile-bar,.ticket-sheet-bg{display:none;}
-
 @media (max-width:899px){
   /* Kateqoriya relsi: oxunaqlı yazı */
   .order-cat-rail.category-rail{width:72px;}
   .order-cat-rail.category-rail .category-rail__tab{font-size:11px; padding:9px 3px; min-height:var(--yz-touch);}
-
-  /* Mal siyahısının altında zolaq üçün boşluq */
-  #orderScreen .order-content-wrap{padding-bottom:calc(76px + env(safe-area-inset-bottom));}
-
-  /* Bilet = alt pəncərə: yalnız açılanda görünür */
-  #orderScreen .ticket-panel{position:fixed; inset-inline:0; bottom:0; z-index:7; height:auto; max-height:88vh; max-height:88dvh;
-    border-top:1px solid var(--border); border-radius:var(--yz-r-lg) var(--yz-r-lg) 0 0; box-shadow:0 -12px 40px rgba(0,0,0,.28);
-    transform:translateY(105%); transition:transform .25s var(--yz-ease); visibility:hidden;}
-  #orderScreen.ticket-open .ticket-panel{transform:none; visibility:visible;}
-  #orderScreen .ticket-panel .ticket-body{min-height:80px;}
-  #orderScreen .ticket-footer{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
-  .ticket-header__close{display:inline-flex; width:var(--yz-touch); height:var(--yz-touch); align-items:center; justify-content:center;
-    border:1px solid var(--border); border-radius:var(--yz-r-md); background:var(--card2); color:var(--text); cursor:pointer;}
-  #orderScreen .ticket-header{position:relative; padding-top:18px;}
-  #orderScreen .ticket-header::before{content:''; position:absolute; top:7px; left:50%; width:40px; height:4px; margin-left:-20px;
-    border-radius:4px; background:var(--border);}
-  .ticket-sheet-bg{position:fixed; inset:0; z-index:6; background:var(--overlay-strong);}
-  #orderScreen.ticket-open .ticket-sheet-bg{display:block;}
-
   /* Bilet sətri: ad yuxarıda, idarə düymələri altda */
-  .ticket-line__main{flex-wrap:wrap; row-gap:6px;}
+  .ticket-line__main{flex-wrap:wrap; row-gap:6px; column-gap:4px;}
+  .ticket-line__price{min-width:0;}
   .ticket-line__name{flex:1 1 100%; font-size:var(--yz-fs-md);}
   .ticket-line__price{margin-inline-start:auto; font-size:var(--yz-fs-md);}
-
-  .order-mobile-bar{display:flex; align-items:center; gap:10px; position:fixed; inset-inline:0; bottom:0; z-index:5;
-    padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--border);
-    box-shadow:0 -6px 20px rgba(0,0,0,.12);}
-  .order-mobile-bar__ticket{flex:1; min-width:0; display:flex; align-items:center; gap:16px; min-height:var(--yz-h-lg);
-    padding:6px 12px; border:1px solid var(--border); border-radius:var(--yz-r-md); background:var(--card2); color:var(--text);
-    cursor:pointer; text-align:start;}
-  .order-mobile-bar__ico{position:relative; display:inline-flex;}
-  .order-mobile-bar__ico .icon{width:22px; height:22px; color:var(--gold-dark);}
-  body.dark-mode .order-mobile-bar__ico .icon{color:var(--gold);}
-  .order-mobile-bar__ico b{position:absolute; top:-8px; inset-inline-end:-10px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box;
-    border-radius:var(--yz-r-pill); background:var(--red); color:#fff; font-size:11px; line-height:20px; text-align:center;}
-  .order-mobile-bar__txt{display:flex; flex-direction:column; min-width:0; line-height:1.15;}
-  .order-mobile-bar__txt small{font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:.04em; font-weight:700;}
-  .order-mobile-bar__txt b{font-size:18px; font-variant-numeric:tabular-nums;}
-  .order-mobile-bar__send{min-height:var(--yz-h-lg); padding:0 18px; font-size:15px; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;}
-  .order-mobile-bar:not(.has-draft) .order-mobile-bar__send{opacity:.55;}
 }
 
 /* ── 4) ÖDƏNİŞ ───────────────────────────────────────────────── */
@@ -387,4 +348,10 @@ button,.btn,[role="button"],a,input,select,textarea,label,.product-card,.floor-c
   #yzLogin .yz-pad{margin-top:.8em;}
   #yzLogin .yz-pinwrap{height:2.8em;}
   #yzLogin .yz-key{height:2.05em;}
+}
+/* Telefon: bilet sətrində idarə düymələri bir sırada sığsın */
+@media (pointer:coarse) and (max-width:480px){
+  .ticket-line .qty-stepper button{width:40px; height:40px;}
+  .ticket-line .qty-stepper__input{width:34px; height:40px;}
+  .ticket-line .ticket-line__remove,.ticket-line .ticket-line__note-btn{width:36px; height:40px; min-width:36px;}
 }
