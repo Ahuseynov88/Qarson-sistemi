@@ -123,9 +123,7 @@ function view() {
       })
     : [];
   const lay = openLayers().sort((a, b) => (+a.dataset.yzZ || 0) - (+b.dataset.yzZ || 0)).map(el => el.dataset.yzId || '?');
-  // Telefonda sifariş ekranında açılan bilet (alt pəncərə) də bir addım sayılır
-  const tk = scr === 'orderScreen' && $('orderScreen')?.classList.contains('ticket-open') ? ['tk'] : [];
-  return { scr, sec, zal, layers: det.concat(tk, lay) };
+  return { scr, sec, zal, layers: det.concat(lay) };
 }
 const sigOf = (v) => `${v.scr}|${v.zal ? 1 : 0}|${v.sec || ''}|${v.layers.join(',')}`;
 
@@ -170,9 +168,6 @@ function performBack() {
   if (!v) return false;
   const top = topLayer();
   if (top) { closeLayer(top); return true; }
-  if (v.scr === 'orderScreen' && $('orderScreen')?.classList.contains('ticket-open')) {
-    $('orderScreen').classList.remove('ticket-open'); return true;
-  }
   if (v.scr === 'orderScreen') {
     const b = document.querySelector('#orderScreen [data-close-order]');
     if (b) { b.click(); return true; }

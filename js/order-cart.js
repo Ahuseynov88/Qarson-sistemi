@@ -26,14 +26,6 @@ export class OrderCart {
 
    
   _bindEvents() {
-    // Telefon: səbət zolağı və bilet alt pəncərəsi
-    const bar = document.getElementById('orderMobileBar');
-    if (bar) bar.addEventListener('click', (e) => {
-      if (e.target.closest('[data-send-order]')) { this.send(); return; }
-      if (e.target.closest('[data-open-ticket]')) this.toggleTicket(true);
-    });
-    document.getElementById('ticketSheetBg')?.addEventListener('click', () => this.toggleTicket(false));
-    document.querySelector('#ticketPanelCol [data-close-ticket]')?.addEventListener('click', () => this.toggleTicket(false));
     if (this.els.searchInput) {
       this.els.searchInput.addEventListener('input', (e) => this.setSearchQuery(e.target.value));
     }
@@ -91,23 +83,13 @@ export class OrderCart {
     this.els.title.innerHTML = `<svg class="icon"><use href="#i-food"></use></svg> ${esc(t?.name || 'Sifariş')}`;
          const gnEl = document.getElementById('orderGlobalNote');
     if (gnEl) gnEl.value = '';
-    this.toggleTicket(false);
     this.renderCatTabs();
     this.renderItemsList();
     this.renderDraftList();
     showScreen('orderScreen');
   }
 
-  /* Telefon: bilet alt pəncərə kimi açılır/bağlanır (kompüterdə həmişə görünür) */
-  toggleTicket(open) {
-    const sc = this.els.screen || document.getElementById('orderScreen');
-    sc.classList.toggle('ticket-open', !!open);
-    if (open) document.getElementById('ticketPanelCol')?.querySelector('.ticket-body')?.scrollTo?.(0, 0);
-  }
-  isTicketOpen() { return !!(this.els.screen || document.getElementById('orderScreen'))?.classList.contains('ticket-open'); }
-
   close() {
-    this.toggleTicket(false);
     showScreen('waiterScreen');
     state.orderTableId = null;
     this.onClosed();
@@ -208,16 +190,6 @@ export class OrderCart {
     return `<div class="ticket-sec-title ticket-sec-title--pending"><span class="yz-spin" aria-hidden="true"></span> Göndərilir…</div>${rows}`;
   }
 
-  /* Telefon: aşağıdakı səbət zolağı (mal sayı + cəmi) */
-  _updateMobileBar(count, totalText) {
-    const bar = document.getElementById('orderMobileBar');
-    if (!bar) return;
-    const c = bar.querySelector('[data-bar-count]'), tt = bar.querySelector('[data-bar-total]');
-    if (c) { c.textContent = count; c.hidden = !count; }
-    if (tt) tt.textContent = totalText;
-    bar.classList.toggle('has-draft', count > 0);
-  }
-
   renderDraftList() {
     document.dispatchEvent(new CustomEvent('order:draft-changed'));
     this._syncSendBtn();
@@ -228,7 +200,6 @@ export class OrderCart {
       this.els.draftList.innerHTML = this._pendingHtml();
       const tot = ((state.tableOrders[state.orderTableId]?.total)||0).toFixed(2) + ' ₼';
       this.els.draftTotal.textContent = tot;
-      this._updateMobileBar(0, tot);
       this._updateServiceChargeRow(state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0);
       return;
     }
@@ -281,7 +252,6 @@ export class OrderCart {
     const scPct = state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0;
     const totText = (sentTotal + draftTotal * (1 + scPct/100) + draftVat).toFixed(2) + ' ₼';
     this.els.draftTotal.textContent = totText;
-    this._updateMobileBar(lines.reduce((n, [, l]) => n + (Number(l.qty) || 0), 0), totText);
     this._updateServiceChargeRow(scPct);
   }
 
