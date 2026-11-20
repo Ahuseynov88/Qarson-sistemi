@@ -11,7 +11,7 @@
 ═══════════════════════════════════════════ */
 import { db } from './firebase-service.js';
 import { state } from './state.js';
-import { showToast, esc } from './utils.js';
+import { showToast, esc, askConfirm } from './utils.js';
 import { approverSignIn, apprErr, createLogin, normUser, validUser, devCode, fmtDT } from './yuza-approver.js';
 
 const $ = (id) => document.getElementById(id);
@@ -197,8 +197,8 @@ function renderAccounts() {
 /* ── Əməliyyatlar ── */
 async function setDevice(uid, on) {
   const d = devices[uid] || {};
-  if (!on && uid === window.__yzDevice?.uid && !confirm('Bu, hazırda işlədiyiniz cihazdır. Söndürülsün? Cihaz dərhal kilidlənəcək.')) return;
-  if (!on && uid !== window.__yzDevice?.uid && !confirm(`"${d.name || 'Cihaz'}" söndürülsün? Həmin cihaz dərhal işləməz olacaq.`)) return;
+  if (!on && uid === window.__yzDevice?.uid && !await askConfirm('Bu, hazırda işlədiyiniz cihazdır. Söndürülsə, cihaz dərhal kilidlənəcək.', { title: 'Cihaz söndürülsün?', okLabel: 'Söndür' })) return;
+  if (!on && uid !== window.__yzDevice?.uid && !await askConfirm(`<b>${esc(d.name || 'Cihaz')}</b> dərhal işləməz olacaq.`, { title: 'Cihaz söndürülsün?', okLabel: 'Söndür' })) return;
   await asApprover(on ? 'Cihazı yenidən aktiv etmək üçün.' : 'Cihazı söndürmək üçün.', async (a) => {
     await a.db.ref('sys/devices/' + uid).update(on
       ? { on: true, offAt: null, offBy: null, by: a.name, at: TS() }
@@ -207,7 +207,7 @@ async function setDevice(uid, on) {
   });
 }
 async function delDevice(uid) {
-  if (!confirm('Cihaz siyahıdan silinsin? (Söndürülmüş cihazdır — yenidən işlətmək üçün təsdiq lazım olacaq.)')) return;
+  if (!await askConfirm('Yenidən işlətmək üçün cihaz təkrar təsdiqlənməli olacaq.', { title: 'Cihaz siyahıdan silinsin?', okLabel: 'Sil' })) return;
   await asApprover('Cihazı siyahıdan silmək üçün.', async (a) => {
     await a.db.ref('sys/devices/' + uid).remove();
     showToast(`${I('check')} Silindi`);
@@ -215,7 +215,7 @@ async function delDevice(uid) {
 }
 async function setAccount(uid, on) {
   const a0 = accounts[uid] || {};
-  if (!on && !confirm(`"${a0.staffName || a0.username}" hesabı söndürülsün? Bu hesabla artıq cihaz təsdiqlənə bilməyəcək.`)) return;
+  if (!on && !await askConfirm(`<b>${esc(a0.staffName || a0.username || '')}</b> hesabı ilə artıq cihaz təsdiqlənə bilməyəcək.`, { title: 'Hesab söndürülsün?', okLabel: 'Söndür' })) return;
   await asApprover('Hesabı dəyişmək üçün.', async (a) => {
     if (on && a0.username) {
       // Eyni adla başqa aktiv hesab varsa, köhnəni aktiv etmək olmaz

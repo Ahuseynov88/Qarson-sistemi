@@ -125,7 +125,7 @@ function showEnroll(uid, prev) {
           <button type="button" class="g-ghost" data-back>Başqa hesabla</button>
         </div>
         <div class="g-err" role="alert" aria-live="assertive"></div>
-        <div class="g-lock">🔒 Qorunan bağlantı</div>
+        <div class="g-lock">Qorunan bağlantı</div>
       </form>`;
     document.body.appendChild(box);
     const $ = (s) => box.querySelector(s);
@@ -188,13 +188,13 @@ function renderCard(uid) {
   const card = document.getElementById('yzDeviceCard'); if (!card) return;
   const d = devRec || {};
   const qrOn = ls.get(LOGIN_QR) === '1';
-  card.innerHTML = `<h3 style="margin-bottom:8px;">🔒 Bu cihaz</h3>
+  card.innerHTML = `<h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-lock"></use></svg> Bu cihaz</h3>
     <div class="yzs-kv"><span>Ad</span><b>${esc(d.name || '—')}</b></div>
     <div class="yzs-kv"><span>Cihaz kodu</span><b>${devCode(uid)}</b></div>
     <div class="yzs-kv"><span>Təsdiqləyən</span><b>${esc(d.by || '—')} · ${fmtDT(d.at)}</b></div>
     <label class="yzs-switch" style="margin-top:12px"><span><b>Giriş ekranında davamiyyət QR-ı</b>
       <small>PIN ekranının yanında işə gəliş/çıxış QR-ı və "İndi işdə" siyahısı görünür. Kassa kompüteri kimi ortaq cihazda açın, şəxsi telefonlarda bağlı saxlayın.</small></span>
-      <input type="checkbox" data-loginqr ${qrOn ? 'checked' : ''}></label>
+      <input type="checkbox" class="yz-toggle" role="switch" data-loginqr ${qrOn ? 'checked' : ''}></label>
     <button type="button" class="btn btn-ghost" data-unlink style="width:100%;padding:12px;margin-top:12px;">Bu cihazın təsdiqini ləğv et</button>
     <p style="font-size:12px;color:var(--text3);margin-top:8px;">Cihaz satılanda, itəndə və ya başqasına veriləndə istifadə edin. Yenidən işlətmək üçün Rəhbər və ya səlahiyyətli şəxs təsdiqləməlidir. Bütün cihazlar: <b>Sistem → Cihazlar və girişlər</b>.</p>`;
   card.querySelector('[data-loginqr]').onchange = (e) => {
@@ -202,8 +202,10 @@ function renderCard(uid) {
     window.dispatchEvent(new Event('yz-loginqr'));
   };
   card.querySelector('[data-unlink]').onclick = async () => {
-    if (!confirm('Bu cihazın təsdiqi ləğv edilsin? Yenidən işlətmək üçün Rəhbər və ya səlahiyyətli şəxs təsdiqləməlidir.')) return;
-    try { await firebase.database().ref('sys/devices/' + uid).remove(); } catch (e) { alert('Alınmadı: ' + (e.message || e)); return; }
+    const ask = window.yzAsk || ((m) => Promise.resolve(window.confirm(m)));
+    if (!await ask('Yenidən işlətmək üçün Rəhbər və ya səlahiyyətli şəxs təsdiqləməlidir.', { title: 'Bu cihazın təsdiqi ləğv edilsin?', okLabel: 'Ləğv et' })) return;
+    try { await firebase.database().ref('sys/devices/' + uid).remove(); }
+    catch (e) { const t = document.getElementById('toast'); if (t) { t.textContent = 'Alınmadı: ' + (e.message || e); t.classList.add('show', 'is-error'); } return; }
     ls.set(K_OK, null);
     location.reload();
   };

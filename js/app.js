@@ -156,7 +156,7 @@ async function enterStaff(s) {
       if (staffHasPermission(state.user, 'table.view')) {
         showScreen('waiterScreen');
         document.getElementById('wName').textContent = s.name;
-        document.getElementById('wAvatar').src = s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
+        document.getElementById('wAvatar').src = s.avatar || window.yzInitials(s.name);
         const roleBadge = document.getElementById('wRoleBadge');
         if (roleBadge) roleBadge.textContent = esc(s.position || '');
         lockScreen();

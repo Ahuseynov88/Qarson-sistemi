@@ -16,7 +16,7 @@ function notice(title, text) {
   d.setAttribute('role', 'alertdialog');
   d.innerHTML = `<div style="position:fixed;inset:0;z-index:99998;background:rgba(6,8,11,.82);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif">
     <div style="max-width:380px;width:100%;background:#14110b;border:1px solid rgba(232,176,75,.45);border-radius:20px;padding:24px 20px;color:#f4eee2;text-align:center">
-      <div style="font-size:40px;line-height:1;margin-bottom:10px">🕘</div>
+      <div style="font-size:40px;line-height:1;margin-bottom:10px"><svg class="icon"><use href="#i-clock"></use></svg></div>
       <h2 style="margin:0 0 8px;font-size:19px">${title}</h2>
       <p style="margin:0 0 18px;color:#c9bfae;font-size:14.5px;line-height:1.55">${text}</p>
       <button type="button" style="width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(180deg,#f6cf7c,#e1a43e);color:#1a1205;font-weight:800;font-size:15px;cursor:pointer">Başa düşdüm</button>

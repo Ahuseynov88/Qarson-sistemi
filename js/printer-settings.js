@@ -4,12 +4,12 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { esc, showToast } from './utils.js';
+import { esc, showToast, askConfirm } from './utils.js';
 import { testPrintReceipt } from './printer-service.js';
 
 const PRINTER_TYPES = [
-  { value: 'receipt', label: '🧾 Hesab printeri' },
-  { value: 'kitchen', label: '🍳 Mətbəx / Bar / Digər' }
+  { value: 'receipt', label: 'Hesab printeri' },
+  { value: 'kitchen', label: 'Mətbəx / Bar / Digər' }
 ];
 
 const PAPER_WIDTHS = [
@@ -28,7 +28,7 @@ export function renderPrinters() {
 
   if (!printers.length) {
     el.innerHTML = `<div style="grid-column:1/-1;color:var(--text3);padding:24px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">🖨</div>
+      <div style="margin-bottom:8px;"><svg class="icon" style="width:32px;height:32px;color:var(--text3);"><use href="#i-printer"></use></svg></div>
       Hələ printer əlavə edilməyib.<br>
       <span style="font-size:13px;">«+» düyməsi ilə yeni printer əlavə edin.</span>
     </div>`;
@@ -43,7 +43,7 @@ export function renderPrinters() {
     const statusColor = p.active ? 'var(--green)' : 'var(--text3)';
     return `<div class="item-card">
       <div class="item-card-header">
-        <div style="width:44px;height:44px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;">🖨</div>
+        <div style="width:44px;height:44px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;"><svg class="icon"><use href="#i-printer"></use></svg></div>
         <div class="item-info">
           <h3>${esc(p.name)}</h3>
           <small style="color:var(--text2);">${typeLabel} · ${paperLabel}</small>
@@ -51,8 +51,8 @@ export function renderPrinters() {
         <div style="width:10px;height:10px;border-radius:50%;background:${statusColor};flex-shrink:0;margin-top:4px;"></div>
       </div>
       <div style="font-size:12px;color:var(--text2);margin-top:8px;">
-        <div>📡 ${ipLabel}</div>
-        ${p.type !== 'receipt' ? `<div style="margin-top:3px;">📂 ${esc(cats)}</div>` : '<div style="margin-top:3px;color:var(--blue);">Müştəri hesabı üçün</div>'}
+        <div><svg class="icon"><use href="#i-refresh"></use></svg> ${ipLabel}</div>
+        ${p.type !== 'receipt' ? `<div style="margin-top:3px;"><svg class="icon"><use href="#i-folder"></use></svg> ${esc(cats)}</div>` : '<div style="margin-top:3px;color:var(--blue);">Müştəri hesabı üçün</div>'}
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="openPrinterModal('${p.id}')">
@@ -162,8 +162,8 @@ export function savePrinter() {
   }
 }
 
-export function deletePrinter(id, name) {
-  if (!confirm(`"${name}" printerini silmək istəyirsiniz?`)) return;
+export async function deletePrinter(id, name) {
+  if (!await askConfirm(`<b>${esc(name)}</b> printeri silinəcək.`, { title: 'Silinsin?', okLabel: 'Sil' })) return;
   R.printers.child(id).remove().then(() => {
     showToast('<svg class="icon"><use href="#i-check"></use></svg> Printer silindi');
   });
@@ -214,7 +214,7 @@ export async function renderReceiptTemplateSettings() {
   ${fontList}
   <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Font siyahısı Print Agent-in Windows-da aşkarladığı fontlardan gəlir və əlifba sırası ilə göstərilir. Yeni font quraşdırdıqdan sonra agent açıqdırsa siyahı avtomatik yenilənəcək.</p>
 
-  ${_section('🏢 1. BAŞLIQ — Obyekt məlumatları')}
+  ${_section('1. Başlıq — obyekt məlumatları')}
   <div class="form-group"><label>Restoran / Obyekt adı</label><input id="tplRestName" value="${esc(nameSnap.val()||'')}"></div>
   <div class="form-group"><label>Ünvan</label><input id="tplRestAddr" value="${esc(addrSnap.val()||'')}"></div>
   <div class="form-group"><label>Telefon</label><input id="tplRestPhone" value="${esc(phoneSnap.val()||'')}"></div>
@@ -229,7 +229,7 @@ export async function renderReceiptTemplateSettings() {
   <p style="font-size:11px;color:var(--text3);margin:-4px 0 8px;">Ünvan və telefon aşağıdakı “Hesab məlumatları” bölməsinin font, ölçü və qalınlığını istifadə edir. Hizalanması isə ayrıca seçilir.</p>
   <div class="form-row"><div class="form-group"><label>Ünvan / telefon hizalanması</label>${alignSel('tplContactAlign','contactAlign','center')}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplRestNameUpper',chk('restaurantNameUpper',false),'Restoran adını böyük hərflə')}</div></div>
 
-  ${_section('👤 2. HESAB MƏLUMATLARI — Tarix, saat, masa, ofisiant, müştəri')}
+  ${_section('2. Hesab məlumatları — tarix, saat, masa, ofisiant, müştəri')}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
     ${_chkField('datetime','Tarix / Saat',chk('datetime'))}${_chkField('table','Masa',chk('table'))}
     ${_chkField('waiter','Ofisiant',chk('waiter'))}${_chkField('customerName','Müştəri',chk('customerName',false))}
@@ -237,7 +237,7 @@ export async function renderReceiptTemplateSettings() {
   <div class="form-row"><div class="form-group"><label>Bölmə fontu</label>${fontInput('tplInfoFont','infoFont','Arial')}</div><div class="form-group"><label>Bölmə ölçüsü</label>${sizeSel('tplInfoSize','infoFontSize','normal')}</div></div>
   <div class="form-row"><div class="form-group"><label>Hizalanma</label>${alignSel('tplInfoAlign','infoAlign','left')}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplInfoBold',chk('infoBold',false),'Məlumatlar qalın')}</div></div>
 
-  ${_section('🍽 3. MƏHSULLAR VƏ YEKUN')}
+  ${_section('3. Məhsullar və yekun')}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
     ${_chkField('itemName','Məhsul adı',chk('itemName'))}${_chkField('itemQty','Miqdar',chk('itemQty'))}
     ${_chkField('itemPrice','Vahid qiymət',chk('itemPrice',false))}${_chkField('lineTotal','Məbləğ',chk('lineTotal'))}
@@ -251,13 +251,13 @@ export async function renderReceiptTemplateSettings() {
  
   <div style="display:flex;gap:16px;margin-bottom:12px;">${_toggle('tplTotalBold',chk('totalBold',true),'Yekun qalın')}${_toggle('tplTotalUpper',chk('totalUpper',true),'Yekun böyük hərf')}</div>
 
-  ${_section('📝 4. FOOTER')}
+  ${_section('4. Çekin alt hissəsi')}
   <div style="margin-bottom:10px;">${_chkField('footer','Footer göstər',chk('footer'))}</div>
   <div class="form-group"><label>Footer mətni — Enter ilə yeni sətir yarada bilərsiniz</label><textarea id="tplFooterMessage" rows="4" style="width:100%;resize:vertical;">${esc(v('footerMessage','Təşəkkür edirik!'))}</textarea></div>
   <div class="form-row"><div class="form-group"><label>Footer fontu</label>${fontInput('tplFooterFont','footerFont','Arial')}</div><div class="form-group"><label>Footer ölçüsü</label>${sizeSel('tplFooterSize','footerFontSize','small')}</div></div>
   <div class="form-row"><div class="form-group"><label>Footer hizalanması</label>${alignSel('tplFooterAlign','footerAlign','center')}</div><div class="form-group"><label>&nbsp;</label>${_toggle('tplFooterBold',chk('footerBold',false),'Footer qalın')}</div></div>
 
-  ${_section('⚙️ Ümumi çap ayarları')}
+  ${_section('Ümumi çap ayarları')}
   <div class="form-row"><div class="form-group"><label>Kağız eni</label><select id="tplPaperWidth"><option value="58mm" ${sel('paperWidth','58mm','80mm')}>58mm</option><option value="80mm" ${sel('paperWidth','80mm','80mm')}>80mm</option></select></div><div class="form-group"><label>Ayırıcı xətt</label><select id="tplDivider"><option value="dash" ${sel('dividerType','dash','dash')}>--------</option><option value="equal" ${sel('dividerType','equal','dash')}>========</option><option value="star" ${sel('dividerType','star','dash')}>********</option><option value="none" ${sel('dividerType','none','dash')}>Yoxdur</option></select></div></div>
   <div class="form-group"><label>Sonda boş sətir sayı</label><input type="number" id="tplBottomLines" value="${v('bottomLines',5)}" min="0" max="15"></div>
   <button class="btn btn-green" onclick="saveReceiptTemplate()" style="width:100%;padding:14px;margin-top:8px;">Hesab Çeki Şablonunu Saxla</button>
@@ -411,7 +411,7 @@ export function uploadReceiptLogo() {
   reader.readAsDataURL(file);
 }
 
-export function removeReceiptLogo() {
-  if (!confirm('Loqonu silmək istəyirsiniz?')) return;
+export async function removeReceiptLogo() {
+  if (!await askConfirm('Çekdəki loqo silinəcək.', { title: 'Silinsin?', okLabel: 'Sil' })) return;
   db.ref('settings/restaurantLogo').remove().then(() => renderReceiptTemplateSettings());
 }

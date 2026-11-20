@@ -327,7 +327,7 @@ function scheduleRender() {
 
 function avatarHtml(t) {
   if (t.id === 'admin') return `<span class="rc-ava rc-ava--icon">${ICON('i-admin')}</span>`;
-  const fb = `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=8e44ad&color=fff&size=96`;
+  const fb = window.yzInitials(t.name);
   return `<img class="rc-ava" src="${esc(t.avatar || fb)}" alt="" onerror="this.src='${fb}'">`;
 }
 

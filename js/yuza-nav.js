@@ -20,13 +20,43 @@ const LAYER_SEL = '.modal-bg.open, .yzrv-screen.is-open, .item-side-panel.open, 
 const Z_BASE = 2000, Z_STEP = 2, Z_MAX = 2440;   // 2450+ : bildirişlər, seçici siyahılar, toast, alarm
 let uid = 0;
 
+/* ═══ 1b. PƏNCƏRƏ AÇILANDA / BAĞLANANDA: əlçatanlıq + fokus ═══
+   • role="dialog", aria-modal — ekran oxuyucu pəncərəni tanıyır
+   • fokus pəncərənin içinə keçir, bağlananda əvvəlki düyməyə qayıdır
+   • Tab düyməsi pəncərədən kənara çıxmır */
+const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const coarse = () => window.matchMedia('(pointer:coarse)').matches;
+const visible = (x) => !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
+function onLayerOpen(el) {
+  el._yzPrev = document.activeElement;
+  delete el.dataset.yzDirty;
+  const dlg = el.classList.contains('modal-bg') ? (el.querySelector('.modal, .cust-loyalty-modal') || el) : el;
+  if (!dlg.hasAttribute('role')) dlg.setAttribute('role', 'dialog');
+  dlg.setAttribute('aria-modal', 'true');
+  if (!dlg.hasAttribute('tabindex')) dlg.setAttribute('tabindex', '-1');
+  const h = dlg.querySelector('h1, h2, h3');
+  if (h && !dlg.hasAttribute('aria-labelledby')) { if (!h.id) h.id = 'yzDlgT' + (++uid); dlg.setAttribute('aria-labelledby', h.id); }
+  setTimeout(() => {
+    if (!el.isConnected || el.contains(document.activeElement)) return;
+    // Telefonda klaviatura özbaşına açılmasın: yalnız kompüterdə ilk sahəyə keçilir
+    const first = !coarse() && [...dlg.querySelectorAll('input:not([type=hidden]):not([readonly]):not([type=checkbox]):not([type=radio]), textarea, select')].find(visible);
+    (first || dlg).focus({ preventScroll: true });
+  }, 60);
+}
+function onLayerClose(el) {
+  const p = el._yzPrev; el._yzPrev = null;
+  if (p && p.isConnected && visible(p) && !openLayers().length) { try { p.focus({ preventScroll: true }); } catch (e) {} }
+}
+
 function setZ(el, z) {
+  if (!el.dataset.yzZ) onLayerOpen(el);
   el.dataset.yzZ = String(z);
   el.style.zIndex = String(z);
   if (!el.dataset.yzId) el.dataset.yzId = String(++uid);
   if (el.id === 'itemSidePanel') { const bg = $('itemSidePanelBg'); if (bg) bg.style.zIndex = String(z - 1); }
 }
 function clearZ(el) {
+  onLayerClose(el);
   el.style.zIndex = '';
   delete el.dataset.yzZ;
   delete el.dataset.yzId;
@@ -56,7 +86,14 @@ function topLayer() {
 
 /* Qatı öz düyməsi ilə bağlayır (təmizləmə məntiqi işə düşsün deyə) */
 const CLOSE_SEL = '.yzi-x, [data-cancel], [data-close-audit], [data-close], [data-confirm-action-cancel], [data-rc-close], #bamCancelBtn, #ispCloseBtn';
-function closeLayer(el) {
+function closeLayer(el, ask = true) {
+  // Saxlanmamış dəyişiklik varsa (Geri / Esc ilə təsadüfən bağlanmasın) əvvəlcə soruş.
+  // Anbar pəncərələri (.yzi-modal-bg) bunu öz ✕ düyməsində özü edir.
+  if (ask && el.dataset.yzDirty === '1' && !el.classList.contains('yzi-modal-bg') && window.yzAsk) {
+    window.yzAsk('Yazdığınız məlumat itəcək.', { title: 'Dəyişikliklər saxlanmayıb. Bağlansın?', okLabel: 'Bağla' })
+      .then(okk => { if (okk && el.isConnected) { delete el.dataset.yzDirty; closeLayer(el, false); } });
+    return;
+  }
   let ctrl = null;
   if (el.classList.contains('tile-detail-overlay')) ctrl = el.querySelector('.tile-detail-back');
   else ctrl = el.querySelector(CLOSE_SEL)
@@ -86,7 +123,9 @@ function view() {
       })
     : [];
   const lay = openLayers().sort((a, b) => (+a.dataset.yzZ || 0) - (+b.dataset.yzZ || 0)).map(el => el.dataset.yzId || '?');
-  return { scr, sec, zal, layers: det.concat(lay) };
+  // Telefonda sifariş ekranında açılan bilet (alt pəncərə) də bir addım sayılır
+  const tk = scr === 'orderScreen' && $('orderScreen')?.classList.contains('ticket-open') ? ['tk'] : [];
+  return { scr, sec, zal, layers: det.concat(tk, lay) };
 }
 const sigOf = (v) => `${v.scr}|${v.zal ? 1 : 0}|${v.sec || ''}|${v.layers.join(',')}`;
 
@@ -131,6 +170,9 @@ function performBack() {
   if (!v) return false;
   const top = topLayer();
   if (top) { closeLayer(top); return true; }
+  if (v.scr === 'orderScreen' && $('orderScreen')?.classList.contains('ticket-open')) {
+    $('orderScreen').classList.remove('ticket-open'); return true;
+  }
   if (v.scr === 'orderScreen') {
     const b = document.querySelector('#orderScreen [data-close-order]');
     if (b) { b.click(); return true; }
@@ -235,6 +277,43 @@ function fitDetails() {
   open.forEach(el => { const v = top ? top + 'px' : ''; if (el.style.top !== v) el.style.top = v; });
 }
 window.addEventListener('resize', fitDetails);
+
+/* ═══ 5b. Esc DÜYMƏSİ (kompüter) ═══
+   Esc həmişə ƏN ÜSTDƏKİ pəncərəni bağlayır (əvvəl HTML-də birinci gələni bağlayırdı).
+   Pəncərə yoxdursa: bilet → sifariş ekranı. Başqa modul Esc-i özü işlədibsə (preventDefault), toxunulmur. */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  const v = view();
+  if (!v) return;
+  const top = topLayer();
+  if (top && !top.classList.contains('tile-detail-overlay')) { e.preventDefault(); closeLayer(top); return; }
+  if (v.scr === 'orderScreen') { e.preventDefault(); performBack(); }
+});
+window.yzCloseTop = () => { const t = topLayer(); if (t) { closeLayer(t); return true; } return false; };
+
+/* Tab pəncərədən kənara çıxmır */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return;
+  const top = topLayer();
+  if (!top || top.classList.contains('tile-detail-overlay')) return;
+  const f = [...top.querySelectorAll(FOCUSABLE)].filter(visible);
+  if (!f.length) { e.preventDefault(); return; }
+  const a = document.activeElement;
+  if (e.shiftKey && (a === f[0] || !top.contains(a))) { e.preventDefault(); f[f.length - 1].focus(); }
+  else if (!e.shiftKey && (a === f[f.length - 1] || !top.contains(a))) { e.preventDefault(); f[0].focus(); }
+});
+
+/* Pəncərədə nəsə yazılıbsa "dəyişib" işarəsi (axtarış sahələri və təsdiq pəncərəsi istisna) */
+const markDirty = (e) => {
+  const t = e.target;
+  if (!t || !t.closest || t.type === 'search' || t.closest('[data-no-dirty], #confirmActionModal')) return;
+  if (/axtar|search|filter/i.test((t.placeholder || '') + ' ' + (t.id || '') + ' ' + (t.className || ''))) return;
+  const layer = t.closest(LAYER_SEL);
+  if (layer) layer.dataset.yzDirty = '1';
+};
+document.addEventListener('input', markDirty, true);
+document.addEventListener('change', markDirty, true);
+window.yzMarkClean = (el) => { const l = el?.closest?.(LAYER_SEL) || el; if (l?.dataset) delete l.dataset.yzDirty; };
 
 /* ═══ 6. BAŞLANĞIC ═══ */
 function onMutate() {

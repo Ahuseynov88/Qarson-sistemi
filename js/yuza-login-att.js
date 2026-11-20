@@ -175,7 +175,7 @@ function init() {
   document.addEventListener('visibilitychange', sync);
   window.addEventListener('yz-loginqr', sync);
   window.addEventListener('storage', (e) => { if (e.key === KEY) sync(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetOpen) { sheetOpen = false; sync(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetOpen) { e.preventDefault(); sheetOpen = false; sync(); } });
   sync();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

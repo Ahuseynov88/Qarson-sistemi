@@ -1507,7 +1507,7 @@ function openSettings() {
   body.className = 'yzp-set';
   const draw = (v) => {
     body.innerHTML = `
-      <label class="yzp-check"><input type="checkbox" id="ysEn" ${v.enabled !== false ? 'checked' : ''}> Paket və çatdırılma modulu aktivdir</label>
+      <label class="yzp-check"><input type="checkbox" class="yz-toggle" role="switch" id="ysEn" ${v.enabled !== false ? 'checked' : ''}> Paket və çatdırılma modulu aktivdir</label>
       <h4 class="yzp-h">Çatdırılma haqqı</h4>
       <div class="yzp-seg yzp-seg--3" role="radiogroup" aria-label="Haqq növü">${[['free', 'Pulsuz'], ['fixed', 'Sabit məbləğ'], ['zone', 'Zonalara görə']].map(([k, l]) => `<button type="button" class="yzp-seg__b${v.feeMode === k ? ' is-on' : ''}" data-fm="${k}">${l}</button>`).join('')}</div>
       ${v.feeMode === 'fixed' ? `<label class="yzi-f"><span>Sabit haqq (₼)</span><input type="text" inputmode="decimal" id="ysFix" value="${esc(String(v.fixedFee || ''))}"></label>` : ''}
@@ -1518,7 +1518,7 @@ function openSettings() {
       <h4 class="yzp-h">Qablaşdırma</h4>
       <label class="yzi-f"><span>Menyuda qablaşdırma kateqoriyası</span><select id="ysPack"><option value="">— yoxdur —</option>${cats.map(c => `<option value="${esc(c)}" ${v.packCategory === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
       <p class="yzi-hint">Qabları Məhsullar (kataloq) bölməsində bu kateqoriyada "mal" kimi yaradın. Paket sifarişində qab əlavə olunanda anbardan silinir, mətbəxə getmir.</p>
-      <label class="yzp-check"><input type="checkbox" id="ysPackFree" ${v.packFree !== false ? 'checked' : ''}> Qab standart olaraq pulsuz yazılsın (0 ₼) — operator sifarişdə dəyişə bilər</label>
+      <label class="yzp-check"><input type="checkbox" class="yz-toggle" role="switch" id="ysPackFree" ${v.packFree !== false ? 'checked' : ''}> Qab standart olaraq pulsuz yazılsın (0 ₼) — operator sifarişdə dəyişə bilər</label>
       <h4 class="yzp-h">Kuryerlər</h4>
       <label class="yzi-f"><span>Sifarişin paylanması</span><select id="ysDisp"><option value="broadcast" ${v.dispatch !== 'manual' ? 'selected' : ''}>Bütün kuryerlərə — ilk qəbul edən götürür</option><option value="manual" ${v.dispatch === 'manual' ? 'selected' : ''}>Operator özü təyin edir</option></select></label>
       <div class="yzp-grid2"><label class="yzi-f"><span>Hazır sifarişi kuryer neçə dəq qəbul etməsə növbə müdirinə xəbərdarlıq</span><input type="text" inputmode="numeric" id="ysAcc" value="${esc(String(v.acceptTimeoutMin))}"></label>
@@ -1529,9 +1529,9 @@ function openSettings() {
       <label class="yzi-f"><span>Planlı sifariş vaxtına neçə dəq qalmış mətbəxə düşsün</span><input type="text" inputmode="numeric" id="ysLead" value="${esc(String(v.scheduleLeadMin))}"></label>
       <label class="yzi-f"><span>Neçənci sifarişdən müştəri VIP sayılsın</span><input type="text" inputmode="numeric" id="ysVip" value="${esc(String(v.vipAt))}"></label>
       <label class="yzi-f"><span>Şəhər (xəritədə axtarış üçün)</span><input type="text" id="ysCity" value="${esc(v.restaurantCity || '')}" maxlength="40"></label></div>
-      <label class="yzp-check"><input type="checkbox" id="ysAuto" ${v.autoPrint !== false ? 'checked' : ''}> Təsdiqdə hesab çeki avtomatik çap olunsun (çekdə ad, telefon, ünvan, ödəniş)</label>
-      <label class="yzp-check"><input type="checkbox" id="ysCopy" ${v.courierCopy !== false ? 'checked' : ''}> Kuryer üçün ikinci nüsxə çap olunsun</label>
-      <label class="yzp-check"><input type="checkbox" id="ysCan" ${v.cancelReasonRequired !== false ? 'checked' : ''}> Ləğv səbəbi məcburi olsun</label>
+      <label class="yzp-check"><input type="checkbox" class="yz-toggle" role="switch" id="ysAuto" ${v.autoPrint !== false ? 'checked' : ''}> Təsdiqdə hesab çeki avtomatik çap olunsun (çekdə ad, telefon, ünvan, ödəniş)</label>
+      <label class="yzp-check"><input type="checkbox" class="yz-toggle" role="switch" id="ysCopy" ${v.courierCopy !== false ? 'checked' : ''}> Kuryer üçün ikinci nüsxə çap olunsun</label>
+      <label class="yzp-check"><input type="checkbox" class="yz-toggle" role="switch" id="ysCan" ${v.cancelReasonRequired !== false ? 'checked' : ''}> Ləğv səbəbi məcburi olsun</label>
       <div class="yzp-soon">Müştəriyə WhatsApp ilə avtomatik status mesajı ("Sifarişiniz yoldadır") <span class="yzp-chip yzp-chip--gold">2-ci mərhələ</span></div>`;
     body.querySelectorAll('[data-fm]').forEach(b => b.addEventListener('click', () => { const cur = collect(); cur.feeMode = b.dataset.fm; draw(cur); }));
     body.querySelector('[data-zadd]')?.addEventListener('click', () => { const cur = collect(); z['z' + Date.now().toString(36)] = { name: '', fee: '', min: '', eta: '' }; draw(cur); });

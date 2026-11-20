@@ -1095,6 +1095,37 @@ export class PaymentProcessor {
   constructor(els) {
     this.els = els;
     this.payment = { tableId: null, type: null, discountType: null, discountValue: 0, originalTotal: 0, finalTotal: 0, paidAmount: 0, remainingAmount: 0 };
+    // Sürətli nağd düymələri və Enter = Təsdiqlə
+    this.els.cashQuick = document.getElementById('paymentCashQuick');
+    this.els.cashQuick?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-cash]'); if (!b) return;
+      this.els.cashGiven.value = b.dataset.cash;
+      this.calcChange();
+    });
+    this.els.cashGiven?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); this.els.modal.querySelector('[data-confirm-payment]')?.click(); }
+    });
+  }
+
+  /* Bu ödənişdə alınmalı məbləğ (qismən ödənişdə — qalan hissə). confirm() ilə eyni qayda. */
+  _due() {
+    const p = this.payment;
+    return p.remainingAmount > 0 ? p.remainingAmount : p.finalTotal;
+  }
+
+  _renderCashQuick() {
+    if (!this.els.cashQuick) return;
+    const due = Math.round(this._due() * 100) / 100;
+    const notes = [1, 5, 10, 20, 50, 100, 200].filter(n => n > due + 0.001).slice(0, 4);
+    this.els.cashQuick.innerHTML = `<button type="button" class="cash-quick__b cash-quick__b--exact" data-cash="${due.toFixed(2)}">Dəqiq · ${due.toFixed(2)} ₼</button>`
+      + notes.map(n => `<button type="button" class="cash-quick__b" data-cash="${n}">${n} ₼</button>`).join('');
+  }
+
+  _setBusy(on) {
+    const b = this.els.modal.querySelector('[data-confirm-payment]');
+    if (!b) return;
+    if (on) { if (!b.dataset.label) b.dataset.label = b.innerHTML; b.disabled = true; b.classList.add('is-busy'); b.innerHTML = '<span class="yz-spin" aria-hidden="true"></span> Yazılır…'; }
+    else { b.disabled = false; b.classList.remove('is-busy'); if (b.dataset.label) b.innerHTML = b.dataset.label; }
   }
 
   open(tableId) {
@@ -1192,11 +1223,13 @@ export class PaymentProcessor {
     this.els.cashSection.style.display = type==='cash' ? 'block' : 'none';
     this.els.splitSection.style.display = type==='split' ? 'block' : 'none';
     if (type === 'split') this.calcSplit();
+    if (type === 'cash') { this._renderCashQuick(); setTimeout(() => this.els.cashGiven.focus(), 30); }
   }
 
   calcChange() {
-    const given = parseFloat(this.els.cashGiven.value) || 0;
-    const change = given - this.payment.finalTotal;
+    const given = parseFloat(String(this.els.cashGiven.value).replace(',', '.')) || 0;
+    // Qismən ödənişdə qalan məbləğlə müqayisə olunur (əvvəl ümumi məbləğlə müqayisə edilirdi — səhv "Çatışmır" göstərirdi)
+    const change = Math.round((given - this._due()) * 100) / 100;
     if (given > 0) {
       this.els.changeRow.style.display = 'block';
       this.els.change.textContent = Math.abs(change).toFixed(2) + ' ₼';
@@ -1234,7 +1267,7 @@ export class PaymentProcessor {
     let thisPay = 0;
     let splitBreakdown = null;
     if (p.type === 'cash') {
-      const given = parseFloat(this.els.cashGiven.value) || 0;
+      const given = parseFloat(String(this.els.cashGiven.value).replace(',', '.')) || 0;
       if (given <= 0) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Məbləğ daxil edin'); return; }
       thisPay = Math.min(given, remaining); // nağdda artıq məbləğ normaldır - qalıq geri qaytarılır (bax: calcChange)
     } else if (p.type === 'split') {
@@ -1265,7 +1298,7 @@ export class PaymentProcessor {
       discountType: p.discountType || null, discountValue: p.discountValue || 0, shiftId: shift.id,
       createdAt: serverNow(), time: azTime(serverNow()), date: azDate(serverNow())
     };
-    if (p.type === 'cash') { const given = parseFloat(this.els.cashGiven.value)||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }
+    if (p.type === 'cash') { const given = parseFloat(String(this.els.cashGiven.value).replace(',', '.'))||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }
     if (p.type === 'split' && splitBreakdown) {
       payData.splitBreakdown = splitBreakdown;
       const methodNames = this._splitMethods || [];
@@ -1285,6 +1318,7 @@ export class PaymentProcessor {
        köçürülür; köçürmə yarımçıq qalsa, masa bağlananda təkrar yazılır (eyni ID — ikiqat olmur). */
     if (this._busy) return;
     this._busy = true;
+    this._setBusy(true);
     const payId = R.payments.push().key;
     const finalTotalForCalc = p.finalTotal;
     const useDiscountTotal = !!p.discountValue;
@@ -1308,6 +1342,7 @@ export class PaymentProcessor {
       return { ...current, pays, paidAmount: newPaid, remainingAmount: money2(Math.max(0, total - newPaid)) };
     }, (error, committed, snapshot) => {
       this._busy = false;
+      this._setBusy(false);
       if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ödəniş yazılmadı (bağlantı xətası). Heç nə dəyişməyib, yenidən cəhd edin.'); return; }
       if (!committed) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> ${reject || 'Ödəniş yazılmadı'}`); this.close(); return; }
       const finalData = snapshot ? snapshot.val() : null;

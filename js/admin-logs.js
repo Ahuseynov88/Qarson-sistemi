@@ -273,7 +273,7 @@ export function printReport() {
     .report-row:last-child{font-weight:700;font-size:15px;border-bottom:none;}
     @media print{body{padding:0;}}</style></head>
     <body><h2 style="text-align:center;font-size:16px;">Gün Sonu Hesabat<br>
-    <small style="font-weight:400;font-size:13px;">${new Date().toLocaleDateString('az-AZ')}</small></h2>
+    <small style="font-weight:400;font-size:13px;">Çap: ${new Date().toLocaleDateString('az-AZ')} ${new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}</small></h2>
     ${html}<script>window.onload=()=>window.print()<\/script></body></html>`);
   w.document.close();
 }

@@ -26,7 +26,7 @@ export const CASH_DOC_NODES = ['invCash','cashCloses','shifts','shiftCur','shift
 export const DANGER_OPS = [
   {
     id: 'clearClosedOrders',
-    icon: '🔒',
+    icon: '<svg class="icon"><use href="#i-lock"></use></svg>',
     title: 'Bağlanan Masaları Sil',
     desc: 'Bütün bağlanan masa tarixçəsi, çek məlumatları və ödəniş qeydləri silinir. Hesabatlar bu məlumatlardan qurulandığı üçün keçmiş hesabatlar da boşalır.',
     nodes: ['closedOrders', 'payments'],
@@ -35,7 +35,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearOrders',
-    icon: '🪑',
+    icon: '<svg class="icon"><use href="#i-chair"></use></svg>',
     title: 'Aktiv Sifarişləri Sıfırla',
     desc: 'Hal-hazırda açıq olan bütün masa sifarişləri, masa tutanlar və mətbəx sifariş növbəsi silinir. Masalar boş vəziyyətə keçir.',
     nodes: ['orders', 'tableOrders', 'kitchenOrders', 'kitchenNotifs', 'printJobs'],
@@ -44,7 +44,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearLogs',
-    icon: '📋',
+    icon: '<svg class="icon"><use href="#i-clipboard"></use></svg>',
     title: 'Tarixçə Logları Sil',
     desc: 'Bütün sistem jurnal qeydləri (kim nə etdi, nə vaxt) silinir. Əməliyyat məlumatlarına toxunulmur.',
     nodes: ['logs'],
@@ -53,7 +53,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearPurchases',
-    icon: '📦',
+    icon: '<svg class="icon"><use href="#i-box"></use></svg>',
        title: 'Anbar və Alış Sənədlərini Sil',
     desc: 'Bütün alış qaimələri, təchizatçı ödənişləri, silinmə, transfer, sayım və hazırlama aktları, anbar hərəkətləri silinir. Bütün qalıqlar sıfırlanır, təchizatçı borcları sıfırlanır.',
     nodes: INV_DOC_NODES,
@@ -63,7 +63,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearCashDocs',
-    icon: '💵',
+    icon: '<svg class="icon"><use href="#i-cash"></use></svg>',
     title: 'Kassa Sənədlərini Sil',
     desc: 'Əl ilə yazılan bütün kassa mədaxil, məxaric, transfer sənədləri, gün sonu bağlanışları və kassa növbələri (X/Z) silinir.',
     nodes: CASH_DOC_NODES,
@@ -72,7 +72,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearBanquetEvents',
-    icon: '🎪',
+    icon: '<svg class="icon"><use href="#i-calendar"></use></svg>',
     title: 'Banket Tədbirlərini Sil',
     desc: 'Keçmiş və gələcək bütün banket tədbiri qeydləri, rezervasiya slotları silinir. Banket zalları və tədbir növləri saxlanılır.',
     nodes: ['banquetEvents', 'banquetHallBookings'],
@@ -81,7 +81,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearCustomerCharges',
-    icon: '💳',
+    icon: '<svg class="icon"><use href="#i-card"></use></svg>',
     title: 'Nisyə Borclarını Sil',
     desc: 'Bütün müştəri nisyə (kredit hesabı) əməliyyat qeydləri silinir. Müştərilərin özü saxlanılır, yalnız borc tarixçəsi gedir.',
     nodes: ['customerCharges'],
@@ -90,7 +90,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearLoyaltyData',
-    icon: '⭐',
+    icon: '<svg class="icon"><use href="#i-star"></use></svg>',
     title: 'Loyallıq Məlumatlarını Sil',
     desc: 'Qeydiyyatlı sadiqlik müştəriləri, qonaq tokenləri və referral qeydləri silinir.',
     nodes: ['loyaltyCustomers', 'guestTokens', 'referrals'],
@@ -99,7 +99,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearReservations',
-    icon: '📅',
+    icon: '<svg class="icon"><use href="#i-calendar"></use></svg>',
     title: 'Rezervasiyaları Sil',
     desc: 'Bütün rezerv qeydləri (gələcək və keçmiş) silinir. Masaların tutum və minimum hesab ayarları saxlanılır.',
     nodes: ['reservations'],
@@ -108,7 +108,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'clearAllOperational',
-    icon: '🗑️',
+    icon: '<svg class="icon"><use href="#i-trash"></use></svg>',
     title: 'Bütün Əməliyyat Məlumatlarını Sil',
     desc: 'Yuxarıdakı bütün silmə əməliyyatları bir anda icra olunur: bağlanan masalar, sifarişlər, alışlar, banket tədbirləri, rezervasiyalar, loglar, nisyə tarixçəsi, loyallıq məlumatları. Qeydiyyatlar (işçilər, məhsullar, masalar, müştərilər, ayarlar) toxunulmaz qalır.',
         nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','customerRequests','feedbacks','chats','reservations', ...INV_DOC_NODES, ...CASH_DOC_NODES],
@@ -118,7 +118,7 @@ export const DANGER_OPS = [
   },
   {
     id: 'factoryReset',
-    icon: '☢️',
+    icon: '<svg class="icon"><use href="#i-warning"></use></svg>',
     title: 'Sistemi Tam Sıfırla',
     desc: 'PROQRAMDAKİ BÜTÜN MƏLUMATLAR SİLİNİR: işçilər, məhsullar, masalar, rezervasiyalar, sifarişlər, kassa, anbar, davamiyyət, ayarlar — hamısı. Proqram yeni qurulmuş kimi boş başlayır. Yalnız Rəhbər hesabı və təsdiqlənmiş cihazlar saxlanılır. Bu əməliyyat GERİ QAYTARILMAZ.',
     all: true,
@@ -246,7 +246,7 @@ export function renderDangerZone() {
       ${DANGER_OPS.filter(_canDanger).map(op => `
         <div class="table-card" style="margin-bottom:12px;${op.danger===3?'border:2px solid var(--red);background:rgba(220,53,69,.07);':op.danger===2?'border:1.5px solid rgba(220,53,69,.5);':''}">
           <div style="display:flex;align-items:flex-start;gap:12px;">
-            <div style="font-size:26px;line-height:1;flex-shrink:0;">${op.icon}</div>
+            <div class="yz-dz-ico">${op.icon}</div>
             <div style="flex:1;">
               <div style="font-weight:700;font-size:15px;margin-bottom:4px;${op.danger===3?'color:var(--red);':''}">${op.title}</div>
               <div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:${op.keepLabel?'6px':'10px'};">${op.desc}</div>

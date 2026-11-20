@@ -1,6 +1,6 @@
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { addLog, showToast } from './utils.js';
+import { addLog, showToast, askConfirm, esc } from './utils.js';
 // getAudioCtx və playBeep — alarm.js ilə circular import olmaması üçün burada birbaşa yazılır
 function getAudioCtx() {
   if (!window._sharedAudioCtx || window._sharedAudioCtx.state === 'closed') {
@@ -170,9 +170,9 @@ window.addNotifSoundUI = async function() {
     document.getElementById('nsoundFile').value = '';
   } catch(e) { if(status) status.textContent = 'Xəta: ' + e; }
 };
-window.deleteNotifSoundUI = function(id) {
+window.deleteNotifSoundUI = async function(id) {
   const s = (state.notifSounds||[]).find(x=>x.id===id);
-  if (!s || !confirm(`"${s.name}" silinsin?`)) return;
+  if (!s || !await askConfirm(`<b>${esc(s.name)}</b> səsi silinəcək.`, { title: 'Silinsin?', okLabel: 'Sil' })) return;
   deleteNotifSound(id);
   showToast('Silindi');
 };

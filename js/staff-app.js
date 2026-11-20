@@ -74,22 +74,7 @@ export class StaffApp {
     document.addEventListener('order:draft-changed', () => {
       if (state.noteTableId) this.confirmedOrder.renderSummary(state.noteTableId);
     });
-    // ESC: açıq modal varsa onu bağla (Ləğv düyməsini simulyasiya edərək - düzgün
-    // təmizləmə məntiqi işə düşsün deyə); heç nə açıq deyilsə, sifariş ekranından geri qayıt
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      const openModal = document.querySelector('.modal-bg.open');
-      if (openModal) {
-        const closeCtrl = openModal.querySelector('[data-cancel], [data-close-audit], [data-close]')
-          || openModal.querySelector('button[onclick*="close" i]');
-        if (closeCtrl) closeCtrl.click();
-        else openModal.classList.remove('open');
-        return;
-      }
-      if ($('orderScreen')?.classList.contains('active')) {
-        $('orderScreen').querySelector('[data-close-order]')?.click();
-      }
-    });
+    // ESC: yuza-nav.js idarə edir — həmişə ən üstdəki pəncərəni bağlayır (əvvəl HTML-də birinci gələni bağlayırdı)
   }
 
   _bindStaticButtons() {
@@ -120,6 +105,12 @@ export class StaffApp {
     $('orderScreen').querySelector('[data-close-order]')?.addEventListener('click', () => this.closeTableDetail());
     $('orderScreen').querySelector('[data-send-order]')?.addEventListener('click', () => this.orderCart.send());
     $('noteText').addEventListener('change', () => this.saveNote());
+    // Masa qeydi: boşdursa gizlidir, "Qeyd" düyməsi ilə açılır
+    $('orderScreen').querySelector('[data-toggle-table-note]')?.addEventListener('click', (e) => {
+      const n = $('noteText'); n.hidden = !n.hidden;
+      e.currentTarget.setAttribute('aria-expanded', String(!n.hidden));
+      if (!n.hidden) n.focus();
+    });
 
     // İptal səbəbi modalı
     $('cancelReasonModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeCancelReasonModal());
@@ -231,6 +222,8 @@ export class StaffApp {
     this.orderCart.open(tableId); // title, kateqoriya tabları, mal grid-i, draft siyahısı, ekranı göstərir
     $('ticketTableName').textContent = t.name;
     $('noteText').value = t.notes || '';
+    $('noteText').hidden = !(t.notes || '').trim();
+    $('orderScreen').querySelector('[data-toggle-table-note]')?.setAttribute('aria-expanded', String(!$('noteText').hidden));
     this.confirmedOrder.renderSummary(tableId);
 
     const setVis = (id, cond) => { const el = $(id); if (el) el.style.display = cond ? '' : 'none'; };

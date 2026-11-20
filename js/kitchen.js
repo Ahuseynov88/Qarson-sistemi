@@ -109,7 +109,7 @@ function renderKitchenCard(ko) {
     cardClass += ' ko-card--pending ko-card--unaccepted';
 
     headerStatus =
-      '<span class="ko-badge ko-badge--new-pulse">🔔 Yeni sifariş!</span>';
+      '<span class="ko-badge ko-badge--new-pulse"><svg class="icon"><use href="#i-bell"></use></svg> Yeni sifariş!</span>';
   } else {
     cardClass += ' ko-card--pending';
 
@@ -179,7 +179,7 @@ function renderKitchenCard(ko) {
           ? `<button class="ko-item-action ko-item-action--ready" disabled style="opacity:.35;cursor:not-allowed;">Hazırdır</button>`
           : '';
       const problemBtn = (kitchenAccepted && !item.cancelled && !item.ready)
-        ? `<button class="ko-item-action ko-item-action--problem" onclick="kitchenItemProblem('${esc(ko.id)}',${idx})">⚠ Problem</button>`
+        ? `<button class="ko-item-action ko-item-action--problem" onclick="kitchenItemProblem('${esc(ko.id)}',${idx})"><svg class="icon"><use href="#i-warning"></use></svg> Problem</button>`
         : '';
       let timeLine = '';
 

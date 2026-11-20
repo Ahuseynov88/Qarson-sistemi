@@ -109,7 +109,7 @@ export class TableBoard {
     this.renderStaffFilter();
 
     if (!state.tables.length) {
-      this.el.innerHTML = '<p style="color:var(--text3);">Admin hələ masa əlavə etməyib.</p>';
+      this.el.innerHTML = '<div class="yz-empty"><svg class="icon"><use href="#i-chair"></use></svg><b>Hələ masa yoxdur</b><span>Masaları Rəhbər «Qeydiyyat → Masalar» bölməsindən əlavə edir.</span></div>';
       return;
     }
 

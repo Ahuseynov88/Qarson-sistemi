@@ -364,7 +364,7 @@ function tableSettingsBox() {
       <label class="yzi-f"><span>Tutum (nəfər)</span><input type="number" min="1" max="500" id="yzrvCap" value="${esc(t.capacity || '')}" placeholder="məs: 4"></label>
       <label class="yzi-f"><span>Minimum hesab (₼)</span><input type="number" min="0" step="0.01" id="yzrvMinAmt" value="${esc(min.amount || '')}" placeholder="məs: 300"></label>
     </div>
-    <label class="yzi-check yzrv-tset__chk"><input type="checkbox" id="yzrvMinOn" ${min.on ? 'checked' : ''}> Bu masada minimum hesab tətbiq olunsun</label>
+    <label class="yzi-check yzrv-tset__chk"><input type="checkbox" class="yz-toggle" role="switch" id="yzrvMinOn" ${min.on ? 'checked' : ''}> Bu masada minimum hesab tətbiq olunsun</label>
     <p class="yzi-hint">Seçilibsə, masa açılanda və bron zamanı bildirilir. Ödəniş zamanı hesab minimumdan azdırsa, Rəhbərin təsdiqi istənilir.</p>
     <p class="yzrv-err" id="yzrvTsetErr"></p>
     <button type="button" class="yzi-btn yzi-btn--gold" id="yzrvTsetSave">${I('save')} Yadda saxla</button>`;

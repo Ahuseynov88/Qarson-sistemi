@@ -407,7 +407,7 @@ function accountEditor(id) {
     <div class="yzi-grid2"><label class="yzi-f"><span>Başlanğıc qalıq (₼)</span>${numInput('id="yziAcO"', a.opening ?? 0)}</label>
       <label class="yzi-f"><span>Başlanğıc anı</span><input type="datetime-local" id="yziAcAt" value="${toLocalInput(a.openingAt || Date.now())}"></label></div>
     ${id ? `<p class="yzi-hint">Başlanğıc qalığı dəyişsəniz, son gün sonu bağlanışına qədər olan qalıq yenidən hesablanır.</p>
-      <label class="yzi-check"><input type="checkbox" id="yziAcAr" ${a.archived ? 'checked' : ''}> Arxivə at (yeni əməliyyatlarda görünməsin)</label>` : ''}`,
+      <label class="yzi-check"><input type="checkbox" class="yz-toggle" role="switch" id="yziAcAr" ${a.archived ? 'checked' : ''}> Arxivə at (yeni əməliyyatlarda görünməsin)</label>` : ''}`,
   actions: [...(id && manage() ? [{ label: 'Sil', cls: 'yzi-btn--ghost yzi-btn--left yzi-bad', onClick: async () => (await deleteAccount(id)) ? undefined : false }] : []),
     { label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' }, { label: 'Yadda saxla', cls: 'yzi-btn--gold', onClick: async (b) => {
     const name = b.querySelector('#yziAcN').value.trim(); if (!name) { fail('Ad yazılmalıdır'); return false; }

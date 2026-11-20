@@ -53,10 +53,10 @@ export function openKitchenStationModal(id) {
       <small style="color:var(--text3);">Hər mətbəxin öz PIN-i olur. Mətbəx ekranına bu PIN ilə girilir.</small>
     </div>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;">
-      <input type="checkbox" id="ksShowAll" ${s?.showAll?'checked':''} style="width:18px;height:18px;"> Bütün sifarişləri görsün (ümumi mətbəx)
+      <input type="checkbox" class="yz-toggle" role="switch" id="ksShowAll" ${s?.showAll?'checked':''} style="width:18px;height:18px;"> Bütün sifarişləri görsün (ümumi mətbəx)
     </label>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;">
-      <input type="checkbox" id="ksActive" ${s?.active!==false?'checked':''} style="width:18px;height:18px;"> Aktiv
+      <input type="checkbox" class="yz-toggle" role="switch" id="ksActive" ${s?.active!==false?'checked':''} style="width:18px;height:18px;"> Aktiv
     </label>`;
   document.getElementById('kitchenStationModalId').value = id || '';
   document.getElementById('kitchenStationModal').classList.add('open');

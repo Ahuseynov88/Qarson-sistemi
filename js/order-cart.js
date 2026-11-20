@@ -19,11 +19,21 @@ export class OrderCart {
     this.els = els;
     this.onClosed = callbacks.onClosed || (() => {});
     this._noteOpenKeys = new Set();
+    this._failedDrafts = {};     // göndərilə bilməyən mallar (masa ID → seçim)
+    this._pending = {};          // göndərilməkdə olan mallar (masa ID → seçim) — cavab gələnə qədər
     this._bindEvents();
   }
 
    
   _bindEvents() {
+    // Telefon: səbət zolağı və bilet alt pəncərəsi
+    const bar = document.getElementById('orderMobileBar');
+    if (bar) bar.addEventListener('click', (e) => {
+      if (e.target.closest('[data-send-order]')) { this.send(); return; }
+      if (e.target.closest('[data-open-ticket]')) this.toggleTicket(true);
+    });
+    document.getElementById('ticketSheetBg')?.addEventListener('click', () => this.toggleTicket(false));
+    document.querySelector('#ticketPanelCol [data-close-ticket]')?.addEventListener('click', () => this.toggleTicket(false));
     if (this.els.searchInput) {
       this.els.searchInput.addEventListener('input', (e) => this.setSearchQuery(e.target.value));
     }
@@ -72,7 +82,8 @@ export class OrderCart {
 
   open(tableId) {
     state.orderTableId = tableId;
-    state._orderDraft = {};
+    state._orderDraft = this._failedDrafts[tableId] || {};
+    delete this._failedDrafts[tableId];
     state._orderCatFilter = 'all';
     state._orderSearchQuery = '';
     if (this.els.searchInput) this.els.searchInput.value = '';
@@ -80,13 +91,23 @@ export class OrderCart {
     this.els.title.innerHTML = `<svg class="icon"><use href="#i-food"></use></svg> ${esc(t?.name || 'Sifariş')}`;
          const gnEl = document.getElementById('orderGlobalNote');
     if (gnEl) gnEl.value = '';
+    this.toggleTicket(false);
     this.renderCatTabs();
     this.renderItemsList();
     this.renderDraftList();
     showScreen('orderScreen');
   }
 
+  /* Telefon: bilet alt pəncərə kimi açılır/bağlanır (kompüterdə həmişə görünür) */
+  toggleTicket(open) {
+    const sc = this.els.screen || document.getElementById('orderScreen');
+    sc.classList.toggle('ticket-open', !!open);
+    if (open) document.getElementById('ticketPanelCol')?.querySelector('.ticket-body')?.scrollTo?.(0, 0);
+  }
+  isTicketOpen() { return !!(this.els.screen || document.getElementById('orderScreen'))?.classList.contains('ticket-open'); }
+
   close() {
+    this.toggleTicket(false);
     showScreen('waiterScreen');
     state.orderTableId = null;
     this.onClosed();
@@ -176,12 +197,38 @@ export class OrderCart {
     this.renderDraftList();
   }
 
+  /* Göndərilməkdə olan mallar (cavab gələnə qədər boz siyahı) */
+  _pendingHtml() {
+    const pend = this._pending[state.orderTableId];
+    if (!pend) return '';
+    const rows = Object.values(pend).map(line => {
+      const m = state.menuItems.find(x => x.id === line.menuItemId);
+      return m ? `<div class="ticket-line ticket-line--pending"><div class="ticket-line__main"><span class="ticket-line__name">${esc(m.name)}</span><span class="ticket-line__qty">× ${line.qty}</span></div></div>` : '';
+    }).join('');
+    return `<div class="ticket-sec-title ticket-sec-title--pending"><span class="yz-spin" aria-hidden="true"></span> Göndərilir…</div>${rows}`;
+  }
+
+  /* Telefon: aşağıdakı səbət zolağı (mal sayı + cəmi) */
+  _updateMobileBar(count, totalText) {
+    const bar = document.getElementById('orderMobileBar');
+    if (!bar) return;
+    const c = bar.querySelector('[data-bar-count]'), tt = bar.querySelector('[data-bar-total]');
+    if (c) { c.textContent = count; c.hidden = !count; }
+    if (tt) tt.textContent = totalText;
+    bar.classList.toggle('has-draft', count > 0);
+  }
+
   renderDraftList() {
     document.dispatchEvent(new CustomEvent('order:draft-changed'));
+    this._syncSendBtn();
     const lines = Object.entries(state._orderDraft);
+    const gn = document.getElementById('orderGlobalNote');
+    if (gn) gn.hidden = !lines.length && !gn.value.trim();
     if (!lines.length) {
-      this.els.draftList.innerHTML = '';
-      this.els.draftTotal.textContent = ((state.tableOrders[state.orderTableId]?.total)||0).toFixed(2) + ' ₼';
+      this.els.draftList.innerHTML = this._pendingHtml();
+      const tot = ((state.tableOrders[state.orderTableId]?.total)||0).toFixed(2) + ' ₼';
+      this.els.draftTotal.textContent = tot;
+      this._updateMobileBar(0, tot);
       this._updateServiceChargeRow(state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0);
       return;
     }
@@ -199,16 +246,16 @@ export class OrderCart {
       return `<div class="ticket-line">
         <div class="ticket-line__main">
           <span class="ticket-line__name">${esc(m.name)}</span>
-          <button class="ticket-line__note-btn ${(hasNote||hasFee)?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd / əlavə ödəniş">
+          <button class="ticket-line__note-btn ${(hasNote||hasFee)?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd / əlavə ödəniş" aria-label="Qeyd">
             <svg class="icon"><use href="#i-edit"></use></svg>
           </button>
                    <div class="qty-stepper">
-            <button data-qty-change="-1" data-line-key="${lineKey}">−</button>
-            <input class="qty-stepper__val qty-stepper__input" type="number" min="0.5" step="0.5" value="${line.qty}" data-line-key="${lineKey}" style="width:52px;text-align:center;border:none;background:transparent;font-size:inherit;font-weight:inherit;color:inherit;">
-            <button data-qty-change="1" data-line-key="${lineKey}">+</button>
+            <button data-qty-change="-1" data-line-key="${lineKey}" aria-label="Azalt">−</button>
+            <input class="qty-stepper__val qty-stepper__input" type="text" inputmode="decimal" value="${line.qty}" data-line-key="${lineKey}" aria-label="Miqdar">
+            <button data-qty-change="1" data-line-key="${lineKey}" aria-label="Artır">+</button>
           </div>
           <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
-          <button data-remove-line="${lineKey}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;flex-shrink:0;">
+          <button class="ticket-line__remove" data-remove-line="${lineKey}" aria-label="Sil" title="Sil">
             <svg class="icon"><use href="#i-close"></use></svg>
           </button>
         </div>
@@ -227,12 +274,14 @@ export class OrderCart {
         </div>` : ''}
       </div>`;
     }).join('');
-    this.els.draftList.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px;">
-      <svg class="icon" style="width:.9em;height:.9em;"><use href="#i-plus"></use></svg> Yeni (göndərilməmiş)
+    this.els.draftList.innerHTML = this._pendingHtml() + `<div class="ticket-sec-title">
+      <svg class="icon"><use href="#i-plus"></use></svg> Yeni (göndərilməmiş)
     </div>${rows}`;
     const sentTotal = (state.tableOrders[state.orderTableId]?.total) || 0;
     const scPct = state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0;
-    this.els.draftTotal.textContent = (sentTotal + draftTotal * (1 + scPct/100) + draftVat).toFixed(2) + ' ₼';
+    const totText = (sentTotal + draftTotal * (1 + scPct/100) + draftVat).toFixed(2) + ' ₼';
+    this.els.draftTotal.textContent = totText;
+    this._updateMobileBar(lines.reduce((n, [, l]) => n + (Number(l.qty) || 0), 0), totText);
     this._updateServiceChargeRow(scPct);
   }
 
@@ -250,15 +299,38 @@ export class OrderCart {
     }
   }
 
+  /* Göndərmə vəziyyəti: düymə kilidlənir, seçilmiş mallar "göndərilir" siyahısına keçir.
+     Beləliklə ikinci toxunuş heç nə göndərmir (mallar iki dəfə düşmür, stok iki dəfə çıxılmır). */
+  _syncSendBtn() {
+    const on = !!this._pending[state.orderTableId];
+    document.querySelectorAll('[data-send-order]').forEach(b => {
+      if (on) { if (!b.dataset.label) b.dataset.label = b.innerHTML; b.disabled = true; b.classList.add('is-busy'); b.innerHTML = '<span class="yz-spin" aria-hidden="true"></span> Göndərilir…'; }
+      else { b.disabled = false; b.classList.remove('is-busy'); if (b.dataset.label) b.innerHTML = b.dataset.label; }
+    });
+  }
+
   send() {
     const tableId = state.orderTableId;
-    if (!tableId) return;
+    if (!tableId || this._pending[tableId]) return;
     const draftKeys = Object.keys(state._orderDraft);
     const t = state.tables.find(x => x.id === tableId);
     if (!draftKeys.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Heç mal seçilməyib'); return; }
 
     const draftSnapshot = JSON.parse(JSON.stringify(state._orderDraft));
     const waiterId = state.user.id, waiterName = state.user.name;
+    // Seçilmiş mallar dərhal "göndərilir" vəziyyətinə keçir; xəta olsa geri qaytarılır
+    this._pending[tableId] = draftSnapshot;
+    state._orderDraft = {};
+    this.renderDraftList();
+    const restore = () => {
+      // Ofisiant bu arada başqa masaya keçibsə, mallar həmin masa açılanda geri qayıdır
+      const target = state.orderTableId === tableId ? state._orderDraft : (this._failedDrafts[tableId] = this._failedDrafts[tableId] || {});
+      Object.entries(this._pending[tableId] || {}).forEach(([k, line]) => {
+        if (target[k]) target[k].qty += line.qty; else target[k] = line;
+      });
+      delete this._pending[tableId];
+      if (state.orderTableId === tableId) this.renderDraftList();
+    };
 
     R.tableOrders.child(tableId).transaction(current => {
       const items = {};
@@ -291,8 +363,9 @@ export class OrderCart {
         billPrintedAt: null
       };
     }, (error, committed, snapshot) => {
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
-      if (!committed) return;
+      if (error) { restore(); showToast('<svg class="icon"><use href="#i-error"></use></svg> Sifariş göndərilmədi (bağlantı xətası). Mallar yerindədir — yenidən göndərin.'); return; }
+      if (!committed) { restore(); return; }
+      delete this._pending[tableId];
       draftKeys.forEach(lineKey => {
         const draft = draftSnapshot[lineKey];
         if (draft) updateStock(draft.menuItemId, -draft.qty, state.menuItems);
@@ -385,7 +458,8 @@ export class OrderCart {
         }
       });
 
-      this.close();
+      if (state.orderTableId === tableId) this.close();
+      else this.renderDraftList();
     });
   }
 }

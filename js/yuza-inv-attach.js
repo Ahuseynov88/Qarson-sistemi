@@ -144,7 +144,7 @@ export async function mountGallery(host, { doc = null, pending = null, onChange 
     host.querySelectorAll('[data-att-open]').forEach(b => b.addEventListener('click', () => openViewer(all[+b.dataset.attOpen])));
     host.querySelectorAll('[data-att-del]').forEach(b => b.addEventListener('click', async () => {
       const a = all[+b.dataset.attDel];
-      if (!confirm('Bu fayl silinsin?')) return;
+      if (!await (window.yzAsk ? window.yzAsk('Fayl sənəddən silinəcək.', { title: 'Silinsin?', okLabel: 'Sil' }) : Promise.resolve(window.confirm('Bu fayl silinsin?')))) return;
       if (a._s) { try { await removeAttachment(docId, a.id); saved = saved.filter(x => x.id !== a.id); } catch (e) { fail('Silinmədi'); } }
       else if (pending) { const k = pending.indexOf(pending.find(x => x.data === a.data)); if (k >= 0) pending.splice(k, 1); }
       draw(); onChange?.();

@@ -128,7 +128,7 @@ export function renderSettings(box) {
   box.innerHTML = `<div class="table-card yzs-card"><h3 style="margin-bottom:8px;">${I('gift')} Ad günü hədiyyəsi</h3>
     <p style="font-size:13px;color:var(--text2);margin-bottom:10px;">Loyallıq üzvü olan müştəri (QR ilə masaya qoşulub) ad günü ərəfəsində gələndə ödəniş pəncərəsində xəbərdarlıq çıxır və işçi bir düymə ilə endirimi tətbiq edir. Hədiyyə ildə bir dəfə verilir, kim və nə vaxt verdiyi jurnala yazılır.</p>
     <label class="yzs-switch"><span><b>Ad günü hədiyyəsi verilsin</b><small>Söndürüləndə müştəri ekranında da "Ad günü hədiyyələri" yazısı görünmür.</small></span>
-      <input type="checkbox" id="yzBdOn" ${c.on ? 'checked' : ''}></label>
+      <input type="checkbox" class="yz-toggle" role="switch" id="yzBdOn" ${c.on ? 'checked' : ''}></label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
       <label class="form-group" style="margin:0;"><span style="font-size:12px;color:var(--text2);">Endirim (%)</span><input type="number" id="yzBdPct" min="1" max="100" step="1" value="${c.pct}"></label>
       <label class="form-group" style="margin:0;"><span style="font-size:12px;color:var(--text2);">Ad günündən ± neçə gün</span><input type="number" id="yzBdDays" min="0" max="30" step="1" value="${c.days}"></label>

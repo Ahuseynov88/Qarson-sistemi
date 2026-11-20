@@ -18,7 +18,7 @@ export function renderStaff() {
   }
 
   el.innerHTML = state.staff.map(s => {
-    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
+    const fallback = window.yzInitials(s.name);
     const st = s.status === 'offline' ? 'Deaktiv' : 'Aktiv';
     const bc = s.status === 'offline' ? 'badge-red' : 'badge-green';
     return `<div class="tile-card" onclick="selectStaff('${s.id}')">
@@ -49,7 +49,7 @@ export function selectStaff(id) {
 export function renderStaffDetail(s) {
   const el = document.getElementById('staffDetailBody');
   if (!el || !s) return;
-  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=8e44ad&color=fff&size=200`;
+  const fallback = window.yzInitials(s.name);
   const permCount = (s.permissions || []).length;
   const st = s.status === 'offline' ? 'Deaktiv' : 'Aktiv';
   el.innerHTML = `
@@ -172,7 +172,7 @@ export function saveStaff() {
   hr.updatedAt = Date.now();
 
   const name = `${firstname} ${lastname}`;
-  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8e44ad&color=fff&size=200`;
+  const fallback = window.yzInitials(name);
   const avatar = avatarVal || fallback;
   // fin artıq staffHR-dədir; köhnə qeyddə qalıbsa silinir
   const staffData = { name, firstname, lastname, position, pin: useApi ? null : pin, phone, avatar, permissions, systemAccess, attNoPhone,
@@ -253,9 +253,9 @@ export function staffForm(s = {}) {
       <div class="form-group"><label>Telefon</label><input type="tel" id="fs_phone" value="${esc(s.phone||'')}" placeholder="+994 50 000 00 00"></div>
     </div>
 
-    <label class="fs-switch"><input type="checkbox" id="fs_access" ${access ? 'checked' : ''} onchange="fsToggleAccess()">
-      <span><b>Sistemə girişi var</b><small>Ofisiant, kassir, müdir, mühasib, anbardar. İşarələnməsə, işçi POS-a girə bilməz — yalnız davamiyyətdə (QR) iştirak edir.</small></span></label>
-    <label class="fs-switch"><input type="checkbox" id="fs_nophone" ${s.attNoPhone ? 'checked' : ''}>
+    <label class="fs-switch"><input type="checkbox" class="yz-toggle" role="switch" id="fs_access" ${access ? 'checked' : ''} onchange="fsToggleAccess()">
+      <span><b>Sistemə girişi var</b><small>Ofisiant, kassir, müdir, mühasib, anbardar. Söndürülübsə, işçi POS-a girə bilməz — yalnız davamiyyətdə (QR) iştirak edir.</small></span></label>
+    <label class="fs-switch"><input type="checkbox" class="yz-toggle" role="switch" id="fs_nophone" ${s.attNoPhone ? 'checked' : ''}>
       <span><b>Smartfonu yoxdur</b><small>Davamiyyəti davamiyyət ekranında səlahiyyətli şəxs (öz PIN-i ilə) qeyd edir.</small></span></label>
 
     <div id="fs_accessBox">

@@ -10,7 +10,7 @@
 ═══════════════════════════════════════════ */
 import { db } from './firebase-service.js';
 import { state } from './state.js';
-import { showToast, esc } from './utils.js';
+import { showToast, esc, askConfirm } from './utils.js';
 import { fmtVersion } from './yuza-version.js';
 
 const $ = (id) => document.getElementById(id);
@@ -255,7 +255,7 @@ async function renderGate() {
   box.innerHTML = `<div class="table-card yzs-card"><h3 style="margin-bottom:8px;">${I('clock')} İşə gəlişi qeyd etməyən işçi</h3>
     <label class="yzs-switch"><span><b>Gəlişini qeyd etməyən işçi sistemə girə bilməsin</b>
       <small>İşçi PIN ilə girməzdən əvvəl telefonu ilə QR-ı oxudub "İşə gəldim" etməlidir. Müvəqqəti çıxışda olan da girə bilmir. İşçi işdən çıxanda sistemdən avtomatik çıxarılır.</small></span>
-      <input type="checkbox" id="yzsGateOn" ${on ? 'checked' : ''}></label>
+      <input type="checkbox" class="yz-toggle" role="switch" id="yzsGateOn" ${on ? 'checked' : ''}></label>
     <div class="yzs-ex"${on ? '' : ' hidden'}><small>Bu işçilər yoxlanmasın (məs. mühasib, menecer):</small>
       ${staff.map(s => `<label><input type="checkbox" data-ex="${esc(s.id)}" ${ex[s.id] ? 'checked' : ''}> ${esc(s.name || '')}</label>`).join('') || '<span style="color:var(--text3)">İşçi yoxdur</span>'}</div>
     <p style="font-size:12px;color:var(--text3);margin-top:8px;">Rəhbər yoxlanmır. İnternet olmayanda giriş bloklanmır ki, restoranın işi dayanmasın.</p></div>`;
@@ -304,7 +304,7 @@ async function renderErrors() {
     const b = e.target.closest('[data-er]'); if (!b) return;
     if (b.dataset.er === 'reload') { await renderErrors(); return; }
     if (b.dataset.er === 'clear') {
-      if (!confirm('Xətaların siyahısı təmizlənsin? (Proqrama və məlumatlara təsir etmir.)')) return;
+      if (!await askConfirm('Proqrama və məlumatlara təsir etmir.', { title: 'Xətaların siyahısı təmizlənsin?', okLabel: 'Təmizlə' })) return;
       b.disabled = true;
       try { await A.api('errClear', {}, { owner: true }); showToast(`${I('check')} Siyahı təmizləndi`); }
       catch (er) { showToast(`${I('error')} ${esc(er.message || er)}`); }

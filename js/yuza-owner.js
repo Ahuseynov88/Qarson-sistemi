@@ -230,7 +230,7 @@ function buildLoginForm() {
   f.querySelector('.yz-owner__eye').onclick = () => { const p = $('yzOwPw'); p.type = p.type === 'password' ? 'text' : 'password'; };
   box.querySelector('[data-close]').onclick = () => closeBox();
   box.addEventListener('mousedown', (e) => { if (e.target === box) closeBox(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) closeBox(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) { e.preventDefault(); closeBox(); } });
   f.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const b = f.querySelector('button[type="submit"]'); b.disabled = true; setErr('');

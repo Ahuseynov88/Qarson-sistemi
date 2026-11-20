@@ -141,7 +141,7 @@ export function showCustomerWaiterCard(waiterId) {
     const avatar = document.getElementById('custWaiterAvatar');
     const name = document.getElementById('custWaiterName');
     if (!card) return;
-    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(w.name||'?')}&background=2ecc71&color=fff&size=200`;
+    const fallback = window.yzInitials(w.name||'?');
     avatar.src = w.avatar || fallback;
     avatar.onerror = () => { avatar.src = fallback; };
         name.textContent = w.name || '—';

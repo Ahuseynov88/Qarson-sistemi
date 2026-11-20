@@ -469,7 +469,7 @@ export function whEditor(id) {
     body: `<label class="yzi-f"><span>Ad *</span><input type="text" id="yziWhName" value="${esc(w.name || '')}" placeholder="məs: Bar, Soyuducu, Mətbəx"></label>
       <label class="yzi-f"><span>Məsul şəxs</span><select id="yziWhResp"><option value="">—</option>${staffOpts}</select></label>
       <label class="yzi-f"><span>Sıra</span>${numInput('id="yziWhOrder"', w.order ?? '')}</label>
-      ${id ? `<label class="yzi-check"><input type="checkbox" id="yziWhArch" ${w.archived ? 'checked' : ''}> Arxivdədir (yeni sənədlərdə görünmür)</label>` : ''}`,
+      ${id ? `<label class="yzi-check"><input type="checkbox" class="yz-toggle" role="switch" id="yziWhArch" ${w.archived ? 'checked' : ''}> Arxivdədir (yeni sənədlərdə görünmür)</label>` : ''}`,
     actions: [{ label: 'Ləğv', cancel: true, cls: 'yzi-btn--ghost' }, { label: 'Yadda saxla', cls: 'yzi-btn--gold', onClick: async () => {
       const name = $('yziWhName').value.trim(); if (!name) throw new Error('Ad yazılmalıdır');
       const arch = !!$('yziWhArch')?.checked;

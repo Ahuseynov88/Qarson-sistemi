@@ -13,8 +13,20 @@ try { db.ref('.info/serverTimeOffset').on('value', s => { _srvOffset = Number(s.
 export const serverNow = () => Date.now() + _srvOffset;
 export const azTime = (ts) => new Date(ts).toLocaleTimeString('az-AZ');
 export const azDate = (ts) => new Date(ts).toLocaleDateString('az-AZ');
+/* Tarix həmişə saatla birlikdə göstərilir (iş prinsipi №8): 20.11.2026 14:05 */
+export const azDateTime = (ts) => { const d = new Date(ts); const p = (x) => String(x).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 /* Pul məbləğləri qəpiyə qədər yuvarlaqlaşdırılır (0.1+0.2 kimi xətalar toplanmasın) */
 export const money2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/* İşçi şəkli yoxdursa: adın baş hərfləri ilə yerli şəkil (əvvəl xarici saytdan — ui-avatars.com — yüklənirdi:
+   internetsiz işləmirdi və işçi adları kənar sayta gedirdi) */
+export function initialsAvatar(name) {
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  const ini = ((parts[0] || '?')[0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toLocaleUpperCase('az');
+  const safe = ini.replace(/[<>&"']/g, '');
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c98d2e"/><stop offset="1" stop-color="#7a5110"/></linearGradient></defs><rect width="80" height="80" rx="40" fill="url(#g)"/><text x="40" y="51" font-family="Inter,Arial,sans-serif" font-size="${safe.length > 1 ? 30 : 36}" font-weight="700" fill="#fff" text-anchor="middle">${safe}</text></svg>`);
+}
+window.yzInitials = initialsAvatar;
 
 export function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -100,13 +112,22 @@ export function toArr(obj) {
 
 // DİQQƏT: mesaj SVG ikon markup-u ehtiva edə bilər (məs. '<svg class="icon">...'),
 // ona görə innerHTML istifadə olunur - textContent ikonu çılpaq mətn kimi göstərərdi.
-export function showToast(msg) {
+/* Bildiriş: növü ikondan müəyyən olunur (uğur / xəbərdarlıq / xəta / məlumat).
+   Xəta mesajı daha uzun qalır və bağlama düyməsi olur — oxumağa vaxt çatsın. */
+export function showToast(msg, opts = {}) {
   const el = document.getElementById('toast');
   if (!el) return;
-  el.innerHTML = msg;
-  el.classList.add('show');
+  const m = String(msg);
+  const type = opts.type || (/#i-(error|ban)\b/.test(m) ? 'error' : /#i-warning\b/.test(m) ? 'warn' : /#i-check\b/.test(m) ? 'ok' : 'info');
+  if (!el.dataset.a11y) { el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); el.dataset.a11y = '1'; }
+  el.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+  el.className = 'show is-' + type;
+  el.innerHTML = `<span class="yz-toast__msg">${m}</span>` + (type === 'error'
+    ? '<button type="button" class="yz-toast__x" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>' : '');
+  el.querySelector('.yz-toast__x')?.addEventListener('click', () => el.classList.remove('show'));
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+  const ms = opts.ms || (type === 'error' ? 7000 : type === 'warn' ? 4500 : 3500);
+  el._t = setTimeout(() => el.classList.remove('show'), ms);
 }
 
 // Brauzerin çirkin confirm() pəncərəsi əvəzinə proqramın öz dizaynında təsdiq pəncərəsi.
@@ -127,6 +148,26 @@ export function confirmAction(message, onConfirm, options = {}) {
     if (onConfirm) onConfirm();
   }, { once: true });
   modal.classList.add('open');
+}
+
+/* Brauzerin confirm() əvəzi — Promise qaytarır: true (təsdiq) / false (Ləğv, Esc, Geri).
+   İstifadə: if (!await askConfirm('Silinsin?', { okLabel: 'Sil' })) return; */
+export function askConfirm(message, options = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmActionModal');
+    if (!modal) { resolve(window.confirm(String(message).replace(/<[^>]+>/g, ''))); return; }
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; obs.disconnect(); resolve(v); };
+    const obs = new MutationObserver(() => { if (!modal.classList.contains('open')) finish(false); });
+    confirmAction(message, () => finish(true), options);
+    obs.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  });
+}
+window.yzAsk = askConfirm;
+
+/* Brauzerin alert() əvəzi — xəta mesajı bildiriş kimi göstərilir */
+export function showError(message) {
+  showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + esc(String(message)));
 }
 
 export function closeConfirmAction() {

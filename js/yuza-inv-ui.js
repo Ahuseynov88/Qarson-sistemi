@@ -171,8 +171,18 @@ export function modal({ title, body, wide = false, actions = [], onClose } = {})
     foot.appendChild(b);
   });
   if (!foot.children.length) foot.remove();
-  bg.querySelector('.yzi-x').addEventListener('click', close);
-  bg.addEventListener('mousedown', (e) => { if (e.target === bg) close(); });
+  // Saxlanmamış dəyişiklik varsa: ✕ basanda soruşulur, fona toxunanda pəncərə bağlanmır (titrəyir)
+  const dirty = () => bg.dataset.yzDirty === '1';
+  const askClose = async () => {
+    if (dirty() && window.yzAsk && !await window.yzAsk('Yazdığınız məlumat itəcək.', { title: 'Dəyişikliklər saxlanmayıb. Bağlansın?', okLabel: 'Bağla' })) return;
+    close();
+  };
+  bg.querySelector('.yzi-x').addEventListener('click', askClose);
+  bg.addEventListener('mousedown', (e) => {
+    if (e.target !== bg) return;
+    if (dirty()) { const m = bg.querySelector('.yzi-modal'); m?.classList.remove('yz-shake'); void m?.offsetWidth; m?.classList.add('yz-shake'); return; }
+    close();
+  });
   document.body.appendChild(bg);
   setTimeout(() => bodyEl.querySelector('input:not([type=hidden]),select,textarea')?.focus(), 40);
   return { el: bg, body: bodyEl, close };
@@ -247,7 +257,7 @@ export function attachPicker(input, { types, onPick, allowCreate = true, createT
     if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, btns.length - 1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); }
     else if (e.key === 'Enter') { e.preventDefault(); const b = btns[idx]; if (b) b.click(); return; }
-    else if (e.key === 'Escape') { close(); return; }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); return; }
     else return;
     btns.forEach((b, i) => b.classList.toggle('is-on', i === idx));
   });
