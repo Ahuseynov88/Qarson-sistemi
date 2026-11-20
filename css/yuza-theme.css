@@ -200,8 +200,7 @@ body.dark-mode .modal{box-shadow:0 24px 60px rgba(0,0,0,.65), 0 0 0 1px rgba(232
 .modal h2 .icon{color:var(--gold);}
 .modal-bg{backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);}
 
-/* ── 10) MƏTBƏX ───────────────────────────────────────────────── */
-.k-card.ready{background:rgba(63,208,138,.1); border-color:var(--green);}
+
 .ko-card--ready{border-color:var(--gold); background:var(--yz-gold-tint);}
 .ko-status--ready{color:var(--orange); background:var(--yz-gold-tint);}
 .ko-item-btn{background:var(--red-dark); color:#fff;}
@@ -225,10 +224,9 @@ body.dark-mode .floor-card__total{color:var(--gold);}
 body.dark-mode .chat-bubble.waiter{background:rgba(63,208,138,.16);}
 .product-card__price{color:var(--yz-gold-1);}
 
-/* Rəqəm düymələri (PIN pəncərələri, ödəniş) */
-.num-btn{background:var(--card2); border-color:var(--border); color:var(--text);}
-.num-btn:hover{border-color:var(--gold);}
-.pin-dot.filled{background:var(--gold); border-color:var(--gold);}
+/* Rəqəm düymələri (PIN pəncərələri{background:var(--card2); border-color:var(--border); color:var(--text);}
+
+
 
 /* ── 12) MÜŞTƏRİ EKRANI (həmişə tünd qara-qızılı) ─────────────── */
 #customerScreen,#referralRegisterScreen{
@@ -268,13 +266,10 @@ body.dark-mode .log-badge{filter:brightness(1.32) saturate(.95);}
 #alarmOverlay[style*="243, 156, 18"] .alarm-icon{color:#1a1205;}
 .alarm-btn{border:2px solid rgba(0,0,0,.15);}
 
-/* "Seçilmiş/aktiv" vəziyyətlər: mavi/yaşıl əvəzinə qızılı */
-.ct-list-item:hover,.ct-list-item.active,
 .banquet-cal-day:hover,.banquet-cal-day--today,.banquet-cal-day--selected,
 .banquet-event-card:hover,.report-quick-btn:hover,
-.purchase-line__field input:focus,
-.order-item-card.selected,.payment-type-btn.selected{border-color:var(--gold);}
-.order-item-card.selected{box-shadow:0 0 0 1px var(--gold);}
+.purchase-line__field input:focus,.payment-type-btn.selected{border-color:var(--gold);}
+
 .payment-type-btn.selected{background:var(--yz-gold-tint); color:var(--gold-dark);}
 body.dark-mode .payment-type-btn.selected{color:var(--gold);}
 .report-quick-btn:hover{color:var(--gold-dark);}
@@ -287,11 +282,11 @@ body.dark-mode .qty-stepper.batch-select .qty-stepper__val{color:var(--gold);}
 
 /* Solid fonlu düymələr/nişanlar: tünd rejimdə --green/--blue açıq olduğu üçün
    ağ mətn oxunmurdu → dərin qızılı fon + ağ mətn */
-.ko-accept-btn,.order-item-qty-badge,.bsel-box--on{
+.ko-accept-btn,.bsel-box--on{
   background-color:#9a6a17; border-color:#9a6a17; color:#fff;
 }
 .ko-accept-btn{background:linear-gradient(135deg,#a8741f,#7a5110);}
-.chat-input-row button,.login-btn,.order-step-btn:active{
+.chat-input-row button{
   background:var(--yz-gold-grad); color:var(--yz-on-gold); font-weight:700;
 }
 
