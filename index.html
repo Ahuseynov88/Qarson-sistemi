@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="theme-color" content="#0b0906">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="img/yuza-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Kalam:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Kalam:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/yuza-login.css">
 <link rel="stylesheet" href="css/yuza-theme.css">
@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="css/yuza-inventory.css">
 <link rel="stylesheet" href="css/racia.css">
 <link rel="stylesheet" href="css/yuza-delivery.css">
+<link rel="stylesheet" href="css/yuza-ui.css">
 </head>
 <body>
 
@@ -264,7 +265,7 @@
   <div class="topbar" id="adminTopbar">
     <div style="display:flex;align-items:center;gap:10px;">
       <button class="ap-hamburger" onclick="apToggleSidebar()" title="Menyu"><svg class="icon" style="width:20px;height:20px;"><use href="#i-menu"></use></svg></button>
-      <h2 style="font-size:16px;"><svg class="icon"><use href="#i-admin"></use></svg> <span id="apPageTitle">Admin Paneli</span></h2>
+      <h2 style="font-size:16px;"><svg class="icon"><use href="#i-admin"></use></svg> <span id="apPageTitle">Rəhbər Paneli</span></h2>
     </div>
     <div class="topbar-right">
       <!-- + Yeni dropdown -->
@@ -376,13 +377,13 @@
       <!-- BANKET -->
       <div class="ap-group" data-group="banquet">
         <button class="ap-group__header" onclick="apToggleGroup(this)">
-          <span class="ap-group__emoji">🎪</span>
+          <svg class="icon ap-group__icon"><use href="#i-calendar"></use></svg>
           <span>Banket</span>
           <svg class="icon ap-group__arrow"><use href="#i-chevron"></use></svg>
         </button>
         <div class="ap-group__items">
           <button class="admin-tab" data-section="banquetDashboard" onclick="adminTab('banquetDashboard',this)">
-            <svg class="icon"><use href="#i-chart"></use></svg> Dashboard
+            <svg class="icon"><use href="#i-chart"></use></svg> Banket paneli
           </button>
           <button class="admin-tab" data-section="banquetCalendar" onclick="adminTab('banquetCalendar',this)">
             <svg class="icon"><use href="#i-clock"></use></svg> Təqvim
@@ -509,7 +510,7 @@
     <div class="admin-section" id="sec-settings">
       <div style="max-width:500px;">
         <div class="table-card" style="margin-bottom:16px;">
-          <h3 style="margin-bottom:8px;">🍳 Mətbəx Siqnal Intervalı</h3>
+          <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-chef"></use></svg> Mətbəx siqnal intervalı</h3>
           <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Yeni sifariş qəbul edilməyəndə neçə saniyədən bir səs çalsın?</p>
           <div class="form-group">
             <label>Saniyə</label>
@@ -532,7 +533,7 @@
           <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Aktiv edilərsə, hər masanın sifarişinə avtomatik olaraq müəyyən faiz qədər xidmət haqqı əlavə olunur.</p>
           <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
             <span style="font-weight:700;">Xidmət haqqını aktiv et</span>
-            <input type="checkbox" id="serviceChargeEnabled" onchange="saveServiceCharge()" style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
+            <input type="checkbox" class="yz-toggle" role="switch" id="serviceChargeEnabled" onchange="saveServiceCharge()" style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
           </label>
           <div class="form-group">
             <label>Faiz dərəcəsi (%)</label>
@@ -568,7 +569,7 @@
         </div>
         <div class="table-card">
           <h3 style="margin-bottom:8px;"><svg class="icon"><use href="#i-clipboard"></use></svg> Sistem Məlumatları</h3>
-          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Qarson paneli kioskda tam ekran açılır, yalnız admin çıxarda bilər.</p>
+          <p style="font-size:13px;color:var(--text2);margin-top:8px;">Ofisiant ekranından çıxış PIN ekranına qaytarır. Proqramın versiyası və xətalar: Parametrlər → Sistem.</p>
         </div>
       </div>
     </div>
@@ -703,7 +704,7 @@
 </div>
 
 <!-- ═══ TƏHLÜKƏLİ ƏMƏLİYYATLAR — PIN MODAL ═══ -->
-<div class="modal-bg" id="dangerZonePinModal">
+<div class="modal-bg" id="dangerZonePinModal" data-no-dirty>
   <div class="modal" style="max-width:340px;text-align:center;">
     <div style="width:56px;height:56px;border-radius:50%;background:rgba(220,53,69,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
       <svg class="icon" style="width:28px;height:28px;color:var(--red);"><use href="#i-key"></use></svg>
@@ -716,7 +717,7 @@
         onkeydown="if(event.key==='Enter')confirmDangerZonePin()">
     </div>
     <p id="dzPinError" style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:12px;"></p>
-    <div style="display:flex;gap:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeDangerZonePinModal()">Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" onclick="confirmDangerZonePin()">
         <svg class="icon"><use href="#i-key"></use></svg> Təsdiqlə
@@ -765,7 +766,7 @@
 
     <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;cursor:pointer;padding:12px 14px;background:var(--card2);border-radius:10px;">
       <span style="font-weight:600;">Aktiv</span>
-      <input type="checkbox" id="printerActive" checked style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
+      <input type="checkbox" class="yz-toggle" role="switch" id="printerActive" checked style="width:22px;height:22px;cursor:pointer;flex-shrink:0;">
     </label>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closePrinterModal()">Ləğv</button>
@@ -788,6 +789,7 @@
   <div class="topbar">
     <h2><svg class="icon"><use href="#i-chef"></use></svg> <span id="kitchenPanelTitle">Mətbəx Paneli</span></h2>
     <div class="topbar-right">
+      <button type="button" class="theme-toggle-btn kds-zoom-btn" id="kdsZoomBtn" aria-label="Yazı ölçüsü" title="Yazı ölçüsü"><span>A</span><small>+</small></button>
       <button class="theme-toggle-btn" id="themeToggleBtnKitchen" onclick="toggleTheme()"><svg class="icon"><use href="#i-moon"></use></svg></button>
       <button class="btn btn-red yz-icon-only" onclick="logout()" aria-label="Çıxış" title="Çıxış"><svg class="icon"><use href="#i-logout"></use></svg></button>
     </div>
@@ -830,10 +832,10 @@
 </div>
   
   <!-- ═══ KİTCHEN PROBLEM MODALI ═══ -->
-<div class="modal-bg" id="kitchenProblemModal">
+<div class="modal-bg" id="kitchenProblemModal" data-no-dirty>
   <div class="modal" style="max-width:380px;">
     <div class="modal-header">
-      <h3>⚠ Problem Bildir</h3>
+      <h3><svg class="icon"><use href="#i-warning"></use></svg> Problem bildir</h3>
       <button onclick="document.getElementById('kitchenProblemModal').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
@@ -856,7 +858,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('kitchenProblemModal').classList.remove('open')">Ləğv et</button>
-      <button class="btn btn-red" onclick="confirmKitchenProblem()">⚠ Göndər</button>
+      <button class="btn btn-red" onclick="confirmKitchenProblem()"><svg class="icon"><use href="#i-warning"></use></svg> Göndər</button>
     </div>
   </div>
 </div>
@@ -891,7 +893,7 @@
   </div>
 </div>
   <!-- ═══ BATCH ACTION MODALI ═══ -->
-<div class="modal-bg" id="batchActionModal">
+<div class="modal-bg" id="batchActionModal" data-no-dirty>
   <div class="modal" style="max-width:400px;">
         <div class="modal-header">
       <h3>Toplu əməliyyat</h3>
@@ -920,7 +922,7 @@
   </div>
 </div>
   <!-- ═══ İSP MİQDAR MODALI ═══ -->
-<div class="modal-bg" id="ispQtyModal">
+<div class="modal-bg" id="ispQtyModal" data-no-dirty>
   <div class="modal" style="max-width:320px;">
     <div class="modal-header">
       <h3 id="ispQtyModalTitle">Miqdar seçin</h3>
@@ -987,7 +989,7 @@
 <div id="deactivatedOverlay">
   <div style="font-size:70px;margin-bottom:16px;"><svg class="icon"><use href="#i-ban"></use></svg></div>
   <h1 style="color:var(--red);margin-bottom:10px;">Deaktiv Edildiniz</h1>
-  <p style="color:var(--text2);">Admin sizi sistemdən çıxardı.</p>
+  <p style="color:var(--text2);">Rəhbər sizi sistemdən çıxardı.</p>
 </div>
 
 <div id="customerInactiveOverlay">
@@ -996,24 +998,24 @@
   <p>Zəhmət olmasa ofisiantı gözləyin.<br>Masa rezerv edildikdən sonra xidmət aktiv olacaq.</p>
 </div>
 
-<div class="modal-bg" id="confirmTableModal">
+<div class="modal-bg" id="confirmTableModal" data-no-dirty>
   <div class="modal" style="max-width:320px;text-align:center;">
     <div style="font-size:48px;margin-bottom:12px;"><svg class="icon"><use href="#i-chair"></use></svg></div>
     <h2 style="margin-bottom:8px;" id="confirmTableName">Masa</h2>
     <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı rezerv edirsiniz?</p>
-    <div style="display:flex;gap:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" data-confirm-activate><svg class="icon"><use href="#i-check"></use></svg> Masanı Aç</button>
     </div>
   </div>
 </div>
 
-<div class="modal-bg" id="confirmCloseTableModal">
+<div class="modal-bg" id="confirmCloseTableModal" data-no-dirty>
   <div class="modal" style="max-width:320px;text-align:center;">
     <div style="font-size:48px;margin-bottom:12px;"><svg class="icon"><use href="#i-lock"></use></svg></div>
     <h2 style="margin-bottom:8px;" id="confirmCloseTableName">Masa</h2>
     <p style="color:var(--text2);font-size:14px;margin-bottom:24px;">Bu masanı bağlamaq istəyirsiniz? Bütün tarixçə arxivə köçürüləcək.</p>
-    <div style="display:flex;gap:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-close><svg class="icon"><use href="#i-lock"></use></svg> Masanı Bağla</button>
     </div>
@@ -1041,6 +1043,7 @@
       <div class="ticket-panel" id="ticketPanelCol">
       <div class="ticket-header" style="display:flex;justify-content:space-between;align-items:center;">
         <span class="ticket-header__title" id="ticketTableName">Bilet</span>
+        <button type="button" class="ticket-header__close yz-icon-only" data-close-ticket aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
       </div>
       <div class="ticket-body">
         <div id="noteOrderSummary"></div>
@@ -1055,7 +1058,7 @@
           <span class="ticket-total-row__label">Cəmi</span>
           <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
         </div>
-        <textarea id="orderGlobalNote" rows="2" placeholder="Ümumi qeyd (məs: saat 17:00-da hazır olsun, paket sifarişdir...)" style="width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:8px 10px;font-size:12px;margin-bottom:8px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
+        <textarea id="orderGlobalNote" class="ticket-note" rows="1" hidden placeholder="Mətbəxə qeyd (məs: saat 17:00-da hazır olsun)" aria-label="Mətbəxə qeyd"></textarea>
         <button class="btn btn-green" style="width:100%;padding:13px;font-size:14px;margin-bottom:8px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə Göndər</button>
 
         <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-bottom:10px;" data-open-payment-hub>
@@ -1073,11 +1076,21 @@
           <button class="btn btn-ghost" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
           <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
           <button id="notesCloseTableBtn" class="btn btn-ghost" style="display:none;color:var(--red);" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Bağla</button>
+          <button type="button" class="btn btn-ghost" data-toggle-table-note aria-expanded="false"><svg class="icon"><use href="#i-note"></use></svg> Qeyd</button>
         </div>
-        <textarea id="noteText" class="notes-area" rows="1" placeholder="Masa qeydi (məs: doğum günü)..." style="min-height:34px;font-size:12px;margin-top:8px;"></textarea>
+        <textarea id="noteText" class="ticket-note" rows="2" hidden placeholder="Masa qeydi (məs: ad günü)" aria-label="Masa qeydi"></textarea>
       </div>
       </div>
     </div>
+  </div>
+  <div class="ticket-sheet-bg" id="ticketSheetBg" aria-hidden="true"></div>
+  <!-- Telefon: aşağıda sabit səbət zolağı -->
+  <div class="order-mobile-bar" id="orderMobileBar">
+    <button type="button" class="order-mobile-bar__ticket" data-open-ticket aria-label="Bileti aç">
+      <span class="order-mobile-bar__ico"><svg class="icon"><use href="#i-clipboard"></use></svg><b data-bar-count hidden>0</b></span>
+      <span class="order-mobile-bar__txt"><small>Bilet</small><b data-bar-total>0.00 ₼</b></span>
+    </button>
+    <button type="button" class="btn btn-green order-mobile-bar__send" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Göndər</button>
   </div>
 </div>
 
@@ -1099,34 +1112,34 @@
       <label>Qeyd</label>
       <textarea id="adminNoteText" class="notes-area" rows="4" placeholder="Qeyd yazın..."></textarea>
     </div>
-    <div style="display:flex;gap:10px;margin-top:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeAdminNoteModal()">Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveAdminNote()"><svg class="icon"><use href="#i-save"></use></svg> Saxla</button>
     </div>
   </div>
 </div>
 
-<div class="modal-bg" id="kitchenPinModal">
+<div class="modal-bg" id="kitchenPinModal" data-no-dirty>
   <div class="modal" style="max-width:340px;text-align:center;">
     <h2><svg class="icon"><use href="#i-key"></use></svg> Mətbəx PIN</h2>
     <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Yeni 6 rəqəmli PIN daxil edin</p>
     <div class="form-group">
       <input type="text" id="newKitchenPin" maxlength="6" placeholder="••••••" style="text-align:center;font-size:24px;letter-spacing:10px;">
     </div>
-    <div style="display:flex;gap:10px;margin-top:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeKitchenPinModal()">Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="saveKitchenPin()"><svg class="icon"><use href="#i-check"></use></svg> Saxla</button>
     </div>
   </div>
 </div>
 
-<div class="modal-bg" id="qrModal">
+<div class="modal-bg" id="qrModal" data-no-dirty>
   <div class="modal" style="max-width:340px;text-align:center;">
     <h2 id="qrModalTitle">QR Kod</h2>
     <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Müştəri bu kodu oxudub masaya xidmət istəyə bilər</p>
     <div id="qrCanvas" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
     <p id="qrLink" style="font-size:11px;color:var(--text3);word-break:break-all;margin-bottom:16px;"></p>
-    <div style="display:flex;gap:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;">
       <button class="btn btn-ghost yz-icon-only" style="flex:1;padding:13px;" onclick="closeQRModal()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="printQR()"><svg class="icon"><use href="#i-printer"></use></svg> Çap Et</button>
     </div>
@@ -1169,7 +1182,7 @@
 
 <div class="screen" id="customerScreen">
   <!-- ═══ MÜŞTƏRİ TANIMA & LOYALLIQ MODULU ═══ -->
-  <div class="modal-bg" id="custWelcomeModal" style="z-index:9999;">
+  <div class="modal-bg" id="custWelcomeModal" data-no-dirty style="z-index:9999;">
     <div class="cust-loyalty-modal">
       <svg class="icon" style="width:44px;height:44px;color:var(--gold);margin-bottom:12px;"><use href="#i-utensils"></use></svg>
       <h2 style="color:#fff;font-size:21px;margin-bottom:12px;">Xoş gəlmisiniz!</h2>
@@ -1205,7 +1218,7 @@
     </div>
   </div>
 
-  <div class="modal-bg" id="custPhoneRecoveryModal" style="z-index:9999;">
+  <div class="modal-bg" id="custPhoneRecoveryModal" data-no-dirty style="z-index:9999;">
     <div class="cust-loyalty-modal">
       <h2 style="color:#fff;font-size:18px;margin-bottom:10px;"><svg class="icon"><use href="#i-user"></use></svg> Bonus hesabınızı tapaq</h2>
       <p style="color:rgba(255,255,255,.7);font-size:13.5px;margin-bottom:16px;">Bonus hesabınız varsa telefon nömrənizi daxil edin.</p>
@@ -1299,7 +1312,7 @@
 </div>
 
 <!-- ═══ ÖDƏNİŞ MODALI ═══ -->
-<div class="modal-bg" id="paymentModal">
+<div class="modal-bg" id="paymentModal" data-no-dirty>
   <div class="modal" style="max-width:440px;">
     <h2><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Qəbulu</h2>
     <div style="background:var(--card2);border-radius:10px;padding:12px;margin-bottom:16px;">
@@ -1338,9 +1351,10 @@
     <div id="paymentCashSection" style="display:none;">
       <div class="form-group">
         <label>Müştəri verdi (₼)</label>
-        <input type="number" id="paymentCashGiven" min="0" step="0.01" placeholder="0.00"
+        <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" id="paymentCashGiven" placeholder="0.00"
                 style="font-size:20px;text-align:center;">
       </div>
+      <div class="cash-quick" id="paymentCashQuick"></div>
       <div id="paymentChangeRow" style="display:none;background:var(--card2);border-radius:10px;padding:12px;text-align:center;">
         <div style="font-size:13px;color:var(--text2);" id="changeLabel">Qaytarılacaq:</div>
         <div id="paymentChange" style="font-size:28px;font-weight:800;color:var(--blue);"></div>
@@ -1351,7 +1365,7 @@
       <div id="splitInputsWrap"></div>
       <div id="splitStatus" style="font-size:13px;text-align:center;min-height:20px;margin-top:6px;"></div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:16px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:16px;">
       <button class="btn btn-ghost" style="flex:1;padding:14px;" data-cancel>Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:14px;font-size:15px;" data-confirm-payment><svg class="icon"><use href="#i-check"></use></svg> Təsdiqlə</button>
     </div>
@@ -1359,7 +1373,7 @@
 </div>
 
 <!-- ═══ ENDİRİM MODALI ═══ -->
-<div class="modal-bg" id="discountModal">
+<div class="modal-bg" id="discountModal" data-no-dirty>
   <div class="modal" style="max-width:360px;text-align:center;">
     <h2><svg class="icon"><use href="#i-tag"></use></svg> Endirim Ver</h2>
     <p id="discountTableInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
@@ -1375,7 +1389,7 @@
              style="font-size:24px;text-align:center;" >
     </div>
     <div id="discountPreview" style="background:var(--card2);border-radius:10px;padding:12px;min-height:44px;margin-bottom:4px;"></div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" data-apply-discount><svg class="icon"><use href="#i-check"></use></svg> Tətbiq Et</button>
     </div>
@@ -1383,7 +1397,7 @@
 </div>
 
 <!-- ═══ MASA KÖÇÜRMƏ MODALI ═══ -->
-<div class="modal-bg" id="transferModal">
+<div class="modal-bg" id="transferModal" data-no-dirty>
   <div class="modal" style="max-width:360px;text-align:center;">
     <h2><svg class="icon"><use href="#i-refresh"></use></svg> Masa Köçürmə</h2>
     <p id="transferFromInfo" style="color:var(--text2);font-size:13px;margin-bottom:16px;"></p>
@@ -1391,7 +1405,7 @@
       <label>Hara köçürülsün?</label>
       <select id="transferToTable" style="font-size:15px;"></select>
     </div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-table-transfer><svg class="icon"><use href="#i-refresh"></use></svg> Köçür</button>
     </div>
@@ -1399,13 +1413,13 @@
 </div>
 
 <!-- ═══ MAL KÖÇÜRMƏ MODALI ═══ -->
-<div class="modal-bg" id="itemTransferModal">
+<div class="modal-bg" id="itemTransferModal" data-no-dirty>
   <div class="modal" style="max-width:400px;">
     <div id="itemTransferStage1">
       <h2><svg class="icon"><use href="#i-shuffle"></use></svg> Mal Köçürmə</h2>
       <p id="itemTransferInfo" style="color:var(--text2);font-size:13px;margin-bottom:6px;"></p>
       <p id="itemTransferBatchInfo" style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:18px;line-height:1.5;"></p>
-      <div style="display:flex;gap:10px;">
+      <div class="modal-actions" style="display:flex;gap:10px;">
         <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
         <button class="btn btn-blue" style="flex:1;padding:13px;" data-pick-transfer-table><svg class="icon"><use href="#i-chair"></use></svg> Masa Seç</button>
       </div>
@@ -1418,7 +1432,7 @@
     <div id="itemTransferStage3" style="display:none;text-align:center;">
       <h2><svg class="icon"><use href="#i-check"></use></svg> Təsdiq</h2>
       <p id="itemTransferConfirmText" style="font-size:14px;color:var(--text);line-height:1.6;margin:18px 0;"></p>
-      <div style="display:flex;gap:10px;">
+      <div class="modal-actions" style="display:flex;gap:10px;">
         <button class="btn btn-ghost" style="flex:1;padding:13px;" data-back-transfer-stage2>Ləğv</button>
         <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-item-transfer><svg class="icon"><use href="#i-shuffle"></use></svg> Köçür</button>
       </div>
@@ -1427,7 +1441,7 @@
 
 </div>
 <!-- ═══ NİSYƏ (MÜŞTƏRİYƏ KÖÇÜRMƏ) MODALI ═══ -->
-<div class="modal-bg" id="customerChargeModal">
+<div class="modal-bg" id="customerChargeModal" data-no-dirty>
   <div class="modal" style="max-width:380px;text-align:center;">
     <div id="customerChargeStage1">
       <h2><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Köçür</h2>
@@ -1437,7 +1451,7 @@
         <label>Müştəri</label>
         <select id="customerChargeSelect" style="font-size:14px;"></select>
       </div>
-      <div style="display:flex;gap:10px;margin-top:12px;">
+      <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
         <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
         <button class="btn btn-blue" style="flex:1;padding:13px;" data-pick-charge-customer><svg class="icon"><use href="#i-check"></use></svg> Davam Et</button>
       </div>
@@ -1445,7 +1459,7 @@
     <div id="customerChargeStage2" style="display:none;">
       <h2><svg class="icon"><use href="#i-check"></use></svg> Təsdiq</h2>
       <p id="customerChargeConfirmText" style="font-size:14px;color:var(--text);line-height:1.6;margin:18px 0;"></p>
-      <div style="display:flex;gap:10px;">
+      <div class="modal-actions" style="display:flex;gap:10px;">
         <button class="btn btn-ghost" style="flex:1;padding:13px;" data-back-charge-stage1>Ləğv</button>
         <button class="btn btn-blue" style="flex:1;padding:13px;" data-confirm-customer-charge><svg class="icon"><use href="#i-user"></use></svg> Köçür</button>
       </div>
@@ -1454,18 +1468,18 @@
 </div>
 
 <!-- ═══ İKRAM MODALI ═══ -->
-<div class="modal-bg" id="complimentModal">
+<div class="modal-bg" id="complimentModal" data-no-dirty>
   <div class="modal" style="max-width:360px;text-align:center;">
     <h2><svg class="icon"><use href="#i-gift"></use></svg> İkram Et</h2>
     <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Seçilən mal(lar) pulsuz olacaq</p>
     <p id="complimentBatchInfo" style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:14px;"></p>
-    <div style="display:flex;gap:10px;margin-top:12px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" data-confirm-compliment><svg class="icon"><use href="#i-gift"></use></svg> İkram Et</button>
     </div>
   </div>
 </div>
-<div class="modal-bg" id="cancelReasonModal">
+<div class="modal-bg" id="cancelReasonModal" data-no-dirty>
   <div class="modal" style="max-width:360px;text-align:center;">
     <h2><svg class="icon"><use href="#i-trash"></use></svg> Sifarişdən Sil</h2>
     <p id="cancelReasonItemName" style="color:var(--text2);font-size:14px;margin-bottom:14px;font-weight:600;"></p>
@@ -1482,25 +1496,25 @@
         <option value="Digər">Digər</option>
       </select>
     </div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-cancel-reason><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
     </div>
   </div>
 </div>
-<div class="modal-bg" id="tableAuditModal">
+<div class="modal-bg" id="tableAuditModal" data-no-dirty>
   <div class="modal" style="max-width:420px;">
     <h2 id="tableAuditTitle"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</h2>
     <div id="tableAuditList" class="audit-timeline" style="max-height:50vh;overflow-y:auto;margin-top:12px;"></div>
     <button class="btn btn-ghost yz-icon-only" style="width:100%;padding:12px;margin-top:16px;" data-close-audit aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
   </div>
 </div>
-<div class="modal-bg" id="customerHistoryModal">
+<div class="modal-bg" id="customerHistoryModal" data-no-dirty>
   <div class="modal" style="max-width:440px;">
     <h2 id="customerHistoryTitle"><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</h2>
     <p id="customerHistoryBalance" style="color:var(--text2);font-size:13px;font-weight:600;margin-bottom:8px;"></p>
     <div id="customerHistoryList" class="audit-timeline" style="max-height:50vh;overflow-y:auto;margin-top:12px;"></div>
-    <div style="display:flex;gap:10px;margin-top:16px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:16px;">
       <button class="btn btn-ghost yz-icon-only" style="flex:1;padding:12px;" onclick="closeCustomerHistoryModal()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
       <button class="btn btn-green" id="customerHistoryPayBtn" style="flex:1;padding:12px;" onclick="openCustomerPaymentModal()"><svg class="icon"><use href="#i-cash"></use></svg> Ödəniş Al</button>
     </div>
@@ -1523,7 +1537,7 @@
       <select id="customerPaymentType"><option value="cash">Nağd</option><option value="pos">POS</option></select>
     </div>
     <p id="customerPaymentError" style="color:#e74c3c;font-size:12.5px;min-height:16px;margin:4px 0;"></p>
-    <div style="display:flex;gap:10px;margin-top:8px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" onclick="closeCustomerPaymentModal()">Ləğv</button>
       <button class="btn btn-green" style="flex:1;padding:13px;" onclick="submitCustomerPayment()"><svg class="icon"><use href="#i-check"></use></svg> Təsdiqlə</button>
     </div>
@@ -1644,24 +1658,24 @@
   </div>
 </div>
 
-<div class="modal-bg" id="confirmActionModal">
+<div class="modal-bg" id="confirmActionModal" data-no-dirty>
   <div class="modal" style="max-width:380px;text-align:center;">
     <div id="confirmActionIcon" style="width:52px;height:52px;border-radius:50%;background:rgba(163,42,36,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
       <svg class="icon" style="width:26px;height:26px;color:var(--red);"><use href="#i-warning"></use></svg>
     </div>
     <h2 id="confirmActionTitle" style="margin-bottom:8px;">Əminsiniz?</h2>
     <p id="confirmActionMessage" style="color:var(--text2);font-size:14px;line-height:1.5;margin-bottom:20px;"></p>
-    <div style="display:flex;gap:10px;">
+    <div class="modal-actions" style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-confirm-action-cancel>Ləğv</button>
       <button class="btn btn-red" id="confirmActionOkBtn" style="flex:1;padding:13px;" data-confirm-action-ok>Təsdiqlə</button>
     </div>
   </div>
 </div>
-<div class="modal-bg" id="reportModal">
+<div class="modal-bg" id="reportModal" data-no-dirty>
   <div class="modal" style="max-width:500px;">
     <h2><svg class="icon"><use href="#i-chart"></use></svg> Gün Sonu Hesabat</h2>
     <div id="reportContent"></div>
-    <div style="display:flex;gap:10px;margin-top:16px;">
+    <div class="modal-actions" style="display:flex;gap:10px;margin-top:16px;">
       <button class="btn btn-ghost yz-icon-only" style="flex:1;padding:13px;" onclick="closeReportModal()" aria-label="Bağla" title="Bağla"><svg class="icon"><use href="#i-close"></use></svg></button>
       <button class="btn btn-blue" style="flex:1;padding:13px;" onclick="printReport()"><svg class="icon"><use href="#i-printer"></use></svg> Çap Et</button>
     </div>
@@ -1686,5 +1700,6 @@
 <script type="module" src="js/yuza-birthday.js"></script>
 <script type="module" src="js/yuza-devices.js"></script>
 <script type="module" src="js/yuza-login-att.js"></script>
+<script type="module" src="js/yuza-ui.js"></script>
 </body>
 </html>
