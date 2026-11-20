@@ -151,10 +151,8 @@ body.dark-mode .cash-quick__b--exact{color:var(--gold);}
 .yz-toast__x{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:32px; height:32px;
   border:0; border-radius:var(--yz-r-sm); background:var(--card2); color:var(--text); cursor:pointer;}
 #customerToast{white-space:normal; max-width:min(92vw,480px); width:max-content; box-sizing:border-box; text-align:center;}
-@media (max-width:600px){
-  /* Telefonda bildiriş aşağıda — barmağın yanında, başlığı örtmür */
-  #toast{top:auto; bottom:calc(84px + env(safe-area-inset-bottom));}
-}
+/* Telefonda bildiriş yuxarıda qalır — aşağıdakı sabit düymələri örtməsin */
+@media (max-width:600px){ #toast{top:calc(10px + env(safe-area-inset-top));} }
 
 /* ── 7) FOKUS ────────────────────────────────────────────────── */
 :focus:not(:focus-visible){outline:none;}
@@ -355,3 +353,59 @@ button,.btn,[role="button"],a,input,select,textarea,label,.product-card,.floor-c
   .ticket-line .qty-stepper__input{width:34px; height:40px;}
   .ticket-line .ticket-line__remove,.ticket-line .ticket-line__note-btn{width:36px; height:40px; min-width:36px;}
 }
+
+/* ── 19) SİFARİŞ EKRANI — sabit düymələr (20.11.2026, Amigo-nun sxemi) ──────
+   Məhsullar və səbət ayrı-ayrı sürüşür; alt düymələr sabit qalır.
+   Əsas düymə: Sifarişi təsdiqlə → Ödəniş al / Hesab çap et → Masanı bağla. Yanında 🗑 (seçilmişləri sil). */
+#orderScreen .ticket-total-row{margin-bottom:8px;}
+#orderScreen .ticket-total-row__value{font-size:18px;}
+.ord-main{display:flex; gap:8px; margin-bottom:8px;}
+.ord-main__btn{flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  min-height:var(--yz-h-lg); padding:0 16px; border-radius:var(--yz-r-md); cursor:pointer;
+  background:var(--yz-gold-grad); color:var(--yz-on-gold); border:1px solid rgba(138,90,11,.55);
+  box-shadow:0 2px 10px rgba(201,141,46,.28), inset 0 1px 0 rgba(255,255,255,.35); font-weight:700; font-size:15px; text-align:start;}
+.ord-main__lbl{display:inline-flex; align-items:center; gap:8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ord-main__lbl .icon{width:18px; height:18px; flex-shrink:0;}
+.ord-main__amt{font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap;}
+.ord-main__btn.is-pay{background:linear-gradient(135deg,#a8741f,#7a5110); color:#fff; border-color:rgba(232,176,75,.45);}
+.ord-main__btn.is-close{background:var(--card); color:var(--red); border:2px solid var(--red); box-shadow:none;}
+.ord-main__btn.is-done,.ord-main__btn:disabled{opacity:.7; cursor:default; box-shadow:none;}
+.ord-main__btn.is-busy:disabled{opacity:.9; cursor:progress;}
+.ord-main__btn:not(:disabled):active{transform:scale(.98);}
+.ord-trash{position:relative; flex-shrink:0; width:var(--yz-h-lg); min-height:var(--yz-h-lg); display:inline-flex; align-items:center; justify-content:center;
+  border-radius:var(--yz-r-md); border:1px solid var(--border); background:var(--card2); color:var(--text2); cursor:pointer;}
+.ord-trash .icon{width:22px; height:22px;}
+.ord-trash.has-sel{border-color:var(--red); color:var(--red); background:rgba(179,38,30,.08);}
+.ord-trash__n{position:absolute; top:-7px; inset-inline-end:-7px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box;
+  border-radius:var(--yz-r-pill); background:var(--red); color:#fff; font-size:11px; line-height:20px; text-align:center;}
+.ord-sub{display:flex; gap:8px;}
+.ord-sub .btn{flex:1 1 0; min-width:0; min-height:var(--yz-touch); padding:0 8px; font-size:13px;}
+.ord-sub .btn .icon{width:16px; height:16px;}
+#ordMoreBtn[aria-expanded="true"]{border-color:var(--gold); color:var(--gold-dark);}
+body.dark-mode #ordMoreBtn[aria-expanded="true"]{color:var(--gold);}
+.ord-more{margin:8px 0 0;}
+
+/* Sürüşən hissələr: məhsullar və səbət; düymələr sabit */
+#orderScreen .ticket-panel{display:flex; flex-direction:column; min-height:0;}
+#orderScreen .ticket-body{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+#orderScreen .ticket-footer{flex-shrink:0;}
+@media (min-width:900px){
+  #orderScreen .ticket-panel{overflow:hidden;}
+}
+@media (max-width:899px){
+  #orderScreen .order-content-wrap{overflow:hidden; display:flex; flex-direction:column;}
+  #orderScreen .order-items-grid{flex:1 1 52%; min-height:120px; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+  #orderScreen .ticket-panel{flex:1 1 48%; max-height:none;}
+  #orderScreen .ticket-header{padding:8px 14px 6px;}
+  #orderScreen .ticket-footer{padding:10px 12px calc(10px + env(safe-area-inset-bottom));}
+}
+
+/* Toplu silmə pəncərəsi */
+.bc-list{display:flex; flex-direction:column; gap:8px; max-height:40vh; overflow-y:auto;}
+.bc-row{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--yz-r-md); background:var(--card2);}
+.bc-row__name{flex:1; min-width:0; display:flex; flex-direction:column;}
+.bc-row__name b{font-size:14px; overflow-wrap:anywhere;}
+.bc-row__name small{font-size:12px; color:var(--text2);}
+.bc-row__amt{font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; min-width:64px; text-align:end;}
+.bc-row .qty-stepper__val{min-width:28px; text-align:center; font-weight:700;}
+.bc-sum{margin:6px 0 0; font-size:14px; font-weight:700; color:var(--red);}
