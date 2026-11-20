@@ -1058,22 +1058,35 @@
           <span id="orderDraftTotal" class="ticket-total-row__value">0.00 ₼</span>
         </div>
         <textarea id="orderGlobalNote" class="ticket-note" rows="1" hidden placeholder="Mətbəxə qeyd (məs: saat 17:00-da hazır olsun)" aria-label="Mətbəxə qeyd"></textarea>
-        <button class="btn btn-green" style="width:100%;padding:13px;font-size:14px;margin-bottom:8px;" data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə Göndər</button>
-
-        <button id="notesPaymentBtn" class="pay-trigger" style="display:none;margin-bottom:10px;" data-open-payment-hub>
-          <span class="pay-trigger__label"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş Al</span>
+        <!-- Köhnə düymələr gizlidir: əsas düymə onların işini görür (göndər / ödəniş) -->
+        <button class="btn btn-green ord-legacy" hidden data-send-order><svg class="icon"><use href="#i-check"></use></svg> Mətbəxə göndər</button>
+        <button id="notesPaymentBtn" class="pay-trigger ord-legacy" hidden data-open-payment-hub>
+          <span class="pay-trigger__label"><svg class="icon"><use href="#i-money"></use></svg> Ödəniş al</span>
           <span style="text-align:right;">
             <span id="notesPaymentAmount" class="pay-trigger__amount">0.00 ₼</span>
             <span id="notesPaymentSub" class="pay-trigger__sub" style="display:none;"></span>
           </span>
         </button>
 
-        <div class="ticket-action-grid">
-          <button id="notesDiscountBtn" class="btn" style="display:none;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
-          <button id="notesCustomerChargeBtn" class="btn" style="display:none;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə Yaz</button>
-          <button class="btn" style="border:1px solid var(--border);color:var(--text2);" data-open-audit><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
+        <!-- ƏSAS DÜYMƏ: Sifarişi təsdiqlə → Ödəniş al (və ya Hesab çap et) → Masanı bağla · yanında seçilmişləri silmək -->
+        <div class="ord-main">
+          <button type="button" class="ord-main__btn" id="ordMainBtn" disabled>
+            <span class="ord-main__lbl"><svg class="icon"><use href="#i-check"></use></svg> <span data-main-label>Sifarişi təsdiqlə</span></span>
+            <span class="ord-main__amt" data-main-amount>0.00 ₼</span>
+          </button>
+          <button type="button" class="ord-trash" id="ordTrashBtn" aria-label="Seçilmiş malları sil" title="Seçilmiş malları sil">
+            <svg class="icon"><use href="#i-trash"></use></svg><b class="ord-trash__n" hidden>0</b>
+          </button>
+        </div>
+        <div class="ord-sub">
           <button class="btn btn-ghost" data-print-bill><svg class="icon"><use href="#i-printer"></use></svg> Hesab</button>
-          <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Masa köçür</button>
+          <button id="notesTransferBtn" class="btn btn-ghost" style="display:none;" data-open-transfer-hub><svg class="icon"><use href="#i-refresh"></use></svg> Köçür</button>
+          <button type="button" class="btn btn-ghost" id="ordMoreBtn" aria-expanded="false" aria-controls="ordMoreMenu"><svg class="icon"><use href="#i-menu"></use></svg> Digər</button>
+        </div>
+        <div class="ticket-action-grid ord-more" id="ordMoreMenu" hidden>
+          <button id="notesDiscountBtn" class="btn" style="display:none;border:1px solid var(--orange);color:var(--orange-dark);" data-open-discount-hub><svg class="icon"><use href="#i-tag"></use></svg> Endirim</button>
+          <button id="notesCustomerChargeBtn" class="btn" style="display:none;border:1px solid var(--blue);color:var(--blue);" data-open-customer-charge-hub><svg class="icon"><use href="#i-user"></use></svg> Nisyəyə yaz</button>
+          <button class="btn" style="border:1px solid var(--border);color:var(--text2);" data-open-audit><svg class="icon"><use href="#i-clipboard"></use></svg> Tarixçə</button>
           <button id="notesCloseTableBtn" class="btn btn-ghost" style="display:none;color:var(--red);" data-close-table-hub><svg class="icon"><use href="#i-lock"></use></svg> Bağla</button>
           <button type="button" class="btn btn-ghost" data-toggle-table-note aria-expanded="false"><svg class="icon"><use href="#i-note"></use></svg> Qeyd</button>
         </div>
@@ -1489,6 +1502,27 @@
     <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-cancel-reason><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="batchCancelModal" data-no-dirty>
+  <div class="modal" style="max-width:420px;">
+    <h2><svg class="icon"><use href="#i-trash"></use></svg> Seçilmişləri sil</h2>
+    <p style="color:var(--text2);font-size:13px;margin:-8px 0 12px;">Hansı maldan neçə ədəd silinəcəyini yoxlayın.</p>
+    <div id="batchCancelList" class="bc-list"></div>
+    <div class="form-group" style="margin-top:12px;">
+      <label for="batchCancelReason">Səbəb (hamısı üçün)</label>
+      <select id="batchCancelReason">
+        <option value="Səhv sifariş">Səhv sifariş</option>
+        <option value="Zayolma">Zayolma</option>
+        <option value="Müştəri fikrini dəyişdi">Müştəri fikrini dəyişdi</option>
+        <option value="Digər">Digər</option>
+      </select>
+    </div>
+    <p id="batchCancelSum" class="bc-sum"></p>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn btn-ghost" style="flex:1;" data-cancel>Ləğv et</button>
+      <button class="btn btn-red" style="flex:1;" data-confirm-batch-cancel><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
     </div>
   </div>
 </div>
