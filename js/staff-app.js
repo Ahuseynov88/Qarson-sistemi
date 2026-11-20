@@ -102,6 +102,19 @@ export class StaffApp {
     $('orderScreen').querySelector('[data-close-table-hub]')?.addEventListener('click', () => this.requestCloseTable());
     $('orderScreen').querySelector('[data-print-bill]')?.addEventListener('click', () => this.printBill(state.noteTableId));
     $('orderScreen').querySelector('[data-open-audit]')?.addEventListener('click', () => this.audit.open(state.noteTableId));
+    // ── Əsas düymə, zibil qabı, "Digər" menyusu ──
+    $('ordMainBtn')?.addEventListener('click', () => this._onMainBtn());
+    $('ordTrashBtn')?.addEventListener('click', () => this.confirmedOrder.openBatchCancel());
+    $('ordMoreBtn')?.addEventListener('click', () => {
+      const m = $('ordMoreMenu'); m.hidden = !m.hidden;
+      $('ordMoreBtn').setAttribute('aria-expanded', String(!m.hidden));
+    });
+    $('ordMoreMenu')?.addEventListener('click', (e) => { if (e.target.closest('button') && !e.target.closest('[data-toggle-table-note]')) { $('ordMoreMenu').hidden = true; $('ordMoreBtn').setAttribute('aria-expanded', 'false'); } });
+    $('batchCancelModal')?.querySelector('[data-cancel]')?.addEventListener('click', () => this.confirmedOrder.closeBatchCancel());
+    $('batchCancelModal')?.querySelector('[data-confirm-batch-cancel]')?.addEventListener('click', () => this.confirmedOrder.confirmBatchCancel());
+    document.addEventListener('order:draft-changed', () => queueMicrotask(() => this._updateMainBtn(state.noteTableId)));
+    { const co = this.confirmedOrder, orig = co.renderSummary.bind(co);
+      co.renderSummary = (id) => { const r = orig(id); this._updateMainBtn(id); return r; }; }
     $('orderScreen').querySelector('[data-close-order]')?.addEventListener('click', () => this.closeTableDetail());
     $('orderScreen').querySelector('[data-send-order]')?.addEventListener('click', () => this.orderCart.send());
     $('noteText').addEventListener('change', () => this.saveNote());
@@ -154,7 +167,12 @@ export class StaffApp {
     $('paymentCashGiven').addEventListener('input', () => this.payment.calcChange());
     $('paymentModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.payment.close());
     $('paymentModal').querySelector('[data-confirm-payment]')?.addEventListener('click', () => {
-      this.payment.confirm((fullyPaid) => { if (fullyPaid) this.closeTableDetail(); });
+      // Tam ödənəndə: masanı bağlamaq icazəsi varsa ekranda qalır (əsas düymə "Masanı bağla" olur), yoxdursa masa lövhəsinə qayıdır
+      this.payment.confirm((fullyPaid) => {
+        if (!fullyPaid) return;
+        if (hasPermission('table.close') && state.noteTableId) this._updateMainBtn(state.noteTableId);
+        else this.closeTableDetail();
+      });
     });
   }
 
@@ -173,7 +191,56 @@ export class StaffApp {
     this.tableBoard.stopTimers();
   }
 
+  /* Əsas düymə vəziyyəti:
+     1) seçilmiş (göndərilməmiş) mal var  → "Sifarişi təsdiqlə" + seçilmiş malların məbləği
+     2) qalıq var: ödəniş icazəsi varsa  → "Ödəniş al" + qalıq; yoxdursa → "Hesab çap et" + cəmi
+     3) tam ödənilib: bağlama icazəsi varsa → "Masanı bağla"; yoxdursa → "Hesab ödənilib" (kilidli) */
+  _updateMainBtn(tableId) {
+    const btn = $('ordMainBtn');
+    if (!btn || !tableId || tableId !== state.noteTableId) return;
+    const cart = this.orderCart;
+    const order = state.tableOrders[tableId];
+    const draftN = Object.keys(state._orderDraft || {}).length;
+    const total = order?.total || 0;
+    const remaining = total ? ((order.remainingAmount !== undefined && order.remainingAmount !== null) ? order.remainingAmount : total) : 0;
+    const canPay = hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit');
+    const m = (n) => (Number(n) || 0).toFixed(2) + ' ₼';
+    let act, label, amount, icon, cls = '';
+    if (cart._pending?.[tableId]) { act = ''; label = 'Göndərilir…'; amount = ''; icon = 'refresh'; cls = 'is-busy'; }
+    else if (draftN) { act = 'send'; label = 'Sifarişi təsdiqlə'; amount = m(cart.draftAmount); icon = 'check'; }
+    else if (total > 0 && remaining > 0.01) {
+      if (canPay) { act = 'pay'; label = 'Ödəniş al'; amount = m(remaining); icon = 'money'; cls = 'is-pay'; }
+      else { act = 'print'; label = 'Hesab çap et'; amount = m(total); icon = 'printer'; cls = 'is-pay'; }
+    } else if (total > 0) {
+      if (hasPermission('table.close')) { act = 'close'; label = 'Masanı bağla'; amount = ''; icon = 'lock'; cls = 'is-close'; }
+      else { act = ''; label = 'Hesab ödənilib'; amount = ''; icon = 'check'; cls = 'is-done'; }
+    } else { act = ''; label = 'Sifarişi təsdiqlə'; amount = m(0); icon = 'check'; }
+    btn.dataset.action = act;
+    btn.disabled = !act;
+    btn.className = 'ord-main__btn ' + cls;
+    btn.querySelector('.ord-main__lbl').innerHTML = (cls === 'is-busy' ? '<span class="yz-spin" aria-hidden="true"></span>' : `<svg class="icon"><use href="#i-${icon}"></use></svg>`) + ` <span data-main-label>${label}</span>`;
+    const amt = btn.querySelector('[data-main-amount]'); amt.textContent = amount; amt.hidden = !amount;
+    // Zibil qabı: işarələnmiş malların sayı
+    const sel = Object.entries(state._batchSelection || {}).filter(([k, q]) => q > 0 && order?.items?.[k]).length;
+    const tr = $('ordTrashBtn');
+    if (tr) {
+      tr.hidden = !hasPermission('order.cancel_item');
+      tr.classList.toggle('has-sel', sel > 0);
+      const n = tr.querySelector('.ord-trash__n'); n.textContent = sel; n.hidden = !sel;
+    }
+  }
+
+  _onMainBtn() {
+    const act = $('ordMainBtn')?.dataset.action, id = state.noteTableId;
+    if (!act || !id) return;
+    if (act === 'send') this.orderCart.send();
+    else if (act === 'pay') this.payment.open(id);
+    else if (act === 'print') this.printBill(id);
+    else if (act === 'close') this.requestCloseTable();
+  }
+
   _updatePaymentTrigger(tableId) {
+    this._updateMainBtn(tableId);
     const order = state.tableOrders[tableId];
     const canPay = hasPermission('bill.payment_cash') || hasPermission('bill.payment_pos') || hasPermission('bill.credit');
     const payBtn = $('notesPaymentBtn');

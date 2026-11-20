@@ -31,7 +31,9 @@ function ensureBtn() {
     b.id = 'notesReassignBtn'; b.type = 'button'; b.className = 'btn btn-ghost'; b.style.display = 'none';
     b.innerHTML = `${ICON} Ofisiantı dəyiş`;
     b.addEventListener('click', () => openReassign(state.noteTableId));
-    ref.insertAdjacentElement('afterend', b);
+    // "Digər" menyusu varsa oraya (sifariş ekranının sabit düymələri: Hesab · Köçür · Digər)
+    const more = $('ordMoreMenu');
+    if (more) more.appendChild(b); else ref.insertAdjacentElement('afterend', b);
   }
   return b;
 }

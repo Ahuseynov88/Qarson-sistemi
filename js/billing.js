@@ -108,7 +108,7 @@ export class ConfirmedOrder {
       ? order.remainingAmount <= 0.01
       : false;
     const canEdit  = !isPaid && hasPermission('order.cancel_item');
-    const canBatch = !isPaid && (hasPermission('order.batch_ops') || hasPermission('order.discount') || hasPermission('order.gift') || hasPermission('table.transfer') || hasPermission('bill.credit_batch'));
+    const canBatch = !isPaid && (hasPermission('order.batch_ops') || hasPermission('order.discount') || hasPermission('order.gift') || hasPermission('table.transfer') || hasPermission('bill.credit_batch') || hasPermission('order.cancel_item'));
     const sel = state._batchSelection || {};
     const selectedEntries = Object.entries(sel).filter(([k,v]) => v > 0 && order.items[k]);
     const selectedCount = selectedEntries.length;
@@ -226,12 +226,77 @@ export class ConfirmedOrder {
     this.cancelItem(tableId, itemKey, reason, cancelQty);
   }
 
-  cancelItem(tableId, itemKey, reason, cancelQty) {
-    if (!hasPermission('order.cancel_item')) return;
+  /* ── Toplu silmə: seçilmiş malların hamısı bir pəncərədə, bir səbəblə ──
+     Hər mal mövcud tək silmə (cancelItem) ilə ardıcıl silinir: jurnal, stok və mətbəx kartı eyni qayda ilə yenilənir. */
+  openBatchCancel() {
+    if (!hasPermission('order.cancel_item')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Mal silmək icazəniz yoxdur'); return; }
+    const tableId = state.noteTableId;
     const order = state.tableOrders[tableId];
-    if (!order?.items) return;
+    const sel = Object.entries(state._batchSelection || {}).filter(([k, q]) => q > 0 && order?.items?.[k]);
+    if (!sel.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Silmək üçün mətbəxə göndərilmiş malları işarələyin'); return; }
+    const isPaid = order.remainingAmount !== undefined ? order.remainingAmount <= 0.01 : false;
+    if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
+    this._bc = { tableId, rows: sel.map(([k, q]) => ({ key: k, qty: Math.min(q, order.items[k].qty), max: order.items[k].qty })) };
+    document.getElementById('batchCancelReason').value = 'Səhv sifariş';
+    this._renderBatchCancel();
+    document.getElementById('batchCancelModal').classList.add('open');
+  }
+
+  _renderBatchCancel() {
+    const { tableId, rows } = this._bc;
+    const order = state.tableOrders[tableId];
+    const list = document.getElementById('batchCancelList');
+    let sum = 0;
+    list.innerHTML = rows.map((r, i) => {
+      const it = order.items[r.key];
+      const unit = (it.price || 0) * (1 - ((it.discountPercent || 0) / 100));
+      sum += unit * r.qty;
+      return `<div class="bc-row">
+        <div class="bc-row__name"><b>${esc(it.name)}</b><small>Sifarişdə: ${r.max} ədəd</small></div>
+        <div class="qty-stepper"><button type="button" data-bc="${i}" data-d="-1" aria-label="Azalt">−</button><span class="qty-stepper__val">${r.qty}</span><button type="button" data-bc="${i}" data-d="1" aria-label="Artır">+</button></div>
+        <span class="bc-row__amt">${(unit * r.qty).toFixed(2)} ₼</span>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-bc]').forEach(b => b.addEventListener('click', () => {
+      const r = rows[+b.dataset.bc];
+      r.qty = Math.min(r.max, Math.max(1, r.qty + Number(b.dataset.d)));
+      this._renderBatchCancel();
+    }));
+    const n = rows.reduce((s, r) => s + r.qty, 0);
+    document.getElementById('batchCancelSum').textContent = `Cəmi silinəcək: ${n} ədəd · ${sum.toFixed(2)} ₼`;
+  }
+
+  closeBatchCancel() {
+    document.getElementById('batchCancelModal').classList.remove('open');
+    this._bc = null;
+  }
+
+  async confirmBatchCancel() {
+    if (!this._bc || this._bcBusy) return;
+    const { tableId, rows } = this._bc;
+    const reason = document.getElementById('batchCancelReason').value;
+    const btn = document.querySelector('#batchCancelModal [data-confirm-batch-cancel]');
+    this._bcBusy = true; if (btn) btn.disabled = true;
+    let ok = 0;
+    for (const r of rows) {
+      if (await this.cancelItem(tableId, r.key, reason, r.qty)) ok++;
+      await new Promise(res => setTimeout(res, 120));     // mətbəx kartı növbəti silmədən əvvəl yenilənsin
+    }
+    this._bcBusy = false; if (btn) btn.disabled = false;
+    this.closeBatchCancel();
+    this.clearBatchSelection();
+    this.renderSummary(tableId);
+    if (ok === rows.length) showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${ok} mal sifarişdən silindi`);
+    else showToast(`<svg class="icon"><use href="#i-error"></use></svg> ${rows.length - ok} mal silinmədi — yenidən yoxlayın`);
+  }
+
+  cancelItem(tableId, itemKey, reason, cancelQty) {
+    let done; const result = new Promise(r => { done = r; });
+    if (!hasPermission('order.cancel_item')) { done(false); return result; }
+    const order = state.tableOrders[tableId];
+    if (!order?.items) { done(false); return result; }
     const it = order.items[itemKey];
-    if (!it) return;
+    if (!it) { done(false); return result; }
     const fullQty = it.qty;
     const qtyToCancel = Math.min(Math.max(cancelQty || fullQty, 1), fullQty);
     const isPartial = qtyToCancel < fullQty;
@@ -257,8 +322,8 @@ export class ConfirmedOrder {
       const paidAmount = current.paidAmount || 0;
       return { ...current, items, total, serviceChargeAmount, serviceChargePercent, remainingAmount: money2(Math.max(0, total - paidAmount)) };
     }, (error, committed) => {
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
-      if (!committed) return;
+      if (error) { done(false); showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
+      if (!committed) { done(false); return; }
       updateStock(cancelledMenuItemId, qtyToCancel, state.menuItems);
       const t = state.tables.find(x => x.id === tableId);
       const qtyLabel = isPartial ? `${qtyToCancel} ədəd` : `bütün (${fullQty} ədəd)`;
@@ -307,9 +372,9 @@ export class ConfirmedOrder {
                    }
         }
       }
-
+      done(true);
     });
-
+    return result;
   }
 
   // ── Endirim (seçilmişlərə və ya bütün hesaba) ──

@@ -197,6 +197,7 @@ export class OrderCart {
     const gn = document.getElementById('orderGlobalNote');
     if (gn) gn.hidden = !lines.length && !gn.value.trim();
     if (!lines.length) {
+      this.draftAmount = 0;
       this.els.draftList.innerHTML = this._pendingHtml();
       const tot = ((state.tableOrders[state.orderTableId]?.total)||0).toFixed(2) + ' ₼';
       this.els.draftTotal.textContent = tot;
@@ -250,7 +251,8 @@ export class OrderCart {
     </div>${rows}`;
     const sentTotal = (state.tableOrders[state.orderTableId]?.total) || 0;
     const scPct = state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0;
-    const totText = (sentTotal + draftTotal * (1 + scPct/100) + draftVat).toFixed(2) + ' ₼';
+    this.draftAmount = Math.round((draftTotal * (1 + scPct/100) + draftVat) * 100) / 100;   // əsas düymədə göstərilir
+    const totText = (sentTotal + this.draftAmount).toFixed(2) + ' ₼';
     this.els.draftTotal.textContent = totText;
     this._updateServiceChargeRow(scPct);
   }
@@ -428,8 +430,8 @@ export class OrderCart {
         }
       });
 
-      if (state.orderTableId === tableId) this.close();
-      else this.renderDraftList();
+      // Ekranda qalır: əsas düymə "Ödəniş al" vəziyyətinə keçir
+      this.renderDraftList();
     });
   }
 }
