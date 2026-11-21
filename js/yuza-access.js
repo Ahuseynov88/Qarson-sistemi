@@ -71,6 +71,7 @@ const ACCESS = {
   'inv-count': any('stock.count.*'),
   'inv-stockdocs': any('stock.writeoff.*', 'stock.transfer.*'),
   'inv-production': any('stock.production.*'),
+  'inv-portions': any('stock.view', 'stock.production.*'),   // C21
   banquetDashboard: any('panel.banquet'),
   banquetCalendar: any('panel.banquet'),
   banquetHalls: any('panel.banquet'),

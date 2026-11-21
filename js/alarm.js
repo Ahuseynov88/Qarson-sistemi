@@ -4,7 +4,7 @@
 ═══════════════════════════════════════════ */
 import { R, db } from './firebase-service.js';
 import { state } from './state.js';
-import { addLog, showToast } from './utils.js';
+import { addLog, showToast, esc } from './utils.js';
 import { playNotifSound } from './notifSounds.js';
 export const ALARM_THEMES = {
    kitchen_ready: { bg:'rgba(46,204,113,.97)', icon:'<svg class="icon"><use href="#i-chef"></use></svg>', title:'Mətbəxdən Hazırdır!', btnColor:'#27ae60' },
@@ -61,9 +61,11 @@ export function triggerKitchenProblemAlarm(notif) {
   state.alarmType = 'kitchen_problem';
   window._currentKitchenNotifId = notif.id;
   if (state.alarmInterval) { clearInterval(state.alarmInterval); state.alarmInterval = null; }
-  showAlarmOverlay('kitchen_problem', notif.problemKey === 'not_enough'
+  const rm = shortQty(notif);
+  showAlarmOverlay('kitchen_problem', (notif.problemKey === 'not_enough'
     ? `${notif.tableName}: ${notif.itemQty}× ${notif.itemName} — yalnız ${notif.availQty} ədəd var`
-    : `${notif.tableName}: ${notif.itemName} — ${notif.problemLabel}`
+    : `${notif.tableName}: ${notif.itemName} — ${notif.problemLabel}`)
+    + (rm > 0 ? ` · Qəbul etsəniz, ${rm === notif.itemQty ? 'mal' : rm + ' ədəd'} sifarişdən avtomatik silinəcək` : '')
   );
   playNotifSound('waiter_kitchen_ready');
   state.alarmInterval = setInterval(() => playNotifSound('waiter_kitchen_ready'), 4000);
@@ -148,6 +150,8 @@ export function acceptAlarm() {
     if (notifId) {
       R.kitchenNotifs.child(notifId).update({ status: 'accepted', acceptedAt: Date.now() });
       addLog('kitchen_problem_accepted', `${state.user.name} mətbəx problem bildirişini qəbul etdi`, { notifId, waiterId: state.user.id });
+      const notif = (state.kitchenNotifs || []).find(n => n.id === notifId);
+      if (notif) removeUnmakeable(notif);     // C23
     }
     window._currentKitchenNotifId = null;
     setTimeout(() => { const n=(state.kitchenNotifs||[]).filter(x=>x.waiterId===state.user?.id&&x.status==='pending'&&!state._shownKitchenOrders?.includes(x.id)); if(n.length) checkKitchenNotifs(); }, 600);
@@ -234,3 +238,36 @@ export function playBeep() {
 // Mövcud HTML-də onclick="acceptAlarm()" istifadə olunur
 window.acceptAlarm = acceptAlarm;
 window._stopActiveSoundSrc = function() {};
+
+
+/* ═══ C23 · Mətbəx "yalnız N hazırlana bilər / bitib / mümkün deyil" — qəbul edəndə qalan hissə sifarişdən silinir ═══
+   Porsiya sayı qoyulmayan yeməklər üçün. Silinmə adi ləğv qaydası ilə gedir (anbara qayıdır, mətbəx kartı azalır, jurnal).
+   "Digər səbəb" bildirişində heç nə silinmir. */
+function shortQty(n) {
+  if (!n) return 0;
+  const q = Number(n.itemQty) || 0;
+  if (n.problemKey === 'not_enough' && Number.isFinite(Number(n.availQty))) return Math.max(0, q - Number(n.availQty));
+  if (n.problemKey === 'out_of_stock' || n.problemKey === 'cannot_prepare') return q;
+  return 0;
+}
+async function removeUnmakeable(n) {
+  let left = shortQty(n);
+  if (!(left > 0) || !n.tableId) return;
+  const co = window.staffApp?.confirmedOrder;
+  const items = state.tableOrders?.[n.tableId]?.items || {};
+  const keys = Object.keys(items).filter(k => items[k]?.name === n.itemName).reverse();   // eyni adlı sətirlər — sonuncudan
+  if (!co || !keys.length) return;
+  const reason = n.problemKey === 'not_enough' ? `Mətbəx: yalnız ${n.availQty} ədəd hazırlana bildi` : `Mətbəx: ${n.problemLabel}`;
+  let removed = 0;
+  for (const k of keys) {
+    if (left <= 0) break;
+    const q = Math.min(Number(state.tableOrders?.[n.tableId]?.items?.[k]?.qty) || 0, left);
+    if (q > 0 && await co.cancelItem(n.tableId, k, reason, q, { system: true })) { removed += q; left -= q; }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  if (removed) {
+    addLog('kitchen_short_removed', `${n.tableName}: ${n.itemName} — mətbəx bildirişi qəbul edildi, ${removed} ədəd sifarişdən avtomatik silindi (${reason})`,
+      { notifId: n.id, tableId: n.tableId, itemName: n.itemName, removed, availQty: n.availQty ?? null, waiterId: state.user?.id });
+    showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${esc(n.itemName)}: ${removed} ədəd sifarişdən silindi`);
+  }
+}

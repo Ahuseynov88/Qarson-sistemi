@@ -41,7 +41,8 @@ const MENU = [
     { s: 'inv-balances', l: 'Qalıqlar', i: 'box', v2: 1 },
     { s: 'inv-count', l: 'Sayım', i: 'clipboard', v2: 1 },
     { s: 'inv-stockdocs', l: 'Silinmə və transfer', i: 'shuffle', v2: 1 },
-    { s: 'inv-production', l: 'Hazırlama', i: 'chef', v2: 1 }
+    { s: 'inv-production', l: 'Hazırlama', i: 'chef', v2: 1 },
+    { s: 'inv-portions', l: 'Porsiyalar', i: 'food', v2: 1 }   // C21: porsiya sayğacı
   ] },
   { g: 'banq', label: 'Banket', icon: 'clock', items: [
     { s: 'banquetDashboard', l: 'Banket paneli', i: 'chart' },

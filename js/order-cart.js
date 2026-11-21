@@ -132,11 +132,15 @@ export class OrderCart {
     if (!items.length) { this.els.itemsList.innerHTML = `<p style="color:var(--text3);grid-column:1/-1;">${q ? 'Axtarışa uyğun mal tapılmadı.' : 'Bu kateqoriyada mal yoxdur.'}</p>`; return; }
     this.els.itemsList.innerHTML = items.map(m => {
       const hasStock = (m.stock !== undefined && m.stock !== null);
-      const outOfStock = hasStock && m.stock <= 0;
+      const por = window.__yzPortion?.(m.id) || null;      // C21: porsiya sayğacı
+      const outOfStock = (hasStock && m.stock <= 0) || (por && por.left <= 0);
       const lowStock = hasStock && m.stock > 0 && m.stock <= 5;
+      const badge = por
+        ? (por.left > 0 ? `<div class="product-card__stock product-card__stock--por ${por.left <= por.limit ? 'product-card__stock--low' : ''}">${por.left} porsiya</div>` : '<div class="product-card__stock product-card__stock--out">Bitdi</div>')
+        : (hasStock && !outOfStock ? `<div class="product-card__stock ${lowStock?'product-card__stock--low':''}">${m.stock} qalıb</div>` : '');
       return `<div class="product-card ${m.photo?'':'no-photo'} ${outOfStock?'out-of-stock':''}" data-menu-item-id="${m.id}">
         ${m.photo ? `<img src="${esc(m.photo)}" alt="" loading="lazy">` : ''}
-        ${hasStock && !outOfStock ? `<div class="product-card__stock ${lowStock?'product-card__stock--low':''}">${m.stock} qalıb</div>` : ''}
+        ${badge}
         <div class="product-card__overlay">
           <div class="product-card__name">${esc(m.name)}</div>
           <div class="product-card__price">${(m.price||0).toFixed(2)} ₼</div>
@@ -160,6 +164,15 @@ export class OrderCart {
     if (m.stock !== undefined && m.stock !== null && (currentDraftQty + 1) > m.stock) {
       showToast(`<svg class="icon"><use href="#i-warning"></use></svg> "${m.name}" anbarda mövcud deyil`);
       return;
+    }
+    // C21: porsiya sayğacı — qalan porsiyadan çox əlavə etmək olmur
+    const por = window.__yzPortion?.(menuItemId);
+    if (por) {
+      const inCart = Object.values(state._orderDraft).filter(l => l.menuItemId === menuItemId).reduce((s, l) => s + l.qty, 0);
+      if (inCart + 1 > por.left) {
+        showToast(`<svg class="icon"><use href="#i-warning"></use></svg> "${esc(m.name)}" ${por.left > 0 ? `— cəmi ${por.left} porsiya qalıb` : 'bitib'}`);
+        return;
+      }
     }
     if (state._orderDraft[lineKey]) state._orderDraft[lineKey].qty += 1;
     else state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 };

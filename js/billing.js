@@ -290,9 +290,10 @@ export class ConfirmedOrder {
     else showToast(`<svg class="icon"><use href="#i-error"></use></svg> ${rows.length - ok} mal silinmədi — yenidən yoxlayın`);
   }
 
-  cancelItem(tableId, itemKey, reason, cancelQty) {
+  cancelItem(tableId, itemKey, reason, cancelQty, { system = false } = {}) {
     let done; const result = new Promise(r => { done = r; });
-    if (!hasPermission('order.cancel_item')) { done(false); return result; }
+    // system: mətbəx "yalnız N hazırlana bilər" bildirişi qəbul ediləndə (C23) — ofisiantın silmə icazəsi tələb olunmur
+    if (!system && !hasPermission('order.cancel_item')) { done(false); return result; }
     const order = state.tableOrders[tableId];
     if (!order?.items) { done(false); return result; }
     const it = order.items[itemKey];
@@ -334,7 +335,7 @@ export class ConfirmedOrder {
           staffId: state.user?.id, staffName: state.user?.name, orderOwnerId: order.waiterId||null, orderOwnerName });
                    // Mətbəx kartını yenilə
             const menuItem = state.menuItems.find(x => x.id === cancelledMenuItemId);
-      const kitchenId = menuItem?.kitchenId;
+      const kitchenId = menuItem?.kitchenId || 'default';   // göndərəndə də stansiyasız mal 'default' kartına düşür
       if (kitchenId) {
         const activeKo = (state.kitchenOrders || []).find(ko =>
           ko.tableId === tableId && ko.kitchenId === kitchenId &&

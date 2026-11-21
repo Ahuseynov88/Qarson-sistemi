@@ -56,6 +56,7 @@ export const ALL_PERMISSIONS = [
       { key: 'chat.send',        label: 'Müştəri ilə yazışmaq' },
       { key: 'note.write',       label: 'Masa qeydi yazmaq' },
       { key: 'birthday.view',    label: 'Ad günlərini görmək (işçilər və müştərilər) və xatırlatma almaq' },
+      { key: 'portion.alert',    label: 'Porsiya azalanda / bitəndə xəbərdarlıq almaq' },
     ]
   },
   {

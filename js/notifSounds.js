@@ -29,6 +29,7 @@ export const NOTIF_EVENTS = {
   waiter_message:       'Müştəri mesajı (ofisianta)',
   staff_announcement:   'Yeni elan (işçilərə)',
   birthday_reminder:    'Ad günü xatırlatması',
+  portion_low:          'Porsiya azalıb / bitib',
 
   kitchen_new_order:    'Yeni sifariş (mətbəxə)',
   kitchen_order_changed:'Sifariş dəyişdirildi (mətbəxə)',

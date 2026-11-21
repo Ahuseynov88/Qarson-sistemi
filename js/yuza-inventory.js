@@ -9,6 +9,7 @@ import './yuza-inv-catalog.js';
 import './yuza-inv-purchase.js';
 import './yuza-inv-stock.js';
 import './yuza-inv-cash.js';
+import './yuza-portions.js';   // C21: porsiya sayğacı
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initShell);
 else initShell();
