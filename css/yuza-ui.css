@@ -589,11 +589,7 @@ body.dark-mode .yz-dotsmenu__it .icon{color:var(--gold);}
 .yz-bd-greet button{width:40px; height:40px; border:0; border-radius:10px; background:var(--card2); color:var(--text); cursor:pointer; flex-shrink:0;}
 @keyframes yzBdIn{from{opacity:0; transform:translate(-50%, 12px);} to{opacity:1; transform:translate(-50%, 0);}}
 
-/* ── 14) C22 · göndərmə anında çatmayan mallar və ləğvdə "hazırlanmışdı?" (21.11.2026) ── */
+/* ── 14) C22 · göndərmə anında çatmayan mallar (21.11.2026) ── */
 .yz-short{list-style:none; margin:0 0 10px; padding:0; display:flex; flex-direction:column; gap:6px;}
 .yz-short li{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid rgba(214,69,65,.4); border-radius:12px; background:rgba(214,69,65,.06);}
 .yz-short li span{color:var(--text2);}
-.yz-prep{border:1px solid var(--border); border-radius:12px; padding:8px 12px; margin:4px 0 8px; text-align:start;}
-.yz-prep legend{font-size:13px; font-weight:700; padding:0 4px; color:var(--text2);}
-.yz-prep label{display:flex; align-items:flex-start; gap:10px; min-height:44px; padding:6px 0; cursor:pointer; font-size:14px; line-height:1.35;}
-.yz-prep input{margin-top:3px; flex-shrink:0;}
