@@ -1215,6 +1215,7 @@
         <select id="regGender"><option value="">Seçin...</option><option value="Kişi">Kişi</option><option value="Qadın">Qadın</option></select>
       </div>
       <div class="cust-loyalty-field"><label>Doğum tarixi</label><input type="date" id="regBirthDate"></div>
+      <div class="cust-loyalty-field"><label>Şəxsiyyət vəsiqəsinin nömrəsi <small>(könüllü)</small></label><input type="text" id="regIdNo" maxlength="20" autocomplete="off" placeholder="məs. AA1234567"></div>
       <p id="regErrorMsg" style="color:#ff8a80;font-size:12.5px;min-height:16px;margin:6px 0;"></p>
       <button class="cust-loyalty-btn cust-loyalty-btn--primary" onclick="submitLoyaltyRegistration()"><svg class="icon"><use href="#i-check"></use></svg> Qeydiyyatı Tamamla</button>
       <button class="cust-loyalty-btn cust-loyalty-btn--ghost yz-icon-only" onclick="closeLoyaltyRegisterForm()" aria-label="Geri" title="Geri"><svg class="icon"><use href="#i-back"></use></svg></button>
@@ -1452,7 +1453,9 @@
       <p id="customerChargeAmount" style="font-size:22px;font-weight:800;color:var(--blue);margin-bottom:14px;"></p>
       <div class="form-group" style="text-align:left;">
         <label>Müştəri</label>
-        <select id="customerChargeSelect" style="font-size:14px;"></select>
+        <input type="search" id="customerChargeQ" placeholder="Ad və ya telefon ilə axtar..." autocomplete="off" style="font-size:15px;margin-bottom:8px;" data-no-dirty>
+        <select id="customerChargeSelect" style="font-size:14px;" size="6"></select>
+        <small style="color:var(--text3);display:block;margin-top:6px;">Bazadakı istənilən müştəri seçilə bilər — nisyə hesabı yoxdursa avtomatik açılır. Telefonu olmayan köhnə hesablara yazmaq olmur.</small>
       </div>
       <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
         <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
