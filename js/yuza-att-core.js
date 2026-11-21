@@ -45,7 +45,7 @@ export const DEFAULTS = {
   faceId: true,         // telefonun öz Face ID / barmaq izi
   selfie: false,        // qeyd zamanı şəkil
   photoDays: 60,        // şəkillər neçə gün saxlansın
-  maxHours: 16,         // bundan uzun açıq qalan giriş "çıxış qeyd edilməyib" sayılır
+  maxHours: 16,         // bu müddət keçəndə server avtomatik çıxış verir (C15) — qeyd "unudub" kimi işarələnir
   minGapMin: 1,         // iki qeyd arasında minimum dəqiqə (səhvən iki dəfə basmaq)
   gateLogin: false,     // gəlişini qeyd etməyən işçi POS-a girə bilməsin
   gateExempt: {}        // bu yoxlamadan azad işçilər { staffId: true }
@@ -109,7 +109,12 @@ export const TRUST = {
   low: { label: 'Zəif', cls: 'bad' },
   manual: { label: 'Əl ilə', cls: 'muted' }
 };
-export const METHOD = { qr: 'Telefon (QR)', pin: 'Ekranda PIN', manual: 'Rəhbər', proxy: 'Səlahiyyətli şəxs (telefonsuz)' };
+export const METHOD = { qr: 'Telefon (QR)', pin: 'Ekranda PIN', manual: 'Rəhbər', proxy: 'Səlahiyyətli şəxs (telefonsuz)', auto: 'Sistem (avtomatik çıxış)' };
+
+/* C15: işçi çıxışını unudubsa və server avtomatik çıxış veribsə — işçiyə göstərilən xəbərdarlıq */
+export function autoOutWarn(at, hours) {
+  return `Son dəfə işdən çıxışınızı qeyd etməmisiniz. Sistem ${hours ? hours + ' saatlıq ' : ''}maksimum iş müddəti keçəndə (${fmtDT(at)}) avtomatik çıxış verdi və bu, Rəhbərə “unudub” kimi bildirildi. Xahiş edirik, işdən çıxanda <b>“İşdən çıxdım”</b> basmağı unutmayın.`;
+}
 
 /* ── Telefon modeli (yalnız göstərmək üçün) ── */
 export function deviceModel() {
@@ -217,7 +222,9 @@ export async function clock(staff, meta, { photo = null, action = null, brk = nu
     }
     throw e;
   }
-  return { kind: act, id, trust: meta.trust };
+  // C15: əvvəlki çıxış avtomatik verilibsə (unudub) — nəticə ekranında işçiyə xəbərdarlıq göstərilir
+  const prevAuto = act === 'in' && st && st.state === 'out' && st.autoOut ? { at: st.since, hours: s.maxHours } : null;
+  return { kind: act, id, trust: meta.trust, prevAuto };
 }
 export function logAttempt(staff, kind, reason, extra = {}) {
   return A('attempts').push({

@@ -7,7 +7,7 @@
    Baza oxunmasa (internet problemi) giriş BLOKLANMIR — restoranın işi dayanmasın.
 ═══════════════════════════════════════════ */
 import { state } from './state.js';
-import { A, withDefaults, phaseOf, fmtDT } from './yuza-att-core.js';
+import { A, withDefaults, phaseOf, fmtDT, autoOutWarn } from './yuza-att-core.js';
 
 function notice(title, text) {
   document.getElementById('yzAttGate')?.remove();
@@ -31,14 +31,18 @@ function notice(title, text) {
 export async function attGate(staff) {
   try {
     const S = withDefaults((await A('settings').once('value')).val());
-    if (!S.gateLogin || S.gateExempt?.[staff.id]) return true;
     const st = (await A('status/' + staff.id).once('value')).val();
     const ph = phaseOf(st, S);
+    // C15: son çıxışı sistem avtomatik veribsə (unudub) — işçiyə xəbərdarlıq (girişi bloklamır)
+    if (ph === 'off' && st?.autoOut && (!S.gateLogin || S.gateExempt?.[staff.id])) {
+      notice('Çıxışınızı qeyd etməyi unutmusunuz', autoOutWarn(st.since, S.maxHours));
+    }
+    if (!S.gateLogin || S.gateExempt?.[staff.id]) return true;
     if (ph === 'in') { watch(staff); return true; }
     if (ph === 'break') {
       notice('Siz müvəqqəti çıxışdasınız', `Müvəqqəti çıxışınız ${fmtDT(st.since)}-dən qeyd olunub. Sistemə girmək üçün əvvəlcə davamiyyət ekranındakı QR-ı telefonunuzla oxudub <b>“Qayıtdım”</b> basın.`);
     } else {
-      notice('Əvvəlcə işə gəlişinizi qeyd edin', 'Sistemə girmək üçün davamiyyət ekranındakı QR-ı telefonunuzla oxudub <b>“İşə gəldim”</b> basın. Telefonunuz aktiv deyilsə, Rəhbərə və ya növbə müdirinə müraciət edin.');
+      notice('Əvvəlcə işə gəlişinizi qeyd edin', (st?.autoOut ? autoOutWarn(st.since, S.maxHours) + '<br><br>' : '') + 'Sistemə girmək üçün davamiyyət ekranındakı QR-ı telefonunuzla oxudub <b>“İşə gəldim”</b> basın. Telefonunuz aktiv deyilsə, Rəhbərə və ya növbə müdirinə müraciət edin.');
     }
     return false;
   } catch (e) {
@@ -78,8 +82,9 @@ function watch(staff) {
     if (ph === 'in') return;
     stopWatch?.();
     try { window.logout?.(); } catch (e) { /* */ }
-    notice(ph === 'break' ? 'Müvəqqəti çıxış qeyd edildi' : 'İşdən çıxışınız qeyd edildi',
-      ph === 'break' ? 'Sistemdən avtomatik çıxdınız. Qayıdanda QR-ı oxudub <b>“Qayıtdım”</b> basın, sonra PIN ilə yenidən girin.' : 'Sistemdən avtomatik çıxdınız. Sağ olun!');
+    notice(ph === 'break' ? 'Müvəqqəti çıxış qeyd edildi' : st?.autoOut ? 'Maksimum iş müddəti keçdi' : 'İşdən çıxışınız qeyd edildi',
+      ph === 'break' ? 'Sistemdən avtomatik çıxdınız. Qayıdanda QR-ı oxudub <b>“Qayıtdım”</b> basın, sonra PIN ilə yenidən girin.'
+        : st?.autoOut ? autoOutWarn(st.since, s.maxHours) : 'Sistemdən avtomatik çıxdınız. Sağ olun!');
   };
   const h1 = ref.on('value', (snap) => { st = snap.val(); gotSt = true; check(); }, () => {});
   const h2 = sref.on('value', (snap) => { S = snap.val() || {}; gotS = true; check(); }, () => {});

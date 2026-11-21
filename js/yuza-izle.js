@@ -14,7 +14,7 @@ import { db } from './firebase-service.js';
 import {
   A, TS, withDefaults, now, fmtDT, fmtTime, fmtDate, fmtDur, distanceM, getPosition, clock, logAttempt,
   nextKind, isStale, phaseOf, shiftStart, BREAKS, breakLabel, breakList, workedMs, ACTION_LABEL, TRUST, deviceModel,
-  faceIdAvailable, faceIdRegister, faceIdVerify, faceIdError, attUid, bindPhone, newCode, createInvite, INVITE_MIN, adb
+  faceIdAvailable, faceIdRegister, faceIdVerify, faceIdError, attUid, bindPhone, newCode, createInvite, INVITE_MIN, adb, autoOutWarn
 } from './yuza-att-core.js';
 import { scanQr } from './yuza-qr-scan.js';
 import { api, apiOn } from './yuza-api.js';
@@ -245,6 +245,7 @@ function renderHome() {
     : ph === 'break'
       ? `<div class="iz-state is-brk"><span class="iz-dot"></span><span>Müvəqqəti çıxışdasınız: <b>${esc(breakLabel(st.btype))}</b><br>${esc(st.bnote || '')}<br><small>${fmtDT(st.since)}-dən · <b id="izDur" data-t="${st.since}">${fmtDur(now() - st.since)}</b></small></span></div>`
       : stale ? `<div class="iz-state"><span class="iz-dot"></span> Son çıxışınız qeyd edilməyib (giriş ${fmtDT(shiftStart(st))}). Rəhbərə bildirin.</div>`
+        : st.autoOut ? `<div class="iz-state iz-state--auto" role="alert"><span class="iz-dot"></span><span>${autoOutWarn(st.since, S.maxHours)}</span></div>`
         : `<div class="iz-state"><span class="iz-dot"></span> İşdə deyilsiniz${st.since ? ` · son çıxış ${fmtDT(st.since)}` : ''}</div>`;
   const buttons = ph === 'in'
     ? `<button id="izBrk" class="iz-btn iz-btn--big iz-btn--brk" type="button" ${myTables.length ? 'disabled' : dis}>Müvəqqəti çıxış</button>
@@ -322,7 +323,7 @@ async function loadLast() {
   const box = $('izLast'); if (!box) return;
   box.innerHTML = list.length ? `<ul class="iz-list">${list.map(x => {
       const br = breakList(x);
-      return `<li><div><b>${fmtDT(x.inAt)}</b><span>→ ${x.outAt ? fmtDT(x.outAt) : x.forgot ? 'çıxış qeyd edilməyib' : 'davam edir'}</span>
+      return `<li><div><b>${fmtDT(x.inAt)}</b><span>→ ${x.outAt ? fmtDT(x.outAt) + (x.autoOut ? ' <b class="iz-auto">avtomatik çıxış — unudub</b>' : '') : x.forgot ? 'çıxış qeyd edilməyib' : 'davam edir'}</span>
         ${br.map(b => `<small class="iz-brk">${esc(breakLabel(b.type))}: ${fmtTime(b.from)}–${b.to ? fmtTime(b.to) : '…'} · ${esc(b.note || '')}</small>`).join('')}</div>
       <em>${x.outAt ? fmtDur(workedMs(x)) : ''}</em></li>`;
     }).join('')}</ul>`
@@ -406,16 +407,18 @@ function renderDone(r) {
       <p class="iz-big">${fmtTime(now())}</p>
       <p class="iz-p">${fmtDate(now())} · ${esc(me.name)}</p>
       ${r.kind === 'break' ? '<p class="iz-hint iz-c">Qayıdanda ekrandakı QR-ı oxudub <b>“Qayıtdım”</b> basmağı unutmayın.</p>' : ''}
+      ${r.prevAuto ? `<p class="iz-state iz-state--auto" role="alert">${autoOutWarn(r.prevAuto.at, r.prevAuto.hours)}</p>` : ''}
       <span class="iz-chip iz-chip--${t.cls}">${t.label} qeyd</span>
-      ${toPos ? `<a id="izPos" class="iz-btn iz-btn--gold" style="text-decoration:none;box-sizing:border-box;margin-top:12px" href="${BASE}index.html">Sistemə daxil ol (PIN)</a>${autoPos ? '<p class="iz-hint iz-c">PIN ekranı açılır…</p>' : ''}` : ''}
+      ${toPos ? `<a id="izPos" class="iz-btn iz-btn--gold" style="text-decoration:none;box-sizing:border-box;margin-top:12px" href="${BASE}index.html">Sistemə daxil ol (PIN)</a>${autoPos && !r.prevAuto ? '<p class="iz-hint iz-c">PIN ekranı açılır…</p>' : ''}` : ''}
       <button id="izOk" class="iz-btn iz-btn--ghost iz-btn--icon" type="button" aria-label="Bağla" title="Bağla">${ICON.x}</button>
     </section>`);
   if (navigator.vibrate) navigator.vibrate(60);
   const back = () => renderHome();
   $('izOk').onclick = back;
   // İşə gəlib / qayıdıb: bu telefonda əvvəl sistemə girilibsə, PIN ekranı özü açılır
-  if (autoPos) { setTimeout(() => { if ($('izPos')) location.href = BASE + 'index.html'; }, 2500); return; }
-  setTimeout(() => { if ($('izOk')) back(); }, toPos ? 15000 : 6000);
+  // xəbərdarlıq varsa avtomatik keçid olmur — işçi oxusun
+  if (autoPos && !r.prevAuto) { setTimeout(() => { if ($('izPos')) location.href = BASE + 'index.html'; }, 2500); return; }
+  setTimeout(() => { if ($('izOk')) back(); }, toPos || r.prevAuto ? 15000 : 6000);
 }
 function renderFail(msg) {
   setView(`${brand}
@@ -690,7 +693,7 @@ async function proxyActions(s, actor) {
     try {
       const r = await clock(s, { method: 'proxy', by: actor.name, byId: actor.id, qr: null, faceId: false, gps: null, model: 'Davamiyyət ekranı' }, { action: a, brk });
       A('audit').push({ at: TS, by: actor.name + ' (davamiyyət ekranı)', action: 'Telefonsuz qeyd: ' + ACTION_LABEL[r.kind], staffId: s.id, staffName: s.name, after: brk ? { model: `${breakLabel(brk.type)}: ${brk.note}` } : {} }).catch(() => {});
-      box.remove(); flash(s.name, ACTION_LABEL[r.kind] + ' · qeyd edən: ' + actor.name);
+      box.remove(); flash(s.name, ACTION_LABEL[r.kind] + ' · qeyd edən: ' + actor.name + (r.prevAuto ? ' · DİQQƏT: son dəfə çıxışını qeyd etməyib, sistem avtomatik çıxış verib' : ''));
     } catch (x) { b.disabled = false; errEl.textContent = x.message; }
   });
   setTimeout(() => { if (box.isConnected) box.remove(); }, 120000);

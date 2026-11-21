@@ -209,9 +209,11 @@ function drawLive(el) {
       const line = ph === 'in' ? `Giriş: ${fmtDT(shiftStart(st))} · ${fmtDur(now() - shiftStart(st))}`
         : ph === 'break' ? `${esc(breakLabel(st.btype))}: ${esc(st.bnote || '')} · ${fmtDT(st.since)}-dən (${fmtDur(now() - st.since)})`
         : old ? `Çıxış qeyd edilməyib · giriş ${fmtDT(shiftStart(st))}`
+        : st?.autoOut ? `Avtomatik çıxış (unudub): ${fmtDT(st.since)}`
         : st?.since ? `Son çıxış: ${fmtDT(st.since)}` : 'Hələ qeyd yoxdur';
-      const chipTxt = ph === 'in' ? ['ok', 'İşdə'] : ph === 'break' ? ['warn', 'Müvəqqəti çıxışda'] : old ? ['bad', 'Açıq qalıb'] : ['muted', 'Yoxdur'];
-      return `<button type="button" class="yza-card${ph === 'in' ? ' is-in' : ''}${ph === 'break' ? ' is-brk' : ''}${old ? ' is-stale' : ''}" data-staff="${esc(s.id)}">
+      const auto = ph === 'off' && !old && st?.autoOut;
+      const chipTxt = ph === 'in' ? ['ok', 'İşdə'] : ph === 'break' ? ['warn', 'Müvəqqəti çıxışda'] : old ? ['bad', 'Açıq qalıb'] : auto ? ['bad', 'Unudub'] : ['muted', 'Yoxdur'];
+      return `<button type="button" class="yza-card${ph === 'in' ? ' is-in' : ''}${ph === 'break' ? ' is-brk' : ''}${old || auto ? ' is-stale' : ''}" data-staff="${esc(s.id)}">
         ${ava(s)}
         <div class="yza-card__main"><b>${esc(s.name)}</b><span>${esc(s.position || '')}</span><small>${line}</small></div>
         <div class="yza-card__side"><span class="yzi-st yzi-st--${chipTxt[0]}">${chipTxt[1]}</span>${tr && ph !== 'off' ? chip(tr) : ''}</div>
@@ -336,24 +338,27 @@ async function drawReport(el) {
 
   const sum = {};
   rows.forEach(r => {
-    const k = r.staffId, o = sum[k] || (sum[k] = { name: r.staffName || staffById(k)?.name || '?', ms: 0, days: new Set(), open: 0, manual: 0, n: 0 });
+    const k = r.staffId, o = sum[k] || (sum[k] = { name: r.staffName || staffById(k)?.name || '?', ms: 0, days: new Set(), open: 0, manual: 0, n: 0, auto: 0 });
+    if (r.autoOut) o.auto++;
     o.ms += dur(r); o.days.add(fmtDate(r.inAt)); o.n++;
     if (!r.outAt && (r.forgot || isStale(D.status[k], D.settings) || D.status[k]?.sessionId !== r.id)) o.open++;
     if (r.manual || r.in?.method === 'manual' || r.out?.method === 'manual' || r.editedAt) o.manual++;
   });
   const sumRows = Object.entries(sum).sort((a, b) => b[1].ms - a[1].ms);
   const total = sumRows.reduce((t, [, o]) => t + o.ms, 0);
+  const autoN = rows.filter(r => r.autoOut).length;
 
   $('yzaRep').innerHTML = rows.length ? `
     <div class="yzi-kpis">
       <div class="yzi-kpi"><small>Cəmi işlənmiş vaxt</small><b>${fmtDur(total)}</b><span>${hoursNum(total)} saat</span></div>
       <div class="yzi-kpi"><small>Qeyd sayı</small><b>${rows.length}</b><span>${sumRows.length} işçi</span></div>
+      ${autoN ? `<div class="yzi-kpi yzi-kpi--bad"><small>Avtomatik çıxış (unudub)</small><b>${autoN}</b><span>nəzərə alın — çıxış vaxtını yoxlayın</span></div>` : ''}
     </div>
     <h3 class="yzi-h3">İşçilər üzrə</h3>
     <div class="yzi-table-wrap"><table class="yzi-table">
-      <thead><tr><th>İşçi</th><th class="n">İş günü</th><th class="n">Cəmi</th><th class="n">Gündə orta</th><th class="n">Çıxışı yoxdur</th><th class="n">Əl ilə / düzəliş</th></tr></thead>
+      <thead><tr><th>İşçi</th><th class="n">İş günü</th><th class="n">Cəmi</th><th class="n">Gündə orta</th><th class="n">Çıxışı yoxdur</th><th class="n">Unudub (avtomatik)</th><th class="n">Əl ilə / düzəliş</th></tr></thead>
       <tbody>${sumRows.map(([k, o]) => `<tr data-open="${esc(k)}"><td><b>${esc(o.name)}</b></td><td class="n">${o.days.size}</td><td class="n"><b>${fmtDur(o.ms)}</b></td>
-        <td class="n">${fmtDur(o.days.size ? o.ms / o.days.size : 0)}</td><td class="n${o.open ? ' yzi-bad' : ''}">${o.open}</td><td class="n${o.manual ? ' yzi-warn' : ''}">${o.manual}</td></tr>`).join('')}</tbody>
+        <td class="n">${fmtDur(o.days.size ? o.ms / o.days.size : 0)}</td><td class="n${o.open ? ' yzi-bad' : ''}">${o.open}</td><td class="n${o.auto ? ' yzi-bad' : ''}">${o.auto ? '<b>' + o.auto + '</b>' : 0}</td><td class="n${o.manual ? ' yzi-warn' : ''}">${o.manual}</td></tr>`).join('')}</tbody>
     </table></div>
     <h3 class="yzi-h3">Bütün qeydlər</h3>
     <div class="yzi-table-wrap"><table class="yzi-table">
@@ -361,11 +366,11 @@ async function drawReport(el) {
       <tbody>${rows.map(r => {
         const open = !r.outAt, live = open && !r.forgot && D.status[r.staffId]?.sessionId === r.id && !isStale(D.status[r.staffId], D.settings);
         const meth = [r.in?.method, r.out?.method].filter(Boolean).map(m => METHOD[m] || m);
-        return `<tr>
+        return `<tr${r.autoOut ? ' class="yza-auto"' : ''}>
           <td><b>${esc(r.staffName || staffById(r.staffId)?.name || '?')}</b></td>
           <td>${fmtDT(r.inAt)}${gpsNote(r.in)}</td>
           <td>${brkCell(r)}</td>
-          <td>${r.outAt ? fmtDT(r.outAt) + gpsNote(r.out) : live ? '<span class="yzi-st yzi-st--ok">Davam edir</span>' : '<span class="yzi-st yzi-st--bad">Qeyd edilməyib</span>'}</td>
+          <td>${r.outAt ? fmtDT(r.outAt) + gpsNote(r.out) + (r.autoOut ? '<br><span class="yzi-st yzi-st--bad" title="İşçi çıxışı qeyd etməyib — sistem maksimum iş müddəti keçəndə avtomatik çıxış verib. Lazımdırsa Düzəliş ilə real çıxış vaxtını yazın.">Avtomatik · unudub — nəzərə alın</span>' : '') : live ? '<span class="yzi-st yzi-st--ok">Davam edir</span>' : '<span class="yzi-st yzi-st--bad">Qeyd edilməyib</span>'}</td>
           <td class="n">${live || r.outAt ? fmtDur(dur(r)) : '—'}</td>
           <td>${chip(worstTrust(r.in?.trust, r.out?.trust))}${r.editedAt ? ' <span class="yzi-chip">Düzəliş</span>' : ''}</td>
           <td class="mut">${esc([...new Set(meth)].join(' / '))}</td>
@@ -494,7 +499,7 @@ function exportCsv() {
       breakList(r).map(b => `${fmtTime(b.from)}-${b.to ? fmtTime(b.to) : '?'} ${breakLabel(b.type)}: ${b.note || ''}`).join(' | '),
       r.outAt ? String(hoursNum(workedMs(r))).replace('.', ',') : '', tr,
       [r.in?.method, r.out?.method].filter(Boolean).map(m => METHOD[m] || m).join(' / '),
-      r.forgot ? 'Çıxış qeyd edilməyib' : r.editedAt ? 'Düzəliş edilib' : ''].map(q).join(';'));
+      [r.autoOut ? 'Avtomatik çıxış — unudub' : r.forgot ? 'Çıxış qeyd edilməyib' : '', r.editedAt ? 'Düzəliş edilib' : ''].filter(Boolean).join(', ')].map(q).join(';'));
   });
   const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -560,7 +565,8 @@ async function drawTabel(el) {
         const k = String(d).padStart(2, '0'), mark = mk[k], ms = h[d] || 0;
         if (ms) { tot += ms; wd++; }
         if (mark) cnt[mark.code] = (cnt[mark.code] || 0) + 1;
-        return `<td class="yza-tc${mark ? ' yza-mk--' + MARKS[mark.code]?.s : ''}" data-s="${esc(s.id)}" data-d="${d}" title="${esc(mark ? MARKS[mark.code]?.l + (mark.note ? ': ' + mark.note : '') : '')}">${mark ? `<b>${MARKS[mark.code]?.s || '?'}</b>` : ''}${ms ? `<span>${hFmt(ms)}</span>` : ''}</td>`;
+        const auto = (tab.data.sess[s.id]?.[d] || []).some(r => r.autoOut);   // C15: həmin gün çıxışı avtomatik verilib
+        return `<td class="yza-tc${mark ? ' yza-mk--' + MARKS[mark.code]?.s : ''}${auto ? ' is-auto' : ''}" data-s="${esc(s.id)}" data-d="${d}" title="${esc([mark ? MARKS[mark.code]?.l + (mark.note ? ': ' + mark.note : '') : '', auto ? 'Avtomatik çıxış — çıxışı unudub, nəzərə alın' : ''].filter(Boolean).join(' · '))}">${mark ? `<b>${MARKS[mark.code]?.s || '?'}</b>` : ''}${ms ? `<span>${hFmt(ms)}</span>` : ''}</td>`;
       }).join('');
       return `<tr><td class="yza-tn"><b>${esc(s.name)}</b></td>${cells}<td class="n"><b>${hFmt(tot) || 0}</b></td><td class="n">${wd}</td>${Object.keys(MARKS).map(c => `<td class="n">${cnt[c] || ''}</td>`).join('')}</tr>`;
     }).join('') || `<tr><td colspan="${days + 8}" class="yzi-empty">İşçi yoxdur.</td></tr>`}</tbody></table></div>`;
@@ -787,7 +793,9 @@ function drawSettings(el) {
     </div>
     <div class="yzi-card"><h3 class="yzi-h3">Qaydalar</h3>
       <label class="yzi-f"><span>Maksimum iş müddəti (saat)</span><input type="number" id="yzaMH" min="4" max="24" value="${esc(S.maxHours)}"></label>
-      <p class="yzi-hint">Bundan uzun açıq qalan giriş “çıxış qeyd edilməyib” sayılır və işçi növbəti dəfə yenidən giriş edir.</p>
+      <p class="yzi-hint">İşçi bu müddət keçənə qədər “İşdən çıxdım” basmasa, sistem çıxışı <b>giriş + bu saat</b> anına avtomatik yazır (5 dəqiqə ərzində).
+        Qeyd hesabatda qırmızı <b>“Avtomatik · unudub — nəzərə alın”</b> kimi görünür, işçiyə isə növbəti girişdə xəbərdarlıq göstərilir.
+        Real çıxış vaxtını bilirsinizsə, qeydi “Düzəliş” ilə dəyişin.</p>
       <label class="yzi-f"><span>İki qeyd arası minimum (dəqiqə)</span><input type="number" id="yzaMG" min="0" max="30" value="${esc(S.minGapMin)}"></label>
       <p class="yzi-hint">Səhvən iki dəfə basmağın qarşısını alır.</p>
     </div></div>
