@@ -634,3 +634,72 @@ body.dark-mode .yz-dotsmenu__it .icon{color:var(--gold);}
 .yz-cu-link > div{display:flex; flex-direction:column; gap:4px; flex:1; min-width:240px;}
 .yz-cu-link small{color:var(--text2); line-height:1.45;}
 #customerChargeSelect[size]{height:auto; min-height:180px;}
+
+/* ── 17) C17b · PEŞƏKAR NİSYƏ (22.11.2026) ── */
+.yz-cr-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.yz-cr-info{display:flex; flex-direction:column; gap:4px; margin:6px 0;}
+.yz-cr-info small{color:var(--text2);}
+.yz-cr-od{color:#d64541 !important; font-weight:800;}
+.yz-cr-info .yzi-chipbtn{align-self:flex-start;}
+.yz-cr-list{display:flex; flex-direction:column; gap:10px;}
+.yz-cr-item{border:1px solid rgba(214,69,65,.4); border-radius:14px; padding:12px 14px;}
+.yz-cr-item header{display:flex; justify-content:space-between; gap:8px;} .yz-cr-item header span{color:var(--text3); font-size:13px;}
+.yz-cr-item p{margin:6px 0;} .yz-cr-item footer{display:flex; gap:8px; margin-top:8px;}
+.yz-cr-items{font-size:13px; color:var(--text2);}
+.yz-cr-modal .yzi-modal{max-width:min(1200px, 96vw);}
+.yz-cr-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;}
+.yz-cr-head h2{margin:0; font-size:18px;} .yz-cr-head span{color:var(--text3); font-size:13px;}
+.yz-cr-filters{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;}
+.yz-cr-chk{display:flex; align-items:center; gap:6px; min-height:44px;}
+.yz-cr-cust{margin-top:16px;}
+.yz-cr-cust header{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:8px 0; border-bottom:2px solid var(--border);}
+.yz-cr-cust header span{color:var(--text3); margin-inline-start:6px;}
+.yz-cr-table td{vertical-align:top; font-size:13px;}
+.yz-cr-table tr.is-od td{background:rgba(214,69,65,.08);}
+.yz-cr-table tr.yz-cr-pay td{background:rgba(46,125,80,.08);}
+.yz-cr-table tr.yz-cr-open td{font-style:italic;}
+
+/* ── 18) C16 · İÇKİ ŞÜŞƏ / ML (22.11.2026) ── */
+.yz-pour-stock{margin:0 0 10px; color:var(--text2);}
+.yz-pour-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;}
+.yz-pour-btn{display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-height:64px; padding:10px 12px; border:1px solid var(--border);
+  border-radius:12px; background:var(--card); color:var(--text); cursor:pointer; text-align:start;}
+.yz-pour-btn b{font-size:16px;} .yz-pour-btn span{font-weight:800; color:var(--gold-dark, #a87a1c); font-variant-numeric:tabular-nums;}
+.yz-pour-btn small{color:#d64541; font-size:11.5px; line-height:1.3;}
+.yz-pour-btn:disabled{opacity:.55; cursor:not-allowed;}
+.yz-pour-btn:not(:disabled):hover{border-color:var(--gold, #d4a03c);}
+.yz-pour-free{display:flex; align-items:flex-end; gap:8px; flex-wrap:wrap; margin-top:12px;}
+.yz-pour-free .yzi-f{flex:1; min-width:140px; margin:0;}
+.yz-pour-free small{min-height:44px; display:flex; align-items:center; font-weight:800;}
+.yz-pour-cfg{display:flex; flex-direction:column; gap:10px;}
+
+/* ── 19) C18/C19 · QONAQLAR VƏ MASALARI BİRLƏŞDİRMƏ (22.11.2026) ── */
+.yz-gbar{display:flex; align-items:center; gap:6px; overflow-x:auto; padding:6px 0 8px; margin-bottom:4px; border-bottom:1px dashed var(--border); -webkit-overflow-scrolling:touch;}
+.yz-gbar__l{font-size:12px; color:var(--text3); flex-shrink:0;}
+.yz-gbar__b{flex-shrink:0; min-width:40px; height:36px; padding:0 12px; border:1px solid var(--border); border-radius:999px; background:var(--card); color:var(--text); font-weight:700; cursor:pointer;}
+.yz-gbar__b.is-on{background:var(--gold, #d4a03c); border-color:var(--gold, #d4a03c); color:#1a1408;}
+.yz-gbar__add{font-size:18px; line-height:1;}
+.yz-g-tag{display:inline-block; padding:1px 6px; border-radius:6px; background:rgba(212,160,60,.2); color:var(--gold-dark, #8a6414); font-size:11px; font-weight:800; vertical-align:1px;}
+.yz-sp-shared{border:1px dashed var(--border); border-radius:12px; padding:10px 12px; margin-bottom:12px;}
+.yz-sp-shared h3{margin:0 0 6px; font-size:15px;} .yz-sp-shared small{font-weight:500; color:var(--text3);}
+.yz-sp-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px;}
+.yz-sp-g{border:1px solid var(--border); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;}
+.yz-sp-g.is-paid{border-color:rgba(46,125,80,.6); background:rgba(46,125,80,.06);}
+.yz-sp-g header{display:flex; align-items:center; gap:8px;} .yz-sp-g header input{flex:1; height:38px; font-weight:800;} .yz-sp-g header span{color:#2e7d50; font-weight:800;}
+.yz-sp-row{display:grid; grid-template-columns:1fr auto auto; gap:6px; align-items:center; font-size:13.5px; padding:4px 0; border-bottom:1px solid var(--border);}
+.yz-sp-row select{height:34px; font-size:12.5px; max-width:120px;}
+.yz-sp-sh{grid-template-columns:1fr auto; color:var(--text2);}
+.yz-sp-g footer{display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;}
+.yz-sp-g footer div{display:flex; flex-direction:column;} .yz-sp-g footer small{color:var(--text3); font-size:11.5px;} .yz-sp-g footer b{font-variant-numeric:tabular-nums;}
+.yz-sp-act{display:flex; gap:6px;} .yz-sp-act .yzi-btn{flex:1;}
+.yz-sp-foot{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px;}
+.yz-mg-list{display:flex; flex-direction:column; gap:6px; max-height:50vh; overflow-y:auto;}
+.yz-mg-row{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--border); border-radius:12px; cursor:pointer; min-height:48px;}
+.yz-mg-row span{display:flex; flex-direction:column;} .yz-mg-row small{color:var(--text3); font-size:12px;}
+
+/* ── 20) C20 · MAAŞ (22.11.2026) ── */
+.yz-pay-table .yzi-n{width:72px; text-align:right;}
+.yz-pay-table td{vertical-align:top;}
+.yz-pay-add{margin-top:12px;}
+.yzi-head .yzi-actions{align-items:center;}
+.yzi-head .yzi-actions .yzi-btn{min-height:40px; padding-block:0;}
