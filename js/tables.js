@@ -35,11 +35,12 @@ export class TableBoard {
       if (!btn) return;
       this.setCategory(btn.dataset.cat);
     });
+    // 21.11: filtr sətri — [Açıq (N)] + [👤 Ofisiant ▾]
     this.staffFilterEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-staff-filter]');
-      if (!btn) return;
-      const val = btn.dataset.staffFilter;
-      this.setStaffFilter(val === '_all' ? null : val);
+      if (e.target.closest('[data-waiter-clear]')) { e.stopPropagation(); this.setStaffFilter(null); return; }
+      if (e.target.closest('[data-open-toggle]')) { state._waiterOpenOnly = !state._waiterOpenOnly; this.render(); return; }
+      const pick = e.target.closest('[data-waiter-pick]');
+      if (pick) this.openWaiterPicker(pick);
     });
   }
 
@@ -83,20 +84,77 @@ export class TableBoard {
     this.render();
   }
 
+  /* Kateqoriya filtrinə uyğun masalar (Açıq/Ofisiant sayları bunun üzərindən hesablanır) */
+  _catTables() {
+    return state._waiterCatFilter === 'all' || !state._waiterCatFilter
+      ? state.tables
+      : state.tables.filter(t => tableCategoryOf(t) === state._waiterCatFilter);
+  }
+
   renderStaffFilter() {
-    if (!hasPermission('waiter.view')) {
-      this.staffFilterEl.style.display = 'none';
-      state._waiterStaffFilter = null;
-      return;
-    }
-    const activeStaffList = state.staff.filter(s => staffHasPermission(s, 'table.view'));
-    if (!activeStaffList.length) { this.staffFilterEl.style.display = 'none'; return; }
+    const canOthers = hasPermission('waiter.view');
+    if (!canOthers) state._waiterStaffFilter = null;   // başqasının masalarına baxa bilməyən üçün ofisiant seçimi yoxdur
+    if (!state.tables.length) { this.staffFilterEl.style.display = 'none'; return; }
+    const openN = this._catTables().filter(t => t.occupant).length;
+    const sel = state._waiterStaffFilter;
+    const selName = !sel ? '' : sel === state.user?.id ? 'Mənim masalarım'
+      : (state.staff.find(x => x.id === sel)?.name || (sel === 'admin' ? 'Patron' : '?'));
     this.staffFilterEl.style.display = 'flex';
-    this.staffFilterEl.innerHTML = [
-      `<button class="log-filter ${!state._waiterStaffFilter ? 'active' : ''}" data-staff-filter="_all">Hamısı</button>`
-    ].concat(activeStaffList.map(s =>
-      `<button class="log-filter ${state._waiterStaffFilter === s.id ? 'active' : ''}" data-staff-filter="${s.id}">${esc(s.name)}</button>`
-    )).join('');
+    this.staffFilterEl.classList.add('yz-tfilter');
+    this.staffFilterEl.innerHTML =
+      `<button type="button" class="log-filter yz-tf-open${state._waiterOpenOnly ? ' active' : ''}" data-open-toggle aria-pressed="${state._waiterOpenOnly ? 'true' : 'false'}">Açıq <b>(${openN})</b></button>`
+      + (canOthers ? `<button type="button" class="log-filter yz-tf-waiter${sel ? ' active' : ''}" data-waiter-pick aria-haspopup="dialog">
+          <svg class="icon"><use href="#i-user"></use></svg><span class="yz-tf-waiter__lbl">${sel ? esc(selName) : 'Ofisiant'}</span>
+          ${sel ? '<span class="yz-tf-x" data-waiter-clear role="button" aria-label="Seçimi sil" title="Seçimi sil">✕</span>' : '<span class="yz-tf-caret" aria-hidden="true">▾</span>'}
+        </button>` : '');
+  }
+
+  /* Ofisiant seçimi: telefonda aşağıdan açılan panel, kompüterdə düymənin altında siyahı.
+     .modal-bg qatı kimi açılır — Geri / Esc onu bir addımda bağlayır. */
+  async openWaiterPicker(anchor) {
+    document.querySelector('.yz-wpick')?.remove();
+    const tabs = this._catTables();
+    const openOf = (id) => tabs.filter(t => t.occupant === id).length;
+    const me = state.user?.id;
+    let st = {};
+    try { st = (await db.ref('att/status').once('value')).val() || {}; } catch (e) { st = {}; }
+    const isIn = (id) => ['in', 'break'].includes(st[id]?.state);
+    const list = state.staff.filter(x => x.id !== me && staffHasPermission(x, 'table.view'))
+      .map(x => ({ id: x.id, name: x.name || '?', n: openOf(x.id), on: isIn(x.id) }))
+      .sort((a, b) => (b.on - a.on) || (b.n - a.n) || a.name.localeCompare(b.name, 'az', { numeric: true }));
+    const row = (id, name, n, dim, extra = '') => `<button type="button" class="yz-wpick__row${dim ? ' is-dim' : ''}${state._waiterStaffFilter === id ? ' is-sel' : ''}" data-wid="${esc(id)}" data-wname="${esc(name.toLowerCase())}">
+        <span class="yz-wpick__name">${esc(name)}${extra}</span><span class="yz-wpick__n">${n}</span></button>`;
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg yz-wpick';
+    bg.innerHTML = `<div class="yz-wpick__box" role="dialog" aria-label="Ofisiant seçimi">
+        <div class="yz-wpick__head"><b>Ofisiant</b><span class="yz-wpick__hint">açıq masa sayı</span><button type="button" class="yz-wpick__close" data-close aria-label="Bağla">✕</button></div>
+        ${list.length > 7 ? '<input type="search" class="yz-wpick__q" placeholder="Ad axtar..." aria-label="Ofisiant axtar" data-no-dirty>' : ''}
+        <div class="yz-wpick__list">
+          ${me ? row(me, 'Mənim masalarım', openOf(me), false) : ''}
+          ${row('_all', 'Hamısı', tabs.filter(t => t.occupant).length, false)}
+          ${list.length ? '<div class="yz-wpick__sep"></div>' : ''}
+          ${list.map(x => row(x.id, x.name, x.n, !x.on && !x.n, x.on ? ' <i class="yz-wpick__on" title="İşdədir"></i>' : '')).join('')}
+        </div></div>`;
+    document.body.appendChild(bg);
+    const close = () => { bg.classList.remove('open'); setTimeout(() => bg.remove(), 0); };
+    if (window.matchMedia('(min-width:900px)').matches && anchor) {
+      const r = anchor.getBoundingClientRect(), box = bg.querySelector('.yz-wpick__box');
+      box.style.top = Math.round(r.bottom + 6) + 'px';
+      box.style.left = Math.round(Math.min(r.left, window.innerWidth - 300)) + 'px';
+    }
+    bg.addEventListener('click', (e) => {
+      if (e.target === bg || e.target.closest('[data-close]')) { close(); return; }
+      const b = e.target.closest('[data-wid]');
+      if (!b) return;
+      close();
+      this.setStaffFilter(b.dataset.wid === '_all' ? null : b.dataset.wid);
+    });
+    const q = bg.querySelector('.yz-wpick__q');
+    if (q) q.addEventListener('input', () => {
+      const v = q.value.trim().toLowerCase();
+      bg.querySelectorAll('.yz-wpick__row').forEach(r => { r.hidden = !!v && !(r.dataset.wname || '').includes(v); });
+    });
+    requestAnimationFrame(() => bg.classList.add('open'));
   }
 
   setStaffFilter(staffId) {
@@ -119,9 +177,13 @@ export class TableBoard {
       : state.tables.filter(t => tableCategoryOf(t) === state._waiterCatFilter);
     if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu kateqoriyada masa yoxdur.</p>'; return; }
 
+    if (state._waiterOpenOnly) {
+      filtered = filtered.filter(t => t.occupant);
+      if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Hazırda açıq masa yoxdur.</p>'; return; }
+    }
     if (state._waiterStaffFilter) {
       filtered = filtered.filter(t => t.occupant === state._waiterStaffFilter);
-      if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">Bu işçinin xidmət etdiyi masa yoxdur.</p>'; return; }
+      if (!filtered.length) { this.el.innerHTML = '<p style="color:var(--text3);">' + (state._waiterStaffFilter === state.user.id ? 'Sizin açıq masanız yoxdur.' : 'Bu işçinin xidmət etdiyi masa yoxdur.') + '</p>'; return; }
     }
 
     const canViewOthers = hasPermission('waiter.view');

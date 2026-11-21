@@ -185,7 +185,7 @@ export class OrderCart {
     if (!pend) return '';
     const rows = Object.values(pend).map(line => {
       const m = state.menuItems.find(x => x.id === line.menuItemId);
-      return m ? `<div class="ticket-line ticket-line--pending"><div class="ticket-line__main"><span class="ticket-line__name">${esc(m.name)}</span><span class="ticket-line__qty">× ${line.qty}</span></div></div>` : '';
+      return m ? `<div class="ticket-line ticket-line--pending"><div class="ticket-line__main"><span class="ticket-line__name">${esc(m.name)}</span><span class="ticket-line__qty">× ${line.qty}</span><span class="ticket-line__price">${((m.price || 0) * line.qty + (line.extraFee || 0)).toFixed(2)} ₼</span></div></div>` : '';
     }).join('');
     return `<div class="ticket-sec-title ticket-sec-title--pending"><span class="yz-spin" aria-hidden="true"></span> Göndərilir…</div>${rows}`;
   }
@@ -215,9 +215,9 @@ export class OrderCart {
       const noteOpen = this._noteOpenKeys.has(lineKey);
       const hasNote = !!(line.note && line.note.trim());
       const hasFee = !!(line.extraFee);
-      return `<div class="ticket-line">
+      return `<div class="ticket-line ticket-line--draft">
         <div class="ticket-line__main">
-          <span class="ticket-line__name">${esc(m.name)}</span>
+          <span class="ticket-line__name" title="${esc(m.name)}">${esc(m.name)}</span>
           <button class="ticket-line__note-btn ${(hasNote||hasFee)?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd / əlavə ödəniş" aria-label="Qeyd">
             <svg class="icon"><use href="#i-edit"></use></svg>
           </button>
@@ -246,9 +246,8 @@ export class OrderCart {
         </div>` : ''}
       </div>`;
     }).join('');
-    this.els.draftList.innerHTML = this._pendingHtml() + `<div class="ticket-sec-title">
-      <svg class="icon"><use href="#i-plus"></use></svg> Yeni (göndərilməmiş)
-    </div>${rows}`;
+    // 21.11: "Yeni (göndərilməmiş)" başlığı yoxdur — göndərilmiş mallar ayrıca (gizli) siyahıdadır, səbətdə yalnız yeni mallar
+    this.els.draftList.innerHTML = this._pendingHtml() + rows;
     const sentTotal = (state.tableOrders[state.orderTableId]?.total) || 0;
     const scPct = state.serviceCharge?.enabled ? (state.serviceCharge.percent||0) : 0;
     this.draftAmount = Math.round((draftTotal * (1 + scPct/100) + draftVat) * 100) / 100;   // əsas düymədə göstərilir

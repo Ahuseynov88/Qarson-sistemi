@@ -217,6 +217,8 @@ window.addEventListener('popstate', (e) => {
   if (!st || !st.yz) {
     // Ən başdan da geri basıldı → proqramda qal
     history.pushState({ yz: 1, n: 0 }, '', location.href);
+    // 21.11: artıq ana ekrandayıqsa (geri gediləcək yer yoxdur) — çıxış soruşulur
+    if (depth === 0 && !topLayer()) { askExit(); return; }
     busy = true;
     for (let i = 0; i < depth; i++) { if (!performBack()) break; }
     settle(0);
@@ -232,6 +234,16 @@ window.addEventListener('popstate', (e) => {
   for (let i = 0; i < steps; i++) { if (!performBack()) break; }
   settle(st.n);
 });
+
+/* Ana ekranda telefonun "Geri" düyməsi: proqram özbaşına bağlanmır, çıxış təsdiqlə olur */
+let asking = false;
+function askExit() {
+  if (asking || !window.yzAsk || typeof window.staffExit !== 'function') return;
+  asking = true;
+  window.yzAsk('Hesabdan çıxış edilsin?', { title: 'Çıxış', okLabel: 'Çıx' })
+    .then(okk => { asking = false; if (okk) window.staffExit(); })
+    .catch(() => { asking = false; });
+}
 
 /* ═══ 4. PANELDƏKİ "←" DÜYMƏSİ (Rəhbər paneli) ═══ */
 function ensureBackBtn() {
@@ -282,7 +294,13 @@ document.addEventListener('keydown', (e) => {
   if (!v) return;
   const top = topLayer();
   if (top && !top.classList.contains('tile-detail-overlay')) { e.preventDefault(); closeLayer(top); return; }
-  if (v.scr === 'orderScreen') { e.preventDefault(); performBack(); }
+  // 21.11: Esc hər yerdə bir addım geri — detal paneli → bölmə → Zal/Anbar → sifariş ekranı.
+  // Yazı sahəsində Esc yalnız sahədən çıxır (yazılanı itirməmək üçün geri getmir).
+  const a = document.activeElement;
+  if (a && a.matches && a.matches('input, textarea, select, [contenteditable="true"]')) { a.blur(); return; }
+  e.preventDefault();
+  if (depth > 0) history.back();   // popstate → performBack (tarixçə ilə eyni yol)
+  else performBack();
 });
 window.yzCloseTop = () => { const t = topLayer(); if (t) { closeLayer(t); return true; } return false; };
 

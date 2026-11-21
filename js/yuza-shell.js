@@ -253,6 +253,9 @@ function syncStaffBack() {
 }
 /* Masalar ekranında işləyən, amma Rəhbər panelində də bölməsi olan işçi → "Panel" düyməsi */
 function ensureStaffButton() {
+  // 21.11: "Panel" (adam ikonu) düyməsi əvəzinə sağ üst küncdə "⋮" menyusu (yuza-dots.js)
+  $('yzInvStaffBtn')?.remove();
+  if (window.__yzDots) return;
   const head = document.querySelector('#waiterScreen .waiter-header');
   if (!head) return;
   let b = $('yzInvStaffBtn');

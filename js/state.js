@@ -62,6 +62,7 @@ export const state = {
   _tableCatFilter: 'all',
   _waiterCatFilter: 'all',
   _waiterStaffFilter: null,
+  _waiterOpenOnly: false,   // 21.11: Masalar → «Açıq» filtri
   _menuCatFilter: 'all',
   orderTableId: null,
   _orderCatFilter: 'all',

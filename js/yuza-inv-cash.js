@@ -196,6 +196,7 @@ async function renderCash(host) {
         <button type="button" class="yzi-btn yzi-btn--ghost" data-new="transfer">⇄ Transfer</button>` : ''}
         ${manage() ? '<button type="button" class="yzi-btn yzi-btn--ghost" data-newacc>+ Yeni kassa</button><button type="button" class="yzi-btn yzi-btn--ghost" data-cfg>Parametrlər</button>' : ''}
       </div></div>
+    ${shiftCard()}
     <div class="yzi-kpis yzi-acc-cards">${bals.map(({ a, b }) => `<div class="yzi-kpi yzi-acc yzi-acc--${a.kind}">
       ${manage() ? `<button type="button" class="yzi-acc__edit" data-accedit="${a.id}" aria-label="Düzəlt və ya sil: ${esc(a.name)}" title="Düzəlt / sil">${ICO_EDIT}</button>` : ''}
       <small>${esc(ACC_KINDS[a.kind] || '')}</small><b class="${b.bal < 0 ? 'yzi-bad' : ''}">${fmtMoney(b.bal)}</b>
@@ -245,6 +246,7 @@ async function renderCash(host) {
     if (e.target.closest('[data-cfg]')) { openSettings(); return; }
     if (e.target.closest('[data-newacc]')) { accountEditor(null); return; }
     const ae = e.target.closest('[data-accedit]'); if (ae) { accountEditor(ae.dataset.accedit); return; }
+    const sb = e.target.closest('[data-shift]'); if (sb) { if (sb.dataset.shift === 'open') window.yzShift?.open(); else window.yzShift?.panel(); return; }
     if (e.target.closest('[data-reload]')) { cache.at = 0; again(); return; }
     if (e.target.closest('[data-csv]')) { exportCsv(list); return; }
     const o = e.target.closest('[data-open]'); if (o) { const [k, id] = o.dataset.open.split('|'); openAny(k, id); }
@@ -276,9 +278,27 @@ function exportCsv(list) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+/* ── Kassa növbəsi kartı (21.11: növbənin nömrəsi və tarixi yalnız burada göstərilir) ── */
+function shiftCard() {
+  const sh = state.shift;
+  const may = isAdmin() || can('shift.manage');
+  if (!sh) return `<div class="yzi-card yzi-shift yzi-shift--off"><div><small>Kassa növbəsi</small><b>Bağlıdır</b>
+      <span class="mut">Ödəniş qəbul etmək üçün növbə açıq olmalıdır.</span></div>
+      ${may ? '<button type="button" class="yzi-btn yzi-btn--gold" data-shift="open">Növbəni aç</button>' : ''}</div>`;
+  return `<div class="yzi-card yzi-shift yzi-shift--on"><div><small>Kassa növbəsi</small><b>Növbə №${esc(String(sh.no ?? ''))}</b>
+      <span class="mut">Açılış: ${fmtDT(sh.openedAt)}${sh.openedByName ? ' · ' + esc(sh.openedByName) : ''}</span></div>
+      ${may ? '<button type="button" class="yzi-btn yzi-btn--ghost" data-shift="panel">X / Z hesabatı</button>' : ''}</div>`;
+}
+document.addEventListener('yz:shift-changed', () => {
+  const c = document.querySelector('.yzi-shift');
+  if (c && c.isConnected) { const t = document.createElement('div'); t.innerHTML = shiftCard(); c.replaceWith(t.firstElementChild); }
+});
+
 /* ── İlk quraşdırma ── */
 function renderSetup(el, host) {
-  if (!manage()) { el.innerHTML = '<div class="yzi-head"><div><div class="yzi-eyebrow">MÜHASİBAT</div><h1 class="yzi-h1">Kassa</h1></div></div><p class="yzi-banner">Kassa hesabları hələ yaradılmayıb. Rəhbər və ya mühasib əvvəlcə hesabları qurmalıdır.</p>'; return; }
+  if (!manage()) { el.innerHTML = '<div class="yzi-head"><div><div class="yzi-eyebrow">MÜHASİBAT</div><h1 class="yzi-h1">Kassa</h1></div></div><p class="yzi-banner">Kassa hesabları hələ yaradılmayıb. Rəhbər və ya mühasib əvvəlcə hesabları qurmalıdır.</p>' + shiftCard();
+    el.querySelectorAll('[data-shift]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.shift; if (k === 'open') window.yzShift?.open?.(); else window.yzShift?.panel?.(); }));
+    return; }
   const rows = [['cash', 'Əsas kassa', true], ['pos', 'POS terminal', true], ['bank', 'Bank hesabı', false]];
   el.innerHTML = `<div class="yzi-head"><div><div class="yzi-eyebrow">MÜHASİBAT</div><h1 class="yzi-h1">Kassanı quraq</h1></div></div>
     <div class="yzi-card">

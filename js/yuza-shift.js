@@ -364,10 +364,10 @@ export async function renderShiftsReport(el, from, to) {
 /* ── Başlıqdakı düymə (işçi ekranı və admin paneli) ── */
 function ensureButtons() {
   if (!document.getElementById('yzShCss')) document.head.insertAdjacentHTML('beforeend', CSS);
-  const spots = [
-    ['yzShBtnW', document.querySelector('#waiterScreen .waiter-header'), '#themeToggleBtnWaiter'],
-    ['yzShBtnA', document.querySelector('#adminTopbar .topbar-right'), '#themeToggleBtn']
-  ];
+  // 21.11: növbənin nömrəsi və saatı hər ekranın başlığında göstərilmir — yalnız Mühasibat → Kassa bölməsində
+  // (yuza-inv-cash.js). İşçi ekranında növbə "⋮" menyusundan (yuza-dots.js) idarə olunur.
+  const spots = [];
+  ['yzShBtnW', 'yzShBtnA'].forEach(id => document.getElementById(id)?.remove());
   spots.forEach(([id, host, before]) => {
     if (!host || document.getElementById(id)) return;
     const b = document.createElement('button');
@@ -379,6 +379,7 @@ function ensureButtons() {
   paintButtons();
 }
 function paintButtons() {
+  try { document.dispatchEvent(new CustomEvent('yz:shift-changed')); } catch (e) { /* */ }
   ['yzShBtnW', 'yzShBtnA'].forEach(id => {
     const b = document.getElementById(id); if (!b) return;
     const show = !!state.user && canShift();

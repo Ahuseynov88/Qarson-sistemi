@@ -223,6 +223,8 @@ function logout(opts = {}) {
   state.activeChatConvId = null;
   state._batchSelection = {};
   state._waiterStaffFilter = null;
+  state._waiterOpenOnly = false;
+  document.querySelector('.yz-wpick')?.remove();
   showScreen('loginScreen');
 }
 
