@@ -540,3 +540,51 @@ body.dark-mode .yz-dotsmenu__it .icon{color:var(--gold);}
   .yz-wpick .yz-wpick__box{position:fixed; width:290px; max-height:60vh; border-radius:14px; border:1px solid var(--border);
     padding:10px; box-shadow:0 12px 32px rgba(0,0,0,.22);}
 }
+
+/* ── 12) C14 · ELANLAR (21.11.2026) ── */
+.yz-dots{position:relative;}
+.yz-dots__badge{position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+  background:#d64541; color:#fff; font-size:11px; font-weight:800; line-height:18px; text-align:center; box-shadow:0 0 0 2px var(--card);}
+.yz-ann-pop .yzi-modal{max-width:460px;}
+.yz-ann-pop.is-imp .yzi-modal{border:2px solid #d64541;}
+.yz-ann-left{font-size:13px; font-weight:600; color:var(--text3); margin-inline-start:6px;}
+.yz-ann-text{font-size:17px; line-height:1.55; margin:0 0 12px; white-space:normal; word-break:break-word;}
+.yz-ann-meta{font-size:13px; color:var(--text3); margin:0;}
+.yz-ann-list{display:flex; flex-direction:column; gap:10px;}
+.yz-ann-item{border:1px solid var(--border); border-radius:14px; padding:12px 14px; background:var(--card);}
+.yz-ann-item.is-imp{border-color:rgba(214,69,65,.55);}
+.yz-ann-item.is-new{box-shadow:inset 4px 0 0 var(--gold, #d4a03c);}
+.yz-ann-item header{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; color:var(--text3);}
+.yz-ann-item header b{color:var(--text); font-size:14px;}
+.yz-ann-item p{margin:8px 0; line-height:1.5; word-break:break-word;}
+.yz-ann-item footer{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+.yz-ann-form{display:flex; flex-direction:column; gap:12px;}
+.yz-ann-form textarea{width:100%; box-sizing:border-box; font-size:16px;}
+.yz-ann-chk, .yz-ann-to label, .yz-ann-p{display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer;}
+.yz-ann-to{display:flex; gap:16px; flex-wrap:wrap;}
+.yz-ann-people{display:flex; flex-direction:column; max-height:40vh; overflow-y:auto; border:1px solid var(--border); border-radius:12px; padding:4px 10px;}
+.yz-ann-p small{margin-inline-start:auto; color:var(--text3);}
+.yz-ann-p[hidden]{display:none;}
+.yz-ann-q{height:40px; margin:6px 0; padding:0 10px; border:1px solid var(--border); border-radius:10px; background:var(--bg); color:var(--text); font-size:15px;}
+.yz-ann-reads ul{list-style:none; margin:0 0 14px; padding:0;}
+.yz-ann-reads li{display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border);}
+.yz-ann-reads li span{color:var(--text3); font-variant-numeric:tabular-nums;}
+.yz-ann-reads ul.is-not li b{color:#d64541;}
+
+/* ── 13) C13 · AD GÜNLƏRİ (21.11.2026) ── */
+.yz-bd-list{list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:6px;}
+.yz-bd-row{display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius:12px;}
+.yz-bd-row.is-today{border-color:var(--gold, #d4a03c); background:rgba(212,160,60,.12);}
+.yz-bd-ico{width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:var(--card2); flex-shrink:0;}
+.yz-bd-main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.yz-bd-main small, .yz-bd-when small{color:var(--text3); font-size:12.5px;}
+.yz-bd-when{display:flex; flex-direction:column; align-items:flex-end; text-align:end; font-variant-numeric:tabular-nums;}
+.yz-bd-today{color:var(--gold, #d4a03c);}
+.yz-bd-greet{position:fixed; z-index:1900; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom));
+  width:min(520px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:12px; padding:12px 12px 12px 16px;
+  background:var(--card); color:var(--text); border:1px solid var(--gold, #d4a03c); border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.25);
+  animation:yzBdIn .35s ease;}
+.yz-bd-greet > div{flex:1; display:flex; flex-direction:column; gap:2px; line-height:1.4;}
+.yz-bd-greet__ico{font-size:28px; line-height:1;}
+.yz-bd-greet button{width:40px; height:40px; border:0; border-radius:10px; background:var(--card2); color:var(--text); cursor:pointer; flex-shrink:0;}
+@keyframes yzBdIn{from{opacity:0; transform:translate(-50%, 12px);} to{opacity:1; transform:translate(-50%, 0);}}
