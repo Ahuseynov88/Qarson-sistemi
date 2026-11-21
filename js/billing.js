@@ -10,6 +10,13 @@ import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, comp
 import { hasPermission } from './permissions.js';
 import { needShift, shiftNow } from './yuza-shift.js';
 
+/* C22: ləğvdə "Mətbəx hazırlamışdı?" seçimi */
+const setPrep = (name, yes) => { const r = document.querySelector(`input[name="${name}"][value="${yes ? 'yes' : 'no'}"]`); if (r) r.checked = true; };
+const getPrep = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value === 'yes';
+function kitchenStarted(tableId, menuItemId, name) {
+  return (state.kitchenOrders || []).some(ko => ko.tableId === tableId && (ko.items || []).some(i => i.name === name && (i.cooking || i.ready)));
+}
+
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
 
 export class ConfirmedOrder {
@@ -205,6 +212,8 @@ export class ConfirmedOrder {
       qtyGroup.style.display = 'none';
       qtyInput.value = 1;
     }
+    // C22: mətbəx artıq bişirir / hazırdırsa "Bəli" seçili gəlir
+    setPrep('cancelReasonPrep', kitchenStarted(tableId, it.menuItemId, it.name));
     this.els.cancelReasonModal.classList.add('open');
   }
 
@@ -222,8 +231,9 @@ export class ConfirmedOrder {
     const maxQty = it?.qty || 1;
     let cancelQty = parseInt(document.getElementById('cancelReasonQty').value, 10) || maxQty;
     cancelQty = Math.min(Math.max(cancelQty, 1), maxQty);
+    const prepared = getPrep('cancelReasonPrep');
     this.closeCancelReasonModal();
-    this.cancelItem(tableId, itemKey, reason, cancelQty);
+    this.cancelItem(tableId, itemKey, reason, cancelQty, { prepared });
   }
 
   /* ── Toplu silmə: seçilmiş malların hamısı bir pəncərədə, bir səbəblə ──
@@ -238,6 +248,7 @@ export class ConfirmedOrder {
     if (isPaid) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Hesab ödənilmiş masada əməliyyat aparılamaz'); return; }
     this._bc = { tableId, rows: sel.map(([k, q]) => ({ key: k, qty: Math.min(q, order.items[k].qty), max: order.items[k].qty })) };
     document.getElementById('batchCancelReason').value = 'Səhv sifariş';
+    setPrep('batchCancelPrep', this._bc.rows.some(r => { const it = order.items[r.key]; return kitchenStarted(tableId, it.menuItemId, it.name); }));
     this._renderBatchCancel();
     document.getElementById('batchCancelModal').classList.add('open');
   }
@@ -275,11 +286,12 @@ export class ConfirmedOrder {
     if (!this._bc || this._bcBusy) return;
     const { tableId, rows } = this._bc;
     const reason = document.getElementById('batchCancelReason').value;
+    const prepared = getPrep('batchCancelPrep');
     const btn = document.querySelector('#batchCancelModal [data-confirm-batch-cancel]');
     this._bcBusy = true; if (btn) btn.disabled = true;
     let ok = 0;
     for (const r of rows) {
-      if (await this.cancelItem(tableId, r.key, reason, r.qty)) ok++;
+      if (await this.cancelItem(tableId, r.key, reason, r.qty, { prepared })) ok++;
       await new Promise(res => setTimeout(res, 120));     // mətbəx kartı növbəti silmədən əvvəl yenilənsin
     }
     this._bcBusy = false; if (btn) btn.disabled = false;
@@ -290,7 +302,7 @@ export class ConfirmedOrder {
     else showToast(`<svg class="icon"><use href="#i-error"></use></svg> ${rows.length - ok} mal silinmədi — yenidən yoxlayın`);
   }
 
-  cancelItem(tableId, itemKey, reason, cancelQty) {
+  cancelItem(tableId, itemKey, reason, cancelQty, { prepared = false } = {}) {
     let done; const result = new Promise(r => { done = r; });
     if (!hasPermission('order.cancel_item')) { done(false); return result; }
     const order = state.tableOrders[tableId];
@@ -324,13 +336,15 @@ export class ConfirmedOrder {
     }, (error, committed) => {
       if (error) { done(false); showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) { done(false); return; }
-      updateStock(cancelledMenuItemId, qtyToCancel, state.menuItems);
+      // C22: hazırlanmamış mal anbara (porsiyaya) qayıdır; hazırlanmışsa qayıtmır — itki kimi qeyd olunur
+      if (!prepared) updateStock(cancelledMenuItemId, qtyToCancel, state.menuItems);
+      else window.__yzPortionLoss?.(cancelledMenuItemId, qtyToCancel, reasonText);
       const t = state.tables.find(x => x.id === tableId);
       const qtyLabel = isPartial ? `${qtyToCancel} ədəd` : `bütün (${fullQty} ədəd)`;
       // Ləğv edilən məbləğ = (ləğv olunan miqdar / ümumi miqdar) nisbətində qiymətdən pay
       const cancelledAmount = Math.round((it.price||0) * (1-((it.discountPercent||0)/100)) * qtyToCancel * 100) / 100;
-      addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Sifarişi vermiş: ${orderOwnerName} — Səbəb: ${reasonText}`,
-        { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText,
+      addLog('order_cancel', `${state.user?.name} "${cancelledName}" malından ${qtyLabel} sifarişdən iptal etdi (${cancelledAmount.toFixed(2)} ₼) — Sifarişi vermiş: ${orderOwnerName} — Səbəb: ${reasonText}${prepared ? ' — HAZIRLANMIŞDI: anbara qaytarılmadı (itki)' : ' — anbara qaytarıldı'}`,
+        { tableId, tableName: t?.name, menuItemId: cancelledMenuItemId, itemName: cancelledName, qty: qtyToCancel, amount: cancelledAmount, reason: reasonText, prepared: !!prepared, stockReturned: !prepared,
           staffId: state.user?.id, staffName: state.user?.name, orderOwnerId: order.waiterId||null, orderOwnerName });
                    // Mətbəx kartını yenilə
             const menuItem = state.menuItems.find(x => x.id === cancelledMenuItemId);
@@ -1432,3 +1446,9 @@ export class PaymentProcessor {
     }, false);
   }
 } 
+
+/* C22: "Zayolma" səbəbi seçiləndə — mal istifadə olunub sayılır */
+document.addEventListener('change', (e) => {
+  const id = e.target?.id;
+  if ((id === 'cancelReasonSelect' || id === 'batchCancelReason') && e.target.value === 'Zayolma') setPrep(id === 'cancelReasonSelect' ? 'cancelReasonPrep' : 'batchCancelPrep', true);
+});

@@ -9,6 +9,7 @@ import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, comp
 import { hasPermission } from './permissions.js';
 import { showScreen } from './theme.js';
 import { printKitchenJobs } from './printer-service.js';
+import { modal } from './yuza-inv-ui.js';
 
 export class OrderCart {
   /**
@@ -280,12 +281,81 @@ export class OrderCart {
     });
   }
 
-  send() {
+  /* ═══ C22 · GÖNDƏRMƏ ANINDA QALIQ YOXLAMASI (21.11.2026) ═══
+     Səbətə əlavə edəndə anbardan heç nə silinmir. "Göndər" basılanda hər malın bazadakı ƏN SON vəziyyəti
+     oxunur (stop-list / qalıq). Çatmırsa ofisiant seçir: "Olanı göndər" (çatmayan hissə səbətdən çıxır)
+     və ya "Geri" (heç nə göndərilmir). Silinmə yalnız sifariş mətbəxə yazılandan sonra olur (aşağıda). */
+  async _freshAvail(menuItemId) {
+    let v = null;
+    try { v = (await R.menuItems.child(menuItemId).once('value')).val(); } catch (e) { v = null; }
+    const m = v || state.menuItems.find(x => x.id === menuItemId) || null;
+    if (!m) return { gone: true, left: 0 };
+    if (m.available === false) return { off: true, left: 0 };
+    const extra = window.__yzAvailExtra?.(menuItemId, m);   // C21: porsiya sayğacı buraya qoşulur
+    const stock = (m.stock !== undefined && m.stock !== null) ? Number(m.stock) : null;
+    const lim = [stock, extra].filter(x => x !== null && x !== undefined && Number.isFinite(Number(x))).map(Number);
+    return { left: lim.length ? Math.max(0, Math.floor(Math.min(...lim) * 1000) / 1000) : null, name: m.name };
+  }
+  async _checkShort(draft) {
+    const need = {};
+    Object.values(draft).forEach(l => { need[l.menuItemId] = (need[l.menuItemId] || 0) + l.qty; });
+    const short = [];
+    for (const [id, q] of Object.entries(need)) {
+      const a = await this._freshAvail(id);
+      if (a.gone || a.off || (a.left !== null && a.left < q)) {
+        const m = state.menuItems.find(x => x.id === id);
+        short.push({ id, name: a.name || m?.name || '?', need: q, left: a.gone || a.off ? 0 : a.left, off: !!a.off, gone: !!a.gone });
+      }
+    }
+    return short;
+  }
+  _askShort(short) {
+    return new Promise(res => {
+      const any = short.some(x => x.left > 0);
+      const rows = short.map(x => `<li><b>${esc(x.name)}</b><span>${x.gone ? 'menyuda yoxdur' : x.off ? 'satışda deyil (bitib)' : x.left > 0 ? `istənilən ${x.need}, <b>cəmi ${x.left} qalıb</b>` : `istənilən ${x.need}, <b>bitib</b>`}</span></li>`).join('');
+      let done = false;
+      const fin = (v) => { if (done) return; done = true; res(v); };
+      modal({
+        title: '<svg class="icon"><use href="#i-warning"></use></svg> Bəzi mallar çatmır',
+        body: `<ul class="yz-short">${rows}</ul><p class="yzi-hint">${any ? '“Olanı göndər” — qalan qədər göndərilir, çatmayan hissə səbətdən çıxır.' : 'Bitmiş mallar səbətdən çıxarılıb qalanı göndərilə bilər.'}</p>`,
+        actions: [
+          { label: 'Geri', cancel: true },
+          { label: any ? 'Olanı göndər' : 'Bitənləri çıxar və göndər', cls: 'yzi-btn--gold', onClick: () => { fin('send'); } }
+        ],
+        onClose: () => fin('back')
+      });
+    });
+  }
+
+  async send() {
     const tableId = state.orderTableId;
-    if (!tableId || this._pending[tableId]) return;
+    if (!tableId || this._pending[tableId] || this._checking) return;
+    if (!Object.keys(state._orderDraft).length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Heç mal seçilməyib'); return; }
+    // C22: göndərmə anında son qalıq yoxlanır
+    this._checking = true;
+    let short = [];
+    try { short = await this._checkShort(state._orderDraft); } finally { this._checking = false; }
+    if (state.orderTableId !== tableId) return;
+    if (short.length) {
+      if (await this._askShort(short) !== 'send') return;
+      // Çatmayan hissə səbətdən çıxır (eyni malın bir neçə sətri varsa — sonuncudan başlayaraq)
+      short.forEach(x => {
+        let over = x.need - x.left;
+        Object.keys(state._orderDraft).reverse().forEach(k => {
+          const l = state._orderDraft[k];
+          if (over <= 0 || l.menuItemId !== x.id) return;
+          const cut = Math.min(l.qty, over);
+          l.qty = Math.round((l.qty - cut) * 1000) / 1000; over -= cut;
+          if (l.qty <= 0) delete state._orderDraft[k];
+        });
+      });
+      addLog('order_short', `${state.user?.name || ''}: göndərmə anında çatmadı — ${short.map(x => `${x.name}: istənilən ${x.need}, ${x.left > 0 ? 'göndərilən ' + x.left : 'göndərilmədi'}`).join('; ')}`, { tableId, items: short.map(x => ({ id: x.id, need: x.need, left: x.left })) });
+      this.renderDraftList();
+      if (!Object.keys(state._orderDraft).length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Göndəriləcək mal qalmadı'); return; }
+    }
+    if (this._pending[tableId]) return;
     const draftKeys = Object.keys(state._orderDraft);
     const t = state.tables.find(x => x.id === tableId);
-    if (!draftKeys.length) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Heç mal seçilməyib'); return; }
 
     const draftSnapshot = JSON.parse(JSON.stringify(state._orderDraft));
     const waiterId = state.user.id, waiterName = state.user.name;
