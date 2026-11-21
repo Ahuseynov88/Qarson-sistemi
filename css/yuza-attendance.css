@@ -73,3 +73,7 @@
 .yza-mk--Ü{background:rgba(240,179,74,.18);color:#c98a12}
 .yza-mk--Q{background:rgba(160,30,30,.2);color:#b42318}
 .yza-mk--İ{background:rgba(120,120,120,.16);color:var(--text2)}
+/* C15 · avtomatik çıxış (unudub) sətri — diqqət mərkəzində (21.11.2026) */
+.yzi-table tr.yza-auto td{background:rgba(214,69,65,.08)}
+.yzi-table tr.yza-auto td:first-child{box-shadow:inset 4px 0 0 var(--red)}
+.yza-tc.is-auto{outline:2px solid var(--red);outline-offset:-2px}

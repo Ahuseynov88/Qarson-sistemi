@@ -181,3 +181,8 @@ body:has(.iz-kiosk) .iz{max-width:none;padding:0}
 /* İkonlu Geri / Bağla / Çıxış düymələri (10.11.2026) */
 .iz-btn--icon svg{width:24px;height:24px;flex-shrink:0}
 .iz-btn--sm.iz-btn--icon svg{width:20px;height:20px}
+/* C15 · avtomatik çıxış xəbərdarlığı (21.11.2026) */
+.iz-state--auto{align-items:flex-start;flex-wrap:nowrap;background:rgba(214,69,65,.12);border:1px solid rgba(214,69,65,.45);color:var(--text);line-height:1.5;text-align:start}
+.iz-state--auto .iz-dot{background:#d64541;margin-top:6px;flex-shrink:0}
+p.iz-state--auto{display:block;margin:12px 0}
+.iz-auto{color:#d64541;font-weight:700}
