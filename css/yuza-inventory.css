@@ -293,6 +293,10 @@ body.yz-patron-zal #waiterScreen [onclick="showExitModal()"],
 body.yz-patron-zal #yzInvStaffBtn{display:none!important}
 
 /* Kassa */
+.yzi-shift{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;border-left:3px solid var(--green)}
+.yzi-shift > div{display:flex;flex-direction:column;gap:2px}
+.yzi-shift b{font-size:18px}
+.yzi-shift--off{border-left-color:var(--red)}
 .yzi-acc-cards .yzi-acc{display:flex;flex-direction:column;gap:4px;position:relative}
 .yzi-acc__edit{position:absolute;top:8px;right:8px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--border,rgba(255,255,255,.12));background:transparent;color:var(--text2,#aaa);cursor:pointer}
 .yzi-acc__edit:hover,.yzi-acc__edit:focus-visible{color:var(--gold,#e3a63f);border-color:var(--gold,#e3a63f)}
