@@ -177,7 +177,7 @@
 #yzLogin .yz-card__hint{margin:.32em 0 0; font-size:.906em; line-height:1.4; color:var(--text-soft); font-weight:400;}
 
 /* Rollar */
-#yzLogin .yz-roles{width:100%; margin-top:1.73em; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.9375em;}
+#yzLogin .yz-roles{width:100%; margin-top:1.73em; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9375em;}
 #yzLogin .yz-role{
   height:7.5em; padding:.35em .4em 0; margin:0; border-radius:.9em; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.7em;
@@ -373,6 +373,8 @@
 
 /* ═══ Rəhbər girişi gizli: küncdəki açar ikonu → ayrıca pəncərə (yuza-owner.js) ═══ */
 html.yz-owner-on #yzLogin .yz-role--admin{display:none !important;}
+/* Rəhbər PIN düyməsi ümumiyyətlə göstərilmir (səhifə açılarkən bir anlıq da görünməsin) */
+#yzLogin .yz-role--admin{display:none !important;}
 html.yz-owner-on #yzLogin .yz-roles{grid-template-columns:repeat(2,minmax(0,1fr));}
 #yzLogin .yz-keybtn{
   display:flex; align-items:center; justify-content:center; width:2.875em; height:2.875em; padding:0;
