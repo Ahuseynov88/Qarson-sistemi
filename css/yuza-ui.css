@@ -610,3 +610,27 @@ body.dark-mode .yz-dotsmenu__it .icon{color:var(--gold);}
 /* şəkilsiz kartda nişan adı örtməsin — aşağı sağ küncə */
 .product-card.no-photo:has(.product-card__stock){padding-top:30px;}
 .product-card.no-photo .product-card__stock{top:5px; right:5px; left:5px; text-align:center;}
+
+/* ── 16) C17 · VAHİD MÜŞTƏRİ BAZASI (21.11.2026) ── */
+.yz-cu-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px;}
+.yz-cu-bar .yzi-hint{margin:0; flex:1; min-width:220px;}
+.yz-cu-form{display:flex; flex-direction:column; gap:10px;}
+.yz-cu-form small{font-weight:500; color:var(--text3); text-transform:none; letter-spacing:0;}
+.yz-cu-err{color:#d64541; min-height:18px; margin:0; font-size:14px;}
+.yz-cu-extra{margin:10px 0;}
+.yz-cu-tag{display:inline-block; padding:2px 8px; border-radius:999px; background:rgba(212,160,60,.16); font-size:12px; font-weight:700; margin:0 2px 2px 0;}
+.yz-cu-note{background:var(--card2); border-radius:10px; padding:8px 10px; font-size:13.5px; margin:8px 0;}
+.yz-cu-kpis{display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin:10px 0;}
+.yz-cu-kpis > div{border:1px solid var(--border); border-radius:12px; padding:8px 10px; display:flex; flex-direction:column;}
+.yz-cu-kpis small{color:var(--text3); font-size:12px;}
+.yz-cu-kpis b{font-size:16px; font-variant-numeric:tabular-nums;}
+.yz-cu-kpis .is-debt{border-color:rgba(214,69,65,.5);} .yz-cu-kpis .is-debt b{color:#d64541;}
+.yz-cu-actions{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+.yz-cu-orders{max-height:260px; overflow-y:auto;}
+.yz-cu-nophone{display:block; color:#d64541; font-weight:700; margin-top:2px;}
+.yz-cu-linked{display:inline-flex; align-items:center; gap:4px; color:var(--blue); cursor:pointer; margin-top:2px;}
+.yz-cu-link{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:12px 14px; margin-bottom:14px;
+  border:1px solid rgba(212,160,60,.55); border-radius:14px; background:rgba(212,160,60,.08);}
+.yz-cu-link > div{display:flex; flex-direction:column; gap:4px; flex:1; min-width:240px;}
+.yz-cu-link small{color:var(--text2); line-height:1.45;}
+#customerChargeSelect[size]{height:auto; min-height:180px;}
