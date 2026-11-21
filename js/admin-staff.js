@@ -176,7 +176,9 @@ export function saveStaff() {
   const avatar = avatarVal || fallback;
   // fin artıq staffHR-dədir; köhnə qeyddə qalıbsa silinir
   const staffData = { name, firstname, lastname, position, pin: useApi ? null : pin, phone, avatar, permissions, systemAccess, attNoPhone,
-    contractType: hr.contractType || null, hireDate: hr.hireDate || null, fin: null };
+    contractType: hr.contractType || null, hireDate: hr.hireDate || null, fin: null,
+    // C13: ad günü xatırlatması üçün yalnız GÜN və AY (il yox) — tam doğum tarixi staffHR-də qalır
+    bday: /^\d{4}-\d{2}-\d{2}$/.test(hr.birthDate || '') ? hr.birthDate.slice(5) : null };
 
   if (state.editTarget?.id) {
     const id = state.editTarget.id;

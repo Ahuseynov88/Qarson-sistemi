@@ -135,7 +135,7 @@ export function fresh(host) {
 /* ── Pəncərə (modal) ── */
 /* Pəncərənin alt hissəsində yalnız naviqasiya düymələri ikonla göstərilir (Ləğv/Təsdiqlə kimi qərar düymələri mətnli qalır) */
 const NAV_ICONS = { 'Bağla': 'close', 'Geri': 'back' };
-export function modal({ title, body, wide = false, actions = [], onClose } = {}) {
+export function modal({ title, body, wide = false, actions = [], onClose, lock = false } = {}) {
   const bg = document.createElement('div');
   bg.className = 'modal-bg open yzi-modal-bg';
   bg.innerHTML = `<div class="modal yzi-modal${wide ? ' yzi-modal--wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title || '')}">
@@ -178,8 +178,11 @@ export function modal({ title, body, wide = false, actions = [], onClose } = {})
     close();
   };
   bg.querySelector('.yzi-x').addEventListener('click', askClose);
+  // lock: pəncərə yalnız öz düyməsi ilə bağlanır (✕, fon, Esc, Geri işləmir) — məs. vacib elan
+  if (lock) { bg.querySelector('.yzi-x').remove(); bg.dataset.yzLock = '1'; }
   bg.addEventListener('mousedown', (e) => {
     if (e.target !== bg) return;
+    if (lock) { const m = bg.querySelector('.yzi-modal'); m?.classList.remove('yz-shake'); void m?.offsetWidth; m?.classList.add('yz-shake'); return; }
     if (dirty()) { const m = bg.querySelector('.yzi-modal'); m?.classList.remove('yz-shake'); void m?.offsetWidth; m?.classList.add('yz-shake'); return; }
     close();
   });

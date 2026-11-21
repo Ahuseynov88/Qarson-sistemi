@@ -30,7 +30,9 @@ const HEADERS = [
 
 const isStaff = () => state.user?.role === 'staff';
 const canShift = () => hasPermission('shift.manage');
-const showDots = () => isStaff() && (!!window.__yzAccess?.hasPanel?.(state.user) || canShift());
+// Əlavə bəndlər (məs. C14 Elanlar) başqa modullardan gəlir: window.__yzDotsExtra = [() => ({k:'x:..', l, i, run}) | null]
+const extras = () => (window.__yzDotsExtra || []).map(f => { try { return f(); } catch (e) { return null; } }).filter(Boolean);
+const showDots = () => (isStaff() && (!!window.__yzAccess?.hasPanel?.(state.user) || canShift())) || extras().length > 0;
 
 /* ── 1) Proqramın nişanı (sol üst) ── */
 function ensureMarks() {
@@ -68,7 +70,8 @@ function ensureDots() {
 function items() {
   const out = [];
   const u = state.user;
-  if ((u?.permissions || []).includes('table.view')) out.push({ grp: '', k: 'zal', l: 'Masalar', i: 'chair' });
+  if (u?.role === 'staff' && (u?.permissions || []).includes('table.view')) out.push({ grp: '', k: 'zal', l: 'Masalar', i: 'chair' });
+  extras().forEach(x => out.push({ grp: '', ...x }));
   if (canShift()) out.push({ grp: '', k: 'shift', l: state.shift ? `Kassa növbəsi · №${state.shift.no ?? ''}` : 'Kassa növbəsi (bağlıdır)', i: 'cash' });
   document.querySelectorAll('#adminTabsContainer .ap-group').forEach(g => {
     const grp = g.querySelector('.ap-group__header > span:not(.yz-side-badge)')?.textContent.trim() || '';
@@ -114,6 +117,7 @@ function toggleMenu(btn) {
   setTimeout(() => menuEl?.querySelector('.yz-dotsmenu__it')?.focus(), 30);
 }
 function go(k) {
+  if (k.startsWith('x:')) { extras().find(x => x.k === k)?.run?.(); return; }
   if (k === 'zal') {
     if ($('orderScreen')?.classList.contains('active')) { try { window.staffApp?.closeTableDetail?.(); } catch (e) { /* */ } }
     showScreen('waiterScreen'); return;

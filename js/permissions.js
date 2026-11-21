@@ -55,6 +55,7 @@ export const ALL_PERMISSIONS = [
       { key: 'kitchen.notify',   label: 'Mətbəxə bildiriş göndərmək' },
       { key: 'chat.send',        label: 'Müştəri ilə yazışmaq' },
       { key: 'note.write',       label: 'Masa qeydi yazmaq' },
+      { key: 'birthday.view',    label: 'Ad günlərini görmək (işçilər və müştərilər) və xatırlatma almaq' },
     ]
   },
   {
@@ -81,6 +82,7 @@ export const ALL_PERMISSIONS = [
       { key: 'staff.view',    label: 'İşçiləri görmək' },
       { key: 'att.bind',      label: 'İşçi telefonunu aktivləşdirmək (davamiyyət)' },
       { key: 'att.manual',    label: 'Smartfonu olmayan işçinin davamiyyətini qeyd etmək' },
+      { key: 'announce.send', label: 'İşçilərə elan göndərmək' },
     ]
   },
   {

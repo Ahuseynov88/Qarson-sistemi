@@ -87,6 +87,7 @@ function topLayer() {
 /* Qatı öz düyməsi ilə bağlayır (təmizləmə məntiqi işə düşsün deyə) */
 const CLOSE_SEL = '.yzi-x, [data-cancel], [data-close-audit], [data-close], [data-confirm-action-cancel], [data-rc-close], #bamCancelBtn, #ispCloseBtn';
 function closeLayer(el, ask = true) {
+  if (el.dataset.yzLock === '1') { const m = el.querySelector('.yzi-modal, .modal'); m?.classList.remove('yz-shake'); void m?.offsetWidth; m?.classList.add('yz-shake'); return; }   // C14: vacib elan — yalnız öz düyməsi ilə
   // Saxlanmamış dəyişiklik varsa (Geri / Esc ilə təsadüfən bağlanmasın) əvvəlcə soruş.
   // Anbar pəncərələri (.yzi-modal-bg) bunu öz ✕ düyməsində özü edir.
   if (ask && el.dataset.yzDirty === '1' && !el.classList.contains('yzi-modal-bg') && window.yzAsk) {
