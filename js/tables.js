@@ -49,6 +49,7 @@ export class TableBoard {
     const isMine = t.occupant === state.user.id;
     const isOther = t.occupant && !isMine;
     if (!t.occupant) {
+      if (!hasPermission('table.open')) { showToast('<svg class="icon"><use href="#i-ban"></use></svg> Masa açmaq icazəniz yoxdur'); return; }
       this.openActivateConfirm(tableId);
     } else if (isOther && !hasPermission('waiter.view')) {
       showToast('<svg class="icon"><use href="#i-ban"></use></svg> Bu masa başqa işçiyə aiddir');
@@ -206,6 +207,7 @@ export class TableBoard {
   /* Mərhələ 2a: masa transaction ilə açılır — iki ofisiant eyni anda eyni masanı aça bilməz.
      @returns {Promise<boolean>} false = masa artıq başqası tərəfindən açılıb */
   confirmActivate(tableId) {
+    if (!hasPermission('table.open')) return Promise.resolve(false);   // "Masa açmaq" icazəsi yoxdursa masa açılmır
     const now = serverNow();
     const sessionId = `${tableId}_${now}`;
     const me = { id: state.user.id, name: state.user.name };

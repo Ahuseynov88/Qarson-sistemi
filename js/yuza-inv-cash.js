@@ -23,6 +23,7 @@ export const ACC_KINDS = { cash: 'Nağd kassa', pos: 'POS terminal', bank: 'Bank
 export const DEF_CAT_IN = ['Təsisçi pul qoydu', 'Avans qaytarıldı', 'Depozit', 'İcarə gəliri', 'Digər gəlir'];
 export const DEF_CAT_OUT = ['Əmək haqqı', 'İşçiyə avans', 'İcarə', 'Kommunal xərclər', 'Vergi və rüsumlar', 'Bank xidmət haqqı',
   'Nəqliyyat', 'Təsərrüfat malları', 'Təmir və xidmət', 'Reklam', 'Təsisçiyə ödəniş', 'Digər xərc'];
+const ICO_EDIT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 const SRC = {
   sale: 'Masa satışı', credit: 'Nisyə ödənişi', banquet: 'Banket ödənişi', supplier: 'Təchizatçı ödənişi',
   doc: 'Kassa sənədi', transfer: 'Transfer', close: 'Gün sonu fərqi'
@@ -196,6 +197,7 @@ async function renderCash(host) {
         ${manage() ? '<button type="button" class="yzi-btn yzi-btn--ghost" data-newacc>+ Yeni kassa</button><button type="button" class="yzi-btn yzi-btn--ghost" data-cfg>Parametrlər</button>' : ''}
       </div></div>
     <div class="yzi-kpis yzi-acc-cards">${bals.map(({ a, b }) => `<div class="yzi-kpi yzi-acc yzi-acc--${a.kind}">
+      ${manage() ? `<button type="button" class="yzi-acc__edit" data-accedit="${a.id}" aria-label="Düzəlt və ya sil: ${esc(a.name)}" title="Düzəlt / sil">${ICO_EDIT}</button>` : ''}
       <small>${esc(ACC_KINDS[a.kind] || '')}</small><b class="${b.bal < 0 ? 'yzi-bad' : ''}">${fmtMoney(b.bal)}</b>
       <span class="yzi-acc__name">${esc(a.name)}</span>
       <span class="mut">${b.close ? 'Son bağlanış: ' + fmtDT(b.close.at) : 'Başlanğıc: ' + fmtDT(b.from)}</span>
@@ -242,6 +244,7 @@ async function renderCash(host) {
     const c = e.target.closest('[data-close]'); if (c) { openClose(c.dataset.close); return; }
     if (e.target.closest('[data-cfg]')) { openSettings(); return; }
     if (e.target.closest('[data-newacc]')) { accountEditor(null); return; }
+    const ae = e.target.closest('[data-accedit]'); if (ae) { accountEditor(ae.dataset.accedit); return; }
     if (e.target.closest('[data-reload]')) { cache.at = 0; again(); return; }
     if (e.target.closest('[data-csv]')) { exportCsv(list); return; }
     const o = e.target.closest('[data-open]'); if (o) { const [k, id] = o.dataset.open.split('|'); openAny(k, id); }
@@ -328,7 +331,7 @@ function openSettings() {
         <td><button type="button" class="yzi-btn yzi-btn--sm yzi-btn--ghost" data-edit="${a.id}">Düzəlt</button></td></tr>`).join('')}
     </tbody></table></div>
     <button type="button" class="yzi-btn yzi-btn--ghost yzi-btn--sm" data-add>+ Yeni kassa / hesab</button>
-    <p class="yzi-hint">Səhv yaradılmış, heç istifadə olunmamış hesabı "Düzəlt" → "Sil" ilə silmək olar. Əməliyyatı olan hesab silinmir — arxivə atılır (tarixçə və hesabatlar pozulmasın).</p>
+    <p class="yzi-hint">"Düzəlt" → "Sil": heç əməliyyatı olmayan (səhv yaradılmış) hesab tam silinir. Əməliyyatı olan hesab silinmir — arxivə keçir (tarixçə və hesabatlar pozulmasın), yeni əməliyyatlarda görünmür.</p>
     <h3 class="yzi-h3">Ödəniş növü hansı hesaba düşsün</h3>
     <div class="yzi-grid2">${methods.map(([k, n]) => `<label class="yzi-f"><span>${esc(n)}</span>${accSel(k)}</label>`).join('')}</div>
     <h3 class="yzi-h3">Maddələr (hər sətirdə bir)</h3>
@@ -370,12 +373,13 @@ async function deleteAccount(id) {
   if (!manage()) { fail('Kassanı silmək üçün icazəniz yoxdur'); return false; }
   let u;
   try { u = await accountUsage(id); } catch (e) { fail('Yoxlama alınmadı: ' + (e.message || e)); return false; }
-  if (u.n) {
-    await confirmBox(`<b>${esc(a.name)}</b> silinə bilməz: bu hesabda ${esc(u.what.join(', '))} var.<br>Hesab tarixçəsi pozulmasın deyə onu yalnız arxivə atmaq olar ("Düzəlt" → "Arxivə at"). Arxivdəki hesab yeni əməliyyatlarda görünmür.`, { title: 'Silmək olmaz', okLabel: 'Başa düşdüm' });
-    return false;
-  }
+  const used = u.n > 0;
   const mapped = Object.entries(cashCfg.methodMap || {}).filter(([, acc]) => acc === id).map(([m]) => m);
   const others = accountList().filter(x => x.id !== id);
+  if (used && mapped.length && !others.length) {
+    fail('Bu hesaba ödəniş növləri bağlıdır və başqa aktiv hesab yoxdur. Əvvəlcə yeni kassa / hesab yaradın.');
+    return false;
+  }
   let to = null;
   if (mapped.length && others.length) {
     const body = document.createElement('div');
@@ -390,7 +394,21 @@ async function deleteAccount(id) {
     });
     if (!to) return false;
   }
-  if (!await confirmBox(`<b>${esc(a.name)}</b> (${esc(ACC_KINDS[a.kind] || '')}, başlanğıc ${fmtMoney(a.opening)}) tam silinsin? Bu geri qaytarılmır.`, { okLabel: 'Sil', okCls: 'yzi-btn--red' })) return false;
+  if (used) {
+    // Əməliyyatı olan hesab silinmir — arxivə keçir (tarixçə və köhnə hesabatlar pozulmasın)
+    let bal = null;
+    try { bal = balanceFrom(await allMoves(a.openingAt || 0, true), id).bal; } catch (e) { bal = null; }
+    const balTxt = bal != null && Math.abs(bal) >= 0.01 ? `<br><b class="yzi-bad">Diqqət: hesabda hazırda ${fmtMoney(bal)} qalıq var.</b> Arxivdən əvvəl qalığı "Transfer" ilə başqa hesaba keçirmək tövsiyə olunur.` : '';
+    if (!await confirmBox(`<b>${esc(a.name)}</b> tam silinə bilməz: bu hesabda ${esc(u.what.join(', '))} var.<br>Hesab <b>arxivə keçəcək</b>: tarixçə və hesabatlarda qalır, yeni əməliyyatlarda və kassa ekranında görünmür. Lazım olsa "Kassa parametrləri"ndən geri qaytarmaq olar.${balTxt}`, { title: 'Arxivə keçirilsin?', okLabel: 'Arxivə keçir', okCls: 'yzi-btn--red' })) return false;
+    const upd = { ['cashAccounts/' + id + '/archived']: true, ['cashAccounts/' + id + '/updatedAt']: Date.now() };
+    mapped.forEach(m => { upd['settings/cash/methodMap/' + m] = to || null; });
+    try { await db.ref().update(upd); }
+    catch (e) { fail('Arxivə keçmədi (bağlantı və ya icazə xətası). Heç nə dəyişməyib.'); return false; }
+    addLog('inventory', `Kassa hesabı arxivə keçdi: ${a.name} (${u.what.join(', ')})${to ? ' · ödəniş növləri → ' + accName(to) : ''}`, {});
+    ok('Kassa arxivə keçdi');
+    return true;
+  }
+  if (!await confirmBox(`<b>${esc(a.name)}</b> (${esc(ACC_KINDS[a.kind] || '')}, başlanğıc ${fmtMoney(a.opening)}) heç istifadə olunmayıb — tam silinsin? Bu geri qaytarılmır.`, { okLabel: 'Sil', okCls: 'yzi-btn--red' })) return false;
   const upd = { ['cashAccounts/' + id]: null };
   mapped.forEach(m => { upd['settings/cash/methodMap/' + m] = to || null; });
   try { await db.ref().update(upd); }

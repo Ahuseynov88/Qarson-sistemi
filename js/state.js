@@ -7,7 +7,7 @@
 
 
 export const state = {
-  role: 'admin',
+  role: 'staff',   // Rəhbər PIN ilə girmir (e-poçt + parol) — giriş ekranı həmişə işçi PIN-i ilə açılır
   user: null,
   staff: [],
   tables: [],

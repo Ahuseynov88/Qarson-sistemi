@@ -125,7 +125,10 @@ export const DANGER_OPS = [
        nodes: ['closedOrders','payments','orders','tableOrders','kitchenOrders','kitchenNotifs','printJobs','logs','purchases','banquetEvents','banquetHallBookings','customerCharges','loyaltyCustomers','guestTokens','referrals','staff','tables','menuItems','customers','paymentMethods','suppliers','kitchenStations','banquetHalls','banquetEventTypes','printers','notifSounds','settings',
       'customerRequests','feedbacks','chats','printerAgents','raciaAudio','raciaMeta','att','ingredients','staffHR',
       'products','warehouses','stock','stockMoves','supplierLedger','invCounters','invBackup',
-      'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses','reservations'],
+      'invPurchases','invPayments','invWriteoffs','invTransfers','invCounts','invProductions','invCash','cashAccounts','cashCloses','reservations',
+      // Düzəliş 21.11: kassa növbələri (açıq növbə daxil), anbar növbəsi, qaimə şəkilləri, paket/çatdırılma da silinir
+      'shifts','shiftCur','shiftSeq','stockQueue','invAttach',
+      'deliveryOrders','deliveryCustomers','deliveryMeta','deliveryProofs','deliverySettlements'],
     keepLabel: null,
     danger: 3
   }
@@ -308,7 +311,16 @@ export function _runDangerOp(opId) {
             if (op.all) {
               // Bütün bölmələr bir yazıda silinir; Rəhbər hesabı (owners) və cihaz təsdiqləri (sys) saxlanılır —
               // əks halda bütün cihazlar o an kilidlənərdi. Səlahiyyətli hesablar (işçilərə bağlıdır) ayrıca silinir.
-              const keys = (await _allRootKeys(op.nodes)).filter(k => k !== 'owners' && k !== 'sys');
+              // Bazanın bölmə siyahısını cihaz oxuya bilmir (qaydalar kökü bağlayır) — ona görə bilinən BÜTÜN bölmələr silinir
+              const known = [...new Set([...op.nodes, ...DANGER_OPS.flatMap(o => o.nodes)])];
+              const keys = (await _allRootKeys(known)).filter(k => k !== 'owners' && k !== 'sys');
+              // İşçi və mətbəx PIN-ləri serverdən də silinir — əks halda eyni PIN yeni işçiyə verilə bilməz ("artıq başqasına aiddir")
+              if (apiOn()) {
+                const own = { owner: true };
+                const [st, ks] = await Promise.all([db.ref('staff').once('value'), db.ref('kitchenStations').once('value')]);
+                const jobs = [...Object.keys(st.val() || {}).map(id => ['s', id]), ...Object.keys(ks.val() || {}).map(id => ['k', id])];
+                for (const [type, id] of jobs) { try { await api('setPin', { type, id, pin: null }, own); } catch (e) { console.warn('[sıfırla] PIN silinmədi', type, id, e); } }
+              }
               await db.ref().update(Object.fromEntries(keys.map(k => [k, null])));
               try {
                 const odb = window.__yzOwner?.db?.();

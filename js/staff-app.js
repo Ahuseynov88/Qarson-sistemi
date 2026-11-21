@@ -85,6 +85,7 @@ export class StaffApp {
       this._closeActivateModal();
       this.tableBoard.confirmActivate(tableId).then(ok => {
         showToast(ok ? '<svg class="icon"><use href="#i-check"></use></svg> Masa aktiv edildi'
+          : !hasPermission('table.open') ? '<svg class="icon"><use href="#i-ban"></use></svg> Masa açmaq icazəniz yoxdur'
           : '<svg class="icon"><use href="#i-warning"></use></svg> Bu masanı artıq başqa ofisiant açıb');
       });
     });

@@ -9,7 +9,7 @@
    • müştəri QR ekranı avtomatik yenilənmir (səbəti itməsin).
    Yenilənmə məlumatı silmir: yalnız səhifə yenidən yüklənir.
 ═══════════════════════════════════════════ */
-export const APP_VERSION = '2026-11-20 19:45';
+export const APP_VERSION = '2026-11-21 03:00';
 
 const URL_SELF = new URL(import.meta.url).pathname;     // /js/yuza-version.js
 const EVERY = 3 * 60 * 1000;        // 3 dəqiqədən bir yoxla
