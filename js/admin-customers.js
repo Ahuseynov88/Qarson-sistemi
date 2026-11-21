@@ -47,7 +47,9 @@ export function renderCustomers() {
 export function customerForm(c = {}) {
   return `
     <div class="form-group"><label>Ad Soyad *</label><input type="text" id="cu_name" value="${esc(c.name||'')}" placeholder="Məs: Vüqar Əliyev"></div>
-    <div class="form-group"><label>Telefon</label><input type="text" id="cu_phone" value="${esc(c.phone||'')}" placeholder="+994 XX XXX XX XX"></div>
+    <div class="form-group"><label>Telefon *</label><input type="text" id="cu_phone" value="${esc(c.phone||'')}" placeholder="+994 XX XXX XX XX"></div>
+    <div class="form-group"><label>Nisyə limiti (₼) — boş = standart</label><input type="text" inputmode="decimal" id="cu_limit" value="${c.limit ?? ''}" placeholder="standart"></div>
+    <div class="form-group"><label>Ödəmə müddəti (gün) — boş = standart</label><input type="text" inputmode="numeric" id="cu_due" value="${c.dueDays ?? ''}" placeholder="standart"></div>
     <input type="hidden" id="cu_balance" value="${c.balance||0}">
   `;
 }
@@ -59,6 +61,12 @@ export async function saveCustomer() {
   // C17: telefon məcburidir — müştəri ümumi bazada telefonla tanınır
   if (!normPhone(phone)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Telefon mütləqdir (məs. 050 123 45 67)'); return; }
   const balance = parseFloat(document.getElementById('cu_balance')?.value) || 0;
+  // C17b: müştəriyə ayrıca limit və ödəmə müddəti (boş = standart)
+  const limRaw = (document.getElementById('cu_limit')?.value || '').trim().replace(',', '.');
+  const dueRaw = (document.getElementById('cu_due')?.value || '').trim();
+  if (limRaw !== '' && !(Number(limRaw) >= 0)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Limit 0 və ya daha böyük olmalıdır'); return; }
+  if (dueRaw !== '' && !(parseInt(dueRaw, 10) > 0)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Müddət 1 gündən az ola bilməz'); return; }
+  const credit = { limit: limRaw === '' ? null : Math.round(Number(limRaw) * 100) / 100, dueDays: dueRaw === '' ? null : parseInt(dueRaw, 10) };
   const [first, ...rest] = name.split(/\s+/);
   const editing = state.editTarget?.type === 'customer' ? state.customers.find(x => x.id === state.editTarget.id) : null;
   let baseId = editing?.baseId || null;
@@ -70,12 +78,12 @@ export async function saveCustomer() {
     else { showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + esc(e.message)); return; }
   }
   if (editing) {
-    await R.customers.child(editing.id).update({ name, phone, baseId });
+    await R.customers.child(editing.id).update({ name, phone, baseId, ...credit });
     addLog('customer_mgmt', `Müştəri redaktə edildi: ${name}`, {});
   } else {
     const dupAcc = state.customers.find(a => a.baseId === baseId);
     if (dupAcc) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> "${esc(dupAcc.name)}" üçün nisyə hesabı artıq var`); return; }
-    R.customers.push({ name, phone, balance, baseId, createdAt: Date.now() });
+    R.customers.push({ name, phone, balance, baseId, ...credit, createdAt: Date.now() });
     addLog('customer_mgmt', `Yeni müştəri qeydə alındı: ${name}`, {});
   }
   closeAddModal();

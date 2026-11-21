@@ -169,7 +169,13 @@ export class StaffApp {
     $('paymentModal').querySelector('[data-cancel]')?.addEventListener('click', () => this.payment.close());
     $('paymentModal').querySelector('[data-confirm-payment]')?.addEventListener('click', () => {
       // Tam ödənəndə: masanı bağlamaq icazəsi varsa ekranda qalır (əsas düymə "Masanı bağla" olur), yoxdursa masa lövhəsinə qayıdır
-      this.payment.confirm((fullyPaid) => {
+      this.payment.confirm(async (fullyPaid) => {
+        // C18: qonaq ödənişindən sonra — hamı ödəyibsə masa avtomatik bağlanır, yoxdursa bölgü pəncərəsi yenidən açılır
+        const tid = state.noteTableId;
+        if (window.__yzSplit?.splitOn(tid)) {
+          if (fullyPaid && await window.__yzSplit.afterPay(tid)) return;
+          if (!fullyPaid) { setTimeout(() => window.__yzSplit.openSplit(tid), 400); return; }
+        }
         if (!fullyPaid) return;
         if (hasPermission('table.close') && state.noteTableId) this._updateMainBtn(state.noteTableId);
         else this.closeTableDetail();

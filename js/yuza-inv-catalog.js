@@ -269,6 +269,8 @@ export function openEditor(id) {
           ${sw('isFavorite', 'Favori', 'Sifariş ekranında "★ Favorilər" bölməsində', !!d.isFavorite, canEdit)}
           ${sw('showInQr', 'QR menyuda göstər', 'Müştəri menyusunda görünür', d.showInQr !== false, canEdit)}
           ${sw('vatIncluded', 'ƏDV qiymətə daxildir', 'Söndürülsə ƏDV qiymətin üstünə əlavə olunur', d.vatIncluded !== false, canPrice)}
+          ${old && d.type === 'goods' ? `<div class="yzi-row"><span>${d.unit === 'ml' ? (old.pour?.on ? `<b>Şüşə və ml ilə satılır</b> · porsiya ${esc(old.pour.unitMl)} ml = ${fmtMoney(old.pour.unitPrice)}` : 'Şüşə və ml ilə satış söndürülüb') : '<span class="mut">Şüşə / ml satışı üçün vahid “ml” olmalıdır</span>'}</span>
+            <button type="button" class="yzi-btn yzi-btn--ghost yzi-btn--sm" data-pour-cfg="${esc(id)}" ${canEdit && d.unit === 'ml' ? '' : 'disabled'}>Şüşə və ml ilə satış…</button></div>` : ''}
           <div class="yzi-f"><span>Qiymət növü</span>
             <div class="yzi-seg" id="yziEdPm"><button type="button" data-pm="fixed" class="${d.pricingMode !== 'hourly' ? 'is-on' : ''}" ${canPrice ? '' : 'disabled'}>Sabit qiymət</button><button type="button" data-pm="hourly" class="${d.pricingMode === 'hourly' ? 'is-on' : ''}" ${canPrice ? '' : 'disabled'}>Saatlıq ödəniş</button></div></div>
           <div class="yzi-grid3">

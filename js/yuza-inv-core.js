@@ -450,6 +450,11 @@ export function menuProjection(p) {
     isTrackable: p.type === 'goods'
   };
   out.stock = p.type === 'goods' ? stockIn(saleWarehouseFor(p), p.id) : null;
+  // C16: şüşə / ml ilə satış (yalnız vahidi ml olan hazır mal)
+  out.pour = (p.type === 'goods' && p.unit === 'ml' && p.pour?.on) ? {
+    on: true, bottleMl: Number(p.pour.bottleMl) || 700, bottle: p.pour.bottle !== false, unitMl: Number(p.pour.unitMl) || 50,
+    unitPrice: r2(p.pour.unitPrice), presets: (p.pour.presets || [50, 100, 150]).map(Number).filter(x => x > 0).slice(0, 6), free: p.pour.free !== false
+  } : null;
   return out;
 }
 export async function syncMenu(pid) {

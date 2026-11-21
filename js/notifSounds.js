@@ -30,6 +30,7 @@ export const NOTIF_EVENTS = {
   staff_announcement:   'Yeni elan (işçilərə)',
   birthday_reminder:    'Ad günü xatırlatması',
   portion_low:          'Porsiya azalıb / bitib',
+  credit_request:       'Nisyə limiti — təsdiq sorğusu',
 
   kitchen_new_order:    'Yeni sifariş (mətbəxə)',
   kitchen_order_changed:'Sifariş dəyişdirildi (mətbəxə)',

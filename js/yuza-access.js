@@ -59,6 +59,7 @@ const ACCESS = {
   closedOrders: any('panel.closedOrders'),
   'inv-analysis': any('stock.report'),
   'inv-moves': any('stock.report'),
+  'inv-payroll': any('panel.staff'),   // C20: maaş
   logs: any('panel.logs'),
   feedback: any('panel.feedback'),
   'inv-approvals': any(...APPROVE),

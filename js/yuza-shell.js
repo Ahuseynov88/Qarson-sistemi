@@ -27,6 +27,7 @@ const MENU = [
     { s: 'closedOrders', l: 'Bağlanan masalar', i: 'lock' },
     { s: 'inv-analysis', l: 'Sərf və itki analizi', i: 'warning', v2: 1 },
     { s: 'inv-moves', l: 'Anbar hərəkətləri', i: 'refresh', v2: 1 },
+    { s: 'inv-payroll', l: 'Maaş hesabatı', i: 'money' },   // C20
     { s: 'logs', l: 'Tarixçə (jurnal)', i: 'clipboard' },
     { s: 'feedback', l: 'Rəylər və şikayətlər', i: 'chat' }
   ] },

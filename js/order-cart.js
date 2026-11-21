@@ -10,6 +10,10 @@ import { hasPermission } from './permissions.js';
 import { showScreen } from './theme.js';
 import { printKitchenJobs } from './printer-service.js';
 import { modal } from './yuza-inv-ui.js';
+import { curGuest, guestLabel, tag as guestTag } from './yuza-split.js';   // C18: hesabı qonaqlara görə bölmək
+/* C16: səbət sətrinin adı və qiyməti (şüşə / ml variantı varsa onunku) */
+const lineName = (m, l) => l?.vlabel ? `${m.name} (${l.vlabel})` : m.name;
+const linePrice = (m, l) => (l && l.vprice !== undefined && l.vprice !== null) ? Number(l.vprice) : (m.price || 0);
 
 export class OrderCart {
   /**
@@ -137,6 +141,7 @@ export class OrderCart {
       const lowStock = hasStock && m.stock > 0 && m.stock <= 5;
       const badge = por
         ? (por.left > 0 ? `<div class="product-card__stock product-card__stock--por ${por.left <= por.limit ? 'product-card__stock--low' : ''}">${por.left} porsiya</div>` : '<div class="product-card__stock product-card__stock--out">Bitdi</div>')
+        : m.pour?.on && window.__yzPour ? `<div class="product-card__stock ${outOfStock ? 'product-card__stock--out' : ''}">${window.__yzPour.stockText(m)}</div>`
         : (hasStock && !outOfStock ? `<div class="product-card__stock ${lowStock?'product-card__stock--low':''}">${m.stock} qalıb</div>` : '');
       return `<div class="product-card ${m.photo?'':'no-photo'} ${outOfStock?'out-of-stock':''}" data-menu-item-id="${m.id}">
         ${m.photo ? `<img src="${esc(m.photo)}" alt="" loading="lazy">` : ''}
@@ -158,7 +163,10 @@ export class OrderCart {
   addItemDirect(menuItemId) {
     const m = state.menuItems.find(x => x.id === menuItemId);
     if (!m) return;
-    const lineKey = makeLineKey(menuItemId, '', 0);
+    // C16: şüşə / ml ilə satılan içki — variant pəncərəsi
+    if (m.pour?.on && window.__yzPour) { window.__yzPour.pick(m, (v) => this.addVariant(m, v)); return; }
+    const g = curGuest(state.orderTableId);                    // C18: seçilmiş qonaq (0 = ümumi)
+    const lineKey = makeLineKey(menuItemId, '', 0) + (g ? '@' + g : '');
     const currentDraftQty = state._orderDraft[lineKey]?.qty || 0;
     // Anbarda stok izlənən maldırsa (stock sahəsi varsa), kifayət qədər olub-olmadığı yoxlanılır
     if (m.stock !== undefined && m.stock !== null && (currentDraftQty + 1) > m.stock) {
@@ -175,7 +183,16 @@ export class OrderCart {
       }
     }
     if (state._orderDraft[lineKey]) state._orderDraft[lineKey].qty += 1;
-    else state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0 };
+    else state._orderDraft[lineKey] = { menuItemId, qty: 1, note: '', extraFee: 0, ...(g ? { guest: g } : {}) };
+    this.renderDraftList();
+  }
+
+  /* C16: variant sətri — { ml, label, price, bottle } */
+  addVariant(m, v) {
+    const g = curGuest(state.orderTableId);
+    const lineKey = makeLineKey(m.id, '', 0) + '~' + (v.bottle ? 'b' : v.ml) + (g ? '@' + g : '');
+    if (state._orderDraft[lineKey]) state._orderDraft[lineKey].qty += 1;
+    else state._orderDraft[lineKey] = { menuItemId: m.id, qty: 1, note: '', extraFee: 0, ml: v.ml, vlabel: v.label, vprice: v.price, bottle: !!v.bottle, ...(g ? { guest: g } : {}) };
     this.renderDraftList();
   }
 
@@ -199,7 +216,7 @@ export class OrderCart {
     if (!pend) return '';
     const rows = Object.values(pend).map(line => {
       const m = state.menuItems.find(x => x.id === line.menuItemId);
-      return m ? `<div class="ticket-line ticket-line--pending"><div class="ticket-line__main"><span class="ticket-line__name">${esc(m.name)}</span><span class="ticket-line__qty">× ${line.qty}</span><span class="ticket-line__price">${((m.price || 0) * line.qty + (line.extraFee || 0)).toFixed(2)} ₼</span></div></div>` : '';
+      return m ? `<div class="ticket-line ticket-line--pending"><div class="ticket-line__main"><span class="ticket-line__name">${esc(lineName(m, line))}</span><span class="ticket-line__qty">× ${line.qty}</span><span class="ticket-line__price">${(linePrice(m, line) * line.qty + (line.extraFee || 0)).toFixed(2)} ₼</span></div></div>` : '';
     }).join('');
     return `<div class="ticket-sec-title ticket-sec-title--pending"><span class="yz-spin" aria-hidden="true"></span> Göndərilir…</div>${rows}`;
   }
@@ -223,7 +240,7 @@ export class OrderCart {
     const rows = lines.map(([lineKey, line]) => {
       const m = state.menuItems.find(x => x.id === line.menuItemId);
       if (!m) return '';
-           const lineTotal = (m.price||0) * line.qty + (line.extraFee||0);
+           const lineTotal = linePrice(m, line) * line.qty + (line.extraFee||0);   // C16: şüşə / ml variantının qiyməti
       draftTotal += lineTotal;
           if (state.vatMode === 'added' && Number(m.vatRate) > 0) draftVat += lineTotal * Number(m.vatRate) / 100;
       const noteOpen = this._noteOpenKeys.has(lineKey);
@@ -231,7 +248,7 @@ export class OrderCart {
       const hasFee = !!(line.extraFee);
       return `<div class="ticket-line ticket-line--draft">
         <div class="ticket-line__main">
-          <span class="ticket-line__name" title="${esc(m.name)}">${esc(m.name)}</span>
+          <span class="ticket-line__name" title="${esc(lineName(m, line))}">${line.guest ? guestTag(state.orderTableId, line.guest) + ' ' : ''}${esc(lineName(m, line))}</span>
           <button class="ticket-line__note-btn ${(hasNote||hasFee)?'has-note':''}" data-note-toggle="${lineKey}" title="Qeyd / əlavə ödəniş" aria-label="Qeyd">
             <svg class="icon"><use href="#i-edit"></use></svg>
           </button>
@@ -313,6 +330,21 @@ export class OrderCart {
     const need = {};
     Object.values(draft).forEach(l => { need[l.menuItemId] = (need[l.menuItemId] || 0) + l.qty; });
     const short = [];
+    // C16: şüşə / ml ilə satılan içki — ml və bağlı şüşə sayı ilə yoxlanır
+    const pourIds = new Set(Object.values(draft).filter(l => l.ml).map(l => l.menuItemId));
+    for (const id of pourIds) {
+      delete need[id];
+      const m = state.menuItems.find(x => x.id === id);
+      const a = await this._freshAvail(id);
+      const S = Math.max(0, Number(a.left) || 0), B = Number(m?.pour?.bottleMl) || 0;
+      const ls = Object.values(draft).filter(l => l.menuItemId === id);
+      const needMl = ls.reduce((s, l) => s + l.qty * l.ml, 0), needB = ls.filter(l => l.bottle).reduce((s, l) => s + l.qty, 0);
+      const sealed = B > 0 ? Math.floor((S + 1e-6) / B) : 0;
+      if (a.gone || a.off || S < needMl || (needB && sealed < needB)) {
+        short.push({ id, name: a.name || m?.name || '?', need: ls.reduce((s, l) => s + l.qty, 0), left: 0, off: !!a.off, gone: !!a.gone,
+          txt: a.off || a.gone ? '' : (needB && sealed < needB ? `istənilən ${needB} şüşə, bağlı şüşə ${sealed} (açıq şüşə yalnız ml satılır)` : `istənilən ${needMl} ml, cəmi ${S} ml qalıb`) });
+      }
+    }
     for (const [id, q] of Object.entries(need)) {
       const a = await this._freshAvail(id);
       if (a.gone || a.off || (a.left !== null && a.left < q)) {
@@ -325,7 +357,7 @@ export class OrderCart {
   _askShort(short) {
     return new Promise(res => {
       const any = short.some(x => x.left > 0);
-      const rows = short.map(x => `<li><b>${esc(x.name)}</b><span>${x.gone ? 'menyuda yoxdur' : x.off ? 'satışda deyil (bitib)' : x.left > 0 ? `istənilən ${x.need}, <b>cəmi ${x.left} qalıb</b>` : `istənilən ${x.need}, <b>bitib</b>`}</span></li>`).join('');
+      const rows = short.map(x => `<li><b>${esc(x.name)}</b><span>${x.txt ? esc(x.txt) : x.gone ? 'menyuda yoxdur' : x.off ? 'satışda deyil (bitib)' : x.left > 0 ? `istənilən ${x.need}, <b>cəmi ${x.left} qalıb</b>` : `istənilən ${x.need}, <b>bitib</b>`}</span></li>`).join('');
       let done = false;
       const fin = (v) => { if (done) return; done = true; res(v); };
       modal({
@@ -394,9 +426,10 @@ export class OrderCart {
         const draft = draftSnapshot[lineKey];
         const m = state.menuItems.find(x => x.id === draft.menuItemId);
         if (!m) return;
-        const cleanKey = makeLineKey(draft.menuItemId, draft.note || '', draft.extraFee || 0);
+        const cleanKey = makeLineKey(draft.menuItemId, draft.note || '', draft.extraFee || 0) + (draft.ml ? '~' + (draft.bottle ? 'b' : draft.ml) : '') + (draft.guest ? '@' + draft.guest : '');
         if (items[cleanKey]) items[cleanKey] = { ...items[cleanKey], qty: items[cleanKey].qty + draft.qty };
-        else items[cleanKey] = { menuItemId: draft.menuItemId, name: m.name, price: m.price || 0, qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0, vatRate: Number(m.vatRate) || 0, vatIncluded: state.vatMode !== 'added' };
+        else items[cleanKey] = { menuItemId: draft.menuItemId, name: lineName(m, draft), price: linePrice(m, draft), qty: draft.qty, note: draft.note || '', extraFee: draft.extraFee || 0, vatRate: Number(m.vatRate) || 0, vatIncluded: state.vatMode !== 'added',
+          ...(draft.ml ? { ml: draft.ml, bottle: !!draft.bottle } : {}), ...(draft.guest ? { guest: draft.guest } : {}) };
       });
 
       const _tot = computeOrderTotals(items);
@@ -422,13 +455,13 @@ export class OrderCart {
       delete this._pending[tableId];
       draftKeys.forEach(lineKey => {
         const draft = draftSnapshot[lineKey];
-        if (draft) updateStock(draft.menuItemId, -draft.qty, state.menuItems);
+        if (draft) updateStock(draft.menuItemId, -draft.qty * (draft.ml || 1), state.menuItems);   // C16: ml satışında ml qədər
       });
       const finalTotal = (snapshot.val() && snapshot.val().total) || 0;
       const sentItemsSummary = draftKeys.map(lineKey => {
         const draft = draftSnapshot[lineKey];
         const m = state.menuItems.find(x => x.id === draft?.menuItemId);
-        return m ? { name: m.name, qty: draft.qty } : null;
+        return m ? { name: lineName(m, draft), qty: draft.qty } : null;
       }).filter(Boolean);
        addLog('order_send', `${waiterName} "${t?.name}" masası üçün sifariş göndərdi: ${formatItemsList(sentItemsSummary)} (${finalTotal.toFixed(2)} ₼)`, { waiterId, tableId });
       showToast('<svg class="icon"><use href="#i-check"></use></svg> Sifariş göndərildi');
@@ -438,20 +471,21 @@ export class OrderCart {
       const orderNote = (document.getElementById('orderGlobalNote')?.value || '').trim();
 
       const kitchenGroups = {};
-      sentItemsSummary.forEach(si => {
-        const draftEntry = Object.values(draftSnapshot).find(d => {
-          const m = state.menuItems.find(x => x.id === d.menuItemId);
-          return m && m.name === si.name;
-        });
-        const menuItem = state.menuItems.find(x => x.id === draftEntry?.menuItemId);
-        const kitchenId = menuItem?.kitchenId || 'default';
+      // Hər səbət sətri ayrıca (C18: qonaq qeydi ilə; C16: variant adı ilə)
+      const gl = (d) => d.guest ? guestLabel(tableId, d.guest) : '';
+      draftKeys.forEach(lineKey => {
+        const d = draftSnapshot[lineKey];
+        const menuItem = state.menuItems.find(x => x.id === d?.menuItemId);
+        if (!menuItem) return;
+        const kitchenId = menuItem.kitchenId || 'default';
         const station = (state.kitchenStations || []).find(k => k.id === kitchenId);
         const kitchenName = station?.name || 'Mətbəx';
         if (!kitchenGroups[kitchenId]) kitchenGroups[kitchenId] = { kitchenId, kitchenName, items: [] };
         kitchenGroups[kitchenId].items.push({
-          name: si.name,
-          qty: si.qty,
-          note: draftEntry?.note || '',
+          name: lineName(menuItem, d),
+          qty: d.qty,
+          note: [gl(d), d.note || ''].filter(Boolean).join(' · '),
+          ...(d.guest ? { guest: d.guest } : {}),
           ready: false,
           cooking: false,
           waiterAccepted: false,
@@ -468,7 +502,7 @@ export class OrderCart {
         if (!m) return;
         const cat = m.category || 'Digər';
         if (!printGroups[cat]) printGroups[cat] = [];
-        printGroups[cat].push({ name: m.name, qty: draft.qty, note: draft.note || '' });
+        printGroups[cat].push({ name: lineName(m, draft), qty: draft.qty, note: [draft.guest ? guestLabel(tableId, draft.guest) : '', draft.note || ''].filter(Boolean).join(' · ') });
       });
       printKitchenJobs(tableId, printGroups).catch(() => {});
 

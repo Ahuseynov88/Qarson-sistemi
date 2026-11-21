@@ -43,6 +43,8 @@ export const ALL_PERMISSIONS = [
       { key: 'bill.credit',         label: 'Nisyəyə yazmaq (tək mal)' },
       { key: 'bill.credit_batch',   label: 'Toplu nisyəyə yazmaq' },
       { key: 'bill.payment_credit', label: 'Nisyə ödənişi qəbul etmək' },
+      { key: 'credit.approve',      label: 'Limitdən artıq nisyəni təsdiqləmək' },
+      { key: 'table.merge',         label: 'Masaları birləşdirmək' },
       { key: 'shift.manage',        label: 'Kassa növbəsini açmaq / bağlamaq (X, Z)' },
       { key: 'table.restore',       label: 'Bağlanmış masanı geri qaytarmaq' },
     ]

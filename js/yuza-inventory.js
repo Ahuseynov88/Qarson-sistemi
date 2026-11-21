@@ -10,6 +10,8 @@ import './yuza-inv-purchase.js';
 import './yuza-inv-stock.js';
 import './yuza-inv-cash.js';
 import './yuza-portions.js';   // C21: porsiya sayğacı
+import './yuza-pour.js';       // C16: içkinin şüşə və ml ilə satışı
+import './yuza-payroll.js';    // C20: maaş = saat + satışdan faiz
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initShell);
 else initShell();

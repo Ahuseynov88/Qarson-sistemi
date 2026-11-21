@@ -10,6 +10,8 @@ import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, comp
 import { hasPermission } from './permissions.js';
 import { needShift, shiftNow } from './yuza-shift.js';
 import { normPhone, fullName, ensureAccount, baseList } from './yuza-customers.js';   // C17
+import { creditLimitOf, creditDueDaysOf, requestOverLimit } from './yuza-credit.js';   // C17b
+import { tag as guestTag } from './yuza-split.js';   // C18
 
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
 
@@ -130,7 +132,7 @@ export class ConfirmedOrder {
             <label class="bsel-check" data-check-key="${itemKey}">
               <div class="bsel-box ${isSelected?'bsel-box--on':''}"></div>
             </label>
-            <span class="ticket-line__name" style="flex:1;cursor:pointer;" data-open-panel="${itemKey}">${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
+            <span class="ticket-line__name" style="flex:1;cursor:pointer;" data-open-panel="${itemKey}">${it.guest ? guestTag(tableId, it.guest) + ' ' : ''}${esc(it.name)}${it.qty>1?` <span style="color:var(--text3);font-weight:400;">×${it.qty}</span>`:''}</span>
             <span class="ticket-line__price">${lineTotal.toFixed(2)} ₼</span>
           </div>
           <div class="ticket-line__tags">
@@ -303,6 +305,7 @@ export class ConfirmedOrder {
     const qtyToCancel = Math.min(Math.max(cancelQty || fullQty, 1), fullQty);
     const isPartial = qtyToCancel < fullQty;
     const cancelledName = it.name, cancelledMenuItemId = it.menuItemId;
+    const unitMul = Number(it.ml) > 0 ? Number(it.ml) : 1;   // C16: şüşə / ml sətri — anbara ml qaytarılır
     const reasonText = reason || 'Qeyd olunmayıb';
     // Sifarişi ilk göndərən işçi (ləğv edəndən FƏRQLİ ola bilər) - hesabatda hər ikisi görünsün
     const orderOwner = state.staff.find(s => s.id === order.waiterId);
@@ -326,7 +329,7 @@ export class ConfirmedOrder {
     }, (error, committed) => {
       if (error) { done(false); showToast('<svg class="icon"><use href="#i-error"></use></svg> Xəta baş verdi, yenidən cəhd edin'); return; }
       if (!committed) { done(false); return; }
-      updateStock(cancelledMenuItemId, qtyToCancel, state.menuItems);
+      updateStock(cancelledMenuItemId, qtyToCancel * unitMul, state.menuItems);
       const t = state.tables.find(x => x.id === tableId);
       const qtyLabel = isPartial ? `${qtyToCancel} ədəd` : `bütün (${fullQty} ədəd)`;
       // Ləğv edilən məbləğ = (ləğv olunan miqdar / ümumi miqdar) nisbətində qiymətdən pay
@@ -600,60 +603,91 @@ export class ConfirmedOrder {
 
     const selection = this._chargeSelection || {};
     const selKeys = Object.keys(selection).filter(k => order.items?.[k]);
-
-    /* Mərhələ 2a: nisyə yazılışı masanın sifarişinin içinə (tableOrders/{masa}/charges) transaction ilə düşür,
-       sonra müştərinin balansı və nisyə jurnalı BİR yazı ilə yenilənir (postCharge). Bu yazı yarımçıq qalsa,
-       masa bağlananda tamamlanır — məbləğ itmir və ikiqat yazılmır. */
     if (this._chargeBusy) return;
-    const ts = serverNow();
-    const chargeId = R.customerCharges.push().key;
-    const base = {
-      customerId, customerName: customer.name, tableId, tableName: t?.name || '?',
-      staffId: state.user.id, staffName: state.user.name, shiftId: shiftNow()?.id || null,
-      createdAt: ts, time: azTime(ts), date: azDate(ts)
-    };
     const remainingNow = money2(Math.max(0, (order.total || 0) - (order.paidAmount || 0)));
     if (!selKeys.length && remainingNow <= 0.01) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Bu hesabda qalıq yoxdur'); this.closeCustomerChargeModal(); return; }
-    let rec = null, reject = '';
+
+    // C17b: limit — keçirsə nisyə yazılmır, Rəhbərə təsdiq sorğusu gedir
+    const amountNow = selKeys.length
+      ? money2(selKeys.reduce((sm, k) => { const it = order.items[k], q = selection[k]; return sm + it.price * q * (1 - ((it.discountPercent || 0) / 100)) + (it.extraFee || 0) * (q / it.qty); }, 0))
+      : remainingNow;
+    const acc = state.customers.find(c => c.id === customerId) || { balance: 0 };
+    const lim = creditLimitOf(acc);
+    if (lim !== null && money2((acc.balance || 0) + amountNow) > lim + 0.001) {
+      this.closeCustomerChargeModal();
+      await requestOverLimit({ tableId, tableName: t?.name || '?', customerId, customerName: customer.name, amount: amountNow,
+        balance: acc.balance || 0, limit: lim, selection: selKeys.length ? Object.fromEntries(selKeys.map(k => [k, selection[k]])) : null,
+        items: selKeys.length ? selKeys.map(k => ({ name: order.items[k].name, qty: selection[k], price: order.items[k].price })) : Object.values(order.items).map(it => ({ name: it.name, qty: it.qty, price: it.price })) });
+      if (selKeys.length) this.clearBatchSelection();
+      return;
+    }
     this._chargeBusy = true;
-    R.tableOrders.child(tableId).transaction(current => {
-      rec = null; reject = '';
-      if (!current || !current.items) { reject = 'Bu masada aktiv sifariş yoxdur'; return; }
-      const charges = { ...(current.charges || {}) };
-      // Mərhələ 2b: bütün mallar seçilibsə — "bütöv hesab" kimi yazılır (masada 0 ₼-lik boş sifariş qalmır, masa adi qaydada bağlanır)
-      const coversAll = selKeys.length && Object.entries(current.items).every(([k, it]) => (selection[k] || 0) >= (it.qty || 0));
-      if (selKeys.length && !coversAll) {
-        const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
-        const amount = money2(targetKeys.reduce((sum, k) => { const it = items[k]; return it ? sum + (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0) : sum; }, 0));
-        const chargedItems = targetKeys.filter(k => items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
-        if (!chargedItems.length) { reject = 'Seçilmiş mallar artıq sifarişdə yoxdur'; return; }
-        targetKeys.forEach(k => delete items[k]);
-        rec = { ...base, items: chargedItems, amount };
-        charges[chargeId] = rec;
-        const _tot = computeOrderTotals(items);
-        const total = Object.keys(items).length ? _tot.total : 0;
-        const paidAmount = current.paidAmount || 0;
-        return { ...current, items, charges, total, serviceChargeAmount: Object.keys(items).length ? _tot.serviceChargeAmount : 0, remainingAmount: money2(Math.max(0, total - paidAmount)) };
-      }
-      const total = current.total || 0;
-      const freshRemaining = money2(Math.max(0, total - (current.paidAmount || 0)));
-      if (freshRemaining <= 0.01) { reject = 'Bu hesabda qalıq yoxdur'; return; }
-      rec = { ...base, items: Object.values(current.items || {}).map(it => ({ name: it.name, qty: it.qty, price: it.price })), amount: freshRemaining };
-      charges[chargeId] = rec;
-      return { ...current, charges, paidAmount: money2((current.paidAmount || 0) + freshRemaining), remainingAmount: 0 };
-    }, (error, committed) => {
-      this._chargeBusy = false;
-      if (error) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Nisyə yazılmadı (bağlantı xətası). Heç nə dəyişməyib, yenidən cəhd edin.'); return; }
-      if (!committed || !rec) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> ${reject || 'Nisyə yazılmadı'}`); return; }
-      postCharge(tableId, chargeId, rec).catch(() => { /* masa bağlananda tamamlanacaq */ });
-      addLog('credit', selKeys.length
-        ? `${state.user.name} "${t?.name}" masasından ${formatItemsList(rec.items)} (${rec.amount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`
-        : `${state.user.name} "${t?.name}" masasının hesabı: ${formatItemsList(rec.items)} (${rec.amount.toFixed(2)} ₼) "${customer.name}" adına nisyə yazdı`, { tableId, customerId });
-      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${rec.amount.toFixed(2)} ₼ "${customer.name}" adına yazıldı`);
+    const r = await this.executeCharge({ tableId, customerId, customerName: customer.name, selection: selKeys.length ? selection : null });
+    this._chargeBusy = false;
+    if (!r.ok) showToast(`<svg class="icon"><use href="#i-warning"></use></svg> ${esc(r.reject || 'Nisyə yazılmadı')}`);
+    else {
+      showToast(`<svg class="icon"><use href="#i-check"></use></svg> ${r.rec.amount.toFixed(2)} ₼ "${esc(customer.name)}" adına yazıldı`);
       if (selKeys.length) this.clearBatchSelection();
       this.renderSummary(tableId);
-    }, false);
+    }
     this.closeCustomerChargeModal();
+  }
+
+  /* Nisyənin özü (həm ofisiantın düyməsi, həm də Rəhbərin limit təsdiqi bunu çağırır).
+     Mərhələ 2a: nisyə masanın sifarişinin içinə (tableOrders/{masa}/charges) transaction ilə düşür, sonra
+     müştərinin balansı və nisyə jurnalı BİR yazı ilə yenilənir (postCharge). Yarımçıq qalsa, masa bağlananda tamamlanır. */
+  executeCharge({ tableId, customerId, customerName, selection = null, approvedBy = null, requestId = null, writer = null }) {
+    return new Promise((resolve) => {
+      const t = state.tables.find(x => x.id === tableId);
+      const ts = serverNow();
+      const chargeId = R.customerCharges.push().key;
+      const acc = state.customers.find(c => c.id === customerId) || {};
+      const dueDays = creditDueDaysOf(acc);
+      const base = {
+        customerId, customerName, tableId, tableName: t?.name || '?',
+        staffId: writer?.id || state.user.id || 'admin', staffName: writer?.name || state.user.name, shiftId: shiftNow()?.id || null,   // təsdiqdə: yazan — sorğunu göndərən ofisiant
+        createdAt: ts, time: azTime(ts), date: azDate(ts),
+        dueAt: ts + dueDays * 86400000,                         // C17b: ödəmə müddəti
+        ...(approvedBy ? { approvedBy, overLimit: true, requestId } : {})
+      };
+      const selKeys = selection ? Object.keys(selection) : [];
+      let rec = null, reject = '';
+      R.tableOrders.child(tableId).transaction(current => {
+        rec = null; reject = '';
+        if (!current || !current.items) { reject = 'Bu masada aktiv sifariş yoxdur'; return; }
+        const charges = { ...(current.charges || {}) };
+        // C17b: masaya kim qulluq edib (sifarişi açan ofisiant)
+        const w = (state.staff || []).find(s => s.id === current.waiterId);
+        base.waiterId = current.waiterId || null; base.waiterName = w?.name || null;
+        const coversAll = selKeys.length && Object.entries(current.items).every(([k, it]) => (selection[k] || 0) >= (it.qty || 0));
+        if (selKeys.length && !coversAll) {
+          if (!selKeys.some(k => current.items[k])) { reject = 'Seçilmiş mallar artıq sifarişdə yoxdur'; return; }
+          const { items, targetKeys } = this._splitSelectedItems(current.items, selection);
+          const amount = money2(targetKeys.reduce((sum, k) => { const it = items[k]; return it ? sum + (it.price * it.qty * (1 - ((it.discountPercent || 0) / 100))) + (it.extraFee || 0) : sum; }, 0));
+          const chargedItems = targetKeys.filter(k => items[k]).map(k => ({ name: items[k].name, qty: items[k].qty, price: items[k].price }));
+          if (!chargedItems.length) { reject = 'Seçilmiş mallar artıq sifarişdə yoxdur'; return; }
+          targetKeys.forEach(k => delete items[k]);
+          rec = { ...base, items: chargedItems, amount };
+          charges[chargeId] = rec;
+          const _tot = computeOrderTotals(items);
+          const total = Object.keys(items).length ? _tot.total : 0;
+          const paidAmount = current.paidAmount || 0;
+          return { ...current, items, charges, total, serviceChargeAmount: Object.keys(items).length ? _tot.serviceChargeAmount : 0, remainingAmount: money2(Math.max(0, total - paidAmount)) };
+        }
+        const total = current.total || 0;
+        const freshRemaining = money2(Math.max(0, total - (current.paidAmount || 0)));
+        if (freshRemaining <= 0.01) { reject = 'Bu hesabda qalıq yoxdur'; return; }
+        rec = { ...base, items: Object.values(current.items || {}).map(it => ({ name: it.name, qty: it.qty, price: it.price })), amount: freshRemaining };
+        charges[chargeId] = rec;
+        return { ...current, charges, paidAmount: money2((current.paidAmount || 0) + freshRemaining), remainingAmount: 0 };
+      }, (error, committed) => {
+        if (error) { resolve({ ok: false, reject: 'Nisyə yazılmadı (bağlantı xətası). Heç nə dəyişməyib, yenidən cəhd edin.' }); return; }
+        if (!committed || !rec) { resolve({ ok: false, reject: reject || 'Nisyə yazılmadı' }); return; }
+        postCharge(tableId, chargeId, rec).catch(() => { /* masa bağlananda tamamlanacaq */ });
+        addLog('credit', `${state.user.name} "${t?.name}" masasından ${formatItemsList(rec.items)} (${rec.amount.toFixed(2)} ₼) "${customerName}" adına nisyə yazdı${approvedBy ? ` — limit aşımı, təsdiqlədi: ${approvedBy}` : ''}`, { tableId, customerId, chargeId });
+        resolve({ ok: true, rec, chargeId });
+      }, false);
+    });
   }
 
   // ── İkram (seçilmişlərə və ya tək mala) ──
@@ -1230,7 +1264,7 @@ export class PaymentProcessor {
     else { b.disabled = false; b.classList.remove('is-busy'); if (b.dataset.label) b.innerHTML = b.dataset.label; }
   }
 
-  open(tableId) {
+  open(tableId, guestOpt = null) {
     if (!hasPermission('bill.payment_cash') && !hasPermission('bill.payment_pos')) {
       showToast('<svg class="icon"><use href="#i-ban"></use></svg> Ödəniş qəbul etmək icazəniz yoxdur'); return;
     }
@@ -1247,9 +1281,12 @@ export class PaymentProcessor {
     p.paidAmount = order.paidAmount || 0;
     p.finalTotal = p.discountValue ? p.finalTotal : p.originalTotal;
     p.remainingAmount = (order.remainingAmount !== undefined) ? order.remainingAmount : (p.finalTotal - p.paidAmount);
+    // C18: qonağın ödənişi — məbləğ onun qalığı ilə məhdud
+    p.guest = guestOpt?.guest || null;
+    if (p.guest) p.remainingAmount = money2(Math.min(p.remainingAmount, Number(guestOpt.cap) || 0));
     p.type = null;
 
-    this.els.tableName.textContent = t ? t.name : '—';
+    this.els.tableName.textContent = (t ? t.name : '—') + (p.guest ? ` · ${guestOpt.label || 'Qonaq ' + p.guest}` : '');
     if (p.paidAmount > 0) {
       this.els.totalAmount.textContent = `${p.remainingAmount.toFixed(2)} ₼ qalan (${p.paidAmount.toFixed(2)} ₼ ödənilib)`;
       this.els.totalAmount.style.color = 'var(--orange)';
@@ -1398,6 +1435,7 @@ export class PaymentProcessor {
       originalAmount: p.originalTotal, finalAmount: p.finalTotal, thisPay,
       paidBefore: p.paidAmount,
       discountType: p.discountType || null, discountValue: p.discountValue || 0, shiftId: shift.id,
+      ...(p.guest ? { guest: p.guest } : {}),
       createdAt: serverNow(), time: azTime(serverNow()), date: azDate(serverNow())
     };
     if (p.type === 'cash') { const given = parseFloat(String(this.els.cashGiven.value).replace(',', '.'))||0; payData.cashGiven = given; payData.change = Math.max(0, given-remaining); }
@@ -1441,7 +1479,8 @@ export class PaymentProcessor {
       const newPaid = money2(paid + amt);
       const pays = { ...(current.pays || {}) };
       pays[payId] = { ...payData, thisPay: amt, paidBefore: paid };
-      return { ...current, pays, paidAmount: newPaid, remainingAmount: money2(Math.max(0, total - newPaid)) };
+      const guestPaid = p.guest ? { ...(current.guestPaid || {}), [p.guest]: money2((current.guestPaid?.[p.guest] || 0) + amt) } : current.guestPaid;
+      return { ...current, pays, paidAmount: newPaid, remainingAmount: money2(Math.max(0, total - newPaid)), ...(guestPaid ? { guestPaid } : {}) };
     }, (error, committed, snapshot) => {
       this._busy = false;
       this._setBusy(false);
