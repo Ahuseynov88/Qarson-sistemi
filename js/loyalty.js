@@ -219,7 +219,8 @@ export function submitLoyaltyRegistration() {
     fatherName: document.getElementById('regFatherName').value.trim(),
     phone: document.getElementById('regPhone').value.trim(),
     gender: document.getElementById('regGender').value,
-    birthDate: document.getElementById('regBirthDate').value
+    birthDate: document.getElementById('regBirthDate').value,
+    idNo: (document.getElementById('regIdNo')?.value || '').trim()   // C17: könüllü — serverdə yalnız şifrəli izi saxlanılır
   };
   const errEl = document.getElementById('regErrorMsg');
   errEl.textContent = '';
@@ -260,8 +261,9 @@ function _registerLoyaltyCustomer(fields, existingGuestToken, errEl, onSuccess) 
     try { pendingRef = sessionStorage.getItem(PENDING_REF_KEY); } catch (e) {}
 
     const newRef = R.loyaltyCustomers.push();
+    const { idNo: _noPlainId, ...safeFields } = fields;   // C17: vəsiqə nömrəsi bazaya açıq yazılmır
     const customerData = {
-      ...fields, bonus: 0, referralCode, registrationDate: Date.now(),
+      ...safeFields, bonus: 0, referralCode, registrationDate: Date.now(),
       firstOrderCompleted: false, guestToken: existingGuestToken || null
     };
     newRef.set(customerData).then(() => {

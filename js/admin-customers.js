@@ -7,6 +7,7 @@ import { esc, showToast, addLog, confirmAction, serverNow } from './utils.js';
 import { R, db } from './firebase-service.js';
 import { closeAddModal } from './admin.js';
 import { needShift } from './yuza-shift.js';
+import { normPhone, saveBase, openEditor as openBaseEditor, fullName } from './yuza-customers.js';
 
 
 // Mövcud HTML-də onclick="..."/onchange="..." istifadə olunan funksiyalar qlobal əlçatan olmalıdır
@@ -29,6 +30,7 @@ export function renderCustomers() {
         <div class="item-info">
           <h3>${esc(c.name)}</h3>
           ${c.phone ? `<small style="color:var(--text3);display:block;"><svg class="icon"><use href="#i-phone"></use></svg> ${esc(c.phone)}</small>` : ''}
+          ${!normPhone(c.phone) ? '<small class="yz-cu-nophone">Telefon yoxdur — yeni nisyə yazmaq olmur</small>' : c.baseId ? `<small class="yz-cu-linked" onclick="window.__yzCustomers.openCard('${c.baseId}')">${'<svg class="icon"><use href="#i-users"></use></svg>'} Müştəri kartı</small>` : ''}
         </div>
       </div>
       <span class="status-badge ${(c.balance>0)?'badge-red':'badge-green'}">${(c.balance||0).toFixed(2)} ₼ borc</span>
@@ -50,17 +52,30 @@ export function customerForm(c = {}) {
   `;
 }
 
-export function saveCustomer() {
+export async function saveCustomer() {
   const name = (document.getElementById('cu_name')?.value||'').trim();
   const phone = (document.getElementById('cu_phone')?.value||'').trim();
   if (!name) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Ad mütləqdir'); return; }
+  // C17: telefon məcburidir — müştəri ümumi bazada telefonla tanınır
+  if (!normPhone(phone)) { showToast('<svg class="icon"><use href="#i-error"></use></svg> Telefon mütləqdir (məs. 050 123 45 67)'); return; }
   const balance = parseFloat(document.getElementById('cu_balance')?.value) || 0;
-
-  if (state.editTarget?.type === 'customer') {
-    R.customers.child(state.editTarget.id).update({ name, phone });
+  const [first, ...rest] = name.split(/\s+/);
+  const editing = state.editTarget?.type === 'customer' ? state.customers.find(x => x.id === state.editTarget.id) : null;
+  let baseId = editing?.baseId || null;
+  try {
+    const r = await saveBase({ firstName: first, lastName: rest.join(' '), phone }, baseId);
+    baseId = r.id;
+  } catch (e) {
+    if (e.dupId && !editing) baseId = e.dupId;            // bazada var — həmin karta bağlanır
+    else { showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + esc(e.message)); return; }
+  }
+  if (editing) {
+    await R.customers.child(editing.id).update({ name, phone, baseId });
     addLog('customer_mgmt', `Müştəri redaktə edildi: ${name}`, {});
   } else {
-    R.customers.push({ name, phone, balance, createdAt: Date.now() });
+    const dupAcc = state.customers.find(a => a.baseId === baseId);
+    if (dupAcc) { showToast(`<svg class="icon"><use href="#i-warning"></use></svg> "${esc(dupAcc.name)}" üçün nisyə hesabı artıq var`); return; }
+    R.customers.push({ name, phone, balance, baseId, createdAt: Date.now() });
     addLog('customer_mgmt', `Yeni müştəri qeydə alındı: ${name}`, {});
   }
   closeAddModal();

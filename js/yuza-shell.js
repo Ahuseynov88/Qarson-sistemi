@@ -55,7 +55,7 @@ const MENU = [
     { s: 'kitchenStations', l: 'Mətbəxlər', i: 'chef' },
     { s: 'inv-warehouses', l: 'Anbarlar', i: 'box', v2: 1 },
     { s: 'inv-suppliers', l: 'Təchizatçılar', i: 'users', v2: 1 },
-    { s: 'loyaltyCustomers', l: 'Loyallıq üzvləri', i: 'star' },
+    { s: 'loyaltyCustomers', l: 'Müştərilər (baza)', i: 'users' },
     { s: 'paymentMethods', l: 'Ödəniş növləri', i: 'card' },
     { s: 'banquetHalls', l: 'Banket zalları', i: 'chair', hide: 1 },   // zal banket qeydiyyatının içində seçilir/əlavə olunur
     { s: 'banquetEventTypes', l: 'Tədbir növləri', i: 'tag', hide: 1 },

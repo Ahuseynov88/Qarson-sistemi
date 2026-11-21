@@ -9,6 +9,7 @@ import { state } from './state.js';
 import { esc, showToast, addLog, makeLineKey, updateStock, formatItemsList, computeOrderTotals, serverNow, azTime, azDate, money2 } from './utils.js';
 import { hasPermission } from './permissions.js';
 import { needShift, shiftNow } from './yuza-shift.js';
+import { normPhone, fullName, ensureAccount, baseList } from './yuza-customers.js';   // C17
 
 /* ───────────────────────── CONFIRMED ORDER ───────────────────────── */
 
@@ -518,9 +519,37 @@ export class ConfirmedOrder {
       document.getElementById('customerChargeAmount').textContent = remaining.toFixed(2) + ' ₼';
     }
 
-    document.getElementById('customerChargeSelect').innerHTML = state.customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    // C17: siyahı — nisyə hesabları + ümumi bazadakı müştərilər (hesabı yoxdursa təsdiqdə açılır)
+    this._fillChargeList();
+    const q = document.getElementById('customerChargeQ');
+    if (q) { q.value = ''; q.oninput = () => this._fillChargeList(q.value); }
+    baseList().then(() => this._fillChargeList(q?.value || '')).catch(() => {});
     this._showChargeStage(1);
     document.getElementById('customerChargeModal').classList.add('open');
+  }
+
+  _chargeOptions() {
+    const accs = (state.customers || []).map(a => ({ v: a.id, name: a.name || '?', phone: a.phone || '', ok: !!normPhone(a.phone), bal: a.balance || 0, baseId: a.baseId || null }));
+    const linked = new Set(accs.map(a => a.baseId).filter(Boolean));
+    const base = (state.loyaltyCustomers?.length ? state.loyaltyCustomers : (window.__yzBaseCache || []))
+      .filter(c => !linked.has(c.id) && normPhone(c.phone))
+      .map(c => ({ v: 'b:' + c.id, name: fullName(c), phone: c.phone || '', ok: true, bal: null }));
+    return [...accs, ...base].sort((x, y) => String(x.name).localeCompare(String(y.name), 'az'));
+  }
+  _fillChargeList(q = '') {
+    const sel = document.getElementById('customerChargeSelect'); if (!sel) return;
+    const t = String(q).trim().toLowerCase(), qd = t.replace(/\D/g, '');
+    const list = this._chargeOptions().filter(o => !t || o.name.toLowerCase().includes(t) || (qd.length >= 3 && String(o.phone).replace(/\D/g, '').includes(qd)));
+    const prev = sel.value;
+    sel.innerHTML = list.map(o => `<option value="${esc(o.v)}"${o.ok ? '' : ' disabled'}>${esc(o.name)}${o.phone ? ' · ' + esc(o.phone) : ''}${o.ok ? (o.bal ? ` — borc ${Number(o.bal).toFixed(2)} ₼` : (o.bal === null ? ' — yeni hesab' : '')) : ' — telefon yoxdur'}</option>`).join('');
+    if (prev && list.some(o => o.v === prev && o.ok)) sel.value = prev;
+    else { const f = list.find(o => o.ok); if (f) sel.value = f.v; }
+  }
+  _chargeCustomerOf(v) {
+    if (!v) return null;
+    if (v.startsWith('b:')) { const c = (state.loyaltyCustomers?.length ? state.loyaltyCustomers : (window.__yzBaseCache || [])).find(x => x.id === v.slice(2)); return c ? { id: v, name: fullName(c), isNew: true } : null; }
+    const a = state.customers.find(c => c.id === v);
+    return a && normPhone(a.phone) ? a : null;
   }
 
   _showChargeStage(n) {
@@ -533,8 +562,8 @@ export class ConfirmedOrder {
     const t = state.tables.find(x => x.id === tableId);
     const order = state.tableOrders[tableId];
     const customerId = document.getElementById('customerChargeSelect').value;
-    const customer = state.customers.find(c => c.id === customerId);
-    if (!customer) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Müştəri seçin'); return; }
+    const customer = this._chargeCustomerOf(customerId);
+    if (!customer) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Müştəri seçin (telefonu olan)'); return; }
 
     const selection = this._chargeSelection || {};
     const selKeys = Object.keys(selection).filter(k => order?.items?.[k]);
@@ -553,14 +582,21 @@ export class ConfirmedOrder {
     this._showChargeStage(1);
   }
 
-  confirmCustomerCharge() {
+  async confirmCustomerCharge() {
     const tableId = state.noteTableId;
     const order = state.tableOrders[tableId];
     if (!order) return;
     const t = state.tables.find(x => x.id === tableId);
-    const customerId = document.getElementById('customerChargeSelect').value;
-    const customer = state.customers.find(c => c.id === customerId);
-    if (!customer) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Müştəri seçin'); return; }
+    let customerId = document.getElementById('customerChargeSelect').value;
+    let customer = this._chargeCustomerOf(customerId);
+    if (!customer) { showToast('<svg class="icon"><use href="#i-warning"></use></svg> Müştəri seçin (telefonu olan)'); return; }
+    // C17: bazadakı müştərinin nisyə hesabı yoxdursa — açılır
+    if (customer.isNew) {
+      if (this._chargeBusy) return;
+      try { this._chargeBusy = true; customerId = await ensureAccount(customerId.slice(2)); } catch (e) { this._chargeBusy = false; showToast('<svg class="icon"><use href="#i-error"></use></svg> ' + esc(e.message)); return; }
+      this._chargeBusy = false;
+      customer = { id: customerId, name: customer.name };
+    }
 
     const selection = this._chargeSelection || {};
     const selKeys = Object.keys(selection).filter(k => order.items?.[k]);
