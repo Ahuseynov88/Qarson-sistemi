@@ -1499,6 +1499,11 @@
         <option value="Digər">Digər</option>
       </select>
     </div>
+    <fieldset class="yz-prep" id="cancelReasonPrep">
+      <legend>Mətbəx hazırlamışdı? (mal istifadə olunub?)</legend>
+      <label><input type="radio" name="cancelReasonPrep" value="no" checked> <span><b>Xeyr</b> — anbara (porsiyaya) geri qaytarılsın</span></label>
+      <label><input type="radio" name="cancelReasonPrep" value="yes"> <span><b>Bəli</b> — hazırlanıb, itki kimi silinsin (geri qayıtmır)</span></label>
+    </fieldset>
     <div class="modal-actions" style="display:flex;gap:10px;margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;padding:13px;" data-cancel>Ləğv</button>
       <button class="btn btn-red" style="flex:1;padding:13px;" data-confirm-cancel-reason><svg class="icon"><use href="#i-trash"></use></svg> Sil</button>
@@ -1519,6 +1524,11 @@
         <option value="Digər">Digər</option>
       </select>
     </div>
+    <fieldset class="yz-prep" id="batchCancelPrep">
+      <legend>Mətbəx hazırlamışdı? (mal istifadə olunub?)</legend>
+      <label><input type="radio" name="batchCancelPrep" value="no" checked> <span><b>Xeyr</b> — anbara (porsiyaya) geri qaytarılsın</span></label>
+      <label><input type="radio" name="batchCancelPrep" value="yes"> <span><b>Bəli</b> — hazırlanıb, itki kimi silinsin (geri qayıtmır)</span></label>
+    </fieldset>
     <p id="batchCancelSum" class="bc-sum"></p>
     <div class="modal-actions" style="margin-top:8px;">
       <button class="btn btn-ghost" style="flex:1;" data-cancel>Ləğv et</button>
