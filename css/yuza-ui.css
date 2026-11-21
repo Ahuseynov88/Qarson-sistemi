@@ -593,3 +593,20 @@ body.dark-mode .yz-dotsmenu__it .icon{color:var(--gold);}
 .yz-short{list-style:none; margin:0 0 10px; padding:0; display:flex; flex-direction:column; gap:6px;}
 .yz-short li{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid rgba(214,69,65,.4); border-radius:12px; background:rgba(214,69,65,.06);}
 .yz-short li span{color:var(--text2);}
+
+/* ── 15) C21 · PORSİYA SAYĞACI (21.11.2026) ── */
+.product-card__stock--por{background:rgba(46,125,80,.88); font-size:11px;}
+.product-card__stock--por.product-card__stock--low{background:rgba(211,84,0,.92);}
+.product-card__stock--out{background:rgba(180,40,40,.92); font-size:11px;}
+.yz-pr-left{display:inline-block; min-width:44px; padding:3px 10px; border-radius:999px; font-weight:800; font-variant-numeric:tabular-nums; text-align:center;}
+.yz-pr-left.is-ok{background:rgba(46,125,80,.14); color:#2e7d50;}
+.yz-pr-left.is-low{background:rgba(211,84,0,.16); color:#c25400;}
+.yz-pr-left.is-out{background:rgba(180,40,40,.14); color:#b42828;}
+.yz-pr-table .yz-pr-lim{width:64px; text-align:center;}
+.yz-pr-norm{font-size:13px; color:var(--text2); min-width:180px;}
+.yz-pr-act{white-space:nowrap;}
+.yz-pr-act .yzi-btn{margin-inline-start:4px;}
+@media (max-width:700px){ .yz-pr-act{white-space:normal;} .yz-pr-act .yzi-btn{margin:2px 0; width:100%;} }
+/* şəkilsiz kartda nişan adı örtməsin — aşağı sağ küncə */
+.product-card.no-photo:has(.product-card__stock){padding-top:30px;}
+.product-card.no-photo .product-card__stock{top:5px; right:5px; left:5px; text-align:center;}
