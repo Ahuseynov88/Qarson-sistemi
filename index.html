@@ -216,8 +216,8 @@
         <p class="yz-card__hint">Zəhmət olmasa, rolunuzu seçin və PIN kodunuzu daxil edin.</p>
 
         <div class="yz-roles" role="group" aria-label="Rol seçimi">
-          <button type="button" class="role-tab yz-role yz-role--admin active" onclick="setRole('admin',this)"><svg><use href="#yz-i-admin"/></svg><span>Rəhbər</span></button>
-          <button type="button" class="role-tab yz-role yz-role--staff" onclick="setRole('staff',this)"><svg><use href="#yz-i-waiter"/></svg><span>Ofisiant</span></button>
+          <button type="button" class="role-tab yz-role yz-role--admin" hidden aria-hidden="true" tabindex="-1" onclick="setRole('admin',this)"><svg><use href="#yz-i-admin"/></svg><span>Rəhbər</span></button>
+          <button type="button" class="role-tab yz-role yz-role--staff active" onclick="setRole('staff',this)"><svg><use href="#yz-i-waiter"/></svg><span>Ofisiant</span></button>
           <button type="button" class="role-tab yz-role yz-role--kitchen" onclick="setRole('kitchen',this)"><svg><use href="#yz-i-chef"/></svg><span>Mətbəx</span></button>
         </div>
 
